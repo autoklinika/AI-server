@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-bridge"
+version = "0.1.0"
+description = "Local AI Bridge for telemetry ingestion and advisory analysis"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.128,<1",
+  "httpx>=0.28,<1",
+  "pydantic>=2.13,<3",
+  "pydantic-settings>=2.14,<3",
+  "sqlalchemy>=2.0.50,<3",
+  "uvicorn[standard]>=0.48,<1",
+]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.2,<4"]
+dev = [
+  "alembic>=1.18,<2",
+  "pytest>=9,<10",
+]
+
+[project.scripts]
+ai-bridge = "ai_bridge.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

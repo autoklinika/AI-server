@@ -1,0 +1,1 @@
+"""Workshop ventilation domain adapter."""
