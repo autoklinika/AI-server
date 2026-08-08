@@ -52,6 +52,11 @@ RDP/xrdp nie są częścią docelowej konfiguracji hosta.
 - [ADR-003 – AI Bridge jako wspólna platforma pośrednicząca](docs/ADR-003_AI_BRIDGE_PLATFORM_ARCHITECTURE_PL.md)
 - [ADR-004 – Przechowywanie i retencja danych telemetrycznych](docs/ADR-004_TELEMETRY_STORAGE_AND_RETENTION_PL.md)
 
+### Kontrakty integracyjne
+
+- [Ventilation Telemetry API v1](docs/VENTILATION_TELEMETRY_API_V1_PL.md)
+- [Ventilation Telemetry Data Model v1](docs/VENTILATION_TELEMETRY_DATA_MODEL_V1_PL.md)
+
 ### Raporty
 
 - [Raport inicjalizacji projektu](docs/AI_SERVER_PROJECT_INITIALIZATION_REPORT_PL.md)
@@ -60,6 +65,8 @@ RDP/xrdp nie są częścią docelowej konfiguracji hosta.
 ## Aktualny kierunek prac
 
 Kolejnym etapem jest implementacja warstwy aplikacyjnej **AI Bridge** z modularnym rdzeniem oraz adapterem `ventilation`.
+
+Kontrakt komunikacyjny CM5 ↔ AI Bridge dla telemetrii wentylacji jest zapisany w dokumentach `VENTILATION_TELEMETRY_API_V1_PL.md` oraz `VENTILATION_TELEMETRY_DATA_MODEL_V1_PL.md` i stanowi punkt odniesienia dla dalszej implementacji obu stron.
 
 Na obecnym etapie nie rozdzielamy jeszcze osobnych profili kontekstu Ollamy dla wentylacji i CRT i nie ustawiamy globalnego `OLLAMA_CONTEXT_LENGTH`.
 
