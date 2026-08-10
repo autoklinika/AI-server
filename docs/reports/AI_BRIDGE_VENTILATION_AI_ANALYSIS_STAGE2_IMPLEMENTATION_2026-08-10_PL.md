@@ -1,7 +1,7 @@
 # AI Bridge – Ventilation AI Analysis Stage 2
 
 **Data:** 10.08.2026  
-**Status:** PRODUCTION ONESHOT PASS – `ventilation-v10-baseline-safe`; timer intentionally disabled  
+**Status:** TECHNICALLY COMPLETE – `ventilation-v10-baseline-safe`; timer verified disabled  
 **Repozytorium:** `autoklinika/AI-server`  
 **Gałąź:** `agent/ventilation-ai-analysis-stage2`
 
@@ -177,9 +177,16 @@ To ograniczenie jest jawnie zaakceptowane. Nie tworzymy v11/v12 w Stage 2.
 
 Pole `operator_recommendation_pl` nie może być wejściem do automatycznej logiki CM5.
 
-## 11. Timer
+## 11. Timer – zweryfikowany jako wyłączony
 
 Timer jest przygotowany, ale **pozostaje celowo niewłączony**.
+
+Końcowa kontrola na AI Serverze:
+
+```text
+systemctl is-enabled ai-bridge-analysis.timer -> disabled
+systemctl is-active ai-bridge-analysis.timer  -> inactive
+```
 
 Produkcja i oneshot są technicznie gotowe. Wstrzymanie automatyzacji wynika z jakości semantycznej raportu i decyzji, że przed cyklicznym udostępnianiem operatorowi należy najpierw zbudować read-only kanał z jawnym oznaczeniem `advisory/experimental`.
 
@@ -206,6 +213,22 @@ Zasady:
 - raport AI nie może automatycznie zmieniać trybu ani setpointów,
 - nie będzie endpointu pozwalającego AI sterować CM5.
 
-## 13. Status
+## 13. Status końcowy Stage 2
 
-Stage 2 ma funkcjonalny PASS, idempotencję PASS oraz produkcyjny systemd oneshot PASS. Interpretacja Qwena jest zamrożona na `ventilation-v10-baseline-safe`. Timer pozostaje wyłączony, a kolejnym etapem jest read-only kanał AI Server -> CM5. PR #3 pozostaje Draft do wyraźnej decyzji użytkownika o Ready/merge.
+**Stage 2 jest technicznie zakończony.**
+
+Zwalidowano:
+
+- funkcjonalny pipeline analizy,
+- schema v2,
+- idempotencję,
+- PostgreSQL,
+- deployment `/opt/ai-bridge`,
+- `ai-bridge.service` 0.2.0,
+- produkcyjny systemd oneshot,
+- bezpieczną granicę `control_commands_supported=false`,
+- timer jako `disabled / inactive`.
+
+Interpretacja Qwena pozostaje zamrożona na `ventilation-v10-baseline-safe` jako baza `advisory/experimental`. Kolejnym etapem jest read-only kanał AI Server -> CM5.
+
+PR #3 pozostaje Draft do wyraźnej decyzji użytkownika o Ready/merge.
