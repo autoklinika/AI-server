@@ -208,6 +208,8 @@ Na rzeczywistym Serwerze AI wykonano:
 
 Pierwszy technicznie poprawny przebieg na 179 próbkach zużył 4457 tokenów promptu, 205 tokenów odpowiedzi i trwał 28.901 s.
 
+`ventilation-v3` oraz `ventilation-v4` wykonały realne requesty `HTTP 200`, ale ich wyniki zostały odrzucone przez zbyt rygorystyczne kontrakty przed zapisem. Była to bezpośrednia przyczyna decyzji o `ventilation-v5-simple`.
+
 ## 11. systemd
 
 Przygotowane są:
