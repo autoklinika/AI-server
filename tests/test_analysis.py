@@ -14,7 +14,7 @@ from ai_bridge.adapters.ventilation.analysis import (
     build_ventilation_prompt,
     summarize_ventilation_window,
 )
-from ai_bridge.analysis.schemas import AnalysisObservation, VentilationAnalysisResult
+from ai_bridge.analysis.schemas import VentilationAnalysisResult
 from ai_bridge.analysis.service import VentilationAnalysisService, aligned_window
 from ai_bridge.ollama.client import (
     OllamaChatResult,
@@ -54,13 +54,9 @@ def _normal_result(summary: str = "Brak widocznej anomalii w analizowanym oknie.
         status="normal",
         summary=summary,
         confidence=0.7,
-        observations=[
-            AnalysisObservation(
-                title="Kondycja systemu i dane wejściowe",
-                importance="low",
-                evidence=["Analiza ma co najmniej jedną obserwację opartą na danych."],
-            ),
-        ],
+        observations=["Sterownik i dane telemetryczne są dostępne do interpretacji."],
+        anomalies=[],
+        recommendations=[],
         data_quality_notes=["Historyczny baseline nie jest jeszcze dostępny."],
     )
 
@@ -102,7 +98,7 @@ def test_summary_contains_only_deterministic_math() -> None:
     assert summary["sensor_bus"]["samples_present"] == 0
 
 
-def test_prompt_v4_requires_provenance_coverage_and_baseline_caution() -> None:
+def test_prompt_v5_is_short_and_keeps_critical_context() -> None:
     summary = summarize_ventilation_window(
         source_id="workshop-ventilation-cm5-01",
         window_start=datetime(2026, 8, 10, 12, 0, tzinfo=timezone.utc),
@@ -112,27 +108,35 @@ def test_prompt_v4_requires_provenance_coverage_and_baseline_caution() -> None:
     messages = build_ventilation_prompt(summary)
     system = messages[0]["content"]
 
-    assert PROMPT_VERSION == "ventilation-v4"
-    assert "nie używaj określeń „zero”, „blisko zera”, „stałe” ani „bez zmian”" in system
-    assert "historical_baseline_available=false" in system
-    assert "expected_operating_state_known=false" in system
-    assert "observations musi zawierać co najmniej jedną pozycję" in system
-    assert "liczba pozycji nie jest kryterium jakości" in system
-    assert "zadane napięcie sterujące nawiewu" in system
-    assert "Kontrakt provenance" in system
+    assert PROMPT_VERSION == "ventilation-v5-simple"
+    assert "historyczny baseline warsztatu nie jest jeszcze dostępny" in system
+    assert "Tryb STOP i setpointy 0 V" in system
+    assert "zadanymi sygnałami sterującymi 0-10 V" in system
+    assert "PM, VOC, NOx, temperaturę i wilgotność" in system
+    assert "provenance" not in system.lower()
 
 
-def test_analysis_result_rejects_unsupported_empty_observations() -> None:
+def test_analysis_result_validates_only_structure_and_basic_ranges() -> None:
+    result = VentilationAnalysisResult(
+        status="anomaly",
+        summary="Model wykrył zachowanie warte uwagi.",
+        confidence=0.8,
+        observations=[],
+        anomalies=["VOC rośnie w analizowanym oknie."],
+        recommendations=[],
+    )
+    assert result.observations == []
+    assert result.anomalies == ["VOC rośnie w analizowanym oknie."]
+
     with pytest.raises(ValidationError):
         VentilationAnalysisResult(
             status="normal",
-            summary="Ogólne stwierdzenie bez dowodów.",
-            confidence=0.9,
-            observations=[],
+            summary="Niepoprawny confidence.",
+            confidence=1.5,
         )
 
 
-def test_compact_schema_inlines_refs_and_removes_large_repetition_constraints() -> None:
+def test_compact_schema_is_flat_and_grammar_friendly() -> None:
     schema = VentilationAnalysisResult.model_json_schema()
     compact = compact_schema_for_ollama(schema)
     encoded = json.dumps(compact, sort_keys=True)
@@ -140,15 +144,11 @@ def test_compact_schema_inlines_refs_and_removes_large_repetition_constraints() 
     assert '"$defs"' not in encoded
     assert '"$ref"' not in encoded
     assert '"maxLength"' not in encoded
-    assert '"minLength"' not in encoded
     assert '"maxItems"' not in encoded
-    assert '"minimum"' not in encoded
-    assert '"maximum"' not in encoded
     assert compact["properties"]["schema_version"]["enum"] == [1]
-    observation = compact["properties"]["observations"]["items"]
-    assert observation["type"] == "object"
-    assert observation["properties"]["importance"]["enum"] == ["low", "medium", "high"]
-    assert observation["additionalProperties"] is False
+    assert compact["properties"]["observations"]["items"]["type"] == "string"
+    assert compact["properties"]["anomalies"]["items"]["type"] == "string"
+    assert compact["properties"]["recommendations"]["items"]["type"] == "string"
 
 
 class FakeRepository:
@@ -216,7 +216,7 @@ def test_service_skips_ollama_when_sample_count_is_below_gate() -> None:
     assert repository.saved["sample_count"] == 1
 
 
-def test_service_uses_compact_schema_and_puts_it_in_prompt() -> None:
+def test_service_uses_structured_schema_without_embedding_schema_in_prompt() -> None:
     repository = FakeRepository([_sample(minute=0, supply=0.0, extract=0.0)])
     ollama = CapturingOllama()
     service = VentilationAnalysisService(
@@ -237,11 +237,9 @@ def test_service_uses_compact_schema_and_puts_it_in_prompt() -> None:
     assert result.result.status == "normal"
     assert ollama.kwargs is not None
     sampling_schema = ollama.kwargs["response_schema"]
-    encoded = json.dumps(sampling_schema, sort_keys=True)
-    assert '"$defs"' not in encoded
-    assert '"$ref"' not in encoded
-    assert '"maxLength"' not in encoded
-    assert encoded in ollama.kwargs["messages"][-1]["content"]
+    assert sampling_schema["properties"]["observations"]["items"]["type"] == "string"
+    prompt_text = ollama.kwargs["messages"][-1]["content"]
+    assert "Wymagany JSON Schema odpowiedzi" not in prompt_text
 
 
 def test_service_reuses_existing_analysis_without_calling_ollama() -> None:
