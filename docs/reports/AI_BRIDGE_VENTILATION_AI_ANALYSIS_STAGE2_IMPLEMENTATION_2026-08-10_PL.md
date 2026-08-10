@@ -1,22 +1,28 @@
 # AI Bridge – Ventilation AI Analysis Stage 2
 
 **Data:** 10.08.2026  
-**Status:** IMPLEMENTED – `ventilation-v5-simple` oczekuje na walidację jakościową  
+**Status:** IMPLEMENTED – `ventilation-v7-compact-thinking` oczekuje na walidację jakościową  
 **Repozytorium:** `autoklinika/AI-server`  
 **Gałąź:** `agent/ventilation-ai-analysis-stage2`
 
 ## 1. Cel
 
-Dodać pierwszą rzeczywistą warstwę interpretacji danych wentylacji przez lokalny model `qwen3.6:35b` po zakończeniu Stage 1 telemetry ingest.
+Dodać rzeczywistą warstwę interpretacji danych wentylacji przez lokalny model `qwen3.6:35b`, bez naruszania granicy bezpieczeństwa CM5.
+
+Aktywny tor:
 
 ```text
 PostgreSQL RAW
     ↓
-Python – matematyczne przygotowanie danych
+Python – pełne statystyki matematyczne
     ↓
-15-minutowe zamknięte okno
+pełny input_summary zapisany jako audit/history
     ↓
-Ollama / qwen3.6:35b
+compact analysis packet
+    ↓
+krótki prompt domenowy
+    ↓
+Ollama / qwen3.6:35b / think=true
     ↓
 prosty structured JSON
     ↓
@@ -25,7 +31,7 @@ Pydantic – walidacja struktury
 ventilation_analysis_runs
 ```
 
-AI nie znajduje się na ścieżce sterowania ani na ścieżce ACK CM5.
+AI nie znajduje się na ścieżce sterowania ani ACK CM5.
 
 ## 2. Granica bezpieczeństwa
 
@@ -33,11 +39,11 @@ Nadal obowiązuje:
 
 ```text
 CM5 = sterowanie + safety
-Python = przygotowanie matematyczne i infrastruktura
+Python = matematyka + przygotowanie danych
 Qwen = interpretacja + rekomendacje
 ```
 
-Nie dodano endpointów sterujących. Awaria Qwena lub całego procesu analizy nie wpływa na działanie wentylacji ani na przyjmowanie telemetrii.
+Nie ma endpointu sterującego. Awaria Qwena lub procesu analizy nie wpływa na wentylację ani na ingest telemetrii.
 
 ## 3. Okna i data-quality gate
 
@@ -50,15 +56,15 @@ HH:30..HH:45
 HH:45..HH+1:00
 ```
 
-Warunek minimalny:
+Domyślne minimum:
 
 ```text
 120 próbek
 ```
 
-Przy capture około 5 s pełne okno zawiera około 180 próbek. Jeśli próbek jest mniej, Qwen nie jest wywoływany i zapisywany jest `insufficient_data`.
+Przy capture co około 5 s pełne okno ma około 180 próbek. Jeśli danych jest mniej, Qwen nie jest wywoływany i zapisywany jest `insufficient_data`.
 
-## 4. Matematyka wykonywana przez Python
+## 4. Pełne przygotowanie matematyczne
 
 Dla pól liczbowych Python oblicza:
 
@@ -73,8 +79,6 @@ Dla pól liczbowych Python oblicza:
 - delta,
 - slope_per_minute.
 
-Dla systemu i SENSOR BUS przygotowuje m.in. rozkład trybów, setpointy, stan hardware, alarmy, kondycję workera i statystyki obu węzłów SEN55.
-
 Agregowane odczyty SEN55:
 
 ```text
@@ -88,33 +92,24 @@ voc_index
 nox_index
 ```
 
-Python nie klasyfikuje tych wartości jako normalnych/anormalnych i nie definiuje progów środowiskowych.
+Dodatkowo przygotowywany jest stan systemu, setpointy, alarmy, SENSOR BUS, status obu węzłów i liczniki diagnostyczne.
 
-## 5. Ollama
+Python nie definiuje progów anomalii i nie interpretuje tych wartości.
 
-Wywołanie:
+## 5. Structured output i Ollama
+
+Aktywne wywołanie:
 
 ```text
 POST http://127.0.0.1:11434/api/chat
-```
-
-Parametry:
-
-```text
 model=qwen3.6:35b
 stream=false
-think=false
+think=true
 temperature=0
-format=<JSON Schema>
+format=<compact JSON Schema>
 ```
 
-Klient używa grammar-friendly schema. Wcześniej rzeczywista Ollama ujawniła błąd `failed to parse grammar` dla rozbudowanego schematu Pydantic; dlatego istnieje funkcja kompaktująca schema. Pełna walidacja końcowego wyniku nadal odbywa się przez Pydantic.
-
-## 6. Aktywny wynik – `ventilation-v5-simple`
-
-Po rzeczywistych testach wcześniejszych promptów celowo uproszczono kontrakt.
-
-Aktualny wynik:
+Wynik pozostaje celowo prosty:
 
 ```text
 schema_version
@@ -127,54 +122,119 @@ recommendations[]
 data_quality_notes[]
 ```
 
-`observations`, `anomalies`, `recommendations` i `data_quality_notes` są prostymi listami tekstów.
+Pydantic sprawdza kontrakt danych, nie jakość semantyczną interpretacji.
 
-Pydantic sprawdza tylko:
+## 6. Historia eksperymentów v1-v6
 
-- strukturę JSON,
-- dozwolony status,
-- typy pól,
-- `confidence` w zakresie 0..1,
-- podstawowe limity długości/list.
+Wszystkie poniższe testy wykonywano na tym samym historycznym oknie:
 
-Nie sprawdza semantycznie, czy Qwen „wystarczająco dobrze” przeanalizował dane.
+```text
+2026-08-10T12:00:00Z..12:15:00Z
+179 próbek
+```
 
-## 7. Aktywny prompt – `ventilation-v5-simple`
+### v1 – techniczny PASS, semantyczny FAIL
 
-Prompt jest krótki i domenowy. Model ma:
+Model opisał PM jako `zero lub bliskie zeru`, mimo że PM2.5 wynosiło średnio około 6.9/6.6 µg/m³ i spadało na obu węzłach.
 
-- przeanalizować stan sterownika i SENSOR BUS,
-- przeanalizować oba SEN55,
-- zwrócić uwagę na PM, VOC, NOx, temperaturę i wilgotność,
-- analizować średnie, minima, maksima, zmiany i trendy,
-- porównywać oba węzły,
-- podawać istotne liczby, gdy pomagają uzasadnić wniosek,
-- nie wymyślać danych ani historycznego baseline'u,
-- nie traktować STOP + setpoint 0 V jako usterki, ponieważ oczekiwany stan pracy nie jest znany,
-- pamiętać, że setpointy są wartościami zadanymi, nie pomiarem RPM/przepływu,
-- wyłącznie doradzać operatorowi.
+### v2 – semantyczny FAIL
 
-Pełny JSON Schema nie jest już kopiowany do treści promptu; schema trafia do Ollamy przez `format`.
+Model poprawnie rozpoznał STOP i brak alarmów, ale pominął PM/VOC, nazwał dane statycznymi i wymyślił pseudo-ścieżki `sensor_data.*`.
 
-## 8. Historia walidacji v1-v4
+### v3/v4 – zbyt rozbudowana walidacja
 
-Walidacja na rzeczywistym oknie 179 próbek pokazała:
+Dodano provenance i obowiązkowe pokrycie pól. Rzeczywiste requesty `HTTP 200` były następnie odrzucane głównie z powodu technicznego formularza odpowiedzi. Warstwa została wycofana.
 
-### `ventilation-v1`
+### v5-simple – techniczny PASS, semantyczny FAIL
 
-Technicznie PASS, semantycznie FAIL. Model błędnie opisał PM jako `zero lub bliskie zeru` i pominął rzeczywiste trendy.
+Po uproszczeniu schema i promptu przy `think=false` analiza została zapisana, ale model:
 
-### `ventilation-v2`
+- praktycznie pominął PM/VOC,
+- zwrócił puste observations,
+- zinterpretował 0 V zbyt mocno jako potwierdzenie zatrzymania wentylatorów,
+- ponownie sugerował diagnostykę STOP mimo braku informacji, czy STOP był zamierzony,
+- zwrócił confidence=1.0 mimo braku baseline'u.
 
-Model poprawnie rozpoznał STOP i brak alarmów, ale nadal pominął trendy PM/VOC, nazwał dane statycznymi i wymyślił pseudo-ścieżki `sensor_data.*`.
+### v6-thinking – częściowa poprawa, nadal FAIL jakościowy
 
-### `ventilation-v3/v4`
+Zmiana wyłącznie `think=false -> think=true` dała zauważalną poprawę:
 
-Dodano provenance, wymagane ścieżki i obowiązkowe pokrycie pól. Mechanizm zaczął jednak sprawdzać przede wszystkim zdolność Qwena do wypełniania technicznego formularza. Rzeczywiste requesty `HTTP 200` były odrzucane przez walidatory mimo poprawnego transportu i struktury.
+- Qwen zauważył lekki spadek PM,
+- Qwen zauważył umiarkowany/silny wzrost VOC,
+- poprawnie przypomniał, że 0–10 V to sygnały sterujące, nie RPM,
+- jawnie wspomniał brak historycznego baseline'u.
 
-Wniosek projektowy: wracamy do pierwotnej zasady projektu. Python przygotowuje matematykę. Qwen interpretuje. Pydantic pilnuje kontraktu danych, a jakość interpretacji jest oceniana na rzeczywistych wynikach, nie przez rozbudowany semantyczny walidator.
+Jednocześnie pojawiły się istotne błędy:
 
-Kod i testy provenance zostały usunięte z aktywnej implementacji.
+- model napisał `Brak pomiarów CO2 i wilgotności`, mimo że wilgotność była kompletna: 179/179 próbek na obu SEN55,
+- zwrócił `status=anomaly`, ale `anomalies=[]`,
+- confidence nadal było bardzo wysokie (`0.98`).
+
+Wniosek: thinking pomaga w analizie trendów, ale pełny zagnieżdżony `input_summary` prawdopodobnie zawiera zbyt dużo równorzędnych szczegółów dla bieżącej interpretacji.
+
+## 7. ventilation-v7-compact-thinking
+
+`v7` zachowuje:
+
+- ten sam model,
+- `think=true`,
+- `temperature=0`,
+- ten sam krótki prompt domenowy co v6,
+- ten sam prosty wynik JSON,
+- brak semantycznych validatorów.
+
+Zmienia się tylko materiał danych przekazywany Qwenowi.
+
+### Pełny input_summary
+
+Nadal jest obliczany i zapisywany do PostgreSQL jako materiał audytowy.
+
+### Compact analysis packet
+
+Nowy moduł:
+
+```text
+src/ai_bridge/adapters/ventilation/analysis_profile.py
+```
+
+buduje deterministyczny pakiet zawierający:
+
+- window start/end/sample_count/capture_span,
+- brak historycznego baseline'u,
+- informację, że oczekiwany stan pracy nie jest znany,
+- tryb sterownika, setpointy, readiness i alarmy,
+- kondycję SENSOR BUS,
+- oba SEN55,
+- dla każdego parametru: count, missing, mean, min, max, delta, slope_per_minute,
+- delty liczników diagnostycznych,
+- listę rzeczywiście obecnych pomiarów,
+- jawne `not_provided_by_system`: CO2, fan RPM, airflow.
+
+Usuwane z materiału dla modelu są m.in.:
+
+- stddev,
+- first,
+- last,
+- pełne rekordy liczników,
+- firmware_version,
+- map_version,
+- sequence,
+- inne szczegóły niepotrzebne do bieżącej interpretacji.
+
+To nie jest preprocessing decyzyjny. Python jedynie redukuje redundancję i eksponuje dostępność danych.
+
+## 8. Szczególna ochrona przed błędem z v6
+
+Compact packet zawiera oddzielnie:
+
+```text
+measurement_capabilities.present_in_packet
+measurement_capabilities.not_provided_by_system
+```
+
+Dzięki temu `humidity_percent` jest jawnie obecne, jeśli ma próbki, natomiast CO2/RPM/airflow są jawnie oznaczone jako niewystępujące w systemie.
+
+Nie oznacza to klasyfikacji jakości pomiaru; to wyłącznie informacja o dostępności danych.
 
 ## 9. PostgreSQL i idempotencja
 
@@ -190,52 +250,47 @@ Unikalność:
 (source_id, window_start, window_end, model, prompt_version)
 ```
 
-Zmiana `prompt_version` pozwala analizować to samo historyczne okno nową wersją bez usuwania starszych wyników.
-
-W tabeli zapisywane są m.in. `input_summary`, wynik modelu, raw response oraz metryki tokenów/czasu.
-
-## 10. Walidacja wykonana dotychczas
-
-Na rzeczywistym Serwerze AI wykonano:
-
-- `compileall` – PASS,
-- zestawy testów 17/17, 19/19, 21/21, 22/22 i 27/27 – PASS,
-- migrację Alembic `0002_ventilation_analysis` – PASS,
-- rzeczywisty request do Ollamy – `HTTP 200 OK`,
-- zapis pierwszej analizy do PostgreSQL – PASS,
-- idempotencję tego samego okna – PASS (`reused_existing=true` bez drugiego requestu do Qwena),
-- walidację błędów schema/grammar – naprawione.
-
-Pierwszy technicznie poprawny przebieg na 179 próbkach zużył 4457 tokenów promptu, 205 tokenów odpowiedzi i trwał 28.901 s.
-
-`ventilation-v3` oraz `ventilation-v4` wykonały realne requesty `HTTP 200`, ale ich wyniki zostały odrzucone przez zbyt rygorystyczne kontrakty przed zapisem. Była to bezpośrednia przyczyna decyzji o `ventilation-v5-simple`.
-
-## 11. systemd
-
-Przygotowane są:
+Aktywna wersja:
 
 ```text
-deploy/systemd/ai-bridge-analysis.service
-deploy/systemd/ai-bridge-analysis.timer
+ventilation-v7-compact-thinking
 ```
 
-Timer planowany jest 30 s po każdym kwartale. Nadal nie należy go włączać przed jakościowym PASS `ventilation-v5-simple`.
+Dzięki nowej wersji to samo okno może zostać przeanalizowane ponownie bez usuwania historii v1-v6.
 
-## 12. Następny krok walidacyjny
+Pełny `input_summary` nadal trafia do rekordu analizy.
 
-Na tym samym historycznym oknie:
+## 10. Walidacja techniczna wykonana dotychczas
 
-```text
-2026-08-10T12:00:00Z..12:15:00Z
-179 próbek
-```
+Na rzeczywistym Serwerze AI potwierdzono:
 
-należy uruchomić `ventilation-v5-simple` i ocenić przede wszystkim jakość wniosków:
+- `compileall` PASS,
+- kolejne pełne zestawy pytest PASS,
+- Alembic `0002_ventilation_analysis` PASS,
+- Ollama `/api/chat` HTTP 200,
+- zapis analiz do PostgreSQL,
+- idempotencję tego samego `(window, model, prompt_version)`,
+- działanie `think=true`,
+- poprawkę schema grammar,
+- brak wpływu Qwena na ingest i CM5.
 
-- czy Qwen widzi spadek PM na obu węzłach,
-- czy widzi wzrost VOC na obu węzłach,
-- czy poprawnie opisuje temperaturę/wilgotność i kondycję SENSOR BUS,
-- czy nie traktuje STOP jako usterki bez podstawy,
-- czy jawnie uwzględnia brak historycznego baseline'u.
+Timer systemd nadal pozostaje niewłączony.
 
-Dopiero po jakościowym PASS można przejść do testu i uruchomienia timera systemd.
+## 11. Walidacja v7 do wykonania
+
+Dla dokładnie tego samego okna 179 próbek należy sprawdzić:
+
+1. pełny `pytest`,
+2. realny `POST /api/chat`,
+3. nowy `prompt_version=ventilation-v7-compact-thinking`,
+4. czy Qwen poprawnie widzi PM i VOC,
+5. czy poprawnie widzi humidity na obu węzłach,
+6. czy nie twierdzi, że CO2 istnieje,
+7. czy nie diagnozuje STOP bez podstawy,
+8. czy status i `anomalies[]` są ze sobą logicznie spójne,
+9. czy confidence odpowiada ograniczeniom braku baseline'u,
+10. dopiero po jakościowym PASS przejść do testu timera systemd.
+
+## 12. Status
+
+Stage 2 pozostaje Draft. Nie oznaczać PR jako Ready i nie wykonywać merge przed ręcznym jakościowym PASS `ventilation-v7-compact-thinking` na rzeczywistym Serwerze AI.
