@@ -11,7 +11,7 @@ from ai_bridge.adapters.ventilation.schemas import VentilationMetrics
 from ai_bridge.storage.models import TelemetrySampleRecord
 
 
-PROMPT_VERSION = "ventilation-v3"
+PROMPT_VERSION = "ventilation-v4"
 
 READING_FIELDS = (
     "pm1_0_ug_m3",
@@ -348,14 +348,17 @@ Kontrakt provenance — obowiązkowy przy obecnych danych SENSOR BUS:
   alarmy, SENSOR BUS oraz dla każdego węzła: online/valid, PM2.5, PM10, VOC,
   temperaturę i wilgotność wraz z wymaganymi mean/delta/slope,
 - każda pozycja observations/anomalies/recommendations musi w `provenance_paths`
-  wskazać co najmniej jedną ścieżkę obecną w top-level `provenance`,
-- observations łącznie muszą wskazać delta PM2.5 i delta VOC dla każdego węzła.
+  wskazać co najmniej jedną ścieżkę obecną w top-level `provenance`.
 
 Minimalna kompletność odpowiedzi przy wystarczających danych:
-- observations musi zawierać co najmniej dwie pozycje,
-- jedna obserwacja ma opisywać kondycję systemu/SENSOR BUS i jakość danych,
-- co najmniej jedna obserwacja ma opisywać rzeczywiste pomiary jakości powietrza
-  i ich trend dla obu węzłów,
+- observations musi zawierać co najmniej jedną pozycję,
+- observations łącznie muszą w `provenance_paths` wskazać stan sterownika,
+  kondycję SENSOR BUS oraz delta PM2.5, PM10, VOC, temperatury i wilgotności
+  dla każdego węzła; Python sprawdzi to deterministycznie przed zapisem,
+- możesz rozdzielić materiał na kilka obserwacji albo ująć go w jednej syntetycznej
+  obserwacji; liczba pozycji nie jest kryterium jakości — kompletność źródeł jest,
+- jeśli status to `anomaly`, szczegóły anomalii umieść w `anomalies`, ale nadal
+  zachowaj co najmniej jedną obserwację obejmującą wymagane dane,
 - w summary jawnie rozróżnij: stan sterownika, jakość danych, poziomy pomiarowe,
   trendy oraz ograniczenia wynikające z braku historycznego baseline'u,
 - nie używaj nieistniejących nazw pól ani pseudo-ścieżek w evidence.
