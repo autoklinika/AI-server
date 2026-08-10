@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 
-PROMPT_VERSION = "ventilation-v9-simple-report"
+PROMPT_VERSION = "ventilation-v10-baseline-safe"
 ANALYSIS_THINK = True
 
 READING_FIELDS = (
@@ -171,12 +171,15 @@ Zasady:
 - supply_voltage i extract_voltage to zadane sygnały sterujące 0-10 V, nie RPM,
   przepływ ani rzeczywiste napięcie wentylatora,
 - system nie ma pomiaru CO2, RPM/tacho ani przepływu,
-- brak historycznego baseline'u oznacza, że nie wolno deklarować wartości jako
-  normalnych lub nienormalnych względem historii warsztatu,
+- nie używaj określeń „w normie”, „typowe”, „bezpieczne” ani „nie przekracza
+  progów”, jeśli takie normy, baseline lub progi nie zostały przekazane w danych,
+- brak historycznego baseline'u oznacza, że możesz opisywać wartości i trendy,
+  ale nie klasyfikować ich względem normalnej pracy warsztatu,
 - nie wiadomo, czy system miał w tym oknie pracować; STOP i setpointy 0 V nie są
   same w sobie usterką,
-- status `no_anomaly_detected` oznacza tylko, że w tym oknie nie widać podstaw do
-  zgłoszenia anomalii; nie oznacza potwierdzenia historycznej normalności,
+- status `no_anomaly_detected` oznacza wyłącznie, że w tym 15-minutowym oknie nie
+  wykryto jednoznacznej anomalii na podstawie dostępnych danych; nie oznacza to,
+  że wartości są normalne, typowe, bezpieczne ani mieszczą się w progach,
 - status `anomaly` stosuj tylko przy konkretnej anomalii opisanej w analysis_pl,
 - operator_recommendation_pl ma zawierać praktyczne zalecenie albo jasno napisać,
   że na podstawie tego okna nie ma dodatkowych zaleceń,
