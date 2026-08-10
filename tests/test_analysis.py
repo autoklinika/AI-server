@@ -9,11 +9,12 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from ai_bridge.adapters.ventilation.analysis import (
+from ai_bridge.adapters.ventilation.analysis import summarize_ventilation_window
+from ai_bridge.adapters.ventilation.analysis_profile import (
     ANALYSIS_THINK,
     PROMPT_VERSION,
+    build_compact_analysis_packet,
     build_ventilation_prompt,
-    summarize_ventilation_window,
 )
 from ai_bridge.analysis.schemas import VentilationAnalysisResult
 from ai_bridge.analysis.service import VentilationAnalysisService, aligned_window
@@ -62,6 +63,97 @@ def _normal_result(summary: str = "Brak widocznej anomalii w analizowanym oknie.
     )
 
 
+def _compact_packet_source_summary() -> dict[str, Any]:
+    def metric(
+        *,
+        mean: float,
+        minimum: float,
+        maximum: float,
+        delta: float,
+        slope: float,
+    ) -> dict[str, Any]:
+        return {
+            "count": 179,
+            "missing": 0,
+            "mean": mean,
+            "min": minimum,
+            "max": maximum,
+            "stddev": 0.5,
+            "first": mean - delta,
+            "last": mean,
+            "delta": delta,
+            "slope_per_minute": slope,
+        }
+
+    readings = {
+        "pm1_0_ug_m3": metric(mean=6.6, minimum=5.6, maximum=8.4, delta=-1.9, slope=-0.12),
+        "pm2_5_ug_m3": metric(mean=6.9, minimum=5.8, maximum=8.8, delta=-2.0, slope=-0.13),
+        "pm4_0_ug_m3": metric(mean=6.9, minimum=5.8, maximum=8.8, delta=-2.0, slope=-0.13),
+        "pm10_0_ug_m3": metric(mean=6.9, minimum=5.8, maximum=8.8, delta=-2.0, slope=-0.13),
+        "humidity_percent": metric(mean=42.1, minimum=41.5, maximum=42.9, delta=0.25, slope=-0.01),
+        "temperature_celsius": metric(mean=25.1, minimum=25.0, maximum=25.2, delta=0.18, slope=0.01),
+        "voc_index": metric(mean=21.1, minimum=10.0, maximum=34.0, delta=16.0, slope=0.99),
+        "nox_index": metric(mean=1.0, minimum=1.0, maximum=1.0, delta=0.0, slope=0.0),
+    }
+    counters = {
+        field: {"first": 0, "last": 0, "delta": 0, "max": 0}
+        for field in (
+            "sensor_errors",
+            "modbus_service_errors",
+            "communication_errors",
+            "consecutive_failures",
+            "invalid_measurements",
+            "stale_measurements",
+            "map_version_errors",
+        )
+    }
+    node = {
+        "samples_present": 179,
+        "online_true_ratio": 1.0,
+        "usable_true_ratio": 1.0,
+        "measurement_valid_true_ratio": 1.0,
+        "measurement_stale_true_ratio": 0.0,
+        "sensor_present_true_ratio": 1.0,
+        "readings": readings,
+        "counters": counters,
+        "latest": {"last_error": None},
+    }
+    return {
+        "schema_version": 1,
+        "source_id": "workshop-ventilation-cm5-01",
+        "analysis_context": {
+            "historical_baseline_available": False,
+            "expected_operating_state_known": False,
+        },
+        "window": {
+            "start": "2026-08-10T12:00:00+00:00",
+            "end": "2026-08-10T12:15:00+00:00",
+            "sample_count": 179,
+            "capture_span_seconds": 895.0,
+        },
+        "system": {
+            "mode_counts": {"STOP": 179},
+            "latest_mode": "STOP",
+            "setpoints": {
+                "supply_voltage": metric(mean=0.0, minimum=0.0, maximum=0.0, delta=0.0, slope=0.0),
+                "extract_voltage": metric(mean=0.0, minimum=0.0, maximum=0.0, delta=0.0, slope=0.0),
+            },
+            "hardware_ready_true_ratio": 1.0,
+            "output_state_known_true_ratio": 1.0,
+            "consecutive_hardware_failures_max": 0,
+            "active_alarm_sample_count": 0,
+            "active_alarm_codes": [],
+        },
+        "sensor_bus": {
+            "ready_true_ratio": 1.0,
+            "worker_alive_true_ratio": 1.0,
+            "worker_restarts_max": 0,
+            "latest_error": None,
+            "nodes": {"1": node, "2": node},
+        },
+    }
+
+
 def test_aligned_window_returns_last_completed_quarter_hour() -> None:
     now = datetime(2026, 8, 10, 12, 37, 44, tzinfo=timezone.utc)
     start, end = aligned_window(now, 15)
@@ -99,23 +191,45 @@ def test_summary_contains_only_deterministic_math() -> None:
     assert summary["sensor_bus"]["samples_present"] == 0
 
 
-def test_prompt_v6_keeps_v5_content_and_enables_thinking_profile() -> None:
-    summary = summarize_ventilation_window(
-        source_id="workshop-ventilation-cm5-01",
-        window_start=datetime(2026, 8, 10, 12, 0, tzinfo=timezone.utc),
-        window_end=datetime(2026, 8, 10, 12, 15, tzinfo=timezone.utc),
-        samples=[_sample(minute=0, supply=0.0, extract=0.0)],
-    )
+def test_v7_compact_packet_keeps_measurements_and_removes_noise() -> None:
+    summary = _compact_packet_source_summary()
+    packet = build_compact_analysis_packet(summary)
+
+    assert PROMPT_VERSION == "ventilation-v7-compact-thinking"
+    assert ANALYSIS_THINK is True
+    assert "humidity_percent" in packet["measurement_capabilities"]["present_in_packet"]
+    assert packet["measurement_capabilities"]["not_provided_by_system"] == [
+        "co2",
+        "fan_rpm",
+        "airflow",
+    ]
+    humidity = packet["sensor_bus"]["nodes"]["1"]["readings"]["humidity_percent"]
+    assert humidity["count"] == 179
+    assert humidity["missing"] == 0
+    assert humidity["mean"] == 42.1
+    assert "stddev" not in humidity
+    assert "first" not in humidity
+    assert "last" not in humidity
+    assert packet["sensor_bus"]["nodes"]["1"]["readings"]["voc_index"]["delta"] == 16.0
+
+
+def test_prompt_v7_keeps_v6_domain_rules_but_uses_compact_packet() -> None:
+    summary = _compact_packet_source_summary()
     messages = build_ventilation_prompt(summary)
     system = messages[0]["content"]
+    user = messages[1]["content"]
 
-    assert PROMPT_VERSION == "ventilation-v6-thinking"
-    assert ANALYSIS_THINK is True
     assert "historyczny baseline warsztatu nie jest jeszcze dostępny" in system
     assert "Tryb STOP i setpointy 0 V" in system
     assert "zadanymi sygnałami sterującymi 0-10 V" in system
     assert "PM, VOC, NOx, temperaturę i wilgotność" in system
     assert "provenance" not in system.lower()
+    assert "kompaktowy pakiet" in user
+    assert '"humidity_percent"' in user
+    assert '"co2"' in user
+    assert '"stddev"' not in user
+    assert '"first"' not in user
+    assert '"last"' not in user
 
 
 def test_analysis_result_validates_only_structure_and_basic_ranges() -> None:
