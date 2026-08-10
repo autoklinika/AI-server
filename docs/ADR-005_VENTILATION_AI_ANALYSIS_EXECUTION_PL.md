@@ -1,6 +1,6 @@
 # ADR-005 – Wykonywanie analiz wentylacji przez Qwen
 
-**Status:** Zatwierdzone do walidacji Stage 2  
+**Status:** Stage 2 – profil bazowy zamrożony do końcowej walidacji  
 **Data:** 10.08.2026
 
 ## Nadrzędna zasada
@@ -26,7 +26,7 @@ compact analysis packet
    ↓
 Ollama / qwen3.6:35b / think=true
    ↓
-prosty raport JSON
+minimalny raport JSON schema v2
    ↓
 Pydantic – walidacja struktury
    ↓
@@ -65,15 +65,17 @@ Python nie definiuje progów anomalii i nie klasyfikuje jakości powietrza.
 
 Do Qwena trafia mniejszy `compact analysis packet`, który usuwa redundancję, ale nie interpretuje danych. Packet zachowuje PM, VOC, NOx, temperaturę, wilgotność, stan systemu, SENSOR BUS i diagnostykę. Jawnie rozróżnia pomiary dostępne od niedostępnych (`co2`, `fan_rpm`, `airflow`).
 
-## Aktywny profil – `ventilation-v9-simple-report`
+## Aktywny profil – `ventilation-v10-baseline-safe`
 
-Eksperymenty v1-v8 pokazały:
+Eksperymenty v1-v9 wykazały, że:
 
 - `think=true` poprawia zauważanie trendów,
 - compact packet poprawia poprawność odczytania danych,
-- rozbudowany formularz odpowiedzi (`observations`, `anomalies`, `recommendations`, `confidence`) nie wnosi obecnie wartości i zachęca model do pustych pól lub przypadkowego upychania całości w `summary`.
+- rozbudowany formularz odpowiedzi nie wnosi obecnie wartości,
+- minimalny schema v2 jest właściwą bazą do dalszej rozbudowy,
+- przy braku historycznego baseline'u Qwen nie może używać pojęć sugerujących istnienie znanych norm lub progów.
 
-Dlatego aktywny kontrakt zostaje celowo uproszczony i przygotowany do późniejszej rozbudowy.
+Aktywny kontrakt:
 
 ```text
 schema_version = 2
@@ -92,11 +94,24 @@ anomaly
 insufficient_data
 ```
 
-`no_anomaly_detected` oznacza wyłącznie brak podstaw do zgłoszenia anomalii w analizowanym oknie. Nie oznacza potwierdzenia historycznej „normalności” warsztatu.
-
-Usunięto `confidence`, ponieważ przy braku historycznego baseline'u model zwracał wartości 0.98–1.0, które mogły być błędnie interpretowane jako wiarygodna pewność środowiskowa.
+`no_anomaly_detected` oznacza wyłącznie brak jednoznacznej anomalii w danym 15-minutowym oknie na podstawie dostępnych danych. Nie oznacza, że wartości są normalne, typowe, bezpieczne lub mieszczą się w progach.
 
 Wszystkie trzy pola tekstowe są obowiązkowe i mają być napisane po polsku.
+
+## Ochrona przed nieistniejącym baseline'em i progami
+
+Profil `ventilation-v10-baseline-safe` jawnie zabrania modelowi używania określeń:
+
+- `w normie`,
+- `typowe`,
+- `bezpieczne`,
+- `nie przekracza progów`,
+
+jeżeli odpowiedni baseline, norma lub próg nie został przekazany w danych.
+
+Brak historycznego baseline'u oznacza, że Qwen może opisywać wartości, kierunek zmian i zależności w oknie, ale nie może klasyfikować ich względem normalnej pracy warsztatu.
+
+Ta zasada pozostaje częścią promptu. Python nie wykonuje semantycznej klasyfikacji odpowiedzi.
 
 ## Structured output
 
@@ -111,7 +126,7 @@ temperature=0
 format=<compact JSON Schema>
 ```
 
-Pydantic sprawdza wyłącznie strukturę i typy. Python nie ocenia semantycznie odpowiedzi modelu.
+Pydantic sprawdza wyłącznie strukturę i typy.
 
 ## Idempotencja
 
@@ -129,13 +144,24 @@ Zmiana `prompt_version` pozwala ponownie przeanalizować to samo historyczne okn
 
 ## PostgreSQL
 
-Wynik jest przechowywany jako JSON w `ventilation_analysis_runs`, a `status` jako zwykłe pole tekstowe. Zmiana kontraktu na schema v2 nie wymaga migracji bazy.
+Wynik jest przechowywany jako JSON w `ventilation_analysis_runs`, a `status` jako zwykłe pole tekstowe. Schema v2 nie wymaga dodatkowej migracji bazy.
 
 Pełny `input_summary` nadal pozostaje zapisany jako materiał audytowy.
 
+## Decyzja o zamrożeniu interpretacji Stage 2
+
+Po końcowej walidacji `ventilation-v10-baseline-safe` nie rozwijamy dalej promptu ani kontraktu odpowiedzi w Stage 2.
+
+Do rozbudowy interpretacji wrócimy dopiero po zebraniu rzeczywistej historii warsztatu, kiedy będzie można zaprojektować:
+
+- historyczny baseline,
+- porównania między oknami i dniami,
+- progi lub reguły oparte na rzeczywistych danych,
+- bardziej rozbudowane raporty i klasyfikacje.
+
 ## Następny etap – odczyt wyniku przez CM5
 
-Po ustabilizowaniu Stage 2 planowany jest **wyłącznie read-only kanał AI Server -> CM5**.
+Po zakończeniu Stage 2 planowany jest **wyłącznie read-only kanał AI Server -> CM5**.
 
 Docelowy kierunek:
 
@@ -152,12 +178,12 @@ lokalny cache / GUI / status dla operatora
 Zasady tego kanału:
 
 - CM5 pobiera wynik asynchronicznie i nie czeka na niego w logice sterowania,
-- brak odpowiedzi AI nie powoduje alarmu bezpieczeństwa ani zmiany pracy wentylacji,
+- brak odpowiedzi AI nie powoduje zmiany pracy wentylacji,
 - wynik AI może być wyświetlany, logowany lub udostępniany operatorowi,
 - wynik AI nie może automatycznie zmieniać trybu, setpointów ani żadnego elementu sterowania,
 - nie będzie endpointu AI -> CM5 wykonującego komendy sterujące.
 
-Proponowany pierwszy endpoint będzie zwracał najnowszą zakończoną analizę dla `source_id`. Szczegółowy kontrakt zostanie zaprojektowany w kolejnym etapie.
+Szczegółowy kontrakt read-only endpointu i klienta CM5 zostanie zaprojektowany w kolejnym etapie.
 
 ## Ograniczenia bieżącego Stage 2
 
@@ -165,9 +191,9 @@ Proponowany pierwszy endpoint będzie zwracał najnowszą zakończoną analizę 
 - brak endpointu sterującego,
 - brak fine-tuningu,
 - brak pełnego historycznego baseline'u warsztatu,
-- timer analizy nadal niewłączony do końcowej walidacji `ventilation-v9-simple-report`,
+- timer analizy nadal niewłączony do końcowej walidacji `ventilation-v10-baseline-safe`,
 - odczyt wyniku przez CM5 jeszcze niezaimplementowany.
 
 ## Wniosek
 
-Bieżąca wersja ma być celowo prosta i stabilna: Python liczy i przygotowuje dane, Qwen tworzy jeden czytelny raport po polsku, a wynik jest zapisywany do PostgreSQL. Rozbudowa raportu i kanał read-only do CM5 będą kolejnymi etapami, bez naruszania granicy bezpieczeństwa.
+Stage 2 kończymy na prostej bazie: Python liczy i przygotowuje dane, Qwen tworzy krótki raport po polsku bez wymyślania nieistniejących norm i progów, a wynik trafia do PostgreSQL. Kolejny etap dotyczy już dostarczenia tego raportu do CM5 w kanale read-only.
