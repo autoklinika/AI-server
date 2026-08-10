@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -16,6 +17,14 @@ from ai_bridge.core.errors import UnsupportedSchemaVersion
 
 
 router = APIRouter(prefix="/api/v1/ventilation", tags=["ventilation"])
+
+
+def _delivery_timestamp(value: datetime) -> datetime:
+    """Keep the delivery contract timezone-aware across PostgreSQL and dev SQLite."""
+
+    if value.tzinfo is None or value.utcoffset() is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 
 @router.post("/telemetry/batches", response_model=TelemetryBatchAck)
@@ -58,9 +67,9 @@ def latest_analysis(
     return VentilationAnalysisDelivery(
         analysis_id=record.analysis_id,
         source_id=record.source_id,
-        window_start=record.window_start,
-        window_end=record.window_end,
-        created_at=record.created_at,
+        window_start=_delivery_timestamp(record.window_start),
+        window_end=_delivery_timestamp(record.window_end),
+        created_at=_delivery_timestamp(record.created_at),
         sample_count=record.sample_count,
         model=record.model,
         prompt_version=record.prompt_version,
