@@ -92,6 +92,37 @@ def _required_provenance_paths(summary: dict[str, Any]) -> set[str]:
     return required
 
 
+def _required_observation_paths(summary: dict[str, Any]) -> set[str]:
+    """Return source paths observations must collectively cover.
+
+    This is not anomaly classification. It only guarantees that the natural-language
+    interpretation visibly engages with the controller/SENSOR BUS state and with the
+    key environmental trends already calculated deterministically by Python.
+    """
+
+    nodes = summary.get("sensor_bus", {}).get("nodes", {})
+    if not isinstance(nodes, dict) or not nodes:
+        return set()
+
+    required = {
+        "system.latest_mode",
+        "sensor_bus.ready_true_ratio",
+        "sensor_bus.worker_alive_true_ratio",
+    }
+    for address in nodes:
+        base = f"sensor_bus.nodes.{address}.readings"
+        required.update(
+            {
+                f"{base}.pm2_5_ug_m3.delta",
+                f"{base}.pm10_0_ug_m3.delta",
+                f"{base}.voc_index.delta",
+                f"{base}.temperature_celsius.delta",
+                f"{base}.humidity_percent.delta",
+            }
+        )
+    return required
+
+
 def validate_analysis_provenance(
     summary: dict[str, Any],
     result: VentilationAnalysisResult,
@@ -153,15 +184,14 @@ def validate_analysis_provenance(
         for observation in result.observations
         for path in observation.provenance_paths
     }
-    nodes = summary["sensor_bus"]["nodes"]
-    for address in nodes:
-        pm_delta = f"sensor_bus.nodes.{address}.readings.pm2_5_ug_m3.delta"
-        voc_delta = f"sensor_bus.nodes.{address}.readings.voc_index.delta"
-        if pm_delta not in observation_paths or voc_delta not in observation_paths:
-            raise ValueError(
-                "Observations must explicitly reference PM2.5 and VOC delta for every "
-                f"sensor node; missing coverage for slave_address={address}"
-            )
+    missing_observation_paths = sorted(
+        _required_observation_paths(summary) - observation_paths
+    )
+    if missing_observation_paths:
+        raise ValueError(
+            "Observations do not cover all required system/SENSOR BUS and environmental "
+            "trend paths: " + ", ".join(missing_observation_paths)
+        )
 
 
 class VentilationAnalysisService:
