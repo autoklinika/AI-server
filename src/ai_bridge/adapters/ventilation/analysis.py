@@ -11,7 +11,7 @@ from ai_bridge.adapters.ventilation.schemas import VentilationMetrics
 from ai_bridge.storage.models import TelemetrySampleRecord
 
 
-PROMPT_VERSION = "ventilation-v2"
+PROMPT_VERSION = "ventilation-v3"
 
 READING_FIELDS = (
     "pm1_0_ug_m3",
@@ -227,9 +227,14 @@ def summarize_ventilation_window(
         "source_id": source_id,
         "analysis_context": {
             "historical_baseline_available": False,
+            "expected_operating_state_known": False,
             "baseline_note": (
                 "Stage 2 nie posiada jeszcze wiarygodnego historycznego baseline'u "
                 "normalnej pracy warsztatu."
+            ),
+            "operating_state_note": (
+                "Telemetria nie zawiera informacji, czy w analizowanym oknie system "
+                "miał według operatora pracować czy pozostawać w STOP."
             ),
         },
         "window": {
@@ -301,7 +306,8 @@ sterownikiem i jedyną warstwą bezpieczeństwa.
 
 Otrzymujesz matematycznie przygotowane statystyki z zamkniętego okna czasowego.
 Interpretuj wyłącznie dane, które rzeczywiście są obecne. Nie wymyślaj brakujących
-pomiarów, progów, baseline'u ani znaczenia fizycznego, którego nie ma w danych.
+pomiarów, progów, baseline'u, oczekiwanego trybu pracy ani znaczenia fizycznego,
+którego nie ma w danych.
 
 Ważne znaczenie danych:
 - supply_voltage i extract_voltage są ZADANYMI napięciami sterującymi 0-10 V,
@@ -314,36 +320,53 @@ Ważne znaczenie danych:
 - null/missing oznacza brak danych, nigdy zero,
 - historical_baseline_available=false oznacza, że nie wolno uznawać poziomu
   środowiskowego za absolutnie normalny albo nienormalny wyłącznie na podstawie
-  jego wartości. Możesz oceniać spójność, dynamikę i zachowanie w obrębie okna.
+  jego wartości,
+- expected_operating_state_known=false oznacza, że STOP może być stanem zamierzonym.
+  Nie wolno wnioskować o błędzie przycisku, logiki sterowania ani potrzebie pracy
+  wentylatorów wyłącznie z tego, że mode=STOP i setpointy wynoszą 0 V.
 
 Zasady wierności liczbom:
 - nie używaj określeń „zero”, „blisko zera”, „stałe” ani „bez zmian”, jeśli
   mean/min/max/delta/slope_per_minute nie potwierdzają tego dosłownie,
-- jeśli stwierdzasz stabilność lub zmianę, podaj w evidence konkretne wartości,
 - nie pomijaj kierunkowego trendu tylko dlatego, że system jest w trybie STOP,
-- dla każdego węzła sprawdź co najmniej PM2.5, PM10, VOC, temperaturę i wilgotność,
-  uwzględniając mean, min, max, delta i slope_per_minute,
+- dla każdego węzła przeanalizuj PM2.5, PM10, VOC, temperaturę i wilgotność,
 - porównaj oba węzły i odnotuj, czy pokazują podobny kierunek zmian,
 - jeżeli oba węzły pokazują zgodny wzrost lub spadek danego parametru, odnotuj to
   jako obserwację nawet wtedy, gdy nie uznajesz tego za anomalię.
+
+Kontrakt provenance — obowiązkowy przy obecnych danych SENSOR BUS:
+- top-level `provenance` służy do maszynowego udowodnienia, że korzystasz z
+  rzeczywistych wartości input_summary,
+- `path` musi być dokładną istniejącą ścieżką kropkową w input_summary; nie wolno
+  tworzyć nazw takich jak `sensor_data.*`, jeśli nie istnieją w wejściu,
+- `value_json` musi być stringiem zawierającym dokładny JSON wartości spod tej
+  ścieżki, np. dla system.latest_mode równym STOP użyj `\"STOP\"`, dla liczby
+  6.9229 użyj `6.9229`, dla false użyj `false`, dla pustej listy użyj `[]`,
+- Python przed zapisem sprawdzi istnienie każdej ścieżki i dokładną zgodność
+  `json.loads(value_json)` z input_summary; niezgodna analiza zostanie odrzucona,
+- w provenance uwzględnij kontekst baseline/oczekiwanego stanu, tryb, setpointy,
+  alarmy, SENSOR BUS oraz dla każdego węzła: online/valid, PM2.5, PM10, VOC,
+  temperaturę i wilgotność wraz z wymaganymi mean/delta/slope,
+- każda pozycja observations/anomalies/recommendations musi w `provenance_paths`
+  wskazać co najmniej jedną ścieżkę obecną w top-level `provenance`,
+- observations łącznie muszą wskazać delta PM2.5 i delta VOC dla każdego węzła.
 
 Minimalna kompletność odpowiedzi przy wystarczających danych:
 - observations musi zawierać co najmniej dwie pozycje,
 - jedna obserwacja ma opisywać kondycję systemu/SENSOR BUS i jakość danych,
 - co najmniej jedna obserwacja ma opisywać rzeczywiste pomiary jakości powietrza
-  i ich trend; evidence musi zawierać konkretne liczby,
-- w summary rozróżniaj: stan sterownika, jakość danych, poziomy pomiarowe oraz
-  trendy. Nie wrzucaj ich do jednego ogólnego stwierdzenia.
+  i ich trend dla obu węzłów,
+- w summary jawnie rozróżnij: stan sterownika, jakość danych, poziomy pomiarowe,
+  trendy oraz ograniczenia wynikające z braku historycznego baseline'u,
+- nie używaj nieistniejących nazw pól ani pseudo-ścieżek w evidence.
 
-Python policzył wyłącznie statystyki matematyczne. To Ty interpretujesz, czy
-występuje anomalia, jakie mogą być jej przyczyny i jaki jest poziom pewności.
-Bez historycznego baseline'u jawnie zaznacz ograniczenie pewności. Status
-„normal” oznacza wyłącznie brak widocznej anomalii w dostarczonym oknie, a nie
-potwierdzenie zgodności z historyczną normą warsztatu.
+Python policzył wyłącznie statystyki matematyczne oraz sprawdza provenance. To Ty
+interpretujesz, czy występuje anomalia, jakie mogą być jej przyczyny i jaki jest
+poziom pewności. Python nie stosuje progów anomalii.
 
-Rekomendacje są przeznaczone dla operatora i mogą dotyczyć diagnostyki,
-obserwacji lub ręcznej decyzji człowieka. Nie formułuj ich jako automatycznych
-poleceń dla sterownika.
+Rekomendacje muszą wynikać z obserwowanych danych. Nie rekomenduj diagnostyki
+przycisku, logiki sterowania ani „uruchomienia wentylatora” wyłącznie dlatego, że
+system jest w STOP — oczekiwany stan pracy nie jest dostępny w telemetrii.
 
 Odpowiedz po polsku i dokładnie zgodnie z przekazanym JSON Schema."""
 
