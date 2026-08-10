@@ -96,6 +96,7 @@ def test_summary_contains_only_deterministic_math() -> None:
     )
 
     assert summary["analysis_context"]["historical_baseline_available"] is False
+    assert summary["analysis_context"]["expected_operating_state_known"] is False
     assert summary["window"]["sample_count"] == 3
     assert summary["system"]["mode_counts"] == {"STOP": 3}
     assert summary["system"]["setpoints"]["supply_voltage"]["mean"] == 5.0
@@ -106,7 +107,7 @@ def test_summary_contains_only_deterministic_math() -> None:
     assert summary["sensor_bus"]["samples_present"] == 0
 
 
-def test_prompt_v2_requires_numeric_evidence_and_baseline_caution() -> None:
+def test_prompt_v3_requires_numeric_evidence_and_baseline_caution() -> None:
     summary = summarize_ventilation_window(
         source_id="workshop-ventilation-cm5-01",
         window_start=datetime(2026, 8, 10, 12, 0, tzinfo=timezone.utc),
@@ -116,11 +117,13 @@ def test_prompt_v2_requires_numeric_evidence_and_baseline_caution() -> None:
     messages = build_ventilation_prompt(summary)
     system = messages[0]["content"]
 
-    assert PROMPT_VERSION == "ventilation-v2"
+    assert PROMPT_VERSION == "ventilation-v3"
     assert "nie używaj określeń „zero”, „blisko zera”, „stałe” ani „bez zmian”" in system
     assert "historical_baseline_available=false" in system
+    assert "expected_operating_state_known=false" in system
     assert "observations musi zawierać co najmniej dwie pozycje" in system
     assert "zadane napięcie sterujące nawiewu" in system
+    assert "Kontrakt provenance" in system
 
 
 def test_analysis_result_rejects_unsupported_empty_observations() -> None:
