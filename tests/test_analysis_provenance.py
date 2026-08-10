@@ -11,6 +11,7 @@ from ai_bridge.analysis.schemas import (
     VentilationAnalysisResult,
 )
 from ai_bridge.analysis.service import (
+    _required_observation_paths,
     _required_provenance_paths,
     validate_analysis_provenance,
 )
@@ -89,31 +90,19 @@ def _references(summary: dict[str, Any]) -> list[AnalysisEvidenceReference]:
 
 
 def _valid_result(summary: dict[str, Any]) -> VentilationAnalysisResult:
-    air_paths = [
-        "sensor_bus.nodes.1.readings.pm2_5_ug_m3.delta",
-        "sensor_bus.nodes.1.readings.voc_index.delta",
-        "sensor_bus.nodes.2.readings.pm2_5_ug_m3.delta",
-        "sensor_bus.nodes.2.readings.voc_index.delta",
-    ]
+    observation_paths = sorted(_required_observation_paths(summary))
     return VentilationAnalysisResult(
         status="normal",
         summary="Brak sklasyfikowanej anomalii; widoczne są kierunkowe trendy w oknie.",
         confidence=0.7,
         observations=[
             AnalysisObservation(
-                title="Stan sterownika i SENSOR BUS",
-                importance="low",
-                evidence=["Sterownik był w STOP, a SENSOR BUS był dostępny."],
-                provenance_paths=[
-                    "system.latest_mode",
-                    "sensor_bus.ready_true_ratio",
-                ],
-            ),
-            AnalysisObservation(
-                title="Trendy PM i VOC",
+                title="Stan systemu, SENSOR BUS i trendy środowiskowe",
                 importance="medium",
-                evidence=["PM2.5 spadało, a VOC rosło na obu węzłach."],
-                provenance_paths=air_paths,
+                evidence=[
+                    "Sterownik był w STOP, SENSOR BUS był dostępny, PM spadało, VOC rosło, a temperatura i wilgotność zmieniały się nieznacznie."
+                ],
+                provenance_paths=observation_paths,
             ),
         ],
         provenance=_references(summary),
@@ -155,12 +144,12 @@ def test_provenance_rejects_missing_required_metric() -> None:
         validate_analysis_provenance(summary, result)
 
 
-def test_observations_must_cover_pm25_and_voc_delta_for_each_node() -> None:
+def test_observations_must_cover_required_system_bus_and_environment_paths() -> None:
     summary = _summary()
     result = _valid_result(summary)
     target = "sensor_bus.nodes.2.readings.voc_index.delta"
-    result.observations[1].provenance_paths = [
-        path for path in result.observations[1].provenance_paths if path != target
+    result.observations[0].provenance_paths = [
+        path for path in result.observations[0].provenance_paths if path != target
     ]
-    with pytest.raises(ValueError, match="missing coverage"):
+    with pytest.raises(ValueError, match="do not cover all required"):
         validate_analysis_provenance(summary, result)
