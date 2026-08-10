@@ -5,10 +5,10 @@ from datetime import datetime, timedelta, timezone
 import logging
 from uuid import uuid4
 
-from ai_bridge.adapters.ventilation.analysis import (
+from ai_bridge.adapters.ventilation.analysis import summarize_ventilation_window
+from ai_bridge.adapters.ventilation.analysis_profile import (
     PROMPT_VERSION,
     build_ventilation_prompt,
-    summarize_ventilation_window,
 )
 from ai_bridge.analysis.schemas import VentilationAnalysisResult
 from ai_bridge.ollama.client import OllamaClient, compact_schema_for_ollama
@@ -146,6 +146,8 @@ class VentilationAnalysisService:
             model=self.model,
             prompt_version=PROMPT_VERSION,
             sample_count=len(samples),
+            # Keep the complete deterministic summary for audit/history even though
+            # Qwen receives a smaller analysis packet derived from it.
             input_summary=summary,
             result=result.model_dump(mode="json"),
             raw_response=None if chat is None else chat.content,
