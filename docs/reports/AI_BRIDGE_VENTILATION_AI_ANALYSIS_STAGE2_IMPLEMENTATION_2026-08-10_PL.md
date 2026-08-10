@@ -53,44 +53,24 @@ Poniżej tego progu Qwen nie jest wywoływany; zapisywany jest wynik `insufficie
 
 ## 4. Przygotowanie danych
 
-Python oblicza pełne statystyki, m.in.:
+Python oblicza pełne statystyki matematyczne, stan sterownika, setpointy, alarmy, SENSOR BUS, oba SEN55 i liczniki diagnostyczne. Pełny `input_summary` pozostaje w PostgreSQL jako audit/history.
 
-- count / missing,
-- mean / min / max / stddev,
-- first / last / delta,
-- slope_per_minute,
-- tryb i setpointy,
-- alarmy,
-- stan SENSOR BUS,
-- oba SEN55,
-- liczniki diagnostyczne.
+Do Qwena trafia compact packet zawierający tylko dane potrzebne do bieżącej interpretacji. Python nie definiuje progów i nie klasyfikuje jakości powietrza.
 
-Pełny `input_summary` jest zachowywany w PostgreSQL.
+## 5. Ewolucja profilu
 
-Do Qwena trafia compact packet zawierający tylko dane potrzebne do bieżącej interpretacji. Python nie definiuje progów ani nie klasyfikuje jakości powietrza.
+Najważniejsze wnioski z v1-v9:
 
-## 5. Historia eksperymentów v1-v9
+- `think=true` poprawił zauważanie trendów,
+- compact packet poprawił poprawność odczytu PM/VOC/humidity/temperature/NOx,
+- provenance i semantyczne walidatory były zbyt rozbudowane,
+- wielopolowy output zachęcał model do pustych list,
+- minimalny schema v2 rozwiązał problem formatu i języka,
+- potrzebna była jawna ochrona przed wymyślaniem norm/progów bez baseline'u.
 
-Wersje były walidowane na tym samym oknie:
+## 6. Końcowy profil – `ventilation-v10-baseline-safe`
 
-```text
-2026-08-10T12:00:00Z..12:15:00Z
-179 próbek
-```
-
-Najważniejsze wnioski:
-
-- v1/v2 – model zbyt płytko odczytywał pełny materiał i pomijał część trendów,
-- v3/v4 – provenance i rozbudowane walidatory okazały się zbyt skomplikowane,
-- v5 – prosty output przy `think=false` nadal był za płytki,
-- v6 – `think=true` poprawił analizę trendów,
-- v7 – compact packet wyraźnie poprawił odczyt PM/VOC/humidity/temperature/NOx,
-- v8 – rozbudowane instrukcje raportowe nadal były ignorowane przez model,
-- v9 – minimalny schema v2 rozwiązał problem formatu odpowiedzi i języka, ale model nadal użył pojęć sugerujących nieistniejące normy/progi.
-
-## 6. Końcowy profil Stage 2 – `ventilation-v10-baseline-safe`
-
-Aktywny kontrakt:
+Kontrakt:
 
 ```text
 schema_version = 2
@@ -100,7 +80,7 @@ operator_recommendation_pl
 data_quality_pl
 ```
 
-Status:
+Statusy:
 
 ```text
 no_anomaly_detected
@@ -109,89 +89,54 @@ anomaly
 insufficient_data
 ```
 
-Wszystkie trzy pola tekstowe są obowiązkowe i mają być napisane po polsku.
+Wszystkie trzy pola tekstowe są obowiązkowe i mają być po polsku.
 
-Compact packet, `think=true`, `temperature=0`, model i schema pozostają bez zmian.
+`no_anomaly_detected` oznacza wyłącznie brak jednoznacznej anomalii w danym oknie, nie historyczną normalność, bezpieczeństwo ani zgodność z normą.
 
-Profil zabrania klasyfikowania wartości jako `w normie`, `typowe`, `bezpieczne` lub `nie przekraczające progów`, jeżeli odpowiednie normy, progi lub baseline nie zostały przekazane w danych.
+## 7. Walidacja funkcjonalna i idempotencja
 
-`no_anomaly_detected` oznacza wyłącznie brak jednoznacznej anomalii w danym 15-minutowym oknie.
-
-## 7. Walidacja funkcjonalna v10
-
-Dla historycznego okna 179 próbek otrzymano:
+Historyczne okno 179 próbek:
 
 ```text
 analysis_id=2dbf4563-e18b-47db-a3d8-18cb6f8f79e7
 prompt_version=ventilation-v10-baseline-safe
-status=no_anomaly_detected
 schema_version=2
+status=no_anomaly_detected
 reused_existing=false
 ```
 
-Drugi przebieg tego samego okna zwrócił:
+Drugi przebieg zwrócił ten sam `analysis_id`, `reused_existing=true` i nie uruchomił nowego `POST /api/chat`.
 
-```text
-analysis_id=2dbf4563-e18b-47db-a3d8-18cb6f8f79e7
-reused_existing=true
-```
-
-bez nowego `POST /api/chat` do Ollamy.
-
-**Idempotencja v10: PASS.**
+**Idempotencja: PASS.**
 
 ## 8. Deployment produkcyjny
 
-Kod Stage 2 został wdrożony do:
+Stage 2 został wdrożony do `/opt/ai-bridge`.
 
-```text
-/opt/ai-bridge
-```
-
-Pakiet produkcyjny został zaktualizowany do:
+Produkcja:
 
 ```text
 ai-bridge 0.2.0
-```
-
-W produkcyjnym virtualenv brakowało `setuptools`, co powodowało błąd `Cannot import 'setuptools.build_meta'` podczas instalacji editable. Doinstalowano:
-
-```text
 setuptools 84.0.0
-```
-
-Następnie instalacja `ai-bridge 0.2.0` zakończyła się powodzeniem.
-
-Po restarcie:
-
-```text
 ai-bridge.service = active (running)
 ```
 
-Health check:
-
-```json
-{
-  "status": "ok",
-  "service": "ai-bridge",
-  "version": "0.2.0",
-  "control_commands_supported": false,
-  "components": {
-    "database": "ok",
-    "ollama": "not_checked"
-  }
-}
-```
-
-## 9. Produkcyjny test systemd oneshot – PASS
-
-Uruchomiono:
+`/health` po aktualizacji:
 
 ```text
-ai-bridge-analysis.service
+status=ok
+service=ai-bridge
+version=0.2.0
+control_commands_supported=false
+database=ok
+ollama=not_checked
 ```
 
-Wynik systemd:
+## 9. Produkcyjny systemd oneshot – PASS
+
+`ai-bridge-analysis.service` wykonał rzeczywistą analizę produkcyjną.
+
+Systemd:
 
 ```text
 ActiveState=inactive
@@ -200,9 +145,7 @@ Result=success
 ExecMainStatus=0
 ```
 
-`inactive/dead` jest stanem prawidłowym dla `Type=oneshot` po zakończeniu zadania.
-
-Rzeczywista analiza produkcyjna:
+Rzeczywisty przebieg:
 
 ```text
 analysis_id=5cf9d21e-e2d2-4b0c-920e-c4a67aef135a
@@ -211,39 +154,38 @@ sample_count=180
 prompt_version=ventilation-v10-baseline-safe
 status=no_anomaly_detected
 HTTP 200 OK
+wall_clock≈90s
 ```
 
-Czas ścienny oneshota wyniósł około 1 min 30 s. Proces zakończył się poprawnie i zapisał wynik do PostgreSQL.
+Wynik został zapisany do PostgreSQL.
 
 **Produkcja `/opt/ai-bridge` + systemd oneshot: PASS.**
 
-## 10. Znane ograniczenia jakości odpowiedzi Qwena
+## 10. Znane ograniczenia jakości Qwena
 
-Produkcyjny przebieg potwierdził, że schema i pipeline są stabilne, ale końcowy tekst modelu nadal może zawierać nieuprawnione treści semantyczne.
+Pipeline techniczny jest stabilny, ale treść modelu nadal może być semantycznie zbyt swobodna. Produkcyjny przebieg pokazał m.in.:
 
-W tym przebiegu Qwen m.in.:
+- arbitralny próg `PM >25 µg/m³`,
+- arbitralny próg wilgotności `<40%`,
+- meta-ofertę dotyczącą WHO/UE, wykresów i dalszej integracji,
+- sugestię zmiany częstotliwości próbkowania lub alertów,
+- zbyt mocne wnioski o jakości powietrza bez baseline'u.
 
-- dodał meta-ofertę dalszej integracji/wykresów/WHO/UE,
-- zaproponował arbitralne progi `PM >25 µg/m³` i wilgotność `<40%`, których nie było w danych,
-- zasugerował zmianę częstotliwości próbkowania lub alertów,
-- użył sformułowań sugerujących ocenę jakości powietrza bez zbudowanego baseline'u.
+To ograniczenie jest jawnie zaakceptowane. Nie tworzymy v11/v12 w Stage 2.
 
-Wniosek pozostaje bez zmian: nie tworzymy v11/v12 w Stage 2. `ventilation-v10-baseline-safe` jest **eksperymentalno-doradczym fundamentem**, a nie zweryfikowaną diagnozą ani instrukcją operatorską.
+`ventilation-v10-baseline-safe` jest eksperymentalno-doradczym fundamentem, nie zweryfikowaną diagnozą ani instrukcją operatorską.
 
 Pole `operator_recommendation_pl` nie może być wejściem do automatycznej logiki CM5.
 
-## 11. Decyzja o zamrożeniu
+## 11. Timer
 
-Do interpretacji wrócimy po zebraniu rzeczywistej historii warsztatu. Wtedy możliwe będzie oparcie dalszych funkcji na danych:
+Timer jest przygotowany, ale **pozostaje celowo niewłączony**.
 
-- baseline historyczny,
-- porównania między oknami i dniami,
-- progi/reguły wynikające z rzeczywistych danych,
-- bardziej zaawansowane raporty.
+Produkcja i oneshot są technicznie gotowe. Wstrzymanie automatyzacji wynika z jakości semantycznej raportu i decyzji, że przed cyklicznym udostępnianiem operatorowi należy najpierw zbudować read-only kanał z jawnym oznaczeniem `advisory/experimental`.
 
-## 12. Następny etap – wynik AI dla CM5
+## 12. Następny etap – read-only wynik dla CM5
 
-Planowany kierunek:
+Planowany tor:
 
 ```text
 ventilation_analysis_runs
@@ -255,21 +197,15 @@ CM5 advisory client
 cache/status/GUI operatora
 ```
 
-Najważniejsze zasady:
+Zasady:
 
-- CM5 nigdy nie czeka na AI w logice sterowania,
-- brak połączenia z AI Serverem nie wpływa na wentylację,
+- CM5 nie czeka na AI w logice sterowania,
+- brak AI nie wpływa na wentylację,
 - raport może być wyświetlany lub logowany,
 - raport musi być oznaczony jako advisory/experimental,
-- raport nie jest wejściem do automatycznej logiki setpointów,
-- nie tworzymy żadnego endpointu pozwalającego AI sterować CM5.
+- raport AI nie może automatycznie zmieniać trybu ani setpointów,
+- nie będzie endpointu pozwalającego AI sterować CM5.
 
-## 13. Timer
+## 13. Status
 
-Jednostka timer została przygotowana, ale **pozostaje celowo niewłączona** do czasu decyzji o sposobie wykorzystania eksperymentalnego raportu i rozpoczęcia read-only kanału do CM5.
-
-Nie jest to blokada techniczna: produkcyjny oneshot jest PASS. Jest to świadoma granica produktu i bezpieczeństwa informacji dla operatora.
-
-## 14. Status
-
-Stage 2 ma funkcjonalny PASS, idempotencję PASS oraz produkcyjny systemd oneshot PASS. Interpretacja Qwena jest zamrożona na `ventilation-v10-baseline-safe`. PR pozostaje Draft do wyraźnej decyzji użytkownika o Ready/merge.
+Stage 2 ma funkcjonalny PASS, idempotencję PASS oraz produkcyjny systemd oneshot PASS. Interpretacja Qwena jest zamrożona na `ventilation-v10-baseline-safe`. Timer pozostaje wyłączony, a kolejnym etapem jest read-only kanał AI Server -> CM5. PR #3 pozostaje Draft do wyraźnej decyzji użytkownika o Ready/merge.
