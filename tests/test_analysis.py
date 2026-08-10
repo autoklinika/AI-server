@@ -203,6 +203,8 @@ def test_v7_compact_packet_keeps_measurements_and_removes_noise() -> None:
         "fan_rpm",
         "airflow",
     ]
+    assert packet["controller"]["setpoints"]["supply_voltage"]["mean"] == 0.0
+    assert packet["controller"]["setpoints"]["extract_voltage"]["mean"] == 0.0
     humidity = packet["sensor_bus"]["nodes"]["1"]["readings"]["humidity_percent"]
     assert humidity["count"] == 179
     assert humidity["missing"] == 0
@@ -227,6 +229,8 @@ def test_prompt_v7_keeps_v6_domain_rules_but_uses_compact_packet() -> None:
     assert "kompaktowy pakiet" in user
     assert '"humidity_percent"' in user
     assert '"co2"' in user
+    assert '"supply_voltage"' in user
+    assert '"extract_voltage"' in user
     assert '"stddev"' not in user
     assert '"first"' not in user
     assert '"last"' not in user
