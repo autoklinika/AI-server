@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class StrictAnalysisModel(BaseModel):
@@ -12,14 +12,14 @@ class StrictAnalysisModel(BaseModel):
 class AnalysisObservation(StrictAnalysisModel):
     title: str = Field(min_length=1, max_length=200)
     importance: Literal["low", "medium", "high"]
-    evidence: list[str] = Field(default_factory=list, max_length=12)
+    evidence: list[str] = Field(min_length=1, max_length=12)
 
 
 class AnalysisAnomaly(StrictAnalysisModel):
     title: str = Field(min_length=1, max_length=200)
     severity: Literal["low", "medium", "high", "critical"]
     description: str = Field(min_length=1, max_length=2000)
-    evidence: list[str] = Field(default_factory=list, max_length=12)
+    evidence: list[str] = Field(min_length=1, max_length=12)
     probable_causes: list[str] = Field(default_factory=list, max_length=10)
     confidence: float = Field(ge=0.0, le=1.0)
 
@@ -40,3 +40,12 @@ class VentilationAnalysisResult(StrictAnalysisModel):
     anomalies: list[AnalysisAnomaly] = Field(default_factory=list, max_length=20)
     recommendations: list[AnalysisRecommendation] = Field(default_factory=list, max_length=20)
     data_quality_notes: list[str] = Field(default_factory=list, max_length=20)
+
+    @model_validator(mode="after")
+    def require_supported_observations(self) -> "VentilationAnalysisResult":
+        if self.status != "insufficient_data" and len(self.observations) < 2:
+            raise ValueError(
+                "Analiza z wystarczającymi danymi musi zawierać co najmniej dwie "
+                "obserwacje poparte evidence"
+            )
+        return self
