@@ -51,15 +51,14 @@ def _sample(*, minute: int, supply: float, extract: float) -> TelemetrySampleRec
     )
 
 
-def _normal_result(summary: str = "Brak widocznej anomalii w analizowanym oknie.") -> VentilationAnalysisResult:
+def _report_result(
+    analysis: str = "W analizowanym oknie nie widać podstaw do zgłoszenia anomalii."
+) -> VentilationAnalysisResult:
     return VentilationAnalysisResult(
-        status="normal",
-        summary=summary,
-        confidence=0.7,
-        observations=["Sterownik i dane telemetryczne są dostępne do interpretacji."],
-        anomalies=[],
-        recommendations=[],
-        data_quality_notes=["Historyczny baseline nie jest jeszcze dostępny."],
+        status="no_anomaly_detected",
+        analysis_pl=analysis,
+        operator_recommendation_pl="Kontynuować obserwację kolejnych okien telemetrycznych.",
+        data_quality_pl="Dane wystarczające do analizy bieżącego okna; brak baseline'u historycznego.",
     )
 
 
@@ -191,11 +190,10 @@ def test_summary_contains_only_deterministic_math() -> None:
     assert summary["sensor_bus"]["samples_present"] == 0
 
 
-def test_v8_compact_packet_keeps_measurements_and_removes_noise() -> None:
-    summary = _compact_packet_source_summary()
-    packet = build_compact_analysis_packet(summary)
+def test_v9_compact_packet_keeps_measurements_and_removes_noise() -> None:
+    packet = build_compact_analysis_packet(_compact_packet_source_summary())
 
-    assert PROMPT_VERSION == "ventilation-v8-reporting"
+    assert PROMPT_VERSION == "ventilation-v9-simple-report"
     assert ANALYSIS_THINK is True
     assert "humidity_percent" in packet["measurement_capabilities"]["present_in_packet"]
     assert packet["measurement_capabilities"]["not_provided_by_system"] == [
@@ -203,8 +201,6 @@ def test_v8_compact_packet_keeps_measurements_and_removes_noise() -> None:
         "fan_rpm",
         "airflow",
     ]
-    assert packet["controller"]["setpoints"]["supply_voltage"]["mean"] == 0.0
-    assert packet["controller"]["setpoints"]["extract_voltage"]["mean"] == 0.0
     humidity = packet["sensor_bus"]["nodes"]["1"]["readings"]["humidity_percent"]
     assert humidity["count"] == 179
     assert humidity["missing"] == 0
@@ -215,53 +211,39 @@ def test_v8_compact_packet_keeps_measurements_and_removes_noise() -> None:
     assert packet["sensor_bus"]["nodes"]["1"]["readings"]["voc_index"]["delta"] == 16.0
 
 
-def test_prompt_v8_keeps_compact_packet_and_adds_reporting_rules() -> None:
-    summary = _compact_packet_source_summary()
-    messages = build_ventilation_prompt(summary)
+def test_prompt_v9_requests_simple_polish_report() -> None:
+    messages = build_ventilation_prompt(_compact_packet_source_summary())
     system = messages[0]["content"]
     user = messages[1]["content"]
 
-    assert "historyczny baseline warsztatu nie jest jeszcze dostępny" in system
-    assert "Tryb STOP i setpointy 0 V" in system
-    assert "zadanymi sygnałami sterującymi 0-10 V" in system
-    assert "PM, VOC, NOx, temperaturę i wilgotność" in system
-    assert "odpowiadaj wyłącznie po polsku" in system
-    assert "nie zostawiaj observations" in system
-    assert "status=anomaly" in system
-    assert "nie nazywaj jakości danych „idealną”" in system
-    assert "ready to plot" in system
-    assert "provenance" not in system.lower()
-    assert "kompaktowy pakiet" in user
+    assert "wszystkie trzy pola tekstowe odpowiedzi muszą być napisane po polsku" in system
+    assert "status `no_anomaly_detected`" in system
+    assert "operator_recommendation_pl" in system
+    assert "data_quality_pl" in system
+    assert "STOP i setpointy 0 V nie są" in system
+    assert "Przeanalizuj poniższy pakiet danych" in user
     assert '"humidity_percent"' in user
     assert '"co2"' in user
-    assert '"supply_voltage"' in user
-    assert '"extract_voltage"' in user
     assert '"stddev"' not in user
-    assert '"first"' not in user
-    assert '"last"' not in user
 
 
-def test_analysis_result_validates_only_structure_and_basic_ranges() -> None:
-    result = VentilationAnalysisResult(
-        status="anomaly",
-        summary="Model wykrył zachowanie warte uwagi.",
-        confidence=0.8,
-        observations=[],
-        anomalies=["VOC rośnie w analizowanym oknie."],
-        recommendations=[],
-    )
-    assert result.observations == []
-    assert result.anomalies == ["VOC rośnie w analizowanym oknie."]
+def test_analysis_result_is_minimal_and_all_report_fields_are_required() -> None:
+    result = _report_result()
+    assert result.schema_version == 2
+    assert result.status == "no_anomaly_detected"
+    assert result.analysis_pl
+    assert result.operator_recommendation_pl
+    assert result.data_quality_pl
 
     with pytest.raises(ValidationError):
         VentilationAnalysisResult(
-            status="normal",
-            summary="Niepoprawny confidence.",
-            confidence=1.5,
+            status="no_anomaly_detected",
+            analysis_pl="Brak widocznej anomalii.",
+            operator_recommendation_pl="Kontynuować obserwację.",
         )
 
 
-def test_compact_schema_is_flat_and_grammar_friendly() -> None:
+def test_compact_schema_is_flat_required_and_grammar_friendly() -> None:
     schema = VentilationAnalysisResult.model_json_schema()
     compact = compact_schema_for_ollama(schema)
     encoded = json.dumps(compact, sort_keys=True)
@@ -269,11 +251,13 @@ def test_compact_schema_is_flat_and_grammar_friendly() -> None:
     assert '"$defs"' not in encoded
     assert '"$ref"' not in encoded
     assert '"maxLength"' not in encoded
-    assert '"maxItems"' not in encoded
-    assert compact["properties"]["schema_version"]["enum"] == [1]
-    assert compact["properties"]["observations"]["items"]["type"] == "string"
-    assert compact["properties"]["anomalies"]["items"]["type"] == "string"
-    assert compact["properties"]["recommendations"]["items"]["type"] == "string"
+    assert compact["properties"]["schema_version"]["enum"] == [2]
+    assert set(compact["required"]) == {
+        "status",
+        "analysis_pl",
+        "operator_recommendation_pl",
+        "data_quality_pl",
+    }
 
 
 class FakeRepository:
@@ -310,7 +294,7 @@ class CapturingOllama:
     def chat_structured(self, **kwargs):
         self.kwargs = kwargs
         return OllamaChatResult(
-            content=_normal_result().model_dump_json(),
+            content=_report_result().model_dump_json(),
             model="qwen3.6:35b",
             prompt_eval_count=123,
             eval_count=45,
@@ -336,12 +320,13 @@ def test_service_skips_ollama_when_sample_count_is_below_gate() -> None:
     )
 
     assert result.result.status == "insufficient_data"
+    assert "Za mało danych" in result.result.analysis_pl
     assert repository.saved is not None
     assert repository.saved["raw_response"] is None
     assert repository.saved["sample_count"] == 1
 
 
-def test_service_uses_structured_schema_without_embedding_schema_in_prompt() -> None:
+def test_service_uses_structured_schema_and_thinking() -> None:
     repository = FakeRepository([_sample(minute=0, supply=0.0, extract=0.0)])
     ollama = CapturingOllama()
     service = VentilationAnalysisService(
@@ -359,17 +344,14 @@ def test_service_uses_structured_schema_without_embedding_schema_in_prompt() -> 
         window_end=datetime(2026, 8, 10, 12, 15, tzinfo=timezone.utc),
     )
 
-    assert result.result.status == "normal"
+    assert result.result.status == "no_anomaly_detected"
     assert ollama.kwargs is not None
     assert ollama.kwargs["think"] is True
-    sampling_schema = ollama.kwargs["response_schema"]
-    assert sampling_schema["properties"]["observations"]["items"]["type"] == "string"
-    prompt_text = ollama.kwargs["messages"][-1]["content"]
-    assert "Wymagany JSON Schema odpowiedzi" not in prompt_text
+    assert ollama.kwargs["response_schema"]["properties"]["analysis_pl"]["type"] == "string"
 
 
 def test_service_reuses_existing_analysis_without_calling_ollama() -> None:
-    stored_result = _normal_result("Zapisany wynik istniejącej analizy.")
+    stored_result = _report_result("Zapisany wynik istniejącej analizy.")
     existing = SimpleNamespace(
         analysis_id="existing-analysis-id",
         sample_count=180,
@@ -393,8 +375,7 @@ def test_service_reuses_existing_analysis_without_calling_ollama() -> None:
 
     assert result.reused_existing is True
     assert result.analysis_id == "existing-analysis-id"
-    assert result.sample_count == 180
-    assert result.result.status == "normal"
+    assert result.result.status == "no_anomaly_detected"
     assert repository.saved is None
 
 
@@ -412,7 +393,7 @@ def test_ollama_structured_chat_uses_schema_non_streaming_and_think_true(monkeyp
                 "model": "qwen3.6:35b",
                 "message": {
                     "role": "assistant",
-                    "content": _normal_result().model_dump_json(),
+                    "content": _report_result().model_dump_json(),
                 },
                 "done": True,
                 "prompt_eval_count": 123,
