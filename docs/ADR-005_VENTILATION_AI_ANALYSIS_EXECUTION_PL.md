@@ -1,6 +1,6 @@
 # ADR-005 – Wykonywanie analiz wentylacji przez Qwen
 
-**Status:** Stage 2 – profil bazowy zamrożony; domknięcie techniczne w toku  
+**Status:** Stage 2 – profil bazowy zamrożony; funkcjonalna walidacja PASS, deployment pending  
 **Data:** 10.08.2026
 
 ## Nadrzędna zasada
@@ -159,7 +159,7 @@ format=<compact JSON Schema>
 
 Pydantic sprawdza wyłącznie strukturę i typy.
 
-## Idempotencja
+## Idempotencja – PASS
 
 Jednoznaczność analizy:
 
@@ -171,9 +171,16 @@ source_id
 + prompt_version
 ```
 
-Zmiana `prompt_version` pozwala ponownie przeanalizować to samo historyczne okno bez kasowania wcześniejszych wyników.
+Dla `ventilation-v10-baseline-safe` wykonano drugi rzeczywisty przebieg tego samego okna. Wynik:
 
-Dla `ventilation-v10-baseline-safe` pozostaje do wykonania końcowy realny test ponownego uruchomienia tego samego okna. Oczekiwany wynik: ten sam `analysis_id`, `reused_existing=true` i brak nowego wywołania Ollamy.
+```text
+analysis_id=2dbf4563-e18b-47db-a3d8-18cb6f8f79e7
+reused_existing=true
+```
+
+Nie pojawił się nowy `POST /api/chat` do Ollamy. Wynik został pobrany z istniejącego rekordu PostgreSQL.
+
+**Idempotencja v10: PASS.**
 
 ## PostgreSQL
 
@@ -227,9 +234,9 @@ Szczegółowy kontrakt read-only endpointu i klienta CM5 zostanie zaprojektowany
 - brak endpointu sterującego,
 - brak fine-tuningu,
 - brak pełnego historycznego baseline'u warsztatu,
-- timer analizy nadal niewłączony do końcowego testu idempotencji i deploymentu,
-- odczyt wyniku przez CM5 jeszcze niezaimplementowany.
+- odczyt wyniku przez CM5 jeszcze niezaimplementowany,
+- pozostaje deployment aktualnego kodu do `/opt/ai-bridge`, walidacja oneshot systemd i dopiero późniejsza decyzja o timerze.
 
 ## Wniosek
 
-Stage 2 kończymy na prostej bazie: Python liczy i przygotowuje dane, Qwen tworzy krótki raport po polsku, a wynik trafia do PostgreSQL. Profil `ventilation-v10-baseline-safe` jest zamrożonym fundamentem do późniejszego rozwoju. Kolejny etap dotyczy już dostarczenia raportu do CM5 w kanale read-only.
+Funkcjonalna część Stage 2 jest zwalidowana: Python liczy i przygotowuje dane, Qwen tworzy krótki raport po polsku, wynik trafia do PostgreSQL, a ponowny przebieg tego samego okna jest idempotentny i nie wywołuje modelu drugi raz. Kolejne kroki dotyczą już deploymentu/systemd, a następnie read-only dostarczenia raportu do CM5.
