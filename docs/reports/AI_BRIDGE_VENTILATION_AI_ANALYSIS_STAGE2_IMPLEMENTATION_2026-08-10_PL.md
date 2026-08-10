@@ -1,7 +1,7 @@
 # AI Bridge – Ventilation AI Analysis Stage 2
 
 **Data:** 10.08.2026  
-**Status:** IMPLEMENTED – `ventilation-v7-compact-thinking` oczekuje na walidację jakościową  
+**Status:** IMPLEMENTED – `ventilation-v8-reporting` oczekuje na walidację jakościową  
 **Repozytorium:** `autoklinika/AI-server`  
 **Gałąź:** `agent/ventilation-ai-analysis-stage2`
 
@@ -20,7 +20,7 @@ pełny input_summary zapisany jako audit/history
     ↓
 compact analysis packet
     ↓
-krótki prompt domenowy
+krótki prompt domenowy/reportingowy
     ↓
 Ollama / qwen3.6:35b / think=true
     ↓
@@ -170,28 +170,81 @@ Jednocześnie pojawiły się istotne błędy:
 - zwrócił `status=anomaly`, ale `anomalies=[]`,
 - confidence nadal było bardzo wysokie (`0.98`).
 
-Wniosek: thinking pomaga w analizie trendów, ale pełny zagnieżdżony `input_summary` prawdopodobnie zawiera zbyt dużo równorzędnych szczegółów dla bieżącej interpretacji.
+## 7. v7-compact-thinking – kierunek packetu potwierdzony
 
-## 7. ventilation-v7-compact-thinking
+`ventilation-v7-compact-thinking` zachował:
 
-`v7` zachowuje:
-
-- ten sam model,
+- model `qwen3.6:35b`,
 - `think=true`,
 - `temperature=0`,
-- ten sam krótki prompt domenowy co v6,
-- ten sam prosty wynik JSON,
+- prosty structured output,
 - brak semantycznych validatorów.
 
-Zmienia się tylko materiał danych przekazywany Qwenowi.
+Zmienił się tylko materiał wejściowy dla Qwena: zamiast pełnego zagnieżdżonego `input_summary` model otrzymał compact analysis packet.
 
-### Pełny input_summary
+Realny wynik dla tego samego okna 179 próbek:
 
-Nadal jest obliczany i zapisywany do PostgreSQL jako materiał audytowy.
+```text
+analysis_id=f53a4908-47c4-433a-9da6-80af670d0cf4
+prompt_version=ventilation-v7-compact-thinking
+reused_existing=false
+status=normal
+HTTP 200 OK
+```
 
-### Compact analysis packet
+Qwen poprawnie zauważył:
 
-Nowy moduł:
+- rosnący VOC (`+14.0`, około `+0.75/min` w cytowanym fragmencie),
+- lekko spadające PM,
+- stabilną temperaturę i wilgotność z niewielkimi zmianami,
+- płaski NOx na poziomie 1.0.
+
+Błąd z v6 dotyczący rzekomego braku wilgotności nie powtórzył się. Compact packet należy więc uznać za **PASS jako format wejścia**.
+
+Pozostały problemy końcowego raportu:
+
+- odpowiedź była po angielsku mimo instrukcji PL,
+- `observations=[]` mimo prawidłowo zauważonych trendów,
+- pojawił się meta-tekst `Ready to convert, plot, threshold-check, or integrate as needed`,
+- użyto absolutnego sformułowania `Perfect data quality`,
+- `confidence=0.98` pozostaje zbyt agresywne przy braku baseline'u.
+
+Wniosek: nie zmieniamy już compact packetu. Problem jest raportowy.
+
+## 8. ventilation-v8-reporting
+
+Aktywny profil:
+
+```text
+ventilation-v8-reporting
+```
+
+`v8` zachowuje bez zmian:
+
+- compact analysis packet z v7,
+- model,
+- `think=true`,
+- `temperature=0`,
+- flat schema,
+- brak semantycznych validatorów.
+
+Zmienia się wyłącznie instrukcja raportowania w promptcie.
+
+Model ma teraz jawnie:
+
+- odpowiadać tylko po polsku,
+- umieszczać kluczowe fakty i trendy w `observations`, jeśli dane są wystarczające,
+- nie dodawać meta-ofert typu `ready to plot`,
+- nie nazywać jakości danych `perfect/idealną` bez podstaw,
+- używać `status=anomaly` tylko z konkretną pozycją w `anomalies`,
+- ograniczać confidence przy braku historycznego baseline'u,
+- nie rekomendować diagnostyki STOP tylko dlatego, że system jest w STOP.
+
+Są to zasady promptu, nie reguły walidatora Python.
+
+## 9. Compact analysis packet
+
+Moduł:
 
 ```text
 src/ai_bridge/adapters/ventilation/analysis_profile.py
@@ -221,22 +274,9 @@ Usuwane z materiału dla modelu są m.in.:
 - sequence,
 - inne szczegóły niepotrzebne do bieżącej interpretacji.
 
-To nie jest preprocessing decyzyjny. Python jedynie redukuje redundancję i eksponuje dostępność danych.
+Pełny `input_summary` nadal jest zapisywany do PostgreSQL jako materiał audytowy.
 
-## 8. Szczególna ochrona przed błędem z v6
-
-Compact packet zawiera oddzielnie:
-
-```text
-measurement_capabilities.present_in_packet
-measurement_capabilities.not_provided_by_system
-```
-
-Dzięki temu `humidity_percent` jest jawnie obecne, jeśli ma próbki, natomiast CO2/RPM/airflow są jawnie oznaczone jako niewystępujące w systemie.
-
-Nie oznacza to klasyfikacji jakości pomiaru; to wyłącznie informacja o dostępności danych.
-
-## 9. PostgreSQL i idempotencja
+## 10. PostgreSQL i idempotencja
 
 Tabela:
 
@@ -253,14 +293,12 @@ Unikalność:
 Aktywna wersja:
 
 ```text
-ventilation-v7-compact-thinking
+ventilation-v8-reporting
 ```
 
-Dzięki nowej wersji to samo okno może zostać przeanalizowane ponownie bez usuwania historii v1-v6.
+Dzięki nowej wersji to samo okno może zostać przeanalizowane ponownie bez usuwania historii v1-v7.
 
-Pełny `input_summary` nadal trafia do rekordu analizy.
-
-## 10. Walidacja techniczna wykonana dotychczas
+## 11. Walidacja techniczna wykonana dotychczas
 
 Na rzeczywistym Serwerze AI potwierdzono:
 
@@ -272,25 +310,27 @@ Na rzeczywistym Serwerze AI potwierdzono:
 - idempotencję tego samego `(window, model, prompt_version)`,
 - działanie `think=true`,
 - poprawkę schema grammar,
-- brak wpływu Qwena na ingest i CM5.
+- brak wpływu Qwena na ingest i CM5,
+- skuteczność compact analysis packet w v7.
 
 Timer systemd nadal pozostaje niewłączony.
 
-## 11. Walidacja v7 do wykonania
+## 12. Walidacja v8 do wykonania
 
 Dla dokładnie tego samego okna 179 próbek należy sprawdzić:
 
 1. pełny `pytest`,
 2. realny `POST /api/chat`,
-3. nowy `prompt_version=ventilation-v7-compact-thinking`,
-4. czy Qwen poprawnie widzi PM i VOC,
-5. czy poprawnie widzi humidity na obu węzłach,
-6. czy nie twierdzi, że CO2 istnieje,
-7. czy nie diagnozuje STOP bez podstawy,
-8. czy status i `anomalies[]` są ze sobą logicznie spójne,
-9. czy confidence odpowiada ograniczeniom braku baseline'u,
-10. dopiero po jakościowym PASS przejść do testu timera systemd.
+3. `prompt_version=ventilation-v8-reporting`,
+4. język polski,
+5. niepuste i merytoryczne `observations`,
+6. poprawne PM/VOC/humidity/temperature/NOx,
+7. brak meta-ofert,
+8. spójność `status` z `anomalies[]`,
+9. rozsądne confidence przy braku baseline'u,
+10. brak nieuprawnionej diagnostyki STOP,
+11. dopiero po jakościowym PASS przejść do testu timera systemd.
 
-## 12. Status
+## 13. Status
 
-Stage 2 pozostaje Draft. Nie oznaczać PR jako Ready i nie wykonywać merge przed ręcznym jakościowym PASS `ventilation-v7-compact-thinking` na rzeczywistym Serwerze AI.
+Stage 2 pozostaje Draft. Nie oznaczać PR jako Ready i nie wykonywać merge przed ręcznym jakościowym PASS `ventilation-v8-reporting` na rzeczywistym Serwerze AI.
