@@ -39,6 +39,10 @@ def compact_schema_for_ollama(schema: dict[str, Any]) -> dict[str, Any]:
     refs and keep structural constraints (types, required fields, enums,
     additionalProperties) while leaving length/range enforcement to Pydantic after
     generation.
+
+    JSON Schema metadata keywords such as ``title`` and ``description`` are removed
+    only when they are schema keywords. Property names are preserved verbatim even
+    when a domain field itself is named ``title`` or ``description``.
     """
 
     source = deepcopy(schema)
@@ -73,6 +77,16 @@ def compact_schema_for_ollama(schema: dict[str, Any]) -> dict[str, Any]:
                 continue
             if key == "const":
                 compact["enum"] = [value]
+                continue
+            if key == "properties":
+                if not isinstance(value, dict):
+                    raise ValueError("JSON Schema properties must be an object")
+                # Property names are domain data, not schema metadata. Do not run
+                # names such as 'title' or 'description' through metadata filtering.
+                compact["properties"] = {
+                    property_name: resolve(property_schema, stack)
+                    for property_name, property_schema in value.items()
+                }
                 continue
             compact[key] = resolve(value, stack)
         return compact
