@@ -27,7 +27,6 @@ class Settings(BaseSettings):
 
     analysis_window_minutes: int = Field(default=15, ge=1, le=60)
     analysis_min_samples: int = Field(default=120, ge=1)
-    analysis_think: bool = False
     analysis_temperature: float = Field(default=0.0, ge=0.0, le=2.0)
     ventilation_source_id: str = "workshop-ventilation-cm5-01"
 
