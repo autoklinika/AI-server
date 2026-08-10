@@ -1,114 +1,66 @@
 # AI Bridge – Ventilation AI Analysis Stage 2
 
 **Data:** 10.08.2026  
-**Status:** IMPLEMENTED – oczekuje na walidację na rzeczywistym Serwerze AI  
+**Status:** IMPLEMENTED – `ventilation-v5-simple` oczekuje na walidację jakościową  
 **Repozytorium:** `autoklinika/AI-server`  
 **Gałąź:** `agent/ventilation-ai-analysis-stage2`
 
 ## 1. Cel
 
-Dodać pierwszą rzeczywistą warstwę analizy przez lokalny model `qwen3.6:35b` po zakończeniu Stage 1 telemetry ingest.
-
-Stage 2 ma wykonywać:
+Dodać pierwszą rzeczywistą warstwę interpretacji danych wentylacji przez lokalny model `qwen3.6:35b` po zakończeniu Stage 1 telemetry ingest.
 
 ```text
-RAW telemetry in PostgreSQL
-        ↓
-Python mathematical preparation
-        ↓
-ventilation domain prompt
-        ↓
-Ollama / Qwen
-        ↓
-validated structured advisory result
-        ↓
-PostgreSQL analysis history
+PostgreSQL RAW
+    ↓
+Python – matematyczne przygotowanie danych
+    ↓
+15-minutowe zamknięte okno
+    ↓
+Ollama / qwen3.6:35b
+    ↓
+prosty structured JSON
+    ↓
+Pydantic – walidacja struktury
+    ↓
+ventilation_analysis_runs
 ```
 
-Warstwa AI nie znajduje się na ścieżce sterowania i nie znajduje się na ścieżce ACK dla CM5.
+AI nie znajduje się na ścieżce sterowania ani na ścieżce ACK CM5.
 
-## 2. Niezmieniona granica bezpieczeństwa
+## 2. Granica bezpieczeństwa
 
 Nadal obowiązuje:
 
 ```text
 CM5 = sterowanie + safety
-AI Bridge = dane + infrastruktura analityczna
-Python = matematyczne przygotowanie danych
+Python = przygotowanie matematyczne i infrastruktura
 Qwen = interpretacja + rekomendacje
 ```
 
-AI nie wysyła komend do CM5.
+Nie dodano endpointów sterujących. Awaria Qwena lub całego procesu analizy nie wpływa na działanie wentylacji ani na przyjmowanie telemetrii.
 
-Nie zmieniono endpointu ingest:
+## 3. Okna i data-quality gate
 
-```text
-POST /api/v1/ventilation/telemetry/batches
-```
-
-Nie dodano endpointów sterujących.
-
-## 3. Nowe moduły
-
-### `src/ai_bridge/analysis/`
-
-Dodano wspólną warstwę uruchamiania analiz:
+Analiza działa na zamkniętych, wyrównanych oknach 15-minutowych:
 
 ```text
-analysis/
-├── __init__.py
-├── main.py
-├── schemas.py
-└── service.py
+HH:00..HH:15
+HH:15..HH:30
+HH:30..HH:45
+HH:45..HH+1:00
 ```
 
-### `src/ai_bridge/adapters/ventilation/analysis.py`
-
-Adapter domenowy przygotowuje matematyczne podsumowanie danych wentylacji oraz prompt dla Qwena.
-
-### `src/ai_bridge/storage/analysis_repository.py`
-
-Repozytorium odpowiada za:
-
-- odczyt RAW dla określonego okna,
-- wykrycie istniejącej analizy,
-- zapis wyniku analizy.
-
-### `src/ai_bridge/ollama/client.py`
-
-Klient został rozszerzony z samego health/availability do rzeczywistego `POST /api/chat` z structured outputs.
-
-## 4. Okno analizy
-
-Domyślnie:
+Warunek minimalny:
 
 ```text
-15 minut
+120 próbek
 ```
 
-Okna są wyrównane do zegara:
+Przy capture około 5 s pełne okno zawiera około 180 próbek. Jeśli próbek jest mniej, Qwen nie jest wywoływany i zapisywany jest `insufficient_data`.
 
-```text
-HH:00:00..HH:15:00
-HH:15:00..HH:30:00
-HH:30:00..HH:45:00
-HH:45:00..HH+1:00:00
-```
+## 4. Matematyka wykonywana przez Python
 
-Zapytanie SQL używa:
-
-```text
-captured_at >= window_start
-captured_at <  window_end
-```
-
-Dzięki temu próbka graniczna nie trafia do dwóch okien.
-
-## 5. Matematyczne przygotowanie danych
-
-Python nie decyduje, czy występuje anomalia.
-
-Dla wartości liczbowych oblicza:
+Dla pól liczbowych Python oblicza:
 
 - count,
 - missing,
@@ -121,25 +73,9 @@ Dla wartości liczbowych oblicza:
 - delta,
 - slope_per_minute.
 
-Dla stanu systemu przygotowuje m.in.:
+Dla systemu i SENSOR BUS przygotowuje m.in. rozkład trybów, setpointy, stan hardware, alarmy, kondycję workera i statystyki obu węzłów SEN55.
 
-- rozkład trybów,
-- statystyki zadanych napięć supply/extract,
-- udział `hardware_ready=true`,
-- udział `output_state_known=true`,
-- maksymalny `consecutive_hardware_failures`,
-- liczbę snapshotów z alarmem,
-- listę kodów alarmów.
-
-Dla SENSOR BUS przygotowuje:
-
-- udział `ready=true`,
-- udział `worker_alive=true`,
-- maksymalną liczbę restartów workera,
-- ostatni błąd,
-- statystyki osobno dla każdego `slave_address`.
-
-Dla każdego SEN55 agregowane są rzeczywiste pola:
+Agregowane odczyty SEN55:
 
 ```text
 pm1_0_ug_m3
@@ -152,68 +88,11 @@ voc_index
 nox_index
 ```
 
-oraz liczniki diagnostyczne:
+Python nie klasyfikuje tych wartości jako normalnych/anormalnych i nie definiuje progów środowiskowych.
 
-```text
-sensor_errors
-modbus_service_errors
-communication_errors
-consecutive_failures
-invalid_measurements
-stale_measurements
-map_version_errors
-```
+## 5. Ollama
 
-Python nie tworzy nazw typu „nawiew/wywiew” dla węzłów SEN55; zachowuje `slave_address`.
-
-## 6. Data-quality gate
-
-CM5 zapisuje snapshot co około 5 s.
-
-Pełne 15 minut to około:
-
-```text
-180 próbek
-```
-
-Domyślne minimum Stage 2:
-
-```text
-120 próbek
-```
-
-Jeżeli próbek jest mniej:
-
-- Qwen nie jest wywoływany,
-- zapisujemy `status=insufficient_data`,
-- zachowujemy podsumowanie danych i notę jakościową.
-
-Jest to warunek jakości materiału wejściowego, nie próg anomalii.
-
-## 7. Prompt domenowy
-
-Prompt jawnie informuje Qwena, że:
-
-- jego rola jest wyłącznie analityczna,
-- CM5 jest jedynym sterownikiem,
-- setpointy 0–10 V nie są pomiarem RPM ani rzeczywistego napięcia,
-- system nie ma obecnie CO2, RPM/tacho ani przepływu,
-- null/missing nie oznacza zera,
-- nie wolno wymyślać baseline'u ani progów,
-- nie wolno zakładać przyczynowości bez danych,
-- rekomendacje są dla operatora.
-
-Aktualna wersja promptu:
-
-```text
-ventilation-v1
-```
-
-Zmiana promptu powinna podnieść `PROMPT_VERSION`, dzięki czemu można świadomie analizować historyczne okna nową wersją bez naruszania idempotencji starego wyniku.
-
-## 8. Structured outputs
-
-Model jest wywoływany przez lokalne Ollama:
+Wywołanie:
 
 ```text
 POST http://127.0.0.1:11434/api/chat
@@ -222,20 +101,20 @@ POST http://127.0.0.1:11434/api/chat
 Parametry:
 
 ```text
-model       = qwen3.6:35b
-stream      = false
-think       = false
-temperature = 0
-format      = JSON Schema VentilationAnalysisResult
+model=qwen3.6:35b
+stream=false
+think=false
+temperature=0
+format=<JSON Schema>
 ```
 
-Odpowiedź jest ponownie walidowana przez Pydantic.
+Klient używa grammar-friendly schema. Wcześniej rzeczywista Ollama ujawniła błąd `failed to parse grammar` dla rozbudowanego schematu Pydantic; dlatego istnieje funkcja kompaktująca schema. Pełna walidacja końcowego wyniku nadal odbywa się przez Pydantic.
 
-Nie zapisujemy pola `thinking` ani wewnętrznego toku rozumowania.
+## 6. Aktywny wynik – `ventilation-v5-simple`
 
-## 9. Wynik analizy
+Po rzeczywistych testach wcześniejszych promptów celowo uproszczono kontrakt.
 
-Model zwraca:
+Aktualny wynik:
 
 ```text
 schema_version
@@ -248,54 +127,62 @@ recommendations[]
 data_quality_notes[]
 ```
 
-Status jest ograniczony do:
+`observations`, `anomalies`, `recommendations` i `data_quality_notes` są prostymi listami tekstów.
 
-```text
-normal
-attention
-anomaly
-insufficient_data
-```
+Pydantic sprawdza tylko:
 
-Anomalie zawierają m.in. severity, evidence, probable_causes i confidence.
+- strukturę JSON,
+- dozwolony status,
+- typy pól,
+- `confidence` w zakresie 0..1,
+- podstawowe limity długości/list.
 
-Rekomendacje zawierają priority, recommendation, rationale oraz flagę `operator_action_required`.
+Nie sprawdza semantycznie, czy Qwen „wystarczająco dobrze” przeanalizował dane.
 
-## 10. PostgreSQL – nowa tabela
+## 7. Aktywny prompt – `ventilation-v5-simple`
 
-Migracja:
+Prompt jest krótki i domenowy. Model ma:
 
-```text
-alembic/versions/0002_ventilation_analysis.py
-```
+- przeanalizować stan sterownika i SENSOR BUS,
+- przeanalizować oba SEN55,
+- zwrócić uwagę na PM, VOC, NOx, temperaturę i wilgotność,
+- analizować średnie, minima, maksima, zmiany i trendy,
+- porównywać oba węzły,
+- podawać istotne liczby, gdy pomagają uzasadnić wniosek,
+- nie wymyślać danych ani historycznego baseline'u,
+- nie traktować STOP + setpoint 0 V jako usterki, ponieważ oczekiwany stan pracy nie jest znany,
+- pamiętać, że setpointy są wartościami zadanymi, nie pomiarem RPM/przepływu,
+- wyłącznie doradzać operatorowi.
 
-Tworzy:
+Pełny JSON Schema nie jest już kopiowany do treści promptu; schema trafia do Ollamy przez `format`.
+
+## 8. Dlaczego uproszczono v3/v4
+
+Walidacja na rzeczywistym oknie 179 próbek pokazała:
+
+### `ventilation-v1`
+
+Technicznie PASS, semantycznie FAIL. Model błędnie opisał PM jako `zero lub bliskie zeru` i pominął rzeczywiste trendy.
+
+### `ventilation-v2`
+
+Model poprawnie rozpoznał STOP i brak alarmów, ale nadal pominął trendy PM/VOC, nazwał dane statycznymi i wymyślił pseudo-ścieżki `sensor_data.*`.
+
+### `ventilation-v3/v4`
+
+Dodano provenance, wymagane ścieżki i obowiązkowe pokrycie pól. Mechanizm zaczął jednak sprawdzać przede wszystkim zdolność Qwena do wypełniania technicznego formularza. Rzeczywiste requesty `HTTP 200` były odrzucane np. z powodu liczby `observations`, mimo że problem nie dotyczył transportu ani bezpieczeństwa.
+
+Wniosek projektowy: wracamy do pierwotnej zasady projektu. Python przygotowuje matematykę. Qwen interpretuje. Pydantic pilnuje kontraktu danych, a jakość interpretacji jest oceniana przez testy rzeczywistych wyników, nie przez rozbudowany semantyczny walidator.
+
+Kod i testy provenance zostały usunięte z aktywnej implementacji.
+
+## 9. PostgreSQL i idempotencja
+
+Tabela:
 
 ```text
 ventilation_analysis_runs
 ```
-
-Najważniejsze pola:
-
-```text
-analysis_id
-source_id
-window_start
-window_end
-created_at
-model
-prompt_version
-sample_count
-status
-input_summary
-result
-raw_response
-prompt_eval_count
-eval_count
-total_duration_ns
-```
-
-## 11. Idempotencja
 
 Unikalność:
 
@@ -303,119 +190,50 @@ Unikalność:
 (source_id, window_start, window_end, model, prompt_version)
 ```
 
-Jeżeli analiza już istnieje, CLI zwraca zapisany wynik z:
+Zmiana `prompt_version` pozwala analizować to samo historyczne okno nową wersją bez usuwania starszych wyników.
 
-```text
-reused_existing=true
-```
+W tabeli zapisywane są m.in. `input_summary`, wynik modelu, raw response oraz metryki tokenów/czasu.
 
-Qwen nie jest wtedy ponownie wywoływany.
+## 10. Walidacja wykonana dotychczas
 
-## 12. CLI
+Na rzeczywistym Serwerze AI wykonano:
 
-Nowy entry point:
+- `compileall` – PASS,
+- zestawy testów 17/17, 19/19, 21/21, 22/22 i 27/27 – PASS,
+- migrację Alembic `0002_ventilation_analysis` – PASS,
+- rzeczywisty request do Ollamy – `HTTP 200 OK`,
+- zapis pierwszej analizy do PostgreSQL – PASS,
+- idempotencję tego samego okna – PASS (`reused_existing=true` bez drugiego requestu do Qwena),
+- walidację błędów schema/grammar – naprawione.
 
-```text
-ai-bridge-analyze-ventilation
-```
+Pierwszy technicznie poprawny przebieg na 179 próbkach zużył 4457 tokenów promptu, 205 tokenów odpowiedzi i trwał 28.901 s.
 
-Bez argumentów analizuje ostatnie zakończone wyrównane okno.
+## 11. systemd
 
-Można również podać ręcznie koniec okna:
-
-```text
-ai-bridge-analyze-ventilation --end-at 2026-08-10T12:30:00+00:00
-```
-
-## 13. Konfiguracja
-
-Nowe ustawienia:
-
-```text
-AI_BRIDGE_OLLAMA_ANALYSIS_TIMEOUT_SECONDS=300
-AI_BRIDGE_ANALYSIS_WINDOW_MINUTES=15
-AI_BRIDGE_ANALYSIS_MIN_SAMPLES=120
-AI_BRIDGE_ANALYSIS_THINK=false
-AI_BRIDGE_ANALYSIS_TEMPERATURE=0
-AI_BRIDGE_VENTILATION_SOURCE_ID=workshop-ventilation-cm5-01
-```
-
-`analysis_window_minutes` jest walidowane i musi dzielić 60.
-
-## 14. systemd – przygotowane, jeszcze niewłączone
-
-Dodano:
+Przygotowane są:
 
 ```text
 deploy/systemd/ai-bridge-analysis.service
 deploy/systemd/ai-bridge-analysis.timer
 ```
 
-Timer:
+Timer planowany jest 30 s po każdym kwartale. Nadal nie należy go włączać przed jakościowym PASS `ventilation-v5-simple`.
+
+## 12. Następny krok walidacyjny
+
+Na tym samym historycznym oknie:
 
 ```text
-*-*-* *:00,15,30,45:30
+2026-08-10T12:00:00Z..12:15:00Z
+179 próbek
 ```
 
-Czyli 30 s po każdym zakończeniu kwartalnego okna.
+należy uruchomić `ventilation-v5-simple` i ocenić przede wszystkim jakość wniosków:
 
-Timer nie powinien zostać włączony przed ręczną walidacją na rzeczywistym Serwerze AI.
+- czy Qwen widzi spadek PM na obu węzłach,
+- czy widzi wzrost VOC na obu węzłach,
+- czy poprawnie opisuje temperaturę/wilgotność i kondycję SENSOR BUS,
+- czy nie traktuje STOP jako usterki bez podstawy,
+- czy jawnie uwzględnia brak historycznego baseline'u.
 
-## 15. Relacja z działającym `ai-bridge.service`
-
-Proces analityczny jest osobnym oneshotem.
-
-Nie trzeba zatrzymywać działającego ingestu.
-
-Podczas testów Stage 2 obecny produkcyjny:
-
-```text
-/opt/ai-bridge
-ai-bridge.service
-```
-
-może nadal odbierać telemetrię Stage 1.
-
-Gałąź Stage 2 może być testowana z:
-
-```text
-~/AI-server
-```
-
-na tej samej bazie i tej samej lokalnej Ollamie.
-
-Migracja 0002 dodaje nową tabelę i jest wstecznie kompatybilna z procesem ingest Stage 1.
-
-## 16. Testy dodane
-
-Testy obejmują:
-
-- wyrównanie okna 15-minutowego,
-- walidację konfiguracji długości okna,
-- poprawność podstawowej agregacji matematycznej,
-- brak wywołania Ollamy przy insufficient data,
-- reuse istniejącej analizy bez ponownego wywołania Qwena,
-- kontrakt klienta Ollamy: `stream=false`, schema, `think=false`, temperature=0.
-
-## 17. Elementy jeszcze niewalidowane
-
-Przed uznaniem Stage 2 za PASS trzeba na rzeczywistym Serwerze AI wykonać:
-
-1. `python -m compileall`,
-2. pełny `pytest`,
-3. `alembic upgrade head`,
-4. ręczne `ai-bridge-analyze-ventilation`,
-5. sprawdzenie wyniku Qwena,
-6. potwierdzenie rekordu w `ventilation_analysis_runs`,
-7. ponowienie tego samego okna i potwierdzenie `reused_existing=true`,
-8. dopiero potem instalację i test timera systemd.
-
-## 18. Znane ograniczenie
-
-`Persistent=true` w timerze zapewnia uruchomienie po pominiętym triggerze, ale pojedynczy start analizuje tylko ostatnie zakończone okno. Pełny automatyczny backfill wielu kwartalnych okien po długiej awarii nie jest jeszcze zaimplementowany.
-
-RAW pozostaje w PostgreSQL, więc żadne dane potrzebne do późniejszego backfillu nie giną.
-
-## Wynik implementacji
-
-**Stage 2 został zaimplementowany architektonicznie zgodnie z ADR-002/003/004 i nowym ADR-005. Nie jest jeszcze oznaczony jako operacyjnie zwalidowany, dopóki rzeczywisty Qwen nie przejdzie ręcznego testu na danych z CM5.**
+Dopiero po jakościowym PASS można przejść do testu i uruchomienia timera systemd.
