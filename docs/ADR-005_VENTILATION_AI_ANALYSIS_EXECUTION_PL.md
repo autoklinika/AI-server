@@ -19,13 +19,7 @@ Nadal obowiązuje nadrzędna zasada:
 
 ## Decyzja 1 – analiza poza ścieżką ingestu
 
-Qwen nie jest wywoływany przez endpoint:
-
-```text
-POST /api/v1/ventilation/telemetry/batches
-```
-
-Ingest kończy się po walidacji, transakcyjnym zapisie do PostgreSQL i ACK dla CM5.
+Qwen nie jest wywoływany przez endpoint telemetryczny. Ingest kończy się po walidacji, transakcyjnym zapisie do PostgreSQL i ACK dla CM5.
 
 Analiza jest osobnym procesem:
 
@@ -40,12 +34,12 @@ Ollama /api/chat
    ↓
 qwen3.6:35b
    ↓
-walidacja Pydantic
+walidacja struktury Pydantic
    ↓
 ventilation_analysis_runs
 ```
 
-Dzięki temu wolna odpowiedź modelu, awaria Ollamy albo błąd odpowiedzi AI nie wpływa na przyjmowanie telemetrii ani na CM5.
+Wolna odpowiedź modelu, awaria Ollamy albo błąd odpowiedzi AI nie wpływa na przyjmowanie telemetrii ani na CM5.
 
 ## Decyzja 2 – zamknięte, wyrównane okna 15-minutowe
 
@@ -58,24 +52,15 @@ Analiza wykorzystuje zamknięte okna kalendarzowe:
 ...
 ```
 
-Nie używamy przesuwającego się zakresu typu „ostatnie 15 minut”, ponieważ utrudniałby idempotencję i porównywanie wyników historycznych.
+Nie używamy przesuwającego się zakresu „ostatnie 15 minut”, ponieważ utrudniałby idempotencję i porównywanie wyników historycznych.
 
-Docelowy timer jest planowany na:
+Docelowy timer jest planowany na `:00:30`, `:15:30`, `:30:30`, `:45:30`.
 
-```text
-:00:30
-:15:30
-:30:30
-:45:30
-```
-
-30 sekund opóźnienia daje czas na zapis ostatnich próbek okna do PostgreSQL.
-
-## Decyzja 3 – Python wykonuje wyłącznie przygotowanie matematyczne
+## Decyzja 3 – Python wykonuje przygotowanie matematyczne
 
 Python nie definiuje progów anomalii jakości powietrza i nie podejmuje decyzji, że wystąpiła anomalia.
 
-Dla każdego parametru może obliczać m.in.:
+Dla danych liczbowych oblicza m.in.:
 
 - count,
 - missing,
@@ -102,11 +87,9 @@ Stage 2 przyjmuje domyślne minimum:
 120 próbek
 ```
 
-Jest to deterministic data-quality gate, a nie próg anomalii.
+Jest to deterministic data-quality gate, a nie próg anomalii. Przy mniejszej liczbie próbek Qwen nie jest uruchamiany i zapisujemy `insufficient_data`.
 
-Przy mniejszej liczbie próbek Qwen nie jest uruchamiany. Zapisujemy wynik `insufficient_data`.
-
-## Decyzja 5 – structured outputs
+## Decyzja 5 – prosty structured output
 
 Ollama jest wywoływana przez:
 
@@ -116,32 +99,71 @@ POST http://127.0.0.1:11434/api/chat
 
 z:
 
-```json
-{
-  "stream": false,
-  "format": "<JSON Schema VentilationAnalysisResult>",
-  "think": false,
-  "options": {
-    "temperature": 0
-  }
-}
+```text
+stream=false
+think=false
+temperature=0
+format=<JSON Schema VentilationAnalysisResult>
 ```
 
-Odpowiedź jest następnie ponownie walidowana przez Pydantic.
-
-Jeżeli odpowiedź nie spełnia schematu, analiza kończy się błędem i nie jest traktowana jako poprawny wynik.
-
-## Decyzja 6 – brak przechowywania toku rozumowania
-
-Dla `qwen3.6:35b` ustawiamy:
+Aktywny kontrakt `VentilationAnalysisResult` jest celowo płaski:
 
 ```text
-think=false
+schema_version
+status
+summary
+confidence
+observations[]        # lista tekstów
+anomalies[]           # lista tekstów
+recommendations[]     # lista tekstów
+data_quality_notes[]  # lista tekstów
 ```
 
-Nie potrzebujemy przechowywać pola thinking ani wewnętrznego toku rozumowania modelu. Przechowywany jest wyłącznie końcowy, strukturalny wynik doradczy oraz metryki wykonania.
+Pydantic sprawdza strukturę, dozwolony status, typy pól oraz podstawowe zakresy, np. `confidence` 0..1.
 
-## Decyzja 7 – idempotencja analiz
+## Decyzja 6 – walidacja nie może zastępować interpretacji AI
+
+Walidacja runtime nie ocenia semantycznie jakości rozumowania modelu.
+
+Nie wymuszamy przez Python:
+
+- minimalnej liczby obserwacji poza samą strukturą list,
+- obowiązkowego cytowania konkretnych ścieżek z `input_summary`,
+- `provenance_paths`,
+- reguł typu „Qwen musi wspomnieć pole X”,
+- progów uznających trend lub wartość za anomalię.
+
+Powód: podczas walidacji `ventilation-v1..v4` zbyt rozbudowany kontrakt zaczął sprawdzać zdolność modelu do wypełniania formularza zamiast jakość jego interpretacji danych.
+
+Python ma przygotować wiarygodną matematykę i bezpiecznie obsłużyć wynik. Qwen ma interpretować.
+
+## Decyzja 7 – prompt ma być krótki i domenowy
+
+Aktywna wersja:
+
+```text
+ventilation-v5-simple
+```
+
+Prompt przypomina modelowi najważniejsze fakty domenowe:
+
+- analizować stan sterownika i SENSOR BUS,
+- porównywać oba SEN55,
+- analizować PM, VOC, NOx, temperaturę i wilgotność oraz trendy,
+- opierać wnioski wyłącznie na przekazanych danych,
+- podawać istotne liczby w uzasadnieniu, gdy są pomocne,
+- nie wymyślać historycznego baseline'u,
+- nie traktować STOP + setpoint 0 V jako usterki, ponieważ oczekiwany stan pracy nie jest znany,
+- pamiętać, że setpointy 0–10 V są wartościami zadanymi, a nie pomiarem RPM/przepływu,
+- nie sterować systemem.
+
+## Decyzja 8 – brak przechowywania toku rozumowania
+
+Dla `qwen3.6:35b` ustawiamy `think=false`.
+
+Nie przechowujemy pola thinking ani wewnętrznego toku rozumowania modelu. Przechowywany jest końcowy strukturalny wynik doradczy oraz metryki wykonania.
+
+## Decyzja 9 – idempotencja analiz
 
 Jednoznaczność analizy jest określona przez:
 
@@ -157,15 +179,9 @@ Ponowne uruchomienie tego samego okna zwraca istniejący wynik i nie wywołuje Q
 
 Zmiana `prompt_version` lub modelu pozwala świadomie wykonać nową interpretację tego samego materiału historycznego.
 
-## Decyzja 8 – osobna tabela wyników
+## Decyzja 10 – osobna tabela wyników
 
-Wyniki są przechowywane w:
-
-```text
-ventilation_analysis_runs
-```
-
-Nie modyfikujemy danych RAW.
+Wyniki są przechowywane w `ventilation_analysis_runs`. Nie modyfikujemy danych RAW.
 
 Tabela zawiera m.in.:
 
@@ -185,20 +201,6 @@ Tabela zawiera m.in.:
 - `eval_count`,
 - `total_duration_ns`.
 
-## Format wyniku Qwena
-
-Qwen zwraca strukturalnie:
-
-- status: `normal`, `attention`, `anomaly` albo `insufficient_data`,
-- summary,
-- confidence,
-- observations,
-- anomalies,
-- recommendations,
-- data_quality_notes.
-
-Rekomendacje są wyłącznie dla operatora. Nie są komendami dla CM5.
-
 ## Ograniczenia Stage 2
 
 Na tym etapie:
@@ -207,9 +209,9 @@ Na tym etapie:
 - nie ma endpointu sterującego,
 - nie ma uczenia/fine-tuningu modelu,
 - nie ma jeszcze historycznego baseline'u 12-miesięcznego,
-- timer jest przygotowany, ale nie powinien być włączany przed ręczną walidacją na rzeczywistych danych,
-- jeden trigger timera analizuje ostatnie zakończone okno; pełny automatyczny backfill wielu pominiętych okien po długiej awarii może zostać dodany w kolejnym etapie.
+- timer jest przygotowany, ale nie powinien być włączany przed ręczną walidacją `ventilation-v5-simple` na rzeczywistych danych,
+- jeden trigger timera analizuje ostatnie zakończone okno; pełny automatyczny backfill wielu pominiętych okien po długiej awarii może zostać dodany później.
 
 ## Wniosek
 
-Stage 2 dodaje rzeczywistą warstwę interpretacji AI, zachowując całkowitą separację od sterowania i od krytycznej ścieżki ingestu.
+Stage 2 ma pozostać prosty: Python przygotowuje deterministyczne statystyki, Qwen je interpretuje, a Pydantic pilnuje wyłącznie bezpiecznego kontraktu danych. Jakość interpretacji jest walidowana na rzeczywistych danych przed uruchomieniem timera.
