@@ -56,14 +56,9 @@ def _normal_result(summary: str = "Brak widocznej anomalii w analizowanym oknie.
         confidence=0.7,
         observations=[
             AnalysisObservation(
-                title="Kondycja systemu",
+                title="Kondycja systemu i dane wejściowe",
                 importance="low",
-                evidence=["hardware_ready_true_ratio=1.0"],
-            ),
-            AnalysisObservation(
-                title="Pomiary jakości powietrza",
-                importance="low",
-                evidence=["Brak historycznego baseline'u; interpretacja dotyczy tylko okna."],
+                evidence=["Analiza ma co najmniej jedną obserwację opartą na danych."],
             ),
         ],
         data_quality_notes=["Historyczny baseline nie jest jeszcze dostępny."],
@@ -107,7 +102,7 @@ def test_summary_contains_only_deterministic_math() -> None:
     assert summary["sensor_bus"]["samples_present"] == 0
 
 
-def test_prompt_v3_requires_numeric_evidence_and_baseline_caution() -> None:
+def test_prompt_v4_requires_provenance_coverage_and_baseline_caution() -> None:
     summary = summarize_ventilation_window(
         source_id="workshop-ventilation-cm5-01",
         window_start=datetime(2026, 8, 10, 12, 0, tzinfo=timezone.utc),
@@ -117,11 +112,12 @@ def test_prompt_v3_requires_numeric_evidence_and_baseline_caution() -> None:
     messages = build_ventilation_prompt(summary)
     system = messages[0]["content"]
 
-    assert PROMPT_VERSION == "ventilation-v3"
+    assert PROMPT_VERSION == "ventilation-v4"
     assert "nie używaj określeń „zero”, „blisko zera”, „stałe” ani „bez zmian”" in system
     assert "historical_baseline_available=false" in system
     assert "expected_operating_state_known=false" in system
-    assert "observations musi zawierać co najmniej dwie pozycje" in system
+    assert "observations musi zawierać co najmniej jedną pozycję" in system
+    assert "liczba pozycji nie jest kryterium jakości" in system
     assert "zadane napięcie sterujące nawiewu" in system
     assert "Kontrakt provenance" in system
 
