@@ -1,16 +1,21 @@
-from ai_bridge.analysis.schemas import VentilationAnalysisResult
 from ai_bridge.ollama.client import compact_schema_for_ollama
 
 
-def test_compact_schema_preserves_domain_title_and_description_properties() -> None:
-    compact = compact_schema_for_ollama(VentilationAnalysisResult.model_json_schema())
+def test_compact_schema_preserves_properties_named_title_and_description() -> None:
+    schema = {
+        "type": "object",
+        "title": "Root metadata",
+        "properties": {
+            "title": {"type": "string", "title": "Field metadata"},
+            "description": {"type": "string", "description": "Field metadata"},
+        },
+        "required": ["title", "description"],
+        "additionalProperties": False,
+    }
 
-    observation = compact["properties"]["observations"]["items"]
-    assert "title" in observation["properties"]
-    assert "title" in observation["required"]
+    compact = compact_schema_for_ollama(schema)
 
-    anomaly = compact["properties"]["anomalies"]["items"]
-    assert "title" in anomaly["properties"]
-    assert "title" in anomaly["required"]
-    assert "description" in anomaly["properties"]
-    assert "description" in anomaly["required"]
+    assert "title" not in compact
+    assert "title" in compact["properties"]
+    assert "description" in compact["properties"]
+    assert compact["required"] == ["title", "description"]
