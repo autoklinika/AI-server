@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
 from types import SimpleNamespace
 from typing import Any
 
@@ -11,7 +12,11 @@ from pydantic import ValidationError
 from ai_bridge.adapters.ventilation.analysis import summarize_ventilation_window
 from ai_bridge.analysis.schemas import VentilationAnalysisResult
 from ai_bridge.analysis.service import VentilationAnalysisService, aligned_window
-from ai_bridge.ollama.client import OllamaClient
+from ai_bridge.ollama.client import (
+    OllamaChatResult,
+    OllamaClient,
+    compact_schema_for_ollama,
+)
 from ai_bridge.settings import Settings
 from ai_bridge.storage.models import TelemetrySampleRecord
 
@@ -75,6 +80,25 @@ def test_summary_contains_only_deterministic_math() -> None:
     assert summary["sensor_bus"]["samples_present"] == 0
 
 
+def test_compact_schema_inlines_refs_and_removes_large_repetition_constraints() -> None:
+    schema = VentilationAnalysisResult.model_json_schema()
+    compact = compact_schema_for_ollama(schema)
+    encoded = json.dumps(compact, sort_keys=True)
+
+    assert '"$defs"' not in encoded
+    assert '"$ref"' not in encoded
+    assert '"maxLength"' not in encoded
+    assert '"minLength"' not in encoded
+    assert '"maxItems"' not in encoded
+    assert '"minimum"' not in encoded
+    assert '"maximum"' not in encoded
+    assert compact["properties"]["schema_version"]["enum"] == [1]
+    observation = compact["properties"]["observations"]["items"]
+    assert observation["type"] == "object"
+    assert observation["properties"]["importance"]["enum"] == ["low", "medium", "high"]
+    assert observation["additionalProperties"] is False
+
+
 class FakeRepository:
     def __init__(
         self,
@@ -102,6 +126,26 @@ class ForbiddenOllama:
         raise AssertionError("Ollama must not be called")
 
 
+class CapturingOllama:
+    def __init__(self) -> None:
+        self.kwargs: dict[str, Any] | None = None
+
+    def chat_structured(self, **kwargs):
+        self.kwargs = kwargs
+        content = VentilationAnalysisResult(
+            status="normal",
+            summary="Brak wykrytych anomalii w dostarczonym oknie.",
+            confidence=0.8,
+        ).model_dump_json()
+        return OllamaChatResult(
+            content=content,
+            model="qwen3.6:35b",
+            prompt_eval_count=123,
+            eval_count=45,
+            total_duration_ns=999,
+        )
+
+
 def test_service_skips_ollama_when_sample_count_is_below_gate() -> None:
     repository = FakeRepository([_sample(minute=0, supply=0.0, extract=0.0)])
     service = VentilationAnalysisService(
@@ -123,6 +167,34 @@ def test_service_skips_ollama_when_sample_count_is_below_gate() -> None:
     assert repository.saved is not None
     assert repository.saved["raw_response"] is None
     assert repository.saved["sample_count"] == 1
+
+
+def test_service_uses_compact_schema_and_puts_it_in_prompt() -> None:
+    repository = FakeRepository([_sample(minute=0, supply=0.0, extract=0.0)])
+    ollama = CapturingOllama()
+    service = VentilationAnalysisService(
+        repository=repository,  # type: ignore[arg-type]
+        ollama=ollama,  # type: ignore[arg-type]
+        model="qwen3.6:35b",
+        think=False,
+        temperature=0.0,
+        min_samples=1,
+    )
+
+    result = service.analyze_window(
+        source_id="workshop-ventilation-cm5-01",
+        window_start=datetime(2026, 8, 10, 12, 0, tzinfo=timezone.utc),
+        window_end=datetime(2026, 8, 10, 12, 15, tzinfo=timezone.utc),
+    )
+
+    assert result.result.status == "normal"
+    assert ollama.kwargs is not None
+    sampling_schema = ollama.kwargs["response_schema"]
+    encoded = json.dumps(sampling_schema, sort_keys=True)
+    assert '"$defs"' not in encoded
+    assert '"$ref"' not in encoded
+    assert '"maxLength"' not in encoded
+    assert encoded in ollama.kwargs["messages"][-1]["content"]
 
 
 def test_service_reuses_existing_analysis_without_calling_ollama() -> None:
@@ -198,7 +270,7 @@ def test_ollama_structured_chat_uses_schema_non_streaming_and_think_false(monkey
     monkeypatch.setattr(httpx, "post", fake_post)
 
     client = OllamaClient(base_url="http://127.0.0.1:11434", timeout_seconds=300.0)
-    schema = VentilationAnalysisResult.model_json_schema()
+    schema = compact_schema_for_ollama(VentilationAnalysisResult.model_json_schema())
     result = client.chat_structured(
         model="qwen3.6:35b",
         messages=[{"role": "user", "content": "test"}],
