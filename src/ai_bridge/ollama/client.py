@@ -1,9 +1,86 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
 import httpx
+
+
+_SCHEMA_METADATA_KEYS = {
+    "$schema",
+    "title",
+    "description",
+    "default",
+    "examples",
+}
+
+# These constraints are still enforced by the final Pydantic validation. They are
+# intentionally omitted from the sampler grammar because large repetitions and
+# nested refs can make llama.cpp/Ollama reject otherwise valid schemas.
+_SCHEMA_REPETITION_KEYS = {
+    "minLength",
+    "maxLength",
+    "minItems",
+    "maxItems",
+    "minimum",
+    "maximum",
+    "exclusiveMinimum",
+    "exclusiveMaximum",
+}
+
+
+def compact_schema_for_ollama(schema: dict[str, Any]) -> dict[str, Any]:
+    """Return a grammar-friendly structural schema without weakening final validation.
+
+    Pydantic emits $defs/$ref for nested models and may include large repetition
+    constraints. Ollama converts the schema to a sampler grammar; on some runner
+    versions that combination can exceed grammar complexity limits. We inline local
+    refs and keep structural constraints (types, required fields, enums,
+    additionalProperties) while leaving length/range enforcement to Pydantic after
+    generation.
+    """
+
+    source = deepcopy(schema)
+    definitions = source.get("$defs", {})
+
+    def resolve(node: Any, stack: tuple[str, ...] = ()) -> Any:
+        if isinstance(node, list):
+            return [resolve(item, stack) for item in node]
+        if not isinstance(node, dict):
+            return node
+
+        if "$ref" in node:
+            ref = node["$ref"]
+            prefix = "#/$defs/"
+            if not isinstance(ref, str) or not ref.startswith(prefix):
+                raise ValueError(f"Unsupported JSON Schema reference for Ollama: {ref!r}")
+            name = ref[len(prefix) :]
+            if name in stack:
+                raise ValueError(f"Recursive JSON Schema reference is not supported: {ref}")
+            target = definitions.get(name)
+            if not isinstance(target, dict):
+                raise ValueError(f"JSON Schema reference not found: {ref}")
+            merged = deepcopy(target)
+            for key, value in node.items():
+                if key != "$ref":
+                    merged[key] = value
+            return resolve(merged, (*stack, name))
+
+        compact: dict[str, Any] = {}
+        for key, value in node.items():
+            if key == "$defs" or key in _SCHEMA_METADATA_KEYS or key in _SCHEMA_REPETITION_KEYS:
+                continue
+            if key == "const":
+                compact["enum"] = [value]
+                continue
+            compact[key] = resolve(value, stack)
+        return compact
+
+    resolved = resolve(source)
+    if not isinstance(resolved, dict):
+        raise ValueError("Root JSON Schema must be an object")
+    return resolved
 
 
 @dataclass(frozen=True)
