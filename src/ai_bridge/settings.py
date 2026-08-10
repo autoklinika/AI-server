@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,12 +26,19 @@ class Settings(BaseSettings):
     ollama_analysis_timeout_seconds: float = Field(default=300.0, gt=0.0)
 
     analysis_window_minutes: int = Field(default=15, ge=1, le=60)
-    analysis_min_samples: int = Field(default=3, ge=1)
+    analysis_min_samples: int = Field(default=120, ge=1)
     analysis_think: bool = False
     analysis_temperature: float = Field(default=0.0, ge=0.0, le=2.0)
     ventilation_source_id: str = "workshop-ventilation-cm5-01"
 
     telemetry_max_body_bytes: int = Field(default=1_048_576, ge=1024)
+
+    @field_validator("analysis_window_minutes")
+    @classmethod
+    def validate_analysis_window_minutes(cls, value: int) -> int:
+        if 60 % value != 0:
+            raise ValueError("analysis_window_minutes must be a divisor of 60")
+        return value
 
 
 @lru_cache(maxsize=1)
