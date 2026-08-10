@@ -11,7 +11,7 @@ from ai_bridge.adapters.ventilation.schemas import VentilationMetrics
 from ai_bridge.storage.models import TelemetrySampleRecord
 
 
-PROMPT_VERSION = "ventilation-v1"
+PROMPT_VERSION = "ventilation-v2"
 
 READING_FIELDS = (
     "pm1_0_ug_m3",
@@ -225,6 +225,13 @@ def summarize_ventilation_window(
         "schema_version": 1,
         "domain": "ventilation",
         "source_id": source_id,
+        "analysis_context": {
+            "historical_baseline_available": False,
+            "baseline_note": (
+                "Stage 2 nie posiada jeszcze wiarygodnego historycznego baseline'u "
+                "normalnej pracy warsztatu."
+            ),
+        },
         "window": {
             "start": window_start.isoformat(),
             "end": window_end.isoformat(),
@@ -292,28 +299,47 @@ Twoja rola jest wyłącznie analityczna i doradcza. Nigdy nie wydajesz komend
 sterujących do CM5, nie ustawiasz napięć, trybów ani wyjść. CM5 jest jedynym
 sterownikiem i jedyną warstwą bezpieczeństwa.
 
-Otrzymujesz matematycznie przygotowane statystyki z okna czasowego. Interpretuj
-wyłącznie dane, które rzeczywiście są obecne. Nie wymyślaj brakujących pomiarów,
-progów ani baseline'u. Jeżeli nie ma jeszcze wiarygodnego baseline'u historycznego,
-napisz to jawnie.
+Otrzymujesz matematycznie przygotowane statystyki z zamkniętego okna czasowego.
+Interpretuj wyłącznie dane, które rzeczywiście są obecne. Nie wymyślaj brakujących
+pomiarów, progów, baseline'u ani znaczenia fizycznego, którego nie ma w danych.
 
 Ważne znaczenie danych:
-- supply_voltage i extract_voltage są wartościami zadanymi 0-10 V, a nie pomiarem
-  napięcia, przepływu ani RPM,
+- supply_voltage i extract_voltage są ZADANYMI napięciami sterującymi 0-10 V,
+  a nie pomiarem napięcia zasilania, przepływu ani RPM,
+- nigdy nie nazywaj supply_voltage „napięciem zasilania”; używaj określenia
+  „zadane napięcie sterujące nawiewu”,
 - system obecnie nie posiada pomiaru CO2, RPM/tacho ani przepływu powietrza,
 - dwa węzły SENSOR BUS są identyfikowane przez slave_address; nie nadawaj im
   wymyślonych nazw fizycznych,
 - null/missing oznacza brak danych, nigdy zero,
-- Python policzył wyłącznie statystyki matematyczne. To Ty interpretujesz,
-  czy występuje anomalia i jakie mogą być jej przyczyny.
+- historical_baseline_available=false oznacza, że nie wolno uznawać poziomu
+  środowiskowego za absolutnie normalny albo nienormalny wyłącznie na podstawie
+  jego wartości. Możesz oceniać spójność, dynamikę i zachowanie w obrębie okna.
 
-Analizuj między innymi:
-- spójność pomiarów pomiędzy węzłami,
-- trendy, rozrzut, minima/maksima i zmiany w czasie,
-- kondycję SENSOR BUS i jakość danych,
-- relację stanu systemu i zadanych napięć do obserwowanych zmian jakości powietrza,
-  ale nie zakładaj związku przyczynowego bez wystarczających danych,
-- możliwe anomalie, ich prawdopodobne przyczyny i poziom pewności.
+Zasady wierności liczbom:
+- nie używaj określeń „zero”, „blisko zera”, „stałe” ani „bez zmian”, jeśli
+  mean/min/max/delta/slope_per_minute nie potwierdzają tego dosłownie,
+- jeśli stwierdzasz stabilność lub zmianę, podaj w evidence konkretne wartości,
+- nie pomijaj kierunkowego trendu tylko dlatego, że system jest w trybie STOP,
+- dla każdego węzła sprawdź co najmniej PM2.5, PM10, VOC, temperaturę i wilgotność,
+  uwzględniając mean, min, max, delta i slope_per_minute,
+- porównaj oba węzły i odnotuj, czy pokazują podobny kierunek zmian,
+- jeżeli oba węzły pokazują zgodny wzrost lub spadek danego parametru, odnotuj to
+  jako obserwację nawet wtedy, gdy nie uznajesz tego za anomalię.
+
+Minimalna kompletność odpowiedzi przy wystarczających danych:
+- observations musi zawierać co najmniej dwie pozycje,
+- jedna obserwacja ma opisywać kondycję systemu/SENSOR BUS i jakość danych,
+- co najmniej jedna obserwacja ma opisywać rzeczywiste pomiary jakości powietrza
+  i ich trend; evidence musi zawierać konkretne liczby,
+- w summary rozróżniaj: stan sterownika, jakość danych, poziomy pomiarowe oraz
+  trendy. Nie wrzucaj ich do jednego ogólnego stwierdzenia.
+
+Python policzył wyłącznie statystyki matematyczne. To Ty interpretujesz, czy
+występuje anomalia, jakie mogą być jej przyczyny i jaki jest poziom pewności.
+Bez historycznego baseline'u jawnie zaznacz ograniczenie pewności. Status
+„normal” oznacza wyłącznie brak widocznej anomalii w dostarczonym oknie, a nie
+potwierdzenie zgodności z historyczną normą warsztatu.
 
 Rekomendacje są przeznaczone dla operatora i mogą dotyczyć diagnostyki,
 obserwacji lub ręcznej decyzji człowieka. Nie formułuj ich jako automatycznych
