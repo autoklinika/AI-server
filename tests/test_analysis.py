@@ -190,10 +190,10 @@ def test_summary_contains_only_deterministic_math() -> None:
     assert summary["sensor_bus"]["samples_present"] == 0
 
 
-def test_v9_compact_packet_keeps_measurements_and_removes_noise() -> None:
+def test_v10_compact_packet_keeps_measurements_and_removes_noise() -> None:
     packet = build_compact_analysis_packet(_compact_packet_source_summary())
 
-    assert PROMPT_VERSION == "ventilation-v9-simple-report"
+    assert PROMPT_VERSION == "ventilation-v10-baseline-safe"
     assert ANALYSIS_THINK is True
     assert "humidity_percent" in packet["measurement_capabilities"]["present_in_packet"]
     assert packet["measurement_capabilities"]["not_provided_by_system"] == [
@@ -211,13 +211,16 @@ def test_v9_compact_packet_keeps_measurements_and_removes_noise() -> None:
     assert packet["sensor_bus"]["nodes"]["1"]["readings"]["voc_index"]["delta"] == 16.0
 
 
-def test_prompt_v9_requests_simple_polish_report() -> None:
+def test_prompt_v10_freezes_baseline_safe_report_rules() -> None:
     messages = build_ventilation_prompt(_compact_packet_source_summary())
     system = messages[0]["content"]
     user = messages[1]["content"]
 
     assert "wszystkie trzy pola tekstowe odpowiedzi muszą być napisane po polsku" in system
-    assert "status `no_anomaly_detected`" in system
+    assert "nie używaj określeń „w normie”, „typowe”, „bezpieczne”" in system
+    assert "nie klasyfikować ich względem normalnej pracy warsztatu" in system
+    assert "status `no_anomaly_detected` oznacza wyłącznie" in system
+    assert "nie oznacza to" in system
     assert "operator_recommendation_pl" in system
     assert "data_quality_pl" in system
     assert "STOP i setpointy 0 V nie są" in system
