@@ -11,7 +11,8 @@ from ai_bridge.adapters.ventilation.schemas import VentilationMetrics
 from ai_bridge.storage.models import TelemetrySampleRecord
 
 
-PROMPT_VERSION = "ventilation-v5-simple"
+PROMPT_VERSION = "ventilation-v6-thinking"
+ANALYSIS_THINK = True
 
 READING_FIELDS = (
     "pm1_0_ug_m3",
