@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Any
 
 import httpx
@@ -10,7 +11,7 @@ from pydantic import ValidationError
 from ai_bridge.adapters.ventilation.analysis import summarize_ventilation_window
 from ai_bridge.analysis.schemas import VentilationAnalysisResult
 from ai_bridge.analysis.service import VentilationAnalysisService, aligned_window
-from ai_bridge.ollama.client import OllamaChatResult, OllamaClient
+from ai_bridge.ollama.client import OllamaClient
 from ai_bridge.settings import Settings
 from ai_bridge.storage.models import TelemetrySampleRecord
 
@@ -75,12 +76,18 @@ def test_summary_contains_only_deterministic_math() -> None:
 
 
 class FakeRepository:
-    def __init__(self, samples: list[TelemetrySampleRecord]) -> None:
+    def __init__(
+        self,
+        samples: list[TelemetrySampleRecord],
+        *,
+        existing: Any | None = None,
+    ) -> None:
         self.samples = samples
+        self.existing = existing
         self.saved: dict[str, Any] | None = None
 
     def get_existing(self, **_kwargs):
-        return None
+        return self.existing
 
     def load_samples(self, **_kwargs):
         return self.samples
@@ -92,7 +99,7 @@ class FakeRepository:
 
 class ForbiddenOllama:
     def chat_structured(self, **_kwargs):
-        raise AssertionError("Ollama must not run when data is insufficient")
+        raise AssertionError("Ollama must not be called")
 
 
 def test_service_skips_ollama_when_sample_count_is_below_gate() -> None:
@@ -116,6 +123,40 @@ def test_service_skips_ollama_when_sample_count_is_below_gate() -> None:
     assert repository.saved is not None
     assert repository.saved["raw_response"] is None
     assert repository.saved["sample_count"] == 1
+
+
+def test_service_reuses_existing_analysis_without_calling_ollama() -> None:
+    stored_result = VentilationAnalysisResult(
+        status="normal",
+        summary="Zapisany wynik istniejącej analizy.",
+        confidence=0.9,
+    )
+    existing = SimpleNamespace(
+        analysis_id="existing-analysis-id",
+        sample_count=180,
+        result=stored_result.model_dump(mode="json"),
+    )
+    repository = FakeRepository([], existing=existing)
+    service = VentilationAnalysisService(
+        repository=repository,  # type: ignore[arg-type]
+        ollama=ForbiddenOllama(),  # type: ignore[arg-type]
+        model="qwen3.6:35b",
+        think=False,
+        temperature=0.0,
+        min_samples=120,
+    )
+
+    result = service.analyze_window(
+        source_id="workshop-ventilation-cm5-01",
+        window_start=datetime(2026, 8, 10, 12, 0, tzinfo=timezone.utc),
+        window_end=datetime(2026, 8, 10, 12, 15, tzinfo=timezone.utc),
+    )
+
+    assert result.reused_existing is True
+    assert result.analysis_id == "existing-analysis-id"
+    assert result.sample_count == 180
+    assert result.result.status == "normal"
+    assert repository.saved is None
 
 
 def test_ollama_structured_chat_uses_schema_non_streaming_and_think_false(monkeypatch) -> None:
