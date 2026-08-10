@@ -1,6 +1,6 @@
 # ADR-005 – Wykonywanie analiz wentylacji przez Qwen
 
-**Status:** Stage 2 – profil bazowy zamrożony do końcowej walidacji  
+**Status:** Stage 2 – profil bazowy zamrożony; domknięcie techniczne w toku  
 **Data:** 10.08.2026
 
 ## Nadrzędna zasada
@@ -113,6 +113,37 @@ Brak historycznego baseline'u oznacza, że Qwen może opisywać wartości, kieru
 
 Ta zasada pozostaje częścią promptu. Python nie wykonuje semantycznej klasyfikacji odpowiedzi.
 
+## Rzeczywista walidacja v10
+
+Dla historycznego okna:
+
+```text
+2026-08-10T12:00:00Z..12:15:00Z
+179 próbek
+```
+
+uzyskano:
+
+```text
+analysis_id=2dbf4563-e18b-47db-a3d8-18cb6f8f79e7
+prompt_version=ventilation-v10-baseline-safe
+schema_version=2
+status=no_anomaly_detected
+HTTP 200 OK
+reused_existing=false
+```
+
+Profil v10 spełnił cel ochrony baseline/progów: odpowiedź nie deklarowała, że pomiary są `w normie`, `typowe`, `bezpieczne` ani że `nie przekraczają progów`.
+
+Jednocześnie pozostają świadomie akceptowane ograniczenia bieżącej jakości generacji:
+
+- model może nie opisać obu SEN55 równie dokładnie,
+- może dodać niepotrzebny meta-tekst o dalszej integracji,
+- może wygenerować zbyt swobodną rekomendację operatorską, np. kalibrację lub interpretację źródła VOC bez wystarczającej podstawy,
+- raport nie powinien być traktowany jako instrukcja sterowania ani jako zweryfikowana diagnoza.
+
+Nie rozwijamy teraz kolejnych wersji promptu tylko po to, aby usuwać te niedoskonałości. Bieżący wynik jest **bazą eksperymentalno-doradczą**, przygotowaną do późniejszego ulepszenia po zebraniu rzeczywistego baseline'u warsztatu.
+
 ## Structured output
 
 Ollama:
@@ -142,6 +173,8 @@ source_id
 
 Zmiana `prompt_version` pozwala ponownie przeanalizować to samo historyczne okno bez kasowania wcześniejszych wyników.
 
+Dla `ventilation-v10-baseline-safe` pozostaje do wykonania końcowy realny test ponownego uruchomienia tego samego okna. Oczekiwany wynik: ten sam `analysis_id`, `reused_existing=true` i brak nowego wywołania Ollamy.
+
 ## PostgreSQL
 
 Wynik jest przechowywany jako JSON w `ventilation_analysis_runs`, a `status` jako zwykłe pole tekstowe. Schema v2 nie wymaga dodatkowej migracji bazy.
@@ -150,7 +183,9 @@ Pełny `input_summary` nadal pozostaje zapisany jako materiał audytowy.
 
 ## Decyzja o zamrożeniu interpretacji Stage 2
 
-Po końcowej walidacji `ventilation-v10-baseline-safe` nie rozwijamy dalej promptu ani kontraktu odpowiedzi w Stage 2.
+Rozwój promptu i kontraktu odpowiedzi zostaje zamrożony na `ventilation-v10-baseline-safe`.
+
+Nie planujemy v11/v12 w bieżącym Stage 2.
 
 Do rozbudowy interpretacji wrócimy dopiero po zebraniu rzeczywistej historii warsztatu, kiedy będzie można zaprojektować:
 
@@ -161,7 +196,7 @@ Do rozbudowy interpretacji wrócimy dopiero po zebraniu rzeczywistej historii wa
 
 ## Następny etap – odczyt wyniku przez CM5
 
-Po zakończeniu Stage 2 planowany jest **wyłącznie read-only kanał AI Server -> CM5**.
+Po domknięciu technicznym Stage 2 planowany jest **wyłącznie read-only kanał AI Server -> CM5**.
 
 Docelowy kierunek:
 
@@ -180,6 +215,7 @@ Zasady tego kanału:
 - CM5 pobiera wynik asynchronicznie i nie czeka na niego w logice sterowania,
 - brak odpowiedzi AI nie powoduje zmiany pracy wentylacji,
 - wynik AI może być wyświetlany, logowany lub udostępniany operatorowi,
+- wynik AI musi być oznaczony jako doradczy/eksperymentalny na tym etapie,
 - wynik AI nie może automatycznie zmieniać trybu, setpointów ani żadnego elementu sterowania,
 - nie będzie endpointu AI -> CM5 wykonującego komendy sterujące.
 
@@ -191,9 +227,9 @@ Szczegółowy kontrakt read-only endpointu i klienta CM5 zostanie zaprojektowany
 - brak endpointu sterującego,
 - brak fine-tuningu,
 - brak pełnego historycznego baseline'u warsztatu,
-- timer analizy nadal niewłączony do końcowej walidacji `ventilation-v10-baseline-safe`,
+- timer analizy nadal niewłączony do końcowego testu idempotencji i deploymentu,
 - odczyt wyniku przez CM5 jeszcze niezaimplementowany.
 
 ## Wniosek
 
-Stage 2 kończymy na prostej bazie: Python liczy i przygotowuje dane, Qwen tworzy krótki raport po polsku bez wymyślania nieistniejących norm i progów, a wynik trafia do PostgreSQL. Kolejny etap dotyczy już dostarczenia tego raportu do CM5 w kanale read-only.
+Stage 2 kończymy na prostej bazie: Python liczy i przygotowuje dane, Qwen tworzy krótki raport po polsku, a wynik trafia do PostgreSQL. Profil `ventilation-v10-baseline-safe` jest zamrożonym fundamentem do późniejszego rozwoju. Kolejny etap dotyczy już dostarczenia raportu do CM5 w kanale read-only.
