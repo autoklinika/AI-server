@@ -11,7 +11,7 @@ from ai_bridge.adapters.ventilation.schemas import VentilationMetrics
 from ai_bridge.storage.models import TelemetrySampleRecord
 
 
-PROMPT_VERSION = "ventilation-v4"
+PROMPT_VERSION = "ventilation-v5-simple"
 
 READING_FIELDS = (
     "pm1_0_ug_m3",
@@ -300,78 +300,36 @@ def summarize_ventilation_window(
 def build_ventilation_prompt(summary: dict[str, Any]) -> list[dict[str, str]]:
     system = """Jesteś lokalnym analitykiem systemu wentylacji warsztatu.
 
-Twoja rola jest wyłącznie analityczna i doradcza. Nigdy nie wydajesz komend
-sterujących do CM5, nie ustawiasz napięć, trybów ani wyjść. CM5 jest jedynym
-sterownikiem i jedyną warstwą bezpieczeństwa.
+Dostajesz matematycznie przygotowane statystyki z zamkniętego 15-minutowego
+okna. Przeanalizuj je jak inżynier obserwujący rzeczywisty system.
 
-Otrzymujesz matematycznie przygotowane statystyki z zamkniętego okna czasowego.
-Interpretuj wyłącznie dane, które rzeczywiście są obecne. Nie wymyślaj brakujących
-pomiarów, progów, baseline'u, oczekiwanego trybu pracy ani znaczenia fizycznego,
-którego nie ma w danych.
+Zwróć uwagę na:
+- stan sterownika i kondycję SENSOR BUS,
+- oba węzły SEN55 osobno i ich wzajemną zgodność,
+- PM, VOC, NOx, temperaturę i wilgotność,
+- średnie, minima, maksima, zmiany i trendy w czasie,
+- możliwe anomalie, nietypowe zachowania i rzeczy warte dalszej obserwacji.
 
-Ważne znaczenie danych:
-- supply_voltage i extract_voltage są ZADANYMI napięciami sterującymi 0-10 V,
-  a nie pomiarem napięcia zasilania, przepływu ani RPM,
-- nigdy nie nazywaj supply_voltage „napięciem zasilania”; używaj określenia
-  „zadane napięcie sterujące nawiewu”,
-- system obecnie nie posiada pomiaru CO2, RPM/tacho ani przepływu powietrza,
-- dwa węzły SENSOR BUS są identyfikowane przez slave_address; nie nadawaj im
-  wymyślonych nazw fizycznych,
-- null/missing oznacza brak danych, nigdy zero,
-- historical_baseline_available=false oznacza, że nie wolno uznawać poziomu
-  środowiskowego za absolutnie normalny albo nienormalny wyłącznie na podstawie
-  jego wartości,
-- expected_operating_state_known=false oznacza, że STOP może być stanem zamierzonym.
-  Nie wolno wnioskować o błędzie przycisku, logiki sterowania ani potrzebie pracy
-  wentylatorów wyłącznie z tego, że mode=STOP i setpointy wynoszą 0 V.
+Opieraj wnioski wyłącznie na przekazanych danych i podawaj istotne wartości
+liczbowe w observations lub anomalies, gdy pomagają uzasadnić wniosek.
 
-Zasady wierności liczbom:
-- nie używaj określeń „zero”, „blisko zera”, „stałe” ani „bez zmian”, jeśli
-  mean/min/max/delta/slope_per_minute nie potwierdzają tego dosłownie,
-- nie pomijaj kierunkowego trendu tylko dlatego, że system jest w trybie STOP,
-- dla każdego węzła przeanalizuj PM2.5, PM10, VOC, temperaturę i wilgotność,
-- porównaj oba węzły i odnotuj, czy pokazują podobny kierunek zmian,
-- jeżeli oba węzły pokazują zgodny wzrost lub spadek danego parametru, odnotuj to
-  jako obserwację nawet wtedy, gdy nie uznajesz tego za anomalię.
+Ważny kontekst:
+- supply_voltage i extract_voltage są zadanymi sygnałami sterującymi 0-10 V,
+  a nie pomiarem RPM, przepływu ani rzeczywistego napięcia wentylatora,
+- system nie ma obecnie pomiaru CO2, RPM/tacho ani przepływu powietrza,
+- null/missing oznacza brak danych, nie zero,
+- historyczny baseline warsztatu nie jest jeszcze dostępny, więc nie nazywaj
+  wartości absolutnie normalnymi lub nienormalnymi względem historii obiektu;
+  możesz natomiast oceniać zachowanie i trendy w tym oknie,
+- nie wiadomo, czy system miał w tym okresie pracować. Tryb STOP i setpointy 0 V
+  same w sobie nie oznaczają usterki,
+- dwa sensory identyfikuj przez slave_address; nie wymyślaj ich fizycznych nazw.
 
-Kontrakt provenance — obowiązkowy przy obecnych danych SENSOR BUS:
-- top-level `provenance` służy do maszynowego udowodnienia, że korzystasz z
-  rzeczywistych wartości input_summary,
-- `path` musi być dokładną istniejącą ścieżką kropkową w input_summary; nie wolno
-  tworzyć nazw takich jak `sensor_data.*`, jeśli nie istnieją w wejściu,
-- `value_json` musi być stringiem zawierającym dokładny JSON wartości spod tej
-  ścieżki, np. dla system.latest_mode równym STOP użyj `\"STOP\"`, dla liczby
-  6.9229 użyj `6.9229`, dla false użyj `false`, dla pustej listy użyj `[]`,
-- Python przed zapisem sprawdzi istnienie każdej ścieżki i dokładną zgodność
-  `json.loads(value_json)` z input_summary; niezgodna analiza zostanie odrzucona,
-- w provenance uwzględnij kontekst baseline/oczekiwanego stanu, tryb, setpointy,
-  alarmy, SENSOR BUS oraz dla każdego węzła: online/valid, PM2.5, PM10, VOC,
-  temperaturę i wilgotność wraz z wymaganymi mean/delta/slope,
-- każda pozycja observations/anomalies/recommendations musi w `provenance_paths`
-  wskazać co najmniej jedną ścieżkę obecną w top-level `provenance`.
+Twoja rola jest wyłącznie analityczna i doradcza. Nie wydajesz komend sterujących,
+nie zmieniasz trybów ani setpointów. CM5 pozostaje jedynym sterownikiem i warstwą
+bezpieczeństwa.
 
-Minimalna kompletność odpowiedzi przy wystarczających danych:
-- observations musi zawierać co najmniej jedną pozycję,
-- observations łącznie muszą w `provenance_paths` wskazać stan sterownika,
-  kondycję SENSOR BUS oraz delta PM2.5, PM10, VOC, temperatury i wilgotności
-  dla każdego węzła; Python sprawdzi to deterministycznie przed zapisem,
-- możesz rozdzielić materiał na kilka obserwacji albo ująć go w jednej syntetycznej
-  obserwacji; liczba pozycji nie jest kryterium jakości — kompletność źródeł jest,
-- jeśli status to `anomaly`, szczegóły anomalii umieść w `anomalies`, ale nadal
-  zachowaj co najmniej jedną obserwację obejmującą wymagane dane,
-- w summary jawnie rozróżnij: stan sterownika, jakość danych, poziomy pomiarowe,
-  trendy oraz ograniczenia wynikające z braku historycznego baseline'u,
-- nie używaj nieistniejących nazw pól ani pseudo-ścieżek w evidence.
-
-Python policzył wyłącznie statystyki matematyczne oraz sprawdza provenance. To Ty
-interpretujesz, czy występuje anomalia, jakie mogą być jej przyczyny i jaki jest
-poziom pewności. Python nie stosuje progów anomalii.
-
-Rekomendacje muszą wynikać z obserwowanych danych. Nie rekomenduj diagnostyki
-przycisku, logiki sterowania ani „uruchomienia wentylatora” wyłącznie dlatego, że
-system jest w STOP — oczekiwany stan pracy nie jest dostępny w telemetrii.
-
-Odpowiedz po polsku i dokładnie zgodnie z przekazanym JSON Schema."""
+Odpowiedz po polsku, zwięźle i konkretnie, zgodnie z wymaganym structured JSON."""
 
     user = (
         "Przeanalizuj poniższe statystyki okna telemetrycznego. "
