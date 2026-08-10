@@ -156,7 +156,7 @@ Prompt jest krótki i domenowy. Model ma:
 
 Pełny JSON Schema nie jest już kopiowany do treści promptu; schema trafia do Ollamy przez `format`.
 
-## 8. Dlaczego uproszczono v3/v4
+## 8. Historia walidacji v1-v4
 
 Walidacja na rzeczywistym oknie 179 próbek pokazała:
 
@@ -170,9 +170,9 @@ Model poprawnie rozpoznał STOP i brak alarmów, ale nadal pominął trendy PM/V
 
 ### `ventilation-v3/v4`
 
-Dodano provenance, wymagane ścieżki i obowiązkowe pokrycie pól. Mechanizm zaczął jednak sprawdzać przede wszystkim zdolność Qwena do wypełniania technicznego formularza. Rzeczywiste requesty `HTTP 200` były odrzucane np. z powodu liczby `observations`, mimo że problem nie dotyczył transportu ani bezpieczeństwa.
+Dodano provenance, wymagane ścieżki i obowiązkowe pokrycie pól. Mechanizm zaczął jednak sprawdzać przede wszystkim zdolność Qwena do wypełniania technicznego formularza. Rzeczywiste requesty `HTTP 200` były odrzucane przez walidatory mimo poprawnego transportu i struktury.
 
-Wniosek projektowy: wracamy do pierwotnej zasady projektu. Python przygotowuje matematykę. Qwen interpretuje. Pydantic pilnuje kontraktu danych, a jakość interpretacji jest oceniana przez testy rzeczywistych wyników, nie przez rozbudowany semantyczny walidator.
+Wniosek projektowy: wracamy do pierwotnej zasady projektu. Python przygotowuje matematykę. Qwen interpretuje. Pydantic pilnuje kontraktu danych, a jakość interpretacji jest oceniana na rzeczywistych wynikach, nie przez rozbudowany semantyczny walidator.
 
 Kod i testy provenance zostały usunięte z aktywnej implementacji.
 
