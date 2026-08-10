@@ -69,9 +69,9 @@ Pełny `input_summary` jest zachowywany w PostgreSQL.
 
 Do Qwena trafia compact packet zawierający tylko dane potrzebne do bieżącej interpretacji. Nie ma w nim progów ani klasyfikacji wykonywanej przez Python.
 
-## 5. Historia eksperymentów
+## 5. Historia eksperymentów v1-v8
 
-Wersje v1-v8 były walidowane na tym samym oknie:
+Wersje były walidowane na tym samym oknie:
 
 ```text
 2026-08-10T12:00:00Z..12:15:00Z
@@ -85,9 +85,26 @@ Najważniejsze wnioski:
 - v5 – prosty output przy `think=false` nadal był za płytki,
 - v6 – `think=true` poprawił analizę trendów, ale pełny input nadal powodował błędy,
 - v7 – compact packet wyraźnie poprawił poprawność odczytania danych: Qwen zauważył wzrost VOC, spadek PM, stabilną temperaturę/wilgotność i płaski NOx,
-- v8 – dodatkowe instrukcje raportowania nie rozwiązały problemu pustych list i języka; model nadal umieszczał prawie całą treść w jednym polu.
+- v8 – dodatkowe instrukcje raportowania nie rozwiązały problemu pustych list i języka.
 
-Wniosek: compact packet i `think=true` pozostają. Uproszczony zostaje sam kontrakt odpowiedzi.
+### Rzeczywisty wynik v8
+
+```text
+analysis_id=4f3cf63d-6f01-4f21-9eb1-30449f8b38b8
+prompt_version=ventilation-v8-reporting
+sample_count=179
+HTTP 200 OK
+status=normal
+```
+
+Model prawidłowo zauważył wzrost VOC, spadek PM i stabilność temperatury/wilgotności, ale:
+
+- odpowiedział po angielsku,
+- pozostawił `observations=[]`,
+- pozostawił `anomalies=[]`, `recommendations=[]` i `data_quality_notes=[]`,
+- zwrócił `confidence=0.98`.
+
+Wniosek: compact packet i `think=true` są właściwe. Problemem był sam wielopolowy kontrakt odpowiedzi.
 
 ## 6. Aktywny kontrakt – schema v2
 
@@ -127,7 +144,7 @@ Usunięto:
 - `recommendations[]`,
 - `data_quality_notes[]`.
 
-Powód: na obecnym etapie te pola zwiększały złożoność kontraktu, ale nie poprawiały jakości interpretacji. `confidence` dodatkowo regularnie przyjmowało wartości 0.98–1.0 mimo braku baseline'u.
+Powód: pola zwiększały złożoność kontraktu, ale model często zostawiał listy puste i przenosił całą analizę do `summary`. `confidence` regularnie osiągało 0.98–1.0 mimo braku baseline'u.
 
 Nowy kontrakt jest celowo mały i przygotowany do późniejszej rozbudowy.
 
