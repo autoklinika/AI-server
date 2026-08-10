@@ -191,11 +191,11 @@ def test_summary_contains_only_deterministic_math() -> None:
     assert summary["sensor_bus"]["samples_present"] == 0
 
 
-def test_v7_compact_packet_keeps_measurements_and_removes_noise() -> None:
+def test_v8_compact_packet_keeps_measurements_and_removes_noise() -> None:
     summary = _compact_packet_source_summary()
     packet = build_compact_analysis_packet(summary)
 
-    assert PROMPT_VERSION == "ventilation-v7-compact-thinking"
+    assert PROMPT_VERSION == "ventilation-v8-reporting"
     assert ANALYSIS_THINK is True
     assert "humidity_percent" in packet["measurement_capabilities"]["present_in_packet"]
     assert packet["measurement_capabilities"]["not_provided_by_system"] == [
@@ -215,7 +215,7 @@ def test_v7_compact_packet_keeps_measurements_and_removes_noise() -> None:
     assert packet["sensor_bus"]["nodes"]["1"]["readings"]["voc_index"]["delta"] == 16.0
 
 
-def test_prompt_v7_keeps_v6_domain_rules_but_uses_compact_packet() -> None:
+def test_prompt_v8_keeps_compact_packet_and_adds_reporting_rules() -> None:
     summary = _compact_packet_source_summary()
     messages = build_ventilation_prompt(summary)
     system = messages[0]["content"]
@@ -225,6 +225,11 @@ def test_prompt_v7_keeps_v6_domain_rules_but_uses_compact_packet() -> None:
     assert "Tryb STOP i setpointy 0 V" in system
     assert "zadanymi sygnałami sterującymi 0-10 V" in system
     assert "PM, VOC, NOx, temperaturę i wilgotność" in system
+    assert "odpowiadaj wyłącznie po polsku" in system
+    assert "nie zostawiaj observations" in system
+    assert "status=anomaly" in system
+    assert "nie nazywaj jakości danych „idealną”" in system
+    assert "ready to plot" in system
     assert "provenance" not in system.lower()
     assert "kompaktowy pakiet" in user
     assert '"humidity_percent"' in user
