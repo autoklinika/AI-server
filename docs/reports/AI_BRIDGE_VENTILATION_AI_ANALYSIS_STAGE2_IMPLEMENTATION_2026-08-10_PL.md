@@ -1,7 +1,7 @@
 # AI Bridge – Ventilation AI Analysis Stage 2
 
 **Data:** 10.08.2026  
-**Status:** BASE FOUNDATION PASS – `ventilation-v10-baseline-safe`; idempotency/deployment pending  
+**Status:** FUNCTIONAL PASS – `ventilation-v10-baseline-safe`; deployment/systemd pending  
 **Repozytorium:** `autoklinika/AI-server`  
 **Gałąź:** `agent/ventilation-ai-analysis-stage2`
 
@@ -176,7 +176,7 @@ Do interpretacji wrócimy po zebraniu rzeczywistej historii warsztatu. Wtedy mo�
 - progi/reguły wynikające z rzeczywistych danych,
 - bardziej zaawansowane raporty.
 
-## 9. PostgreSQL i idempotencja
+## 9. PostgreSQL i idempotencja – PASS
 
 Tabela `ventilation_analysis_runs` obsługuje schema v2 bez migracji:
 
@@ -190,16 +190,17 @@ Idempotencja:
 (source_id, window_start, window_end, model, prompt_version)
 ```
 
-Do końcowego potwierdzenia pozostaje ponowne uruchomienie dokładnie tego samego okna dla `ventilation-v10-baseline-safe`.
-
-Oczekiwane:
+Rzeczywisty drugi przebieg dokładnie tego samego okna `ventilation-v10-baseline-safe` zakończył się:
 
 ```text
 analysis_id=2dbf4563-e18b-47db-a3d8-18cb6f8f79e7
+prompt_version=ventilation-v10-baseline-safe
 reused_existing=true
 ```
 
-oraz brak nowego `POST /api/chat` do Ollamy.
+Nie wykonano nowego `POST /api/chat` do Ollamy. Wynik został pobrany z istniejącego rekordu PostgreSQL.
+
+**Idempotencja v10: PASS.**
 
 ## 10. Następny etap – wynik AI dla CM5
 
@@ -230,12 +231,12 @@ Szczegółowy endpoint i klient CM5 będą osobnym etapem.
 
 ## 11. Co pozostaje do domknięcia Stage 2
 
-1. realny test idempotencji v10,
-2. deployment aktualnego kodu do `/opt/ai-bridge`,
+1. deployment aktualnego kodu do `/opt/ai-bridge`,
+2. instalacja/aktualizacja jednostki `ai-bridge-analysis.service`,
 3. oneshot systemd PASS,
 4. dopiero potem decyzja o włączeniu timera,
 5. PR pozostaje Draft do wyraźnej decyzji użytkownika o Ready/merge.
 
 ## 12. Status
 
-Interpretacja Qwena jest zamrożona na `ventilation-v10-baseline-safe` jako prosta baza do późniejszej rozbudowy. Stage 2 nie jest jeszcze scalony; trwa domknięcie techniczne.
+Interpretacja Qwena jest zamrożona na `ventilation-v10-baseline-safe` jako prosta baza do późniejszej rozbudowy. Funkcjonalna walidacja i idempotencja są PASS; Stage 2 nie jest jeszcze scalony, trwa domknięcie deploymentu/systemd.
