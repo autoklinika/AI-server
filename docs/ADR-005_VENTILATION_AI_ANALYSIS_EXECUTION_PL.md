@@ -97,11 +97,11 @@ Ollama jest wywoływana przez:
 POST http://127.0.0.1:11434/api/chat
 ```
 
-z:
+Dla aktywnego profilu walidacyjnego:
 
 ```text
 stream=false
-think=false
+think=true
 temperature=0
 format=<JSON Schema VentilationAnalysisResult>
 ```
@@ -139,10 +139,17 @@ Python ma przygotować wiarygodną matematykę i bezpiecznie obsłużyć wynik. 
 
 ## Decyzja 7 – prompt ma być krótki i domenowy
 
-Aktywna wersja:
+Aktualny profil:
 
 ```text
-ventilation-v5-simple
+ventilation-v6-thinking
+```
+
+`ventilation-v6-thinking` zachowuje ten sam krótki prompt i ten sam płaski schema co `ventilation-v5-simple`. Kontrolowany eksperyment A/B zmienia wyłącznie tryb modelu:
+
+```text
+v5-simple   -> think=false
+v6-thinking -> think=true
 ```
 
 Prompt przypomina modelowi najważniejsze fakty domenowe:
@@ -157,11 +164,17 @@ Prompt przypomina modelowi najważniejsze fakty domenowe:
 - pamiętać, że setpointy 0–10 V są wartościami zadanymi, a nie pomiarem RPM/przepływu,
 - nie sterować systemem.
 
-## Decyzja 8 – brak przechowywania toku rozumowania
+## Decyzja 8 – reasoning jest częścią wersjonowanego profilu
 
-Dla `qwen3.6:35b` ustawiamy `think=false`.
+Dla aktywnego `ventilation-v6-thinking` ustawiamy:
 
-Nie przechowujemy pola thinking ani wewnętrznego toku rozumowania modelu. Przechowywany jest końcowy strukturalny wynik doradczy oraz metryki wykonania.
+```text
+think=true
+```
+
+Tryb thinking jest związany z wersją profilu analizy, a nie z przypadkową zmienną środowiskową. Dzięki temu idempotentny klucz `(source_id, window_start, window_end, model, prompt_version)` oznacza również jednoznaczny tryb inferencji.
+
+Ollama może zwracać wewnętrzne pole `message.thinking`, ale AI Bridge go nie zapisuje. Przechowywany jest wyłącznie końcowy structured output oraz metryki wykonania.
 
 ## Decyzja 9 – idempotencja analiz
 
@@ -209,9 +222,9 @@ Na tym etapie:
 - nie ma endpointu sterującego,
 - nie ma uczenia/fine-tuningu modelu,
 - nie ma jeszcze historycznego baseline'u 12-miesięcznego,
-- timer jest przygotowany, ale nie powinien być włączany przed ręczną walidacją `ventilation-v5-simple` na rzeczywistych danych,
+- timer jest przygotowany, ale nie powinien być włączany przed ręczną walidacją `ventilation-v6-thinking` na rzeczywistych danych,
 - jeden trigger timera analizuje ostatnie zakończone okno; pełny automatyczny backfill wielu pominiętych okien po długiej awarii może zostać dodany później.
 
 ## Wniosek
 
-Stage 2 ma pozostać prosty: Python przygotowuje deterministyczne statystyki, Qwen je interpretuje, a Pydantic pilnuje wyłącznie bezpiecznego kontraktu danych. Jakość interpretacji jest walidowana na rzeczywistych danych przed uruchomieniem timera.
+Stage 2 ma pozostać prosty: Python przygotowuje deterministyczne statystyki, Qwen je interpretuje, a Pydantic pilnuje wyłącznie bezpiecznego kontraktu danych. Aktualny test sprawdza, czy włączenie reasoning poprawia jakość interpretacji bez dokładania kolejnych walidatorów i bez zmiany danych, promptu ani schema.
