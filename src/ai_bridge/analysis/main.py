@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import logging
 
+from ai_bridge.adapters.ventilation.analysis import ANALYSIS_THINK
 from ai_bridge.analysis.service import VentilationAnalysisService, aligned_window
 from ai_bridge.ollama.client import OllamaClient
 from ai_bridge.settings import get_settings
@@ -74,7 +75,9 @@ def main() -> int:
             repository=repository,
             ollama=ollama,
             model=settings.ollama_model,
-            think=settings.analysis_think,
+            # The current analysis profile versions the thinking mode together
+            # with the prompt so idempotent results stay reproducible.
+            think=ANALYSIS_THINK,
             temperature=settings.analysis_temperature,
             min_samples=settings.analysis_min_samples,
         )
