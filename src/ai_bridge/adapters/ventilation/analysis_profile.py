@@ -125,20 +125,22 @@ def build_compact_analysis_packet(summary: dict[str, Any]) -> dict[str, Any]:
         "controller": {
             "latest_mode": system.get("latest_mode"),
             "mode_counts": system.get("mode_counts", {}),
-            "supply_setpoint_v": _pick(
-                setpoints.get("supply_voltage", {}) if isinstance(setpoints, dict) else {},
-                "mean",
-                "min",
-                "max",
-                "delta",
-            ),
-            "extract_setpoint_v": _pick(
-                setpoints.get("extract_voltage", {}) if isinstance(setpoints, dict) else {},
-                "mean",
-                "min",
-                "max",
-                "delta",
-            ),
+            "setpoints": {
+                "supply_voltage": _pick(
+                    setpoints.get("supply_voltage", {}) if isinstance(setpoints, dict) else {},
+                    "mean",
+                    "min",
+                    "max",
+                    "delta",
+                ),
+                "extract_voltage": _pick(
+                    setpoints.get("extract_voltage", {}) if isinstance(setpoints, dict) else {},
+                    "mean",
+                    "min",
+                    "max",
+                    "delta",
+                ),
+            },
             "hardware_ready_ratio": system.get("hardware_ready_true_ratio"),
             "output_state_known_ratio": system.get("output_state_known_true_ratio"),
             "consecutive_hardware_failures_max": system.get(
