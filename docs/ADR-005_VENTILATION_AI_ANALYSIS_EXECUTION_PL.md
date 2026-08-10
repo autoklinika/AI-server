@@ -30,7 +30,7 @@ pełny input_summary (audit/storage)
    ↓
 kompaktowy analysis packet dla Qwena
    ↓
-krótki prompt domenowy
+krótki prompt domenowy/reportingowy
    ↓
 Ollama /api/chat
    ↓
@@ -138,15 +138,17 @@ Powód: taka walidacja zaczęła mierzyć zdolność modelu do wypełniania form
 
 ## Decyzja 7 – compact analysis packet
 
-Aktywny profil:
+`ventilation-v7-compact-thinking` potwierdził, że kierunek kompaktowego wejścia jest właściwy. Na tym samym oknie 179 próbek Qwen poprawnie zauważył:
 
-```text
-ventilation-v7-compact-thinking
-```
+- rosnący VOC,
+- lekko spadające PM,
+- stabilną temperaturę i wilgotność,
+- płaski NOx,
+- brak historycznego baseline'u.
 
-`v6-thinking` pokazał, że `think=true` poprawia zauważanie trendów PM/VOC, ale model nadal popełnił istotny błąd: stwierdził brak wilgotności mimo pełnych danych humidity oraz zwrócił `status=anomaly` przy pustym `anomalies`.
+Model przestał twierdzić, że wilgotność jest niedostępna. Jednocześnie odpowiedź była nadal słaba raportowo: po angielsku, z pustym `observations`, niepotrzebnym tekstem typu `Ready to convert, plot...` oraz z bardzo wysokim `confidence=0.98`.
 
-W `v7` nie dodajemy kolejnych zakazów ani walidatorów. Zamiast tego Python tworzy z pełnego `input_summary` mały, deterministyczny pakiet wejściowy.
+Wniosek: packet pozostaje bez zmian. Problem v7 dotyczy formy raportowania, nie selekcji danych.
 
 Packet zachowuje:
 
@@ -165,7 +167,36 @@ Packet usuwa z materiału przekazywanego modelowi pola mniej potrzebne do bież�
 
 To jest wyłącznie kompresja danych. Python nadal nie interpretuje trendów i nie stosuje progów.
 
-## Decyzja 8 – pełny input_summary pozostaje źródłem audytowym
+## Decyzja 8 – profil raportowania v8
+
+Aktywna wersja:
+
+```text
+ventilation-v8-reporting
+```
+
+`v8` zachowuje bez zmian:
+
+- compact analysis packet z v7,
+- model `qwen3.6:35b`,
+- `think=true`,
+- `temperature=0`,
+- prosty structured JSON,
+- brak semantycznych validatorów.
+
+Zmienia się wyłącznie instrukcja raportowania w promptcie. Model ma:
+
+- odpowiadać wyłącznie po polsku,
+- wykorzystywać `observations` do opisania najważniejszych faktów i trendów,
+- nie dodawać meta-ofert typu `ready to plot`,
+- nie nazywać jakości danych absolutnie `idealną/perfect`,
+- utrzymywać logiczną zgodność `status=anomaly` z niepustym `anomalies`,
+- uwzględniać brak baseline'u przy deklarowaniu confidence,
+- nie rekomendować diagnostyki STOP wyłącznie dlatego, że tryb to STOP.
+
+Te zasady są częścią promptu, a nie walidacji Python. Qwen nadal odpowiada za semantyczną interpretację.
+
+## Decyzja 9 – pełny input_summary pozostaje źródłem audytowym
 
 Do PostgreSQL nadal zapisujemy pełny `input_summary` obliczony z RAW.
 
@@ -173,9 +204,9 @@ Compact analysis packet jest deterministycznie generowany na potrzeby inferencji
 
 Dzięki temu można później odtworzyć, zweryfikować lub ponownie przeanalizować historyczne okno bez utraty informacji.
 
-## Decyzja 9 – reasoning jest częścią wersjonowanego profilu
+## Decyzja 10 – reasoning jest częścią wersjonowanego profilu
 
-Dla `ventilation-v7-compact-thinking`:
+Dla `ventilation-v8-reporting`:
 
 ```text
 think=true
@@ -185,7 +216,7 @@ Tryb thinking jest związany z profilem, nie z przypadkową zmienną `.env`. Ide
 
 Pole `message.thinking` nie jest zapisywane. Przechowywany jest tylko końcowy structured output i metryki wykonania.
 
-## Decyzja 10 – idempotencja i historia wyników
+## Decyzja 11 – idempotencja i historia wyników
 
 Unikalność analizy:
 
@@ -207,9 +238,9 @@ Na tym etapie:
 - nie ma endpointu sterującego,
 - nie ma fine-tuningu,
 - nie ma jeszcze wiarygodnego historycznego baseline'u warsztatu,
-- timer pozostaje niewłączony do jakościowego PASS `ventilation-v7-compact-thinking`,
+- timer pozostaje niewłączony do jakościowego PASS `ventilation-v8-reporting`,
 - automatyczny backfill wielu pominiętych okien nie jest jeszcze zaimplementowany.
 
 ## Wniosek
 
-Stage 2 pozostaje prosty architektonicznie: Python oblicza i porządkuje dane, Qwen interpretuje, Pydantic pilnuje kontraktu. `ventilation-v7-compact-thinking` testuje hipotezę, że lepsza selekcja i prezentacja danych wejściowych poprawi jakość interpretacji bez przenoszenia decyzji AI do Pythona.
+Stage 2 pozostaje prosty architektonicznie: Python oblicza i porządkuje dane, Qwen interpretuje, Pydantic pilnuje kontraktu. `ventilation-v8-reporting` zachowuje udany compact packet z v7 i testuje już tylko jakość końcowego raportu modelu.
