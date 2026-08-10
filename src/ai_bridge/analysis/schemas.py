@@ -53,10 +53,10 @@ class VentilationAnalysisResult(StrictAnalysisModel):
     provenance: list[AnalysisEvidenceReference] = Field(default_factory=list, max_length=80)
 
     @model_validator(mode="after")
-    def require_supported_observations(self) -> "VentilationAnalysisResult":
-        if self.status != "insufficient_data" and len(self.observations) < 2:
+    def require_supported_observation(self) -> "VentilationAnalysisResult":
+        if self.status != "insufficient_data" and not self.observations:
             raise ValueError(
-                "Analiza z wystarczającymi danymi musi zawierać co najmniej dwie "
-                "obserwacje poparte evidence"
+                "Analiza z wystarczającymi danymi musi zawierać co najmniej jedną "
+                "obserwację popartą evidence"
             )
         return self
