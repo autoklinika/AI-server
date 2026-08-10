@@ -1,12 +1,12 @@
 # AI Bridge Stage 1 — walidacja usługi systemd na rzeczywistym Serwerze AI
 
 **Data:** 10.08.2026  
-**Status:** PASS — systemd + reboot + automatyczny powrót telemetrii  
+**Status:** PASS — systemd + reboot obu hostów + automatyczny powrót telemetrii  
 **Gałąź:** `agent/ai-bridge-stage1-clean-foundation`
 
 ## 1. Cel
 
-Potwierdzić, że AI Bridge działa na docelowym Serwerze AI jako stała usługa systemowa, uruchamia się bez ręcznego terminala, poprawnie odbiera rzeczywistą telemetrię z CM5 zapisując ją do PostgreSQL oraz automatycznie wraca do pracy po restarcie całego Serwera AI.
+Potwierdzić, że AI Bridge działa na docelowym Serwerze AI jako stała usługa systemowa, uruchamia się bez ręcznego terminala, poprawnie odbiera rzeczywistą telemetrię z CM5 zapisując ją do PostgreSQL oraz automatycznie wraca do pracy po restartach hostów po obu stronach toru.
 
 ## 2. Jednostka systemd
 
@@ -84,8 +84,7 @@ Wynik potwierdza:
 Po uruchomieniu AI Bridge jako usługi systemowej log potwierdził rzeczywiste żądania z CM5 `192.168.1.64`:
 
 ```text
-192.168.1.64:43872 - "POST /api/v1/ventilation/telemetry/batches HTTP/1.1" 200 OK
-192.168.1.64:43884 - "POST /api/v1/ventilation/telemetry/batches HTTP/1.1" 200 OK
+POST /api/v1/ventilation/telemetry/batches HTTP/1.1 -> 200 OK
 ```
 
 Po stronie CM5 równocześnie działała stała usługa:
@@ -135,26 +134,76 @@ Application startup complete.
 Uvicorn running on http://0.0.0.0:8080
 ```
 
-## 7. Powrót telemetrii po restarcie
+## 7. Powrót telemetrii po restarcie AI Servera
 
-Już kilka sekund po starcie AI Bridge CM5 automatycznie wznowił transmisję bez żadnej ręcznej interwencji:
-
-```text
-12:12:58 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
-12:12:58 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
-12:13:03 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
-12:13:08 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
-12:13:13 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
-12:13:18 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
-12:13:23 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
-12:13:28 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
-```
-
-Pierwsze dwa żądania nastąpiły w tej samej sekundzie po powrocie serwera, co jest zgodne z oczekiwanym automatycznym catch-up próbek zgromadzonych lokalnie przez CM5 podczas restartu AI Servera. Następnie tor wrócił do normalnego rytmu około 5 s.
+Już kilka sekund po starcie AI Bridge CM5 automatycznie wznowił transmisję bez ręcznej interwencji. Pierwsze dwa żądania pojawiły się w tej samej sekundzie po powrocie serwera, co jest zgodne z oczekiwanym catch-up próbek zgromadzonych lokalnie przez CM5 podczas restartu. Następnie tor wrócił do normalnego rytmu około 5 s.
 
 Ponowny `/health` zwrócił `status=ok` i `database=ok`.
 
-## 8. Potwierdzony tor produkcyjny Stage 1
+## 8. Test restartu całego CM5
+
+Następnie zrestartowano cały CM5 przy pozostawionym działającym AI Serverze.
+
+Po ponownym uruchomieniu CM5, bez ręcznego uruchamiania usług, potwierdzono:
+
+```text
+ventilation-core.service      -> enabled, active
+wvc-telemetry-sync.service    -> enabled, active
+```
+
+`CoreState` po restarcie był zdrowy:
+
+- `mode = STOP`,
+- `hardware_ready = true`,
+- `output_state_known = true`,
+- brak aktywnych alarmów,
+- SENSOR BUS `ready = true`,
+- SENSOR BUS `worker_alive = true`,
+- `worker_restarts = 0`,
+- oba SEN55 `online = true`,
+- oba SEN55 `usable = true`,
+- oba SEN55 `measurement_valid = true`,
+- brak błędów Modbus, pomiarowych i map-version.
+
+Po stronie CM5 journal potwierdził kolejne:
+
+```text
+Telemetry batch synced ... samples=1 stored=1 duplicates=0
+```
+
+w normalnym rytmie około 5 s.
+
+## 9. Potwierdzenie po stronie AI Bridge po restarcie CM5
+
+AI Bridge nie wymagał żadnej ingerencji. Jego journal pokazał ciągły napływ świeżych żądań z ponownie uruchomionego CM5 `192.168.1.64`:
+
+```text
+12:21:07 POST /api/v1/ventilation/telemetry/batches -> 200 OK
+12:21:12 POST /api/v1/ventilation/telemetry/batches -> 200 OK
+12:21:17 POST /api/v1/ventilation/telemetry/batches -> 200 OK
+...
+12:22:44 POST /api/v1/ventilation/telemetry/batches -> 200 OK
+```
+
+Potwierdza to, że po restarcie CM5 cały tor wrócił samodzielnie:
+
+```text
+CM5 boot
+  ↓
+ventilation-core.service
+  ↓
+SENSOR BUS / 2× SEN55
+  ↓
+wvc-telemetry-sync.service
+  ↓
+LAN / HTTP
+  ↓
+ai-bridge.service
+  ↓
+PostgreSQL
+```
+
+## 10. Potwierdzony tor produkcyjny Stage 1
 
 ```text
 SEN55 #1 + SEN55 #2
@@ -172,9 +221,9 @@ ai-bridge.service
 PostgreSQL ai_bridge
 ```
 
-Obie strony działają bez ręcznie utrzymywanych procesów terminalowych oraz automatycznie wracają do komunikacji po restarcie AI Servera.
+Obie strony działają bez ręcznie utrzymywanych procesów terminalowych oraz automatycznie wracają do komunikacji po restarcie dowolnego z dwóch hostów objętych Stage 1.
 
-## 9. Granica bezpieczeństwa
+## 11. Granica bezpieczeństwa
 
 Nadal obowiązuje i została zachowana architektura:
 
@@ -184,11 +233,12 @@ Nadal obowiązuje i została zachowana architektura:
 - awaria i restart AI Bridge nie wpływają na `ventilation-core`, DAC ani SENSOR BUS,
 - podczas niedostępności AI Bridge CM5 zachowuje dane jako lokalny `pending`,
 - po powrocie AI Bridge CM5 automatycznie wykonuje catch-up,
+- restart CM5 nie wymaga ręcznego uruchamiania toru telemetrycznego,
 - Qwen/Ollama nie znajdują się na ścieżce ingestu i ACK.
 
-## 10. Wynik
+## 12. Wynik
 
-**PASS — AI Bridge działa poprawnie jako stała usługa systemd na rzeczywistym Serwerze AI, automatycznie uruchamia się po restarcie hosta, odzyskuje połączenie z PostgreSQL i przyjmuje backlog oraz bieżącą telemetrię z CM5 bez ręcznej interwencji.**
+**PASS — AI Bridge i CM5 działają poprawnie jako stałe usługi systemowe, automatycznie uruchamiają się po restartach swoich hostów i bez ręcznej interwencji odtwarzają pełny tor SEN55 → CM5 → AI Bridge → PostgreSQL.**
 
 Stage 1 jest operacyjnie zwalidowany w zakresie:
 
@@ -201,6 +251,7 @@ Stage 1 jest operacyjnie zwalidowany w zakresie:
 - systemd na CM5,
 - systemd na AI Serverze,
 - restartu całego AI Servera,
-- automatycznego powrotu toru telemetrycznego.
+- restartu całego CM5,
+- automatycznego powrotu toru telemetrycznego po obu restartach.
 
 PR pozostaje Draft i nie powinien być merge'owany ani oznaczany Ready for Review bez wyraźnej decyzji użytkownika.
