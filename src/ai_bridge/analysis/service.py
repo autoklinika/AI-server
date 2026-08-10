@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import json
 import logging
 from uuid import uuid4
 
@@ -11,7 +12,7 @@ from ai_bridge.adapters.ventilation.analysis import (
     summarize_ventilation_window,
 )
 from ai_bridge.analysis.schemas import VentilationAnalysisResult
-from ai_bridge.ollama.client import OllamaClient
+from ai_bridge.ollama.client import OllamaClient, compact_schema_for_ollama
 from ai_bridge.storage.analysis_repository import VentilationAnalysisRepository
 
 
@@ -123,14 +124,22 @@ class VentilationAnalysisService:
             )
             chat = None
         else:
+            validation_schema = VentilationAnalysisResult.model_json_schema()
+            sampling_schema = compact_schema_for_ollama(validation_schema)
             messages = build_ventilation_prompt(summary)
+            messages[-1]["content"] += (
+                "\n\nWymagany JSON Schema odpowiedzi (używany również przez sampler Ollamy):\n"
+                + json.dumps(sampling_schema, ensure_ascii=False, sort_keys=True)
+            )
             chat = self.ollama.chat_structured(
                 model=self.model,
                 messages=messages,
-                response_schema=VentilationAnalysisResult.model_json_schema(),
+                response_schema=sampling_schema,
                 think=self.think,
                 temperature=self.temperature,
             )
+            # The grammar schema is intentionally compact. The complete Pydantic
+            # model remains the authoritative post-generation validation boundary.
             result = VentilationAnalysisResult.model_validate_json(chat.content)
 
         analysis_id = str(uuid4())
