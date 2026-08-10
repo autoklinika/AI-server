@@ -127,9 +127,9 @@ Walidacja runtime nie ocenia semantycznie jakości rozumowania modelu.
 
 Nie wymuszamy przez Python:
 
-- minimalnej liczby obserwacji poza samą strukturą list,
+- minimalnej liczby obserwacji,
 - obowiązkowego cytowania konkretnych ścieżek z `input_summary`,
-- `provenance_paths`,
+- `provenance` ani `provenance_paths`,
 - reguł typu „Qwen musi wspomnieć pole X”,
 - progów uznających trend lub wartość za anomalię.
 
