@@ -1,0 +1,22 @@
+[Unit]
+Description=AI Bridge local analytics service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=harrypotter
+Group=harrypotter
+WorkingDirectory=/opt/ai-bridge
+EnvironmentFile=/etc/ai-bridge/ai-bridge.env
+ExecStart=/opt/ai-bridge/.venv/bin/ai-bridge
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/ai-bridge
+
+[Install]
+WantedBy=multi-user.target
