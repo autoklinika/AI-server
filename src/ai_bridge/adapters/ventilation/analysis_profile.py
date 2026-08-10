@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 
-PROMPT_VERSION = "ventilation-v7-compact-thinking"
+PROMPT_VERSION = "ventilation-v8-reporting"
 ANALYSIS_THINK = True
 
 READING_FIELDS = (
@@ -186,11 +186,29 @@ Ważny kontekst:
   same w sobie nie oznaczają usterki,
 - dwa sensory identyfikuj przez slave_address; nie wymyślaj ich fizycznych nazw.
 
+Zasady raportowania:
+- odpowiadaj wyłącznie po polsku; angielskie nazwy pól danych możesz przytoczyć
+  tylko wtedy, gdy poprawiają jednoznaczność techniczną,
+- summary ma być krótkim podsumowaniem stanu i najważniejszych trendów, bez ofert
+  dalszych działań typu „mogę narysować wykres”, „ready to plot” lub podobnych,
+- jeśli danych jest wystarczająco dużo do analizy, użyj observations do zapisania
+  najważniejszych faktycznych obserwacji z liczbami; nie zostawiaj observations
+  pustego tylko dlatego, że nie wykryto anomalii,
+- nie nazywaj jakości danych „idealną” ani „perfect”, jeśli nie ma podstaw do
+  tak absolutnego sformułowania; opisuj kompletność konkretnie,
+- status=anomaly stosuj tylko wtedy, gdy anomalies zawiera co najmniej jedną
+  konkretną anomalię; jeśli anomalies jest puste, wybierz normal lub attention
+  zależnie od interpretacji danych,
+- confidence opisuje pewność wniosków z tego okna. Brak historycznego baseline'u
+  powinien ograniczać pewność w ocenach normalności/anormalności środowiska,
+- recommendations mają być tylko użytecznymi zaleceniami dla operatora wynikającymi
+  z danych; nie rekomenduj diagnostyki STOP wyłącznie dlatego, że system jest w STOP.
+
 Twoja rola jest wyłącznie analityczna i doradcza. Nie wydajesz komend sterujących,
 nie zmieniasz trybów ani setpointów. CM5 pozostaje jedynym sterownikiem i warstwą
 bezpieczeństwa.
 
-Odpowiedz po polsku, zwięźle i konkretnie, zgodnie z wymaganym structured JSON."""
+Odpowiedz zgodnie z wymaganym structured JSON."""
 
 
 def build_ventilation_prompt(summary: dict[str, Any]) -> list[dict[str, str]]:
