@@ -10,6 +10,7 @@ import pytest
 from pydantic import ValidationError
 
 from ai_bridge.adapters.ventilation.analysis import (
+    ANALYSIS_THINK,
     PROMPT_VERSION,
     build_ventilation_prompt,
     summarize_ventilation_window,
@@ -98,7 +99,7 @@ def test_summary_contains_only_deterministic_math() -> None:
     assert summary["sensor_bus"]["samples_present"] == 0
 
 
-def test_prompt_v5_is_short_and_keeps_critical_context() -> None:
+def test_prompt_v6_keeps_v5_content_and_enables_thinking_profile() -> None:
     summary = summarize_ventilation_window(
         source_id="workshop-ventilation-cm5-01",
         window_start=datetime(2026, 8, 10, 12, 0, tzinfo=timezone.utc),
@@ -108,7 +109,8 @@ def test_prompt_v5_is_short_and_keeps_critical_context() -> None:
     messages = build_ventilation_prompt(summary)
     system = messages[0]["content"]
 
-    assert PROMPT_VERSION == "ventilation-v5-simple"
+    assert PROMPT_VERSION == "ventilation-v6-thinking"
+    assert ANALYSIS_THINK is True
     assert "historyczny baseline warsztatu nie jest jeszcze dostępny" in system
     assert "Tryb STOP i setpointy 0 V" in system
     assert "zadanymi sygnałami sterującymi 0-10 V" in system
@@ -199,7 +201,7 @@ def test_service_skips_ollama_when_sample_count_is_below_gate() -> None:
         repository=repository,  # type: ignore[arg-type]
         ollama=ForbiddenOllama(),  # type: ignore[arg-type]
         model="qwen3.6:35b",
-        think=False,
+        think=ANALYSIS_THINK,
         temperature=0.0,
         min_samples=120,
     )
@@ -223,7 +225,7 @@ def test_service_uses_structured_schema_without_embedding_schema_in_prompt() -> 
         repository=repository,  # type: ignore[arg-type]
         ollama=ollama,  # type: ignore[arg-type]
         model="qwen3.6:35b",
-        think=False,
+        think=ANALYSIS_THINK,
         temperature=0.0,
         min_samples=1,
     )
@@ -236,6 +238,7 @@ def test_service_uses_structured_schema_without_embedding_schema_in_prompt() -> 
 
     assert result.result.status == "normal"
     assert ollama.kwargs is not None
+    assert ollama.kwargs["think"] is True
     sampling_schema = ollama.kwargs["response_schema"]
     assert sampling_schema["properties"]["observations"]["items"]["type"] == "string"
     prompt_text = ollama.kwargs["messages"][-1]["content"]
@@ -254,7 +257,7 @@ def test_service_reuses_existing_analysis_without_calling_ollama() -> None:
         repository=repository,  # type: ignore[arg-type]
         ollama=ForbiddenOllama(),  # type: ignore[arg-type]
         model="qwen3.6:35b",
-        think=False,
+        think=ANALYSIS_THINK,
         temperature=0.0,
         min_samples=120,
     )
@@ -272,7 +275,7 @@ def test_service_reuses_existing_analysis_without_calling_ollama() -> None:
     assert repository.saved is None
 
 
-def test_ollama_structured_chat_uses_schema_non_streaming_and_think_false(monkeypatch) -> None:
+def test_ollama_structured_chat_uses_schema_non_streaming_and_think_true(monkeypatch) -> None:
     captured: dict[str, Any] = {}
 
     class FakeResponse:
@@ -312,13 +315,13 @@ def test_ollama_structured_chat_uses_schema_non_streaming_and_think_false(monkey
         model="qwen3.6:35b",
         messages=[{"role": "user", "content": "test"}],
         response_schema=schema,
-        think=False,
+        think=ANALYSIS_THINK,
         temperature=0.0,
     )
 
     assert captured["url"] == "http://127.0.0.1:11434/api/chat"
     assert captured["json"]["stream"] is False
-    assert captured["json"]["think"] is False
+    assert captured["json"]["think"] is True
     assert captured["json"]["format"] == schema
     assert captured["json"]["options"]["temperature"] == 0.0
     assert captured["timeout"] == 300.0
