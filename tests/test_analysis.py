@@ -9,8 +9,12 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from ai_bridge.adapters.ventilation.analysis import summarize_ventilation_window
-from ai_bridge.analysis.schemas import VentilationAnalysisResult
+from ai_bridge.adapters.ventilation.analysis import (
+    PROMPT_VERSION,
+    build_ventilation_prompt,
+    summarize_ventilation_window,
+)
+from ai_bridge.analysis.schemas import AnalysisObservation, VentilationAnalysisResult
 from ai_bridge.analysis.service import VentilationAnalysisService, aligned_window
 from ai_bridge.ollama.client import (
     OllamaChatResult,
@@ -45,6 +49,27 @@ def _sample(*, minute: int, supply: float, extract: float) -> TelemetrySampleRec
     )
 
 
+def _normal_result(summary: str = "Brak widocznej anomalii w analizowanym oknie.") -> VentilationAnalysisResult:
+    return VentilationAnalysisResult(
+        status="normal",
+        summary=summary,
+        confidence=0.7,
+        observations=[
+            AnalysisObservation(
+                title="Kondycja systemu",
+                importance="low",
+                evidence=["hardware_ready_true_ratio=1.0"],
+            ),
+            AnalysisObservation(
+                title="Pomiary jakości powietrza",
+                importance="low",
+                evidence=["Brak historycznego baseline'u; interpretacja dotyczy tylko okna."],
+            ),
+        ],
+        data_quality_notes=["Historyczny baseline nie jest jeszcze dostępny."],
+    )
+
+
 def test_aligned_window_returns_last_completed_quarter_hour() -> None:
     now = datetime(2026, 8, 10, 12, 37, 44, tzinfo=timezone.utc)
     start, end = aligned_window(now, 15)
@@ -70,6 +95,7 @@ def test_summary_contains_only_deterministic_math() -> None:
         samples=samples,
     )
 
+    assert summary["analysis_context"]["historical_baseline_available"] is False
     assert summary["window"]["sample_count"] == 3
     assert summary["system"]["mode_counts"] == {"STOP": 3}
     assert summary["system"]["setpoints"]["supply_voltage"]["mean"] == 5.0
@@ -78,6 +104,33 @@ def test_summary_contains_only_deterministic_math() -> None:
     assert summary["system"]["setpoints"]["supply_voltage"]["slope_per_minute"] == 1.0
     assert summary["system"]["active_alarm_sample_count"] == 0
     assert summary["sensor_bus"]["samples_present"] == 0
+
+
+def test_prompt_v2_requires_numeric_evidence_and_baseline_caution() -> None:
+    summary = summarize_ventilation_window(
+        source_id="workshop-ventilation-cm5-01",
+        window_start=datetime(2026, 8, 10, 12, 0, tzinfo=timezone.utc),
+        window_end=datetime(2026, 8, 10, 12, 15, tzinfo=timezone.utc),
+        samples=[_sample(minute=0, supply=0.0, extract=0.0)],
+    )
+    messages = build_ventilation_prompt(summary)
+    system = messages[0]["content"]
+
+    assert PROMPT_VERSION == "ventilation-v2"
+    assert "nie używaj określeń „zero”, „blisko zera”, „stałe” ani „bez zmian”" in system
+    assert "historical_baseline_available=false" in system
+    assert "observations musi zawierać co najmniej dwie pozycje" in system
+    assert "zadane napięcie sterujące nawiewu" in system
+
+
+def test_analysis_result_rejects_unsupported_empty_observations() -> None:
+    with pytest.raises(ValidationError):
+        VentilationAnalysisResult(
+            status="normal",
+            summary="Ogólne stwierdzenie bez dowodów.",
+            confidence=0.9,
+            observations=[],
+        )
 
 
 def test_compact_schema_inlines_refs_and_removes_large_repetition_constraints() -> None:
@@ -132,13 +185,8 @@ class CapturingOllama:
 
     def chat_structured(self, **kwargs):
         self.kwargs = kwargs
-        content = VentilationAnalysisResult(
-            status="normal",
-            summary="Brak wykrytych anomalii w dostarczonym oknie.",
-            confidence=0.8,
-        ).model_dump_json()
         return OllamaChatResult(
-            content=content,
+            content=_normal_result().model_dump_json(),
             model="qwen3.6:35b",
             prompt_eval_count=123,
             eval_count=45,
@@ -198,11 +246,7 @@ def test_service_uses_compact_schema_and_puts_it_in_prompt() -> None:
 
 
 def test_service_reuses_existing_analysis_without_calling_ollama() -> None:
-    stored_result = VentilationAnalysisResult(
-        status="normal",
-        summary="Zapisany wynik istniejącej analizy.",
-        confidence=0.9,
-    )
+    stored_result = _normal_result("Zapisany wynik istniejącej analizy.")
     existing = SimpleNamespace(
         analysis_id="existing-analysis-id",
         sample_count=180,
@@ -245,11 +289,7 @@ def test_ollama_structured_chat_uses_schema_non_streaming_and_think_false(monkey
                 "model": "qwen3.6:35b",
                 "message": {
                     "role": "assistant",
-                    "content": VentilationAnalysisResult(
-                        status="normal",
-                        summary="Brak wykrytych anomalii w dostarczonym oknie.",
-                        confidence=0.8,
-                    ).model_dump_json(),
+                    "content": _normal_result().model_dump_json(),
                 },
                 "done": True,
                 "prompt_eval_count": 123,
