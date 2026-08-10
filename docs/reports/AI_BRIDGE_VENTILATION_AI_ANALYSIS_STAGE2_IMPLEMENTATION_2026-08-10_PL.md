@@ -1,7 +1,7 @@
 # AI Bridge – Ventilation AI Analysis Stage 2
 
 **Data:** 10.08.2026  
-**Status:** IMPLEMENTED – `ventilation-v10-baseline-safe` oczekuje na końcową walidację  
+**Status:** BASE FOUNDATION PASS – `ventilation-v10-baseline-safe`; idempotency/deployment pending  
 **Repozytorium:** `autoklinika/AI-server`  
 **Gałąź:** `agent/ventilation-ai-analysis-stage2`
 
@@ -101,17 +101,11 @@ schema_version=2
 
 Format v9 uznano za właściwy. Wynik był po polsku i zawierał wszystkie trzy obowiązkowe pola.
 
-Do poprawy pozostały wyłącznie nieuprawnione sformułowania:
-
-- `typowe dla aktywności warsztatowej`,
-- `nie przekracza progów alarmowych`,
-- `pozostałe parametry pozostają w normie`.
-
-Na tym etapie nie istnieje jeszcze wiarygodny baseline historyczny warsztatu ani zdefiniowane progi jakości powietrza, więc takich stwierdzeń nie wolno traktować jako faktów.
+Do poprawy pozostały nieuprawnione sformułowania sugerujące istnienie norm/progów, mimo że historyczny baseline warsztatu nie został jeszcze zbudowany.
 
 ## 6. Końcowy profil Stage 2 – `ventilation-v10-baseline-safe`
 
-Aktywny kontrakt pozostaje bez zmian względem v9:
+Aktywny kontrakt:
 
 ```text
 schema_version = 2
@@ -134,31 +128,57 @@ Wszystkie trzy pola tekstowe są obowiązkowe i mają być napisane po polsku.
 
 Compact packet, `think=true`, `temperature=0`, model i schema pozostają bez zmian.
 
-Zmienia się tylko końcowa zasada promptu: bez przekazanego baseline'u, norm lub progów Qwen nie może używać określeń:
+Profil dodatkowo zabrania klasyfikowania wartości jako `w normie`, `typowe`, `bezpieczne` lub `nie przekraczające progów`, jeżeli odpowiednie normy, progi lub baseline nie zostały przekazane w danych.
 
-- `w normie`,
-- `typowe`,
-- `bezpieczne`,
-- `nie przekracza progów`.
+`no_anomaly_detected` oznacza wyłącznie brak jednoznacznej anomalii w danym 15-minutowym oknie.
 
-`no_anomaly_detected` oznacza wyłącznie brak jednoznacznej anomalii w tym konkretnym 15-minutowym oknie na podstawie dostępnych danych.
+## 7. Rzeczywisty wynik v10
 
-## 7. Decyzja o zamrożeniu rozwoju interpretacji
+Dla tego samego okna 179 próbek otrzymano:
 
-Po ręcznym PASS `ventilation-v10-baseline-safe` rozwój promptu i kontraktu odpowiedzi zostaje zamrożony na obecnym poziomie.
+```text
+analysis_id=2dbf4563-e18b-47db-a3d8-18cb6f8f79e7
+prompt_version=ventilation-v10-baseline-safe
+sample_count=179
+HTTP 200 OK
+status=no_anomaly_detected
+schema_version=2
+reused_existing=false
+```
 
-Nie planujemy kolejnych wersji v11/v12 w bieżącym Stage 2.
+### Co zadziałało
 
-Do rozbudowy analizy wrócimy dopiero po zgromadzeniu realnej historii warsztatu, aby oprzeć dalsze funkcje na danych zamiast na arbitralnych założeniach. Wtedy będzie można dodać m.in.:
+- odpowiedź poprawnie przeszła structured output schema v2,
+- wszystkie trzy pola tekstowe były po polsku,
+- nie pojawiły się stwierdzenia `w normie`, `typowe`, `bezpieczne` ani `nie przekracza progów`,
+- Qwen podał konkretne wartości pomiarowe i trend VOC/PM,
+- wynik został zapisany do PostgreSQL.
 
-- historyczny baseline,
+### Znane ograniczenia, które świadomie odkładamy
+
+Wynik nadal nie jest wystarczająco precyzyjny, aby traktować go jako instrukcję operatorską lub diagnozę:
+
+- model opisał głównie wartości jednego z dwóch SEN55 zamiast równorzędnie zestawić oba węzły,
+- dodał meta-tekst o gotowości do dalszej integracji z BMS/EMS,
+- zalecił okresową kalibrację czujników bez podstawy wynikającej z analizowanego okna,
+- zasugerował możliwą `aktywność chemiczną/wentylacyjną` jako interpretację VOC bez wystarczającej podstawy.
+
+Te ograniczenia nie są teraz naprawiane kolejnymi wersjami promptu. Profil v10 zostaje przyjęty jako **prosty eksperymentalno-doradczy fundament**, który będziemy rozwijać później po zebraniu historycznego baseline'u.
+
+## 8. Decyzja o zamrożeniu
+
+Nie tworzymy v11/v12 w bieżącym Stage 2.
+
+Do interpretacji wrócimy po zebraniu rzeczywistej historii warsztatu. Wtedy możliwe będzie oparcie dalszych funkcji na danych:
+
+- baseline historyczny,
 - porównania między oknami i dniami,
 - progi/reguły wynikające z rzeczywistych danych,
-- bardziej rozbudowane raporty.
+- bardziej zaawansowane raporty.
 
-## 8. PostgreSQL i idempotencja
+## 9. PostgreSQL i idempotencja
 
-Tabela `ventilation_analysis_runs` obsługuje schema v2 bez dodatkowej migracji:
+Tabela `ventilation_analysis_runs` obsługuje schema v2 bez migracji:
 
 - `status` to pole tekstowe,
 - `result` to JSON,
@@ -170,11 +190,20 @@ Idempotencja:
 (source_id, window_start, window_end, model, prompt_version)
 ```
 
-Dzięki `prompt_version=ventilation-v10-baseline-safe` to samo okno może zostać przeanalizowane ponownie bez usuwania wcześniejszych wyników.
+Do końcowego potwierdzenia pozostaje ponowne uruchomienie dokładnie tego samego okna dla `ventilation-v10-baseline-safe`.
 
-## 9. Następny etap – wynik AI dla CM5
+Oczekiwane:
 
-Po zakończeniu Stage 2 kolejnym etapem będzie read-only dostarczenie najnowszego raportu do CM5.
+```text
+analysis_id=2dbf4563-e18b-47db-a3d8-18cb6f8f79e7
+reused_existing=true
+```
+
+oraz brak nowego `POST /api/chat` do Ollamy.
+
+## 10. Następny etap – wynik AI dla CM5
+
+Po domknięciu Stage 2 kolejnym etapem będzie read-only dostarczenie najnowszego raportu do CM5.
 
 Planowany kierunek:
 
@@ -193,25 +222,20 @@ Najważniejsze zasady:
 - CM5 nigdy nie czeka na AI w logice sterowania,
 - brak połączenia z AI Serverem nie wpływa na wentylację,
 - pobrany raport może być wyświetlany lub logowany,
+- raport będzie oznaczony jako advisory/experimental,
 - raport nie jest wejściem do automatycznej logiki setpointów,
 - nie tworzymy żadnego endpointu pozwalającego AI sterować CM5.
 
-Szczegółowy endpoint i klient CM5 będą osobnym etapem po zakończeniu Stage 2.
+Szczegółowy endpoint i klient CM5 będą osobnym etapem.
 
-## 10. Co pozostaje do walidacji Stage 2
+## 11. Co pozostaje do domknięcia Stage 2
 
-Na AI Serverze:
+1. realny test idempotencji v10,
+2. deployment aktualnego kodu do `/opt/ai-bridge`,
+3. oneshot systemd PASS,
+4. dopiero potem decyzja o włączeniu timera,
+5. PR pozostaje Draft do wyraźnej decyzji użytkownika o Ready/merge.
 
-1. `compileall`,
-2. pełny `pytest`,
-3. realny przebieg tego samego okna 179 próbek,
-4. potwierdzenie `prompt_version=ventilation-v10-baseline-safe`,
-5. sprawdzenie, że raport nie używa nieistniejących norm, baseline'u ani progów,
-6. drugi przebieg tego samego okna dla idempotencji,
-7. dopiero potem test deploymentu/systemd timer.
+## 12. Status
 
-Timer nadal pozostaje niewłączony.
-
-## 11. Status
-
-Stage 2 pozostaje Draft. Nie oznaczać PR jako Ready i nie wykonywać merge przed ręcznym PASS `ventilation-v10-baseline-safe` na rzeczywistym Serwerze AI.
+Interpretacja Qwena jest zamrożona na `ventilation-v10-baseline-safe` jako prosta baza do późniejszej rozbudowy. Stage 2 nie jest jeszcze scalony; trwa domknięcie techniczne.
