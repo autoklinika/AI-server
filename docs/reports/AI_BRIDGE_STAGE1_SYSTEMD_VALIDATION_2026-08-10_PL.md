@@ -1,12 +1,12 @@
 # AI Bridge Stage 1 — walidacja usługi systemd na rzeczywistym Serwerze AI
 
 **Data:** 10.08.2026  
-**Status:** PASS  
+**Status:** PASS — systemd + reboot + automatyczny powrót telemetrii  
 **Gałąź:** `agent/ai-bridge-stage1-clean-foundation`
 
 ## 1. Cel
 
-Potwierdzić, że AI Bridge działa na docelowym Serwerze AI jako stała usługa systemowa, uruchamia się bez ręcznego terminala i poprawnie odbiera rzeczywistą telemetrię z CM5 zapisując ją do PostgreSQL.
+Potwierdzić, że AI Bridge działa na docelowym Serwerze AI jako stała usługa systemowa, uruchamia się bez ręcznego terminala, poprawnie odbiera rzeczywistą telemetrię z CM5 zapisując ją do PostgreSQL oraz automatycznie wraca do pracy po restarcie całego Serwera AI.
 
 ## 2. Jednostka systemd
 
@@ -16,7 +16,7 @@ Zainstalowano i uruchomiono:
 ai-bridge.service
 ```
 
-Stan:
+Stan przed restartem:
 
 ```text
 Loaded: loaded (/etc/systemd/system/ai-bridge.service; enabled)
@@ -106,7 +106,55 @@ oraz prawidłowymi ACK:
 samples=1 stored=1 duplicates=0
 ```
 
-## 6. Potwierdzony tor produkcyjny Stage 1
+## 6. Test restartu całego Serwera AI
+
+Serwer AI został zrestartowany poleceniem `sudo reboot` przy pozostawionym działającym CM5.
+
+Po ponownym uruchomieniu bez ręcznego startowania AI Bridge sprawdzono:
+
+```text
+systemctl is-enabled ai-bridge.service -> enabled
+systemctl is-active ai-bridge.service  -> active
+systemctl is-active postgresql         -> active
+```
+
+`ai-bridge.service` uruchomił się automatycznie:
+
+```text
+Active: active (running) since Mon 2026-08-10 12:12:55 CEST
+Main PID: 2431 (ai-bridge)
+```
+
+Log z bieżącego bootu potwierdził pełny start aplikacji:
+
+```text
+Started ai-bridge.service - AI Bridge local analytics service.
+Started server process [2431]
+Waiting for application startup.
+Application startup complete.
+Uvicorn running on http://0.0.0.0:8080
+```
+
+## 7. Powrót telemetrii po restarcie
+
+Już kilka sekund po starcie AI Bridge CM5 automatycznie wznowił transmisję bez żadnej ręcznej interwencji:
+
+```text
+12:12:58 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
+12:12:58 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
+12:13:03 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
+12:13:08 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
+12:13:13 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
+12:13:18 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
+12:13:23 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
+12:13:28 192.168.1.64 - POST /api/v1/ventilation/telemetry/batches 200 OK
+```
+
+Pierwsze dwa żądania nastąpiły w tej samej sekundzie po powrocie serwera, co jest zgodne z oczekiwanym automatycznym catch-up próbek zgromadzonych lokalnie przez CM5 podczas restartu AI Servera. Następnie tor wrócił do normalnego rytmu około 5 s.
+
+Ponowny `/health` zwrócił `status=ok` i `database=ok`.
+
+## 8. Potwierdzony tor produkcyjny Stage 1
 
 ```text
 SEN55 #1 + SEN55 #2
@@ -115,6 +163,8 @@ ventilation-core na CM5
         ↓
 wvc-telemetry-sync.service
         ↓
+local durable pending on CM5
+        ↓
 LAN / HTTP
         ↓
 ai-bridge.service
@@ -122,21 +172,35 @@ ai-bridge.service
 PostgreSQL ai_bridge
 ```
 
-Obie strony działają bez ręcznie utrzymywanych procesów terminalowych.
+Obie strony działają bez ręcznie utrzymywanych procesów terminalowych oraz automatycznie wracają do komunikacji po restarcie AI Servera.
 
-## 7. Granica bezpieczeństwa
+## 9. Granica bezpieczeństwa
 
 Nadal obowiązuje i została zachowana architektura:
 
 - CM5 jest jedynym sterownikiem wentylacji,
 - AI Bridge przyjmuje wyłącznie telemetrię,
 - `control_commands_supported = false`,
-- awaria AI Bridge nie wpływa na `ventilation-core`, DAC ani SENSOR BUS,
+- awaria i restart AI Bridge nie wpływają na `ventilation-core`, DAC ani SENSOR BUS,
 - podczas niedostępności AI Bridge CM5 zachowuje dane jako lokalny `pending`,
-- po powrocie AI Bridge CM5 automatycznie wykonuje catch-up.
+- po powrocie AI Bridge CM5 automatycznie wykonuje catch-up,
+- Qwen/Ollama nie znajdują się na ścieżce ingestu i ACK.
 
-## 8. Wynik
+## 10. Wynik
 
-**PASS — AI Bridge działa poprawnie jako stała usługa systemd na rzeczywistym Serwerze AI i odbiera telemetrię od stałej usługi CM5.**
+**PASS — AI Bridge działa poprawnie jako stała usługa systemd na rzeczywistym Serwerze AI, automatycznie uruchamia się po restarcie hosta, odzyskuje połączenie z PostgreSQL i przyjmuje backlog oraz bieżącą telemetrię z CM5 bez ręcznej interwencji.**
 
-Przed uznaniem całego wdrożenia Stage 1 za zamknięte operacyjnie zalecany jest jeszcze test restartu Serwera AI i potwierdzenie automatycznego startu `ai-bridge.service`, powrotu `/health` oraz automatycznego catch-up danych zgromadzonych przez CM5 podczas restartu.
+Stage 1 jest operacyjnie zwalidowany w zakresie:
+
+- rzeczywistego CM5,
+- dwóch SEN55,
+- trwałego pending na CM5,
+- pracy ciągłej,
+- niedostępności AI Bridge,
+- automatycznego catch-up,
+- systemd na CM5,
+- systemd na AI Serverze,
+- restartu całego AI Servera,
+- automatycznego powrotu toru telemetrycznego.
+
+PR pozostaje Draft i nie powinien być merge'owany ani oznaczany Ready for Review bez wyraźnej decyzji użytkownika.
