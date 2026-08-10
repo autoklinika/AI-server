@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime
-import json
 import math
 from statistics import fmean, pstdev
 from typing import Any, Iterable
@@ -10,9 +9,6 @@ from typing import Any, Iterable
 from ai_bridge.adapters.ventilation.schemas import VentilationMetrics
 from ai_bridge.storage.models import TelemetrySampleRecord
 
-
-PROMPT_VERSION = "ventilation-v6-thinking"
-ANALYSIS_THINK = True
 
 READING_FIELDS = (
     "pm1_0_ug_m3",
@@ -222,7 +218,7 @@ def summarize_ventilation_window(
         }
 
     captured_times = [sample.captured_at for sample, _ in parsed]
-    summary: dict[str, Any] = {
+    return {
         "schema_version": 1,
         "domain": "ventilation",
         "source_id": source_id,
@@ -295,49 +291,3 @@ def summarize_ventilation_window(
             "nodes": nodes,
         },
     }
-    return summary
-
-
-def build_ventilation_prompt(summary: dict[str, Any]) -> list[dict[str, str]]:
-    system = """Jesteś lokalnym analitykiem systemu wentylacji warsztatu.
-
-Dostajesz matematycznie przygotowane statystyki z zamkniętego 15-minutowego
-okna. Przeanalizuj je jak inżynier obserwujący rzeczywisty system.
-
-Zwróć uwagę na:
-- stan sterownika i kondycję SENSOR BUS,
-- oba węzły SEN55 osobno i ich wzajemną zgodność,
-- PM, VOC, NOx, temperaturę i wilgotność,
-- średnie, minima, maksima, zmiany i trendy w czasie,
-- możliwe anomalie, nietypowe zachowania i rzeczy warte dalszej obserwacji.
-
-Opieraj wnioski wyłącznie na przekazanych danych i podawaj istotne wartości
-liczbowe w observations lub anomalies, gdy pomagają uzasadnić wniosek.
-
-Ważny kontekst:
-- supply_voltage i extract_voltage są zadanymi sygnałami sterującymi 0-10 V,
-  a nie pomiarem RPM, przepływu ani rzeczywistego napięcia wentylatora,
-- system nie ma obecnie pomiaru CO2, RPM/tacho ani przepływu powietrza,
-- null/missing oznacza brak danych, nie zero,
-- historyczny baseline warsztatu nie jest jeszcze dostępny, więc nie nazywaj
-  wartości absolutnie normalnymi lub nienormalnymi względem historii obiektu;
-  możesz natomiast oceniać zachowanie i trendy w tym oknie,
-- nie wiadomo, czy system miał w tym okresie pracować. Tryb STOP i setpointy 0 V
-  same w sobie nie oznaczają usterki,
-- dwa sensory identyfikuj przez slave_address; nie wymyślaj ich fizycznych nazw.
-
-Twoja rola jest wyłącznie analityczna i doradcza. Nie wydajesz komend sterujących,
-nie zmieniasz trybów ani setpointów. CM5 pozostaje jedynym sterownikiem i warstwą
-bezpieczeństwa.
-
-Odpowiedz po polsku, zwięźle i konkretnie, zgodnie z wymaganym structured JSON."""
-
-    user = (
-        "Przeanalizuj poniższe statystyki okna telemetrycznego. "
-        f"Wersja promptu: {PROMPT_VERSION}\n\n"
-        + json.dumps(summary, ensure_ascii=False, sort_keys=True, indent=2)
-    )
-    return [
-        {"role": "system", "content": system},
-        {"role": "user", "content": user},
-    ]
