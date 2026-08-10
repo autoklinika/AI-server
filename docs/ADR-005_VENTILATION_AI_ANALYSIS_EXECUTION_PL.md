@@ -1,6 +1,6 @@
 # ADR-005 – Wykonywanie analiz wentylacji przez Qwen
 
-**Status:** Stage 2 – profil bazowy zamrożony; funkcjonalna walidacja PASS, deployment pending  
+**Status:** Stage 2 – profil bazowy zamrożony; produkcyjny oneshot PASS  
 **Data:** 10.08.2026
 
 ## Nadrzędna zasada
@@ -49,31 +49,13 @@ Przy mniejszej liczbie próbek Qwen nie jest wywoływany i zapisywany jest `insu
 
 ## Python – tylko matematyka i przygotowanie danych
 
-Pełny `input_summary` zachowuje m.in.:
-
-- count / missing,
-- mean / min / max / stddev,
-- first / last / delta,
-- slope_per_minute,
-- stan sterownika i setpointy,
-- alarmy,
-- SENSOR BUS,
-- oba węzły SEN55,
-- liczniki diagnostyczne.
+Pełny `input_summary` zachowuje m.in. count/missing, mean/min/max/stddev, first/last/delta, slope_per_minute, stan sterownika, setpointy, alarmy, SENSOR BUS, oba SEN55 i liczniki diagnostyczne.
 
 Python nie definiuje progów anomalii i nie klasyfikuje jakości powietrza.
 
-Do Qwena trafia mniejszy `compact analysis packet`, który usuwa redundancję, ale nie interpretuje danych. Packet zachowuje PM, VOC, NOx, temperaturę, wilgotność, stan systemu, SENSOR BUS i diagnostykę. Jawnie rozróżnia pomiary dostępne od niedostępnych (`co2`, `fan_rpm`, `airflow`).
+Do Qwena trafia mniejszy `compact analysis packet`, który usuwa redundancję, ale nie interpretuje danych. Packet zachowuje PM, VOC, NOx, temperaturę, wilgotność, stan systemu, SENSOR BUS i diagnostykę oraz jawnie rozróżnia pomiary niedostępne (`co2`, `fan_rpm`, `airflow`).
 
 ## Aktywny profil – `ventilation-v10-baseline-safe`
-
-Eksperymenty v1-v9 wykazały, że:
-
-- `think=true` poprawia zauważanie trendów,
-- compact packet poprawia poprawność odczytania danych,
-- rozbudowany formularz odpowiedzi nie wnosi obecnie wartości,
-- minimalny schema v2 jest właściwą bazą do dalszej rozbudowy,
-- przy braku historycznego baseline'u Qwen nie może używać pojęć sugerujących istnienie znanych norm lub progów.
 
 Aktywny kontrakt:
 
@@ -100,112 +82,87 @@ Wszystkie trzy pola tekstowe są obowiązkowe i mają być napisane po polsku.
 
 ## Ochrona przed nieistniejącym baseline'em i progami
 
-Profil `ventilation-v10-baseline-safe` jawnie zabrania modelowi używania określeń:
-
-- `w normie`,
-- `typowe`,
-- `bezpieczne`,
-- `nie przekracza progów`,
-
-jeżeli odpowiedni baseline, norma lub próg nie został przekazany w danych.
+Profil jawnie zabrania modelowi używania określeń `w normie`, `typowe`, `bezpieczne`, `nie przekracza progów`, jeżeli odpowiedni baseline, norma lub próg nie został przekazany w danych.
 
 Brak historycznego baseline'u oznacza, że Qwen może opisywać wartości, kierunek zmian i zależności w oknie, ale nie może klasyfikować ich względem normalnej pracy warsztatu.
 
-Ta zasada pozostaje częścią promptu. Python nie wykonuje semantycznej klasyfikacji odpowiedzi.
+Python nie wykonuje semantycznej klasyfikacji odpowiedzi.
 
-## Rzeczywista walidacja v10
+## Walidacja funkcjonalna i idempotencja
 
-Dla historycznego okna:
-
-```text
-2026-08-10T12:00:00Z..12:15:00Z
-179 próbek
-```
-
-uzyskano:
+Dla historycznego okna 179 próbek uzyskano:
 
 ```text
 analysis_id=2dbf4563-e18b-47db-a3d8-18cb6f8f79e7
 prompt_version=ventilation-v10-baseline-safe
 schema_version=2
 status=no_anomaly_detected
-HTTP 200 OK
 reused_existing=false
 ```
 
-Profil v10 spełnił cel ochrony baseline/progów: odpowiedź nie deklarowała, że pomiary są `w normie`, `typowe`, `bezpieczne` ani że `nie przekraczają progów`.
+Ponowne uruchomienie tego samego okna zwróciło ten sam `analysis_id`, `reused_existing=true` i nie wykonało nowego wywołania Ollamy.
 
-Jednocześnie pozostają świadomie akceptowane ograniczenia bieżącej jakości generacji:
+**Idempotencja: PASS.**
 
-- model może nie opisać obu SEN55 równie dokładnie,
-- może dodać niepotrzebny meta-tekst o dalszej integracji,
-- może wygenerować zbyt swobodną rekomendację operatorską, np. kalibrację lub interpretację źródła VOC bez wystarczającej podstawy,
-- raport nie powinien być traktowany jako instrukcja sterowania ani jako zweryfikowana diagnoza.
+## Produkcyjny deployment i oneshot
 
-Nie rozwijamy teraz kolejnych wersji promptu tylko po to, aby usuwać te niedoskonałości. Bieżący wynik jest **bazą eksperymentalno-doradczą**, przygotowaną do późniejszego ulepszenia po zebraniu rzeczywistego baseline'u warsztatu.
+Kod Stage 2 działa z `/opt/ai-bridge` jako `ai-bridge 0.2.0`.
 
-## Structured output
-
-Ollama:
+`ai-bridge.service` po aktualizacji działa jako `active (running)`, a `/health` zwraca:
 
 ```text
-POST http://127.0.0.1:11434/api/chat
-model=qwen3.6:35b
-stream=false
-think=true
-temperature=0
-format=<compact JSON Schema>
+status=ok
+version=0.2.0
+database=ok
+control_commands_supported=false
 ```
 
-Pydantic sprawdza wyłącznie strukturę i typy.
-
-## Idempotencja – PASS
-
-Jednoznaczność analizy:
+Produkcję zwalidowano przez `ai-bridge-analysis.service` (`Type=oneshot`). Wynik:
 
 ```text
-source_id
-+ window_start
-+ window_end
-+ model
-+ prompt_version
+Result=success
+ExecMainStatus=0
+ActiveState=inactive
+SubState=dead
 ```
 
-Dla `ventilation-v10-baseline-safe` wykonano drugi rzeczywisty przebieg tego samego okna. Wynik:
+Rzeczywista analiza produkcyjna:
 
 ```text
-analysis_id=2dbf4563-e18b-47db-a3d8-18cb6f8f79e7
-reused_existing=true
+analysis_id=5cf9d21e-e2d2-4b0c-920e-c4a67aef135a
+window=2026-08-10T15:15:00Z..15:30:00Z
+sample_count=180
+prompt_version=ventilation-v10-baseline-safe
+status=no_anomaly_detected
 ```
 
-Nie pojawił się nowy `POST /api/chat` do Ollamy. Wynik został pobrany z istniejącego rekordu PostgreSQL.
+Czas ścienny wyniósł około 90 s. Wynik został zapisany do PostgreSQL.
 
-**Idempotencja v10: PASS.**
+**Produkcja + systemd oneshot: PASS.**
 
-## PostgreSQL
+## Znane ograniczenia semantyczne
 
-Wynik jest przechowywany jako JSON w `ventilation_analysis_runs`, a `status` jako zwykłe pole tekstowe. Schema v2 nie wymaga dodatkowej migracji bazy.
+Produkcyjny przebieg potwierdził, że techniczny pipeline jest stabilny, ale końcowy tekst Qwena może nadal zawierać treści nieuzasadnione materiałem wejściowym. W szczególności model potrafi:
 
-Pełny `input_summary` nadal pozostaje zapisany jako materiał audytowy.
+- wymyślać progi liczbowe,
+- sugerować normy WHO/UE mimo braku takiego kontekstu,
+- proponować działania operatorskie niezwiązane bezpośrednio z danym oknem,
+- dodawać meta-oferty dotyczące integracji, wykresów lub dalszej analizy,
+- nierówno opisywać oba SEN55.
+
+Dlatego `ventilation-v10-baseline-safe` jest **eksperymentalno-doradczym fundamentem**, a nie zweryfikowaną diagnozą ani instrukcją operatorską.
+
+`operator_recommendation_pl` nie może być wejściem do automatycznej logiki CM5.
 
 ## Decyzja o zamrożeniu interpretacji Stage 2
 
-Rozwój promptu i kontraktu odpowiedzi zostaje zamrożony na `ventilation-v10-baseline-safe`.
-
 Nie planujemy v11/v12 w bieżącym Stage 2.
 
-Do rozbudowy interpretacji wrócimy dopiero po zebraniu rzeczywistej historii warsztatu, kiedy będzie można zaprojektować:
-
-- historyczny baseline,
-- porównania między oknami i dniami,
-- progi lub reguły oparte na rzeczywistych danych,
-- bardziej rozbudowane raporty i klasyfikacje.
+Do rozbudowy interpretacji wrócimy dopiero po zebraniu rzeczywistej historii warsztatu, kiedy będzie można zaprojektować historyczny baseline, porównania między oknami i dniami, progi/reguły oparte na rzeczywistych danych oraz bardziej rozbudowane raporty.
 
 ## Następny etap – odczyt wyniku przez CM5
 
-Po domknięciu technicznym Stage 2 planowany jest **wyłącznie read-only kanał AI Server -> CM5**.
-
-Docelowy kierunek:
+Po domknięciu technicznym Stage 2 planowany jest wyłącznie read-only kanał AI Server -> CM5:
 
 ```text
 AI Server / ventilation_analysis_runs
@@ -217,26 +174,19 @@ CM5 advisory client
 lokalny cache / GUI / status dla operatora
 ```
 
-Zasady tego kanału:
+Zasady:
 
 - CM5 pobiera wynik asynchronicznie i nie czeka na niego w logice sterowania,
 - brak odpowiedzi AI nie powoduje zmiany pracy wentylacji,
-- wynik AI może być wyświetlany, logowany lub udostępniany operatorowi,
-- wynik AI musi być oznaczony jako doradczy/eksperymentalny na tym etapie,
+- wynik AI może być wyświetlany lub logowany,
+- wynik AI musi być oznaczony jako doradczy/eksperymentalny,
 - wynik AI nie może automatycznie zmieniać trybu, setpointów ani żadnego elementu sterowania,
 - nie będzie endpointu AI -> CM5 wykonującego komendy sterujące.
 
-Szczegółowy kontrakt read-only endpointu i klienta CM5 zostanie zaprojektowany w kolejnym etapie.
+## Timer
 
-## Ograniczenia bieżącego Stage 2
-
-- brak automatycznego sterowania przez AI,
-- brak endpointu sterującego,
-- brak fine-tuningu,
-- brak pełnego historycznego baseline'u warsztatu,
-- odczyt wyniku przez CM5 jeszcze niezaimplementowany,
-- pozostaje deployment aktualnego kodu do `/opt/ai-bridge`, walidacja oneshot systemd i dopiero późniejsza decyzja o timerze.
+Timer analizy jest przygotowany, ale pozostaje celowo niewłączony. Produkcyjny oneshot jest PASS; przed automatyzacją należy zdecydować, jak eksperymentalny raport będzie eksponowany operatorowi i CM5.
 
 ## Wniosek
 
-Funkcjonalna część Stage 2 jest zwalidowana: Python liczy i przygotowuje dane, Qwen tworzy krótki raport po polsku, wynik trafia do PostgreSQL, a ponowny przebieg tego samego okna jest idempotentny i nie wywołuje modelu drugi raz. Kolejne kroki dotyczą już deploymentu/systemd, a następnie read-only dostarczenia raportu do CM5.
+Stage 2 osiągnął funkcjonalny PASS, idempotencję PASS oraz produkcyjny systemd oneshot PASS. Profil `ventilation-v10-baseline-safe` pozostaje zamrożonym fundamentem. Kolejny etap dotyczy dostarczenia raportu do CM5 w kanale read-only.
