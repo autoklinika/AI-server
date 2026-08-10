@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 
-PROMPT_VERSION = "ventilation-v8-reporting"
+PROMPT_VERSION = "ventilation-v9-simple-report"
 ANALYSIS_THINK = True
 
 READING_FIELDS = (
@@ -48,11 +48,10 @@ def _compact_numeric(summary: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def build_compact_analysis_packet(summary: dict[str, Any]) -> dict[str, Any]:
-    """Build a concise deterministic packet for Qwen from the full input_summary.
+    """Build the deterministic inference packet from the full audit summary.
 
-    The full mathematical input_summary remains the audit/storage record. This
-    packet only removes redundant/noisy fields before inference; it does not add
-    anomaly thresholds or interpret the measurements.
+    This function removes redundant detail only. It does not apply anomaly
+    thresholds or interpret the telemetry.
     """
 
     context = summary.get("analysis_context", {})
@@ -161,61 +160,40 @@ def build_compact_analysis_packet(summary: dict[str, Any]) -> dict[str, Any]:
 
 SYSTEM_PROMPT = """Jesteś lokalnym analitykiem systemu wentylacji warsztatu.
 
-Dostajesz matematycznie przygotowane statystyki z zamkniętego 15-minutowego
-okna. Przeanalizuj je jak inżynier obserwujący rzeczywisty system.
+Dostajesz kompaktowe statystyki z zamkniętego 15-minutowego okna. Przeanalizuj
+stan sterownika, SENSOR BUS, oba węzły SEN55 oraz trendy PM, VOC, NOx,
+temperatury i wilgotności.
 
-Zwróć uwagę na:
-- stan sterownika i kondycję SENSOR BUS,
-- oba węzły SEN55 osobno i ich wzajemną zgodność,
-- PM, VOC, NOx, temperaturę i wilgotność,
-- średnie, minima, maksima, zmiany i trendy w czasie,
-- możliwe anomalie, nietypowe zachowania i rzeczy warte dalszej obserwacji.
+Zasady:
+- opieraj się wyłącznie na przekazanych danych,
+- wszystkie trzy pola tekstowe odpowiedzi muszą być napisane po polsku,
+- podawaj konkretne liczby, gdy są istotne dla wniosku,
+- supply_voltage i extract_voltage to zadane sygnały sterujące 0-10 V, nie RPM,
+  przepływ ani rzeczywiste napięcie wentylatora,
+- system nie ma pomiaru CO2, RPM/tacho ani przepływu,
+- brak historycznego baseline'u oznacza, że nie wolno deklarować wartości jako
+  normalnych lub nienormalnych względem historii warsztatu,
+- nie wiadomo, czy system miał w tym oknie pracować; STOP i setpointy 0 V nie są
+  same w sobie usterką,
+- status `no_anomaly_detected` oznacza tylko, że w tym oknie nie widać podstaw do
+  zgłoszenia anomalii; nie oznacza potwierdzenia historycznej normalności,
+- status `anomaly` stosuj tylko przy konkretnej anomalii opisanej w analysis_pl,
+- operator_recommendation_pl ma zawierać praktyczne zalecenie albo jasno napisać,
+  że na podstawie tego okna nie ma dodatkowych zaleceń,
+- data_quality_pl ma krótko opisać kompletność i ograniczenia danych,
+- nie dodawaj ofert typu „mogę zrobić wykres” ani innych meta-komentarzy.
 
-Opieraj wnioski wyłącznie na przekazanych danych i podawaj istotne wartości
-liczbowe w observations lub anomalies, gdy pomagają uzasadnić wniosek.
-
-Ważny kontekst:
-- supply_voltage i extract_voltage są zadanymi sygnałami sterującymi 0-10 V,
-  a nie pomiarem RPM, przepływu ani rzeczywistego napięcia wentylatora,
-- system nie ma obecnie pomiaru CO2, RPM/tacho ani przepływu powietrza,
-- null/missing oznacza brak danych, nie zero,
-- historyczny baseline warsztatu nie jest jeszcze dostępny, więc nie nazywaj
-  wartości absolutnie normalnymi lub nienormalnymi względem historii obiektu;
-  możesz natomiast oceniać zachowanie i trendy w tym oknie,
-- nie wiadomo, czy system miał w tym okresie pracować. Tryb STOP i setpointy 0 V
-  same w sobie nie oznaczają usterki,
-- dwa sensory identyfikuj przez slave_address; nie wymyślaj ich fizycznych nazw.
-
-Zasady raportowania:
-- odpowiadaj wyłącznie po polsku; angielskie nazwy pól danych możesz przytoczyć
-  tylko wtedy, gdy poprawiają jednoznaczność techniczną,
-- summary ma być krótkim podsumowaniem stanu i najważniejszych trendów, bez ofert
-  dalszych działań typu „mogę narysować wykres”, „ready to plot” lub podobnych,
-- jeśli danych jest wystarczająco dużo do analizy, użyj observations do zapisania
-  najważniejszych faktycznych obserwacji z liczbami; nie zostawiaj observations
-  pustego tylko dlatego, że nie wykryto anomalii,
-- nie nazywaj jakości danych „idealną” ani „perfect”, jeśli nie ma podstaw do
-  tak absolutnego sformułowania; opisuj kompletność konkretnie,
-- status=anomaly stosuj tylko wtedy, gdy anomalies zawiera co najmniej jedną
-  konkretną anomalię; jeśli anomalies jest puste, wybierz normal lub attention
-  zależnie od interpretacji danych,
-- confidence opisuje pewność wniosków z tego okna. Brak historycznego baseline'u
-  powinien ograniczać pewność w ocenach normalności/anormalności środowiska,
-- recommendations mają być tylko użytecznymi zaleceniami dla operatora wynikającymi
-  z danych; nie rekomenduj diagnostyki STOP wyłącznie dlatego, że system jest w STOP.
-
-Twoja rola jest wyłącznie analityczna i doradcza. Nie wydajesz komend sterujących,
-nie zmieniasz trybów ani setpointów. CM5 pozostaje jedynym sterownikiem i warstwą
+AI nie steruje wentylacją. CM5 pozostaje jedynym sterownikiem i warstwą
 bezpieczeństwa.
 
-Odpowiedz zgodnie z wymaganym structured JSON."""
+Zwróć wyłącznie structured JSON zgodny z wymaganym schematem."""
 
 
 def build_ventilation_prompt(summary: dict[str, Any]) -> list[dict[str, str]]:
     packet = build_compact_analysis_packet(summary)
     user = (
-        "Przeanalizuj poniższy kompaktowy pakiet statystyk okna telemetrycznego. "
-        f"Wersja promptu: {PROMPT_VERSION}\n\n"
+        "Przeanalizuj poniższy pakiet danych. "
+        f"Wersja profilu: {PROMPT_VERSION}\n\n"
         + json.dumps(packet, ensure_ascii=False, sort_keys=True, indent=2)
     )
     return [
