@@ -1,7 +1,7 @@
 # AI Bridge – Ventilation AI Analysis Stage 2
 
 **Data:** 10.08.2026  
-**Status:** IMPLEMENTED – `ventilation-v9-simple-report` oczekuje na końcową walidację  
+**Status:** IMPLEMENTED – `ventilation-v10-baseline-safe` oczekuje na końcową walidację  
 **Repozytorium:** `autoklinika/AI-server`  
 **Gałąź:** `agent/ventilation-ai-analysis-stage2`
 
@@ -20,7 +20,7 @@ compact analysis packet
     ↓
 Ollama / qwen3.6:35b / think=true
     ↓
-minimalny raport JSON
+minimalny raport JSON schema v2
     ↓
 Pydantic – walidacja struktury
     ↓
@@ -67,9 +67,9 @@ Python oblicza pełne statystyki, m.in.:
 
 Pełny `input_summary` jest zachowywany w PostgreSQL.
 
-Do Qwena trafia compact packet zawierający tylko dane potrzebne do bieżącej interpretacji. Nie ma w nim progów ani klasyfikacji wykonywanej przez Python.
+Do Qwena trafia compact packet zawierający tylko dane potrzebne do bieżącej interpretacji. Python nie definiuje progów ani nie klasyfikuje jakości powietrza.
 
-## 5. Historia eksperymentów v1-v8
+## 5. Historia eksperymentów v1-v9
 
 Wersje były walidowane na tym samym oknie:
 
@@ -80,41 +80,38 @@ Wersje były walidowane na tym samym oknie:
 
 Najważniejsze wnioski:
 
-- v1/v2 – model zbyt płytko odczytywał pełny materiał i pomijał PM/VOC,
+- v1/v2 – model zbyt płytko odczytywał pełny materiał i pomijał część trendów,
 - v3/v4 – provenance i rozbudowane walidatory okazały się zbyt skomplikowane,
 - v5 – prosty output przy `think=false` nadal był za płytki,
-- v6 – `think=true` poprawił analizę trendów, ale pełny input nadal powodował błędy,
-- v7 – compact packet wyraźnie poprawił poprawność odczytania danych: Qwen zauważył wzrost VOC, spadek PM, stabilną temperaturę/wilgotność i płaski NOx,
-- v8 – dodatkowe instrukcje raportowania nie rozwiązały problemu pustych list i języka.
+- v6 – `think=true` poprawił analizę trendów,
+- v7 – compact packet wyraźnie poprawił odczyt PM/VOC/humidity/temperature/NOx,
+- v8 – rozbudowane instrukcje raportowe nadal były ignorowane przez model,
+- v9 – minimalny schema v2 rozwiązał problem formatu odpowiedzi i języka, ale model nadal użył pojęć sugerujących nieistniejące normy/progi.
 
-### Rzeczywisty wynik v8
+### Rzeczywisty wynik v9
 
 ```text
-analysis_id=4f3cf63d-6f01-4f21-9eb1-30449f8b38b8
-prompt_version=ventilation-v8-reporting
+analysis_id=db1198e8-71d8-4d1e-8b7c-b4291f91319c
+prompt_version=ventilation-v9-simple-report
 sample_count=179
 HTTP 200 OK
-status=normal
+status=no_anomaly_detected
+schema_version=2
 ```
 
-Model prawidłowo zauważył wzrost VOC, spadek PM i stabilność temperatury/wilgotności, ale:
+Format v9 uznano za właściwy. Wynik był po polsku i zawierał wszystkie trzy obowiązkowe pola.
 
-- odpowiedział po angielsku,
-- pozostawił `observations=[]`,
-- pozostawił `anomalies=[]`, `recommendations=[]` i `data_quality_notes=[]`,
-- zwrócił `confidence=0.98`.
+Do poprawy pozostały wyłącznie nieuprawnione sformułowania:
 
-Wniosek: compact packet i `think=true` są właściwe. Problemem był sam wielopolowy kontrakt odpowiedzi.
+- `typowe dla aktywności warsztatowej`,
+- `nie przekracza progów alarmowych`,
+- `pozostałe parametry pozostają w normie`.
 
-## 6. Aktywny kontrakt – schema v2
+Na tym etapie nie istnieje jeszcze wiarygodny baseline historyczny warsztatu ani zdefiniowane progi jakości powietrza, więc takich stwierdzeń nie wolno traktować jako faktów.
 
-Profil:
+## 6. Końcowy profil Stage 2 – `ventilation-v10-baseline-safe`
 
-```text
-ventilation-v9-simple-report
-```
-
-Wynik:
+Aktywny kontrakt pozostaje bez zmian względem v9:
 
 ```text
 schema_version = 2
@@ -135,54 +132,49 @@ insufficient_data
 
 Wszystkie trzy pola tekstowe są obowiązkowe i mają być napisane po polsku.
 
-Usunięto:
+Compact packet, `think=true`, `temperature=0`, model i schema pozostają bez zmian.
 
-- `summary`,
-- `confidence`,
-- `observations[]`,
-- `anomalies[]`,
-- `recommendations[]`,
-- `data_quality_notes[]`.
+Zmienia się tylko końcowa zasada promptu: bez przekazanego baseline'u, norm lub progów Qwen nie może używać określeń:
 
-Powód: pola zwiększały złożoność kontraktu, ale model często zostawiał listy puste i przenosił całą analizę do `summary`. `confidence` regularnie osiągało 0.98–1.0 mimo braku baseline'u.
+- `w normie`,
+- `typowe`,
+- `bezpieczne`,
+- `nie przekracza progów`.
 
-Nowy kontrakt jest celowo mały i przygotowany do późniejszej rozbudowy.
+`no_anomaly_detected` oznacza wyłącznie brak jednoznacznej anomalii w tym konkretnym 15-minutowym oknie na podstawie dostępnych danych.
 
-## 7. Zasady promptu v9
+## 7. Decyzja o zamrożeniu rozwoju interpretacji
 
-Qwen ma:
+Po ręcznym PASS `ventilation-v10-baseline-safe` rozwój promptu i kontraktu odpowiedzi zostaje zamrożony na obecnym poziomie.
 
-- analizować stan sterownika, SENSOR BUS i oba SEN55,
-- zwracać uwagę na PM, VOC, NOx, temperaturę i wilgotność,
-- używać tylko danych z packetu,
-- wszystkie pola tekstowe pisać po polsku,
-- nie traktować STOP + setpoint 0 V jako awarii bez dodatkowych przesłanek,
-- pamiętać, że setpointy 0–10 V nie są pomiarem RPM ani przepływu,
-- nie wymyślać CO2/RPM/airflow,
-- uwzględniać brak historycznego baseline'u,
-- nie dodawać meta-ofert ani komentarzy niezwiązanych z analizą.
+Nie planujemy kolejnych wersji v11/v12 w bieżącym Stage 2.
 
-## 8. PostgreSQL
+Do rozbudowy analizy wrócimy dopiero po zgromadzeniu realnej historii warsztatu, aby oprzeć dalsze funkcje na danych zamiast na arbitralnych założeniach. Wtedy będzie można dodać m.in.:
 
-Tabela `ventilation_analysis_runs` już obsługuje nowy kontrakt:
+- historyczny baseline,
+- porównania między oknami i dniami,
+- progi/reguły wynikające z rzeczywistych danych,
+- bardziej rozbudowane raporty.
+
+## 8. PostgreSQL i idempotencja
+
+Tabela `ventilation_analysis_runs` obsługuje schema v2 bez dodatkowej migracji:
 
 - `status` to pole tekstowe,
 - `result` to JSON,
 - `input_summary` to JSON.
 
-**Nie jest potrzebna nowa migracja Alembic.**
-
-Idempotencja pozostaje:
+Idempotencja:
 
 ```text
 (source_id, window_start, window_end, model, prompt_version)
 ```
 
-Dzięki `prompt_version=ventilation-v9-simple-report` to samo okno może zostać przeanalizowane ponownie bez usuwania wcześniejszych wyników.
+Dzięki `prompt_version=ventilation-v10-baseline-safe` to samo okno może zostać przeanalizowane ponownie bez usuwania wcześniejszych wyników.
 
 ## 9. Następny etap – wynik AI dla CM5
 
-Po zakończeniu Stage 2 pozostaje przygotowanie kanału read-only z AI Servera do CM5.
+Po zakończeniu Stage 2 kolejnym etapem będzie read-only dostarczenie najnowszego raportu do CM5.
 
 Planowany kierunek:
 
@@ -204,7 +196,7 @@ Najważniejsze zasady:
 - raport nie jest wejściem do automatycznej logiki setpointów,
 - nie tworzymy żadnego endpointu pozwalającego AI sterować CM5.
 
-Szczegółowy endpoint i klient CM5 będą osobnym etapem po ustabilizowaniu raportu v9.
+Szczegółowy endpoint i klient CM5 będą osobnym etapem po zakończeniu Stage 2.
 
 ## 10. Co pozostaje do walidacji Stage 2
 
@@ -213,13 +205,13 @@ Na AI Serverze:
 1. `compileall`,
 2. pełny `pytest`,
 3. realny przebieg tego samego okna 179 próbek,
-4. potwierdzenie `prompt_version=ventilation-v9-simple-report`,
-5. sprawdzenie, czy wszystkie trzy pola tekstowe są po polsku i zawierają sensowną analizę,
-6. test idempotencji v9,
+4. potwierdzenie `prompt_version=ventilation-v10-baseline-safe`,
+5. sprawdzenie, że raport nie używa nieistniejących norm, baseline'u ani progów,
+6. drugi przebieg tego samego okna dla idempotencji,
 7. dopiero potem test deploymentu/systemd timer.
 
 Timer nadal pozostaje niewłączony.
 
 ## 11. Status
 
-Stage 2 pozostaje Draft. Nie oznaczać PR jako Ready i nie wykonywać merge przed ręcznym PASS `ventilation-v9-simple-report` na rzeczywistym Serwerze AI.
+Stage 2 pozostaje Draft. Nie oznaczać PR jako Ready i nie wykonywać merge przed ręcznym PASS `ventilation-v10-baseline-safe` na rzeczywistym Serwerze AI.
