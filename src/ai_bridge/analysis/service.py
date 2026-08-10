@@ -109,17 +109,17 @@ class VentilationAnalysisService:
         if len(samples) < self.min_samples:
             result = VentilationAnalysisResult(
                 status="insufficient_data",
-                summary=(
+                analysis_pl=(
                     f"Za mało danych do wiarygodnej analizy okna: "
                     f"{len(samples)} próbek, wymagane minimum {self.min_samples}."
                 ),
-                confidence=1.0,
-                observations=[],
-                anomalies=[],
-                recommendations=[],
-                data_quality_notes=[
-                    "Analiza modelu nie została uruchomiona z powodu zbyt małej liczby próbek."
-                ],
+                operator_recommendation_pl=(
+                    "Poczekać na pełniejsze okno telemetryczne przed oceną zachowania systemu."
+                ),
+                data_quality_pl=(
+                    "Model AI nie został uruchomiony, ponieważ liczba próbek nie spełniła "
+                    "minimalnego warunku jakości danych."
+                ),
             )
             chat = None
         else:
