@@ -1,7 +1,7 @@
 # ADR-006 – Read-only dostarczanie wyniku AI do CM5
 
 **Data:** 11.08.2026  
-**Status:** Stage 3 – produkcyjny endpoint read-only PASS  
+**Status:** Stage 3 – TECHNICAL / PRODUCTION VALIDATION PASS  
 **Repozytorium:** `autoklinika/AI-server`  
 **Gałąź:** `agent/ai-result-delivery-stage3`
 
@@ -136,7 +136,7 @@ pytest
 
 **Implementacja i testy lokalne Stage 3: PASS.**
 
-## 9. Walidacja produkcyjna – PASS
+## 9. Walidacja produkcyjna AI Server – PASS
 
 AI Bridge został wdrożony produkcyjnie jako `0.3.0`.
 
@@ -178,9 +178,9 @@ Endpoint zwrócił istniejący zapisany rekord. Implementacja ścieżki `GET lat
 
 **Produkcja AI Server Stage 3: PASS.**
 
-## 10. Następny element toru
+## 10. Integracja z rzeczywistym CM5 – PASS
 
-Po stronie CM5 działać ma osobny klient:
+Po stronie CM5 uruchomiono osobny klient:
 
 ```text
 AI Bridge GET latest
@@ -188,14 +188,44 @@ AI Bridge GET latest
 wvc-ai-advisory.service
     ↓
 /var/lib/workshop-ventilation/ai-advisory.json
-    ↓
-przyszły GUI/status operatora
 ```
 
-Klient CM5 nie komunikuje się z socketem `ventilation-core` i nie zapisuje do jego stanu.
+Rzeczywisty CM5 pobrał raport `analysis_id=5cf9d21e-e2d2-4b0c-920e-c4a67aef135a`, zaakceptował wyłącznie kontrakt `advisory_only=true`, `experimental=true`, `control_actions_supported=false` i zapisał lokalny cache.
 
-## 11. Status
+Na CM5 równocześnie działały:
 
-AI Server Stage 3 ma lokalny PASS i produkcyjny PASS dla read-only endpointu. Kolejnym krokiem jest wdrożenie i walidacja klienta `wvc-ai-advisory.service` na rzeczywistym CM5.
+```text
+ventilation-core.service     active
+wvc-telemetry-sync.service   active
+wvc-ai-advisory.service      active
+```
 
-PR pozostaje Draft. Nie oznaczać Ready i nie merge'ować bez wyraźnej decyzji użytkownika.
+## 11. Fail-safe i recovery – PASS
+
+AI Bridge został celowo zatrzymany. W czasie jego niedostępności:
+
+- `ventilation-core.service` pozostał `active`,
+- `wvc-telemetry-sync.service` pozostał `active`,
+- `wvc-ai-advisory.service` pozostał `active`,
+- telemetry sync otrzymywał `Connection refused` i zachowywał dane lokalnie,
+- cache advisory zachował ostatni poprawny raport.
+
+Po ponownym uruchomieniu AI Bridge oba kanały automatycznie wznowiły komunikację:
+
+```text
+POST /api/v1/ventilation/telemetry/batches -> 200 OK
+GET /api/v1/ventilation/analysis/latest?... -> 200 OK
+```
+
+Potwierdzono zatem nadrzędną granicę architektoniczną:
+
+```text
+AI Server może być całkowicie niedostępny,
+a CM5 nadal realizuje sterowanie i safety niezależnie.
+```
+
+## 12. Wniosek
+
+**AI advisory result delivery Stage 3: TECHNICAL / PRODUCTION VALIDATION PASS.**
+
+AI pozostaje wyłącznie `advisory/experimental`. Nie istnieje ścieżka AI -> setpoint / START / STOP / safety.
