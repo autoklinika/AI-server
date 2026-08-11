@@ -174,7 +174,7 @@ result.schema_version=2
 status=no_anomaly_detected
 ```
 
-Endpoint zwrócił istniejący zapisany rekord i nie uruchamia ścieżki analizy ani klienta Ollamy. Timer analizy pozostaje wyłączony, więc odczyt `GET latest` nie tworzy nowej analizy.
+Endpoint zwrócił istniejący zapisany rekord. Implementacja ścieżki `GET latest` korzysta wyłącznie z repozytorium PostgreSQL i nie wywołuje klienta Ollamy ani ścieżki analizy. Timer analizy pozostaje wyłączony, więc odczyt nie inicjuje nowej analizy.
 
 **Produkcja AI Server Stage 3: PASS.**
 
