@@ -1,7 +1,7 @@
 # ADR-006 – Read-only dostarczanie wyniku AI do CM5
 
 **Data:** 11.08.2026  
-**Status:** Stage 3 – implementacja i testy lokalne PASS; walidacja produkcyjna w toku  
+**Status:** Stage 3 – produkcyjny endpoint read-only PASS  
 **Repozytorium:** `autoklinika/AI-server`  
 **Gałąź:** `agent/ai-result-delivery-stage3`
 
@@ -13,7 +13,7 @@ Kanał AI Server -> CM5 nie może stać się kanałem sterującym. Awaria endpoi
 
 ## 2. Zakres Stage 3
 
-Dodany zostaje wyłącznie read-only endpoint:
+Dodany został wyłącznie read-only endpoint:
 
 ```text
 GET /api/v1/ventilation/analysis/latest?source_id=<source_id>
@@ -107,7 +107,7 @@ control_commands_supported=false
 
 ## 7. Wersja aplikacji
 
-Stage 3 podnosi AI Bridge do:
+Stage 3 podniósł AI Bridge do:
 
 ```text
 0.3.0
@@ -136,9 +136,51 @@ pytest
 
 **Implementacja i testy lokalne Stage 3: PASS.**
 
-## 9. Następny element toru
+## 9. Walidacja produkcyjna – PASS
 
-Po stronie CM5 powstaje osobny klient:
+AI Bridge został wdrożony produkcyjnie jako `0.3.0`.
+
+Health:
+
+```text
+status=ok
+service=ai-bridge
+version=0.3.0
+control_commands_supported=false
+database=ok
+ollama=not_checked
+```
+
+Rzeczywisty odczyt:
+
+```text
+GET /api/v1/ventilation/analysis/latest?source_id=workshop-ventilation-cm5-01
+```
+
+zwrócił:
+
+```text
+delivery_schema_version=1
+analysis_id=5cf9d21e-e2d2-4b0c-920e-c4a67aef135a
+source_id=workshop-ventilation-cm5-01
+window=2026-08-10T15:15:00Z..15:30:00Z
+sample_count=180
+model=qwen3.6:35b
+prompt_version=ventilation-v10-baseline-safe
+advisory_only=true
+experimental=true
+control_actions_supported=false
+result.schema_version=2
+status=no_anomaly_detected
+```
+
+Endpoint zwrócił istniejący zapisany rekord i nie uruchamia ścieżki analizy ani klienta Ollamy. Timer analizy pozostaje wyłączony, więc odczyt `GET latest` nie tworzy nowej analizy.
+
+**Produkcja AI Server Stage 3: PASS.**
+
+## 10. Następny element toru
+
+Po stronie CM5 działać ma osobny klient:
 
 ```text
 AI Bridge GET latest
@@ -152,15 +194,8 @@ przyszły GUI/status operatora
 
 Klient CM5 nie komunikuje się z socketem `ventilation-core` i nie zapisuje do jego stanu.
 
-## 10. Walidacja produkcyjna
+## 11. Status
 
-Do zakończenia Stage 3 pozostaje potwierdzenie na produkcyjnym AI Bridge:
+AI Server Stage 3 ma lokalny PASS i produkcyjny PASS dla read-only endpointu. Kolejnym krokiem jest wdrożenie i walidacja klienta `wvc-ai-advisory.service` na rzeczywistym CM5.
 
-```text
-AI Bridge 0.3.0 deployment
-GET latest dla workshop-ventilation-cm5-01
-GET nie uruchamia /api/chat Ollamy
-health nadal control_commands_supported=false
-```
-
-Stage 3 pozostaje Draft. Nie oznaczać Ready i nie merge'ować bez wyraźnej decyzji użytkownika.
+PR pozostaje Draft. Nie oznaczać Ready i nie merge'ować bez wyraźnej decyzji użytkownika.
