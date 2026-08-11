@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-bridge"
-version = "0.2.0"
+version = "0.3.0"
 description = "Local AI Bridge for telemetry ingestion and advisory analysis"
 requires-python = ">=3.12"
 dependencies = [

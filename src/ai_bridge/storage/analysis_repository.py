@@ -52,6 +52,18 @@ class VentilationAnalysisRepository:
                 )
             )
 
+    def get_latest(self, *, source_id: str) -> VentilationAnalysisRunRecord | None:
+        with self._database.session() as session:
+            return session.scalar(
+                select(VentilationAnalysisRunRecord)
+                .where(VentilationAnalysisRunRecord.source_id == source_id)
+                .order_by(
+                    VentilationAnalysisRunRecord.window_end.desc(),
+                    VentilationAnalysisRunRecord.created_at.desc(),
+                )
+                .limit(1)
+            )
+
     def save_analysis(
         self,
         *,
