@@ -1,7 +1,7 @@
 # ADR-006 – Read-only dostarczanie wyniku AI do CM5
 
-**Data:** 10.08.2026  
-**Status:** Stage 3 – implementacja do walidacji  
+**Data:** 11.08.2026  
+**Status:** Stage 3 – implementacja i testy lokalne PASS; walidacja produkcyjna w toku  
 **Repozytorium:** `autoklinika/AI-server`  
 **Gałąź:** `agent/ai-result-delivery-stage3`
 
@@ -113,7 +113,7 @@ Stage 3 podnosi AI Bridge do:
 0.3.0
 ```
 
-## 8. Testy kontraktu
+## 8. Testy kontraktu – PASS
 
 Dodane testy sprawdzają:
 
@@ -125,6 +125,16 @@ Dodane testy sprawdzają:
 - brak pól audit/raw/runtime w odpowiedzi,
 - wyłącznie metodę GET,
 - brak endpointów sterujących.
+
+Rzeczywista lokalna walidacja na AI Serverze 11.08.2026:
+
+```text
+python -m compileall -q src tests
+pytest
+26 passed, 1 warning in 0.17s
+```
+
+**Implementacja i testy lokalne Stage 3: PASS.**
 
 ## 9. Następny element toru
 
@@ -144,15 +154,13 @@ Klient CM5 nie komunikuje się z socketem `ventilation-core` i nie zapisuje do j
 
 ## 10. Walidacja produkcyjna
 
-Przed zakończeniem etapu należy potwierdzić na AI Serverze:
+Do zakończenia Stage 3 pozostaje potwierdzenie na produkcyjnym AI Bridge:
 
 ```text
-compileall
-pytest
 AI Bridge 0.3.0 deployment
 GET latest dla workshop-ventilation-cm5-01
 GET nie uruchamia /api/chat Ollamy
 health nadal control_commands_supported=false
 ```
 
-Stage 3 pozostaje Draft do ręcznej walidacji. Nie oznaczać Ready i nie merge'ować bez wyraźnej decyzji użytkownika.
+Stage 3 pozostaje Draft. Nie oznaczać Ready i nie merge'ować bez wyraźnej decyzji użytkownika.
