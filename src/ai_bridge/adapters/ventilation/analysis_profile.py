@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 
-PROMPT_VERSION = "ventilation-v11-semantic-hardening"
+PROMPT_VERSION = "ventilation-v11.1-semantic-hardening"
 ANALYSIS_THINK = False
 
 READING_FIELDS = (
@@ -168,11 +168,15 @@ Zasady nadrzędne:
 - opieraj się wyłącznie na przekazanych danych,
 - wszystkie trzy pola tekstowe odpowiedzi muszą być napisane po polsku,
 - podawaj konkretne liczby, gdy są istotne dla wniosku,
-- rozróżniaj obserwację od przyczyny: zbieżność lub trend nie potwierdzają
-  przyczynowości,
+- rozróżniaj obserwację od przyczyny: zbieżność, różnica między węzłami ani trend
+  nie potwierdzają przyczynowości,
 - nie wymyślaj źródeł PM, VOC ani NOx ani czynności wykonywanych w warsztacie;
   bez bezpośrednich danych nie przypisuj wzrostu do spawania, szlifowania,
   lakierowania, rozpuszczalników, silnika, spalin, pieca ani innych procesów,
+- jeśli tylko jeden węzeł pokazuje zmianę, opisz różnicę między węzłami, ale nie
+  wyprowadzaj z niej hipotezy o lokalnym źródle, aktywności generującej pył ani
+  uszkodzeniu czujnika, jeżeli diagnostyka nie potwierdza takiej przyczyny;
+  w takim przypadku napisz po prostu, że przyczyna różnicy nie jest znana,
 - VOC Index i NOx Index są indeksami. Nie nazywaj ich stężeniem i nie przeliczaj
   ich na ppm, ppb ani inne jednostki stężenia,
 - supply_voltage i extract_voltage to zadane sygnały sterujące 0-10 V, nie RPM,
@@ -188,8 +192,12 @@ Zasady nadrzędne:
   bieżącego okna. Oznacza tylko, że nie wolno klasyfikować wartości względem
   normalnej pracy warsztatu,
 - jeżeli expected_operating_state_known=false, nie wiadomo, czy aktualny tryb i
-  setpointy są zgodne z zamiarem operatora. Gdy opisujesz STOP lub 0 V, zaznacz
-  jawnie tę niewiedzę. STOP i setpointy 0 V nie są same w sobie usterką,
+  setpointy są zgodne z zamiarem operatora. Jest to wyłącznie ograniczenie
+  kontekstu, a nie anomalia i nie powód do statusu `attention` lub `anomaly`,
+- gdy opisujesz STOP lub 0 V przy expected_operating_state_known=false, zaznacz
+  jawnie tę niewiedzę, ale nie wyciągaj z niej wniosku o awarii, braku aktywności,
+  stanie spoczynku ani potrzebie interwencji. STOP i setpointy 0 V nie są same w
+  sobie usterką,
 - brak jednego kanału pomiarowego przez całe okno jest problemem jakości danych;
   opisz go w data_quality_pl i nie zastępuj brakującej wartości domysłem.
 
@@ -210,6 +218,9 @@ Spójność statusu i treści:
   wymagające uwagi, nie zwracaj `no_anomaly_detected`,
 - jeżeli przez całe okno brakuje kanału pomiarowego jednego z węzłów, nie zwracaj
   `no_anomaly_detected`; użyj co najmniej `attention`,
+- `expected_operating_state_known=false` samo w sobie nigdy nie podnosi statusu;
+  przy STOP + 0 V, kompletnych stabilnych danych, braku alarmów i braku innych
+  zdarzeń zwróć `no_anomaly_detected`,
 - jeśli zwracasz `anomaly`, analysis_pl musi wskazywać konkretną obserwację, która
   ten status uzasadnia.
 
@@ -219,6 +230,8 @@ Pozostałe zasady:
   dodatkowych zaleceń,
 - nie zalecaj zwiększania ani zmniejszania przepływu, jeżeli przepływ nie jest
   mierzony,
+- nie zalecaj szukania konkretnego źródła emisji lub aktywności warsztatowej,
+  jeżeli źródło nie jest bezpośrednio wskazane w danych,
 - data_quality_pl ma krótko opisać kompletność i ograniczenia danych,
 - nie dodawaj ofert typu „mogę zrobić wykres” ani innych meta-komentarzy.
 
