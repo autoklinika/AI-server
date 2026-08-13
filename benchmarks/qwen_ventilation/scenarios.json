@@ -7,37 +7,17 @@
       "allowed_status": ["no_anomaly_detected"],
       "overrides": {},
       "must_match": [
-        {
-          "name": "mentions_baseline_limit",
-          "field": "data_quality_pl",
-          "mode": "any",
-          "patterns": ["baseline", "historycz", "brak.{0,30}(progu|progów|punktu odniesienia|odniesienia)"]
-        }
+        {"name": "mentions_baseline_limit", "field": "data_quality_pl", "mode": "any", "patterns": ["baseline", "historycz", "brak.{0,30}(progu|progów|punktu odniesienia|odniesienia)"]}
       ],
       "must_not_match": [
-        {
-          "name": "claims_norm_or_safety",
-          "field": "all",
-          "pattern": "(?:wartości|parametry|powietrze).{0,50}(?:w normie|bezpieczn|prawidłow)"
-        }
+        {"name": "claims_norm_or_safety", "field": "all", "pattern": "(?:wartości|parametry|powietrze).{0,50}(?:w normie|bezpieczn|prawidłow)"}
       ]
     },
     {
       "id": "pm_spike_single_node",
       "description": "Wyraźny wzrost PM w jednym SEN55, drugi węzeł pozostaje stabilny.",
       "allowed_status": ["attention", "anomaly"],
-      "overrides": {
-        "sensor_bus": {
-          "nodes": {
-            "1": {
-              "readings": {
-                "pm2_5_ug_m3": {"mean": 26.0, "min": 4.0, "max": 95.0, "delta": 66.0, "slope_per_minute": 4.4},
-                "pm10_0_ug_m3": {"mean": 34.0, "min": 7.0, "max": 124.0, "delta": 82.0, "slope_per_minute": 5.3}
-              }
-            }
-          }
-        }
-      },
+      "overrides": {"sensor_bus": {"nodes": {"1": {"readings": {"pm2_5_ug_m3": {"mean": 26.0, "min": 4.0, "max": 95.0, "delta": 66.0, "slope_per_minute": 4.4}, "pm10_0_ug_m3": {"mean": 34.0, "min": 7.0, "max": 124.0, "delta": 82.0, "slope_per_minute": 5.3}}}}}}},
       "must_match": [
         {"name": "detects_pm_event", "field": "analysis_pl", "mode": "any", "patterns": ["PM2\\.5", "PM10", "pył"]},
         {"name": "notices_single_node_context", "field": "analysis_pl", "mode": "any", "patterns": ["węzeł.{0,20}1", "adres.{0,20}1", "SEN55.{0,30}1", "jedn.{0,20}węźle"]}
@@ -50,17 +30,7 @@
       "id": "voc_only_event",
       "description": "Silny wzrost VOC Index przy stabilnym PM i NOx Index.",
       "allowed_status": ["attention", "anomaly"],
-      "overrides": {
-        "sensor_bus": {
-          "nodes": {
-            "1": {
-              "readings": {
-                "voc_index": {"mean": 188.0, "min": 92.0, "max": 305.0, "delta": 182.0, "slope_per_minute": 11.7}
-              }
-            }
-          }
-        }
-      },
+      "overrides": {"sensor_bus": {"nodes": {"1": {"readings": {"voc_index": {"mean": 188.0, "min": 92.0, "max": 305.0, "delta": 182.0, "slope_per_minute": 11.7}}}}}},
       "must_match": [
         {"name": "detects_voc_event", "field": "analysis_pl", "patterns": ["VOC"]}
       ],
@@ -73,17 +43,7 @@
       "id": "nox_index_event",
       "description": "Silny wzrost NOx Index bez równoczesnego wzrostu PM i VOC Index.",
       "allowed_status": ["attention", "anomaly"],
-      "overrides": {
-        "sensor_bus": {
-          "nodes": {
-            "2": {
-              "readings": {
-                "nox_index": {"mean": 46.0, "min": 1.0, "max": 118.0, "delta": 101.0, "slope_per_minute": 6.8}
-              }
-            }
-          }
-        }
-      },
+      "overrides": {"sensor_bus": {"nodes": {"2": {"readings": {"nox_index": {"mean": 46.0, "min": 1.0, "max": 118.0, "delta": 101.0, "slope_per_minute": 6.8}}}}}},
       "must_match": [
         {"name": "detects_nox_event", "field": "analysis_pl", "patterns": ["NOx"]}
       ],
@@ -96,27 +56,7 @@
       "id": "sensor_node_degraded",
       "description": "Jeden węzeł SEN55 ma obniżoną dostępność i rosnące błędy komunikacji.",
       "allowed_status": ["attention", "anomaly"],
-      "overrides": {
-        "sensor_bus": {
-          "nodes": {
-            "1": {
-              "online_ratio": 0.55,
-              "measurement_valid_ratio": 0.42,
-              "measurement_stale_ratio": 0.38,
-              "diagnostic_counter_deltas": {
-                "sensor_errors": 2,
-                "modbus_service_errors": 5,
-                "communication_errors": 12,
-                "consecutive_failures": 4,
-                "invalid_measurements": 7,
-                "stale_measurements": 9,
-                "map_version_errors": 0
-              },
-              "latest_error": "Modbus timeout"
-            }
-          }
-        }
-      },
+      "overrides": {"sensor_bus": {"nodes": {"1": {"online_ratio": 0.55, "measurement_valid_ratio": 0.42, "measurement_stale_ratio": 0.38, "diagnostic_counter_deltas": {"sensor_errors": 2, "modbus_service_errors": 5, "communication_errors": 12, "consecutive_failures": 4, "invalid_measurements": 7, "stale_measurements": 9, "map_version_errors": 0}, "latest_error": "Modbus timeout"}}}},
       "must_match": [
         {"name": "detects_node_quality_problem", "field": "analysis_pl", "mode": "any", "patterns": ["komunik", "Modbus", "stale", "ważno", "dostępno", "węzeł"]},
         {"name": "data_quality_mentions_degradation", "field": "data_quality_pl", "mode": "any", "patterns": ["węzeł", "komunik", "niepeł", "stale", "ważno", "dostępno"]}
@@ -127,22 +67,58 @@
       "id": "stop_zero_setpoints_unknown_expected_state",
       "description": "Sterownik pozostaje w STOP z 0 V, ale oczekiwany stan operacyjny nie jest znany.",
       "allowed_status": ["no_anomaly_detected"],
-      "overrides": {
-        "controller": {
-          "latest_mode": "STOP",
-          "mode_counts": {"STOP": 180},
-          "setpoints": {
-            "supply_voltage": {"mean": 0.0, "min": 0.0, "max": 0.0, "delta": 0.0},
-            "extract_voltage": {"mean": 0.0, "min": 0.0, "max": 0.0, "delta": 0.0}
-          }
-        }
-      },
+      "overrides": {"controller": {"latest_mode": "STOP", "mode_counts": {"STOP": 180}, "setpoints": {"supply_voltage": {"mean": 0.0, "min": 0.0, "max": 0.0, "delta": 0.0}, "extract_voltage": {"mean": 0.0, "min": 0.0, "max": 0.0, "delta": 0.0}}}},
       "must_match": [
         {"name": "recognizes_unknown_expected_state", "field": "all", "mode": "any", "patterns": ["nie wiadomo.{0,50}(prac|STOP|stan)", "oczekiwany.{0,30}stan.{0,30}nie", "brak.{0,30}informacji.{0,30}(prac|stan)"]}
       ],
       "must_not_match": [
         {"name": "does_not_call_stop_failure", "field": "all", "pattern": "STOP.{0,50}(?:awari|usterk|anomali)|0 ?V.{0,50}(?:awari|usterk|anomali)"}
       ]
+    },
+    {
+      "id": "sensor_bus_worker_failure",
+      "description": "SENSOR BUS jest przez większość okna niegotowy, a worker wielokrotnie się restartuje.",
+      "allowed_status": ["anomaly"],
+      "overrides": {"sensor_bus": {"ready_ratio": 0.2, "worker_alive_ratio": 0.3, "worker_restarts_max": 4, "latest_error": "sensor bus worker stopped unexpectedly"}},
+      "must_match": [
+        {"name": "detects_bus_failure", "field": "analysis_pl", "mode": "any", "patterns": ["SENSOR BUS", "worker", "restart", "gotowo"]}
+      ],
+      "must_not_match": []
+    },
+    {
+      "id": "high_setpoints_without_airflow_or_rpm",
+      "description": "Wysokie setpointy 0-10 V bez pomiaru RPM i bez pomiaru przepływu.",
+      "allowed_status": ["no_anomaly_detected", "attention"],
+      "overrides": {"controller": {"setpoints": {"supply_voltage": {"mean": 9.5, "min": 9.0, "max": 10.0, "delta": 1.0}, "extract_voltage": {"mean": 9.2, "min": 8.8, "max": 9.7, "delta": 0.9}}}},
+      "must_match": [
+        {"name": "treats_values_as_control_setpoints", "field": "analysis_pl", "mode": "any", "patterns": ["0-10 V", "0–10 V", "setpoint", "sygnał.{0,20}steruj", "napięci.{0,20}zadan"]}
+      ],
+      "must_not_match": [
+        {"name": "does_not_infer_airflow", "field": "all", "pattern": "(?:wysok|duż|zwiększon|maksymaln).{0,35}(?:przepływ|strumień powietrza)"},
+        {"name": "does_not_infer_rpm", "field": "all", "pattern": "(?:wentylator|nawiew|wyciąg).{0,50}[0-9]+ ?RPM"}
+      ]
+    },
+    {
+      "id": "missing_voc_on_one_node",
+      "description": "Jeden SEN55 nie dostarcza VOC Index przez całe okno, pozostałe pomiary są dostępne.",
+      "allowed_status": ["attention", "anomaly"],
+      "overrides": {"sensor_bus": {"nodes": {"2": {"readings": {"voc_index": {"count": 0, "missing": 180, "mean": null, "min": null, "max": null, "delta": null, "slope_per_minute": null}}}}}},
+      "must_match": [
+        {"name": "detects_missing_voc", "field": "data_quality_pl", "mode": "all", "patterns": ["VOC", "brak|niedostęp|niekomplet|0.{0,20}180|180.{0,20}brak"]}
+      ],
+      "must_not_match": [
+        {"name": "does_not_invent_missing_voc_value", "field": "all", "pattern": "VOC Index.{0,30}(?:wynosi|średni|maksymaln).{0,10}[1-9][0-9]*"}
+      ]
+    },
+    {
+      "id": "controller_fault_with_alarm",
+      "description": "Sterownik raportuje FAULT oraz aktywny alarm przez całe okno.",
+      "allowed_status": ["anomaly"],
+      "overrides": {"controller": {"latest_mode": "FAULT", "mode_counts": {"FAULT": 180}, "hardware_ready_ratio": 0.0, "output_state_known_ratio": 0.4, "consecutive_hardware_failures_max": 8, "active_alarm_sample_count": 180, "active_alarm_codes": ["HARDWARE_NOT_READY"]}},
+      "must_match": [
+        {"name": "detects_controller_fault", "field": "analysis_pl", "mode": "all", "patterns": ["FAULT|alarm|HARDWARE_NOT_READY", "hardware|sprzęt|gotow"]}
+      ],
+      "must_not_match": []
     }
   ]
 }
