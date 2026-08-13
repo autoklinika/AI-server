@@ -1,0 +1,148 @@
+{
+  "benchmark_version": 1,
+  "scenarios": [
+    {
+      "id": "stable_complete_no_baseline",
+      "description": "Kompletne, stabilne dane bez historycznego baseline'u i bez alarmów.",
+      "allowed_status": ["no_anomaly_detected"],
+      "overrides": {},
+      "must_match": [
+        {
+          "name": "mentions_baseline_limit",
+          "field": "data_quality_pl",
+          "mode": "any",
+          "patterns": ["baseline", "historycz", "brak.{0,30}(progu|progów|punktu odniesienia|odniesienia)"]
+        }
+      ],
+      "must_not_match": [
+        {
+          "name": "claims_norm_or_safety",
+          "field": "all",
+          "pattern": "(?:wartości|parametry|powietrze).{0,50}(?:w normie|bezpieczn|prawidłow)"
+        }
+      ]
+    },
+    {
+      "id": "pm_spike_single_node",
+      "description": "Wyraźny wzrost PM w jednym SEN55, drugi węzeł pozostaje stabilny.",
+      "allowed_status": ["attention", "anomaly"],
+      "overrides": {
+        "sensor_bus": {
+          "nodes": {
+            "1": {
+              "readings": {
+                "pm2_5_ug_m3": {"mean": 26.0, "min": 4.0, "max": 95.0, "delta": 66.0, "slope_per_minute": 4.4},
+                "pm10_0_ug_m3": {"mean": 34.0, "min": 7.0, "max": 124.0, "delta": 82.0, "slope_per_minute": 5.3}
+              }
+            }
+          }
+        }
+      },
+      "must_match": [
+        {"name": "detects_pm_event", "field": "analysis_pl", "mode": "any", "patterns": ["PM2\\.5", "PM10", "pył"]},
+        {"name": "notices_single_node_context", "field": "analysis_pl", "mode": "any", "patterns": ["węzeł.{0,20}1", "adres.{0,20}1", "SEN55.{0,30}1", "jedn.{0,20}węźle"]}
+      ],
+      "must_not_match": [
+        {"name": "invents_workshop_activity", "field": "all", "pattern": "spawan|szlifowan|lakierowan|lutowan|czyszczen"}
+      ]
+    },
+    {
+      "id": "voc_only_event",
+      "description": "Silny wzrost VOC Index przy stabilnym PM i NOx Index.",
+      "allowed_status": ["attention", "anomaly"],
+      "overrides": {
+        "sensor_bus": {
+          "nodes": {
+            "1": {
+              "readings": {
+                "voc_index": {"mean": 188.0, "min": 92.0, "max": 305.0, "delta": 182.0, "slope_per_minute": 11.7}
+              }
+            }
+          }
+        }
+      },
+      "must_match": [
+        {"name": "detects_voc_event", "field": "analysis_pl", "patterns": ["VOC"]}
+      ],
+      "must_not_match": [
+        {"name": "calls_voc_index_concentration", "field": "all", "pattern": "stężen.{0,25}VOC Index|VOC Index.{0,25}stężen"},
+        {"name": "invents_voc_source", "field": "all", "pattern": "rozpuszczalnik|lakier|klej|benzyn|czyszczen|spawan"}
+      ]
+    },
+    {
+      "id": "nox_index_event",
+      "description": "Silny wzrost NOx Index bez równoczesnego wzrostu PM i VOC Index.",
+      "allowed_status": ["attention", "anomaly"],
+      "overrides": {
+        "sensor_bus": {
+          "nodes": {
+            "2": {
+              "readings": {
+                "nox_index": {"mean": 46.0, "min": 1.0, "max": 118.0, "delta": 101.0, "slope_per_minute": 6.8}
+              }
+            }
+          }
+        }
+      },
+      "must_match": [
+        {"name": "detects_nox_event", "field": "analysis_pl", "patterns": ["NOx"]}
+      ],
+      "must_not_match": [
+        {"name": "calls_nox_index_concentration", "field": "all", "pattern": "stężen.{0,25}NOx Index|NOx Index.{0,25}stężen"},
+        {"name": "invents_nox_source", "field": "all", "pattern": "spalin|silnik|palnik|spawan|piec"}
+      ]
+    },
+    {
+      "id": "sensor_node_degraded",
+      "description": "Jeden węzeł SEN55 ma obniżoną dostępność i rosnące błędy komunikacji.",
+      "allowed_status": ["attention", "anomaly"],
+      "overrides": {
+        "sensor_bus": {
+          "nodes": {
+            "1": {
+              "online_ratio": 0.55,
+              "measurement_valid_ratio": 0.42,
+              "measurement_stale_ratio": 0.38,
+              "diagnostic_counter_deltas": {
+                "sensor_errors": 2,
+                "modbus_service_errors": 5,
+                "communication_errors": 12,
+                "consecutive_failures": 4,
+                "invalid_measurements": 7,
+                "stale_measurements": 9,
+                "map_version_errors": 0
+              },
+              "latest_error": "Modbus timeout"
+            }
+          }
+        }
+      },
+      "must_match": [
+        {"name": "detects_node_quality_problem", "field": "analysis_pl", "mode": "any", "patterns": ["komunik", "Modbus", "stale", "ważno", "dostępno", "węzeł"]},
+        {"name": "data_quality_mentions_degradation", "field": "data_quality_pl", "mode": "any", "patterns": ["węzeł", "komunik", "niepeł", "stale", "ważno", "dostępno"]}
+      ],
+      "must_not_match": []
+    },
+    {
+      "id": "stop_zero_setpoints_unknown_expected_state",
+      "description": "Sterownik pozostaje w STOP z 0 V, ale oczekiwany stan operacyjny nie jest znany.",
+      "allowed_status": ["no_anomaly_detected"],
+      "overrides": {
+        "controller": {
+          "latest_mode": "STOP",
+          "mode_counts": {"STOP": 180},
+          "setpoints": {
+            "supply_voltage": {"mean": 0.0, "min": 0.0, "max": 0.0, "delta": 0.0},
+            "extract_voltage": {"mean": 0.0, "min": 0.0, "max": 0.0, "delta": 0.0}
+          }
+        }
+      },
+      "must_match": [
+        {"name": "recognizes_unknown_expected_state", "field": "all", "mode": "any", "patterns": ["nie wiadomo.{0,50}(prac|STOP|stan)", "oczekiwany.{0,30}stan.{0,30}nie", "brak.{0,30}informacji.{0,30}(prac|stan)"]}
+      ],
+      "must_not_match": [
+        {"name": "does_not_call_stop_failure", "field": "all", "pattern": "STOP.{0,50}(?:awari|usterk|anomali)|0 ?V.{0,50}(?:awari|usterk|anomali)"}
+      ]
+    }
+  ]
+}
