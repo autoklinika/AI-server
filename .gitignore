@@ -8,3 +8,4 @@ data/
 *.sqlite
 *.sqlite3
 .coverage
+benchmark_results/
