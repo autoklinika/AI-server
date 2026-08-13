@@ -1,0 +1,84 @@
+{
+  "benchmark_version": 1,
+  "scenarios": [
+    {
+      "id": "sensor_bus_worker_failure",
+      "description": "SENSOR BUS jest przez większość okna niegotowy, a worker wielokrotnie się restartuje.",
+      "allowed_status": ["anomaly"],
+      "overrides": {
+        "sensor_bus": {
+          "ready_ratio": 0.2,
+          "worker_alive_ratio": 0.3,
+          "worker_restarts_max": 4,
+          "latest_error": "sensor bus worker stopped unexpectedly"
+        }
+      },
+      "must_match": [
+        {"name": "detects_bus_failure", "field": "analysis_pl", "mode": "any", "patterns": ["SENSOR BUS", "worker", "restart", "gotowo"]}
+      ],
+      "must_not_match": []
+    },
+    {
+      "id": "high_setpoints_without_airflow_or_rpm",
+      "description": "Wysokie setpointy 0-10 V bez pomiaru RPM i bez pomiaru przepływu.",
+      "allowed_status": ["no_anomaly_detected", "attention"],
+      "overrides": {
+        "controller": {
+          "setpoints": {
+            "supply_voltage": {"mean": 9.5, "min": 9.0, "max": 10.0, "delta": 1.0},
+            "extract_voltage": {"mean": 9.2, "min": 8.8, "max": 9.7, "delta": 0.9}
+          }
+        }
+      },
+      "must_match": [
+        {"name": "treats_values_as_control_setpoints", "field": "analysis_pl", "mode": "any", "patterns": ["0-10 V", "0–10 V", "setpoint", "sygnał.{0,20}steruj", "napięci.{0,20}zadan"]}
+      ],
+      "must_not_match": [
+        {"name": "does_not_infer_airflow", "field": "all", "pattern": "(?:wysok|duż|zwiększon|maksymaln).{0,35}(?:przepływ|strumień powietrza)"},
+        {"name": "does_not_infer_rpm", "field": "all", "pattern": "(?:wentylator|nawiew|wyciąg).{0,50}[0-9]+ ?RPM"}
+      ]
+    },
+    {
+      "id": "missing_voc_on_one_node",
+      "description": "Jeden SEN55 nie dostarcza VOC Index przez całe okno, pozostałe pomiary są dostępne.",
+      "allowed_status": ["attention", "anomaly"],
+      "overrides": {
+        "sensor_bus": {
+          "nodes": {
+            "2": {
+              "readings": {
+                "voc_index": {"count": 0, "missing": 180, "mean": null, "min": null, "max": null, "delta": null, "slope_per_minute": null}
+              }
+            }
+          }
+        }
+      },
+      "must_match": [
+        {"name": "detects_missing_voc", "field": "data_quality_pl", "mode": "all", "patterns": ["VOC", "brak|niedostęp|niekomplet|0.{0,20}180|180.{0,20}brak"]}
+      ],
+      "must_not_match": [
+        {"name": "does_not_invent_missing_voc_value", "field": "all", "pattern": "VOC Index.{0,30}(?:wynosi|średni|maksymaln).{0,10}[1-9][0-9]*"}
+      ]
+    },
+    {
+      "id": "controller_fault_with_alarm",
+      "description": "Sterownik raportuje FAULT oraz aktywny alarm przez całe okno.",
+      "allowed_status": ["anomaly"],
+      "overrides": {
+        "controller": {
+          "latest_mode": "FAULT",
+          "mode_counts": {"FAULT": 180},
+          "hardware_ready_ratio": 0.0,
+          "output_state_known_ratio": 0.4,
+          "consecutive_hardware_failures_max": 8,
+          "active_alarm_sample_count": 180,
+          "active_alarm_codes": ["HARDWARE_NOT_READY"]
+        }
+      },
+      "must_match": [
+        {"name": "detects_controller_fault", "field": "analysis_pl", "mode": "all", "patterns": ["FAULT|alarm|HARDWARE_NOT_READY", "hardware|sprzęt|gotow"]}
+      ],
+      "must_not_match": []
+    }
+  ]
+}
