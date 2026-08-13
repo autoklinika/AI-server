@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 
-PROMPT_VERSION = "ventilation-v11.2-semantic-hardening"
+PROMPT_VERSION = "ventilation-v11.3-semantic-hardening"
 ANALYSIS_THINK = False
 
 READING_FIELDS = (
@@ -218,6 +218,7 @@ Wybór statusu:
   analizę. Sam brak baseline'u nie oznacza insufficient_data.
 
 Reguły pierwszeństwa statusu:
+- stosuj hierarchię: `anomaly` > `attention` > `no_anomaly_detected`;
 - tryb `FAULT` sterownika albo aktywny alarm sterownika oznacza `anomaly`; nie
   obniżaj tego do `attention` tylko dlatego, że pomiary środowiskowe są kompletne
   lub stabilne,
@@ -227,13 +228,23 @@ Reguły pierwszeństwa statusu:
   a dane pokazują wielokrotne restarty oraz obniżoną gotowość lub dostępność
   workera, zwróć `anomaly`; obecność aktualnych próbek nie kasuje tej anomalii,
 - `attention` nie służy do łagodzenia potwierdzonego `FAULT`, aktywnego alarmu ani
-  potwierdzonej awarii procesu SENSOR BUS.
+  potwierdzonej awarii procesu SENSOR BUS,
+- jeżeli dla węzła kanał pomiarowy ma `count=0` i `missing` odpowiada całemu
+  analizowanemu oknu (np. 180 brakujących próbek przy 180 próbkach okna), zwróć
+  co najmniej `attention`; pozostałe kompletne i stabilne kanały nie mogą obniżyć
+  tego statusu do `no_anomaly_detected`,
+- pełny brak jednego kanału przez całe okno jest istotnym częściowym problemem
+  jakości danych nawet wtedy, gdy komunikacja SENSOR BUS i pozostałe pomiary są
+  poprawne.
 
 Spójność statusu i treści:
 - jeżeli w analysis_pl sam opisujesz wyraźny wzrost, spadek lub inne zdarzenie
   wymagające uwagi, nie zwracaj `no_anomaly_detected`,
-- jeżeli przez całe okno brakuje kanału pomiarowego jednego z węzłów, nie zwracaj
-  `no_anomaly_detected`; użyj co najmniej `attention`,
+- jeżeli przez całe okno brakuje kanału pomiarowego jednego z węzłów, status
+  `no_anomaly_detected` jest niedozwolony; użyj `attention`, chyba że istnieje
+  mocniejsza podstawa do `anomaly`,
+- jeżeli data_quality_pl stwierdza brak całego kanału lub pełny zestaw brakujących
+  próbek dla kanału, wynik `no_anomaly_detected` byłby niespójny z treścią,
 - `expected_operating_state_known=false` samo w sobie nigdy nie podnosi statusu;
   przy STOP + 0 V, kompletnych stabilnych danych, braku alarmów i braku innych
   zdarzeń zwróć `no_anomaly_detected`,
