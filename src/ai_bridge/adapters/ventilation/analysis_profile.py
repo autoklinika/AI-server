@@ -4,8 +4,8 @@ import json
 from typing import Any
 
 
-PROMPT_VERSION = "ventilation-v10-baseline-safe"
-ANALYSIS_THINK = True
+PROMPT_VERSION = "ventilation-v11-semantic-hardening"
+ANALYSIS_THINK = False
 
 READING_FIELDS = (
     "pm1_0_ug_m3",
@@ -164,25 +164,61 @@ Dostajesz kompaktowe statystyki z zamkniętego 15-minutowego okna. Przeanalizuj
 stan sterownika, SENSOR BUS, oba węzły SEN55 oraz trendy PM, VOC, NOx,
 temperatury i wilgotności.
 
-Zasady:
+Zasady nadrzędne:
 - opieraj się wyłącznie na przekazanych danych,
 - wszystkie trzy pola tekstowe odpowiedzi muszą być napisane po polsku,
 - podawaj konkretne liczby, gdy są istotne dla wniosku,
+- rozróżniaj obserwację od przyczyny: zbieżność lub trend nie potwierdzają
+  przyczynowości,
+- nie wymyślaj źródeł PM, VOC ani NOx ani czynności wykonywanych w warsztacie;
+  bez bezpośrednich danych nie przypisuj wzrostu do spawania, szlifowania,
+  lakierowania, rozpuszczalników, silnika, spalin, pieca ani innych procesów,
+- VOC Index i NOx Index są indeksami. Nie nazywaj ich stężeniem i nie przeliczaj
+  ich na ppm, ppb ani inne jednostki stężenia,
 - supply_voltage i extract_voltage to zadane sygnały sterujące 0-10 V, nie RPM,
   przepływ ani rzeczywiste napięcie wentylatora,
-- system nie ma pomiaru CO2, RPM/tacho ani przepływu,
-- nie używaj określeń „w normie”, „typowe”, „bezpieczne” ani „nie przekracza
-  progów”, jeśli takie normy, baseline lub progi nie zostały przekazane w danych,
-- brak historycznego baseline'u oznacza, że możesz opisywać wartości i trendy,
-  ale nie klasyfikować ich względem normalnej pracy warsztatu,
-- nie wiadomo, czy system miał w tym oknie pracować; STOP i setpointy 0 V nie są
-  same w sobie usterką,
-- status `no_anomaly_detected` oznacza wyłącznie, że w tym 15-minutowym oknie nie
-  wykryto jednoznacznej anomalii na podstawie dostępnych danych; nie oznacza to,
-  że wartości są normalne, typowe, bezpieczne ani mieszczą się w progach,
-- status `anomaly` stosuj tylko przy konkretnej anomalii opisanej w analysis_pl,
-- operator_recommendation_pl ma zawierać praktyczne zalecenie albo jasno napisać,
-  że na podstawie tego okna nie ma dodatkowych zaleceń,
+- system nie ma pomiaru CO2, RPM/tacho ani przepływu; nie wnioskuj o przepływie,
+  wydajności wentylatorów ani RPM na podstawie samych setpointów 0-10 V,
+- nie używaj określeń „w normie”, „typowe”, „bezpieczne”, „prawidłowe”,
+  „wysokie”, „niskie”, „podwyższone”, „obniżone” ani „nie przekracza progów”
+  jako klasyfikacji wartości, jeśli odpowiedni baseline, norma lub próg nie został
+  przekazany; możesz natomiast opisywać kierunek i wielkość zmiany w obrębie
+  bieżącego okna, np. „wzrost z X do Y”,
+- brak historycznego baseline'u nie zabrania wykrywania wyraźnych zmian w obrębie
+  bieżącego okna. Oznacza tylko, że nie wolno klasyfikować wartości względem
+  normalnej pracy warsztatu,
+- jeżeli expected_operating_state_known=false, nie wiadomo, czy aktualny tryb i
+  setpointy są zgodne z zamiarem operatora. Gdy opisujesz STOP lub 0 V, zaznacz
+  jawnie tę niewiedzę. STOP i setpointy 0 V nie są same w sobie usterką,
+- brak jednego kanału pomiarowego przez całe okno jest problemem jakości danych;
+  opisz go w data_quality_pl i nie zastępuj brakującej wartości domysłem.
+
+Wybór statusu:
+- `no_anomaly_detected`: brak jednoznacznej anomalii technicznej, brak istotnego
+  problemu jakości danych i brak wyraźnego zdarzenia lub trendu wymagającego uwagi
+  w bieżącym oknie,
+- `attention`: występuje wyraźna zmiana lub trend w bieżącym oknie albo istotny,
+  częściowy problem jakości danych, ale bez jednoznacznie potwierdzonej awarii,
+- `anomaly`: występuje konkretna anomalia techniczna potwierdzona danymi, np.
+  tryb FAULT, aktywny alarm, poważna utrata gotowości SENSOR BUS, wielokrotne
+  restarty workera lub wyraźnie zdegradowana komunikacja,
+- `insufficient_data`: danych jest zasadniczo zbyt mało, aby wykonać sensowną
+  analizę. Sam brak baseline'u nie oznacza insufficient_data.
+
+Spójność statusu i treści:
+- jeżeli w analysis_pl sam opisujesz wyraźny wzrost, spadek lub inne zdarzenie
+  wymagające uwagi, nie zwracaj `no_anomaly_detected`,
+- jeżeli przez całe okno brakuje kanału pomiarowego jednego z węzłów, nie zwracaj
+  `no_anomaly_detected`; użyj co najmniej `attention`,
+- jeśli zwracasz `anomaly`, analysis_pl musi wskazywać konkretną obserwację, która
+  ten status uzasadnia.
+
+Pozostałe zasady:
+- operator_recommendation_pl ma zawierać wyłącznie zalecenie wynikające z
+  przekazanych danych albo jasno napisać, że na podstawie tego okna nie ma
+  dodatkowych zaleceń,
+- nie zalecaj zwiększania ani zmniejszania przepływu, jeżeli przepływ nie jest
+  mierzony,
 - data_quality_pl ma krótko opisać kompletność i ograniczenia danych,
 - nie dodawaj ofert typu „mogę zrobić wykres” ani innych meta-komentarzy.
 
