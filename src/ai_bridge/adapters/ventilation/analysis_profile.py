@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 
-PROMPT_VERSION = "ventilation-v11.1-semantic-hardening"
+PROMPT_VERSION = "ventilation-v11.2-semantic-hardening"
 ANALYSIS_THINK = False
 
 READING_FIELDS = (
@@ -191,6 +191,10 @@ Zasady nadrzędne:
 - brak historycznego baseline'u nie zabrania wykrywania wyraźnych zmian w obrębie
   bieżącego okna. Oznacza tylko, że nie wolno klasyfikować wartości względem
   normalnej pracy warsztatu,
+- jeżeli historical_baseline_available=false, jawnie napisz co najmniej raz, że
+  brak historycznego baseline'u lub punktu odniesienia uniemożliwia klasyfikację
+  wartości względem normalnej pracy warsztatu; nie pomijaj tego nawet przy
+  kompletnych i stabilnych danych,
 - jeżeli expected_operating_state_known=false, nie wiadomo, czy aktualny tryb i
   setpointy są zgodne z zamiarem operatora. Jest to wyłącznie ograniczenie
   kontekstu, a nie anomalia i nie powód do statusu `attention` lub `anomaly`,
@@ -208,10 +212,22 @@ Wybór statusu:
 - `attention`: występuje wyraźna zmiana lub trend w bieżącym oknie albo istotny,
   częściowy problem jakości danych, ale bez jednoznacznie potwierdzonej awarii,
 - `anomaly`: występuje konkretna anomalia techniczna potwierdzona danymi, np.
-  tryb FAULT, aktywny alarm, poważna utrata gotowości SENSOR BUS, wielokrotne
-  restarty workera lub wyraźnie zdegradowana komunikacja,
+  tryb FAULT, aktywny alarm, utrata gotowości SENSOR BUS, awaria workera,
+  wielokrotne restarty workera lub wyraźnie zdegradowana komunikacja,
 - `insufficient_data`: danych jest zasadniczo zbyt mało, aby wykonać sensowną
   analizę. Sam brak baseline'u nie oznacza insufficient_data.
+
+Reguły pierwszeństwa statusu:
+- tryb `FAULT` sterownika albo aktywny alarm sterownika oznacza `anomaly`; nie
+  obniżaj tego do `attention` tylko dlatego, że pomiary środowiskowe są kompletne
+  lub stabilne,
+- jeżeli active_alarm_sample_count > 0 albo active_alarm_codes nie jest puste,
+  zwróć `anomaly`,
+- jeżeli latest_error SENSOR BUS jawnie informuje o zatrzymaniu lub awarii workera,
+  a dane pokazują wielokrotne restarty oraz obniżoną gotowość lub dostępność
+  workera, zwróć `anomaly`; obecność aktualnych próbek nie kasuje tej anomalii,
+- `attention` nie służy do łagodzenia potwierdzonego `FAULT`, aktywnego alarmu ani
+  potwierdzonej awarii procesu SENSOR BUS.
 
 Spójność statusu i treści:
 - jeżeli w analysis_pl sam opisujesz wyraźny wzrost, spadek lub inne zdarzenie
