@@ -1,5 +1,5 @@
 {
-  "benchmark_version": 2,
+  "benchmark_version": 3,
   "scenarios": [
     {
       "id": "stable_complete_no_baseline",
@@ -92,7 +92,12 @@
         {
           "name": "invents_workshop_activity",
           "field": "all",
-          "pattern": "spawan|szlifowan|lakierowan|lutowan|czyszczen"
+          "pattern": "\\b(?:spawan\\w*|szlifowan\\w*|lakierowan\\w*|lutowan\\w*|czyszczen\\w*)\\b"
+        },
+        {
+          "name": "invents_local_pm_cause",
+          "field": "all",
+          "pattern": "(?:lokaln.{0,20}źródł|aktywno.{0,35}(?:kurz|pył)|źródł.{0,35}(?:kurz|pył|zanieczyszczen))"
         }
       ]
     },
@@ -133,7 +138,7 @@
         {
           "name": "invents_voc_source",
           "field": "all",
-          "pattern": "rozpuszczalnik|lakier|klej|benzyn|czyszczen|spawan"
+          "pattern": "\\b(?:rozpuszczalnik\\w*|lakier\\w*|klej\\w*|benzyn\\w*|czyszczen\\w*|spawan\\w*)\\b"
         }
       ]
     },
@@ -174,7 +179,7 @@
         {
           "name": "invents_nox_source",
           "field": "all",
-          "pattern": "spalin|silnik|palnik|spawan|piec"
+          "pattern": "\\b(?:spalin\\w*|silnik\\w*|palnik\\w*|spawan\\w*|piec\\w*)\\b"
         }
       ]
     },
@@ -242,7 +247,8 @@
             "nie wiadomo.{0,50}(prac|STOP|stan)",
             "oczekiwany.{0,30}stan.{0,30}nie",
             "brak.{0,30}informacji.{0,30}(prac|stan)",
-            "brak.{0,30}danych.{0,30}(oczekiw|powinien|miał)"
+            "brak.{0,30}danych.{0,30}(oczekiw|powinien|miał)",
+            "nie wiadomo.{0,60}zamiarem operatora"
           ]
         }
       ],
@@ -250,12 +256,17 @@
         {
           "name": "does_not_call_stop_failure",
           "field": "all",
-          "pattern": "STOP.{0,50}(?:awari|usterk|anomali)|0 ?V.{0,50}(?:awari|usterk|anomali)"
+          "pattern": "(?:STOP|0 ?V).{0,35}(?:jest|stanowi|oznacza|wskazuje na).{0,25}(?:awari|usterk|anomali)"
         },
         {
           "name": "does_not_classify_pm_as_low_without_reference",
           "field": "all",
           "pattern": "(?:stężen.{0,20}pył|PM[0-9.]+).{0,30}nisk|nisk.{0,30}(?:stężen.{0,20}pył|PM[0-9.]+)"
+        },
+        {
+          "name": "does_not_infer_inactivity_from_stable_data",
+          "field": "all",
+          "pattern": "(?:zbieżno|odczyt|stabiln).{0,70}(?:brak aktywności|stan spoczynku|nieaktywn)"
         }
       ]
     },
