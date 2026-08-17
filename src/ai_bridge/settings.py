@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -20,6 +21,13 @@ class Settings(BaseSettings):
     # SQLite is a development-safe default. Production targets PostgreSQL
     # through AI_BRIDGE_DATABASE_URL without changing application code.
     database_url: str = "sqlite+pysqlite:///./data/ai_bridge.sqlite3"
+
+    # The telemetry archive is deliberately behind a logical backend boundary.
+    # Stage 4 implements only the existing SQL backend. A future NAS backend is
+    # added as a separate implementation; selecting an unsupported backend must
+    # fail configuration rather than silently pretending that NAS is active.
+    ventilation_storage_backend: Literal["sql"] = "sql"
+    ventilation_storage_location_label: str = Field(default="AI Server", min_length=1, max_length=128)
 
     ollama_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen3.6:35b"
