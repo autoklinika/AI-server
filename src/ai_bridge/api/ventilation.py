@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
@@ -35,7 +35,7 @@ def ingest_telemetry(
     if batch.schema_version != 1:
         raise UnsupportedSchemaVersion(batch.schema_version)
 
-    result = request.app.state.ventilation_repository.ingest(batch)
+    result = request.app.state.ventilation_storage_backend.ingest(batch)
     return TelemetryBatchAck(
         source_id=batch.source_id,
         batch_id=batch.batch_id,
@@ -45,6 +45,24 @@ def ingest_telemetry(
         rejected=0,
         server_time=result.received_at,
     )
+
+
+@router.get("/storage/status")
+def storage_status(request: Request) -> dict[str, Any]:
+    """Return non-secret status of the active telemetry archive backend.
+
+    Stage 4 is read-only configuration-wise: it reports the active backend but
+    exposes no switch command. A future NAS implementation can use this boundary
+    without changing the CM5 ingest endpoint or control architecture.
+    """
+
+    status = request.app.state.ventilation_storage_backend.status()
+    return {
+        "status_schema_version": 1,
+        **status.to_dict(),
+        "configuration_write_supported": False,
+        "control_commands_supported": False,
+    }
 
 
 @router.get("/analysis/latest", response_model=VentilationAnalysisDelivery)
