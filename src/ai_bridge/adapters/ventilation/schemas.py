@@ -1,30 +1,48 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 
 class StrictModel(BaseModel):
+    """Strict transport/control-plane envelope."""
+
     model_config = ConfigDict(extra="forbid")
 
 
-class FanSetpoints(StrictModel):
+class DomainStateModel(BaseModel):
+    """Version-1 CoreState payload with forward-compatible additive fields.
+
+    Transport identifiers remain strict, while domain state may gain additive
+    fields without making the AI archive reject an otherwise valid CM5 snapshot.
+    Known fields are still type/range validated and Pydantic preserves extras in
+    model_dump(), so the RAW archive does not silently discard future telemetry.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+
+class FanSetpoints(DomainStateModel):
     supply_voltage: float = Field(ge=0.0, le=10.0)
     extract_voltage: float = Field(ge=0.0, le=10.0)
 
 
-class AlarmState(StrictModel):
+class AlarmState(DomainStateModel):
+    alert_id: int | None = Field(default=None, ge=1)
     code: str = Field(min_length=1, max_length=128)
+    source: str = Field(default="core", min_length=1, max_length=256)
     severity: str = Field(min_length=1, max_length=32)
     message: str = Field(min_length=1, max_length=1024)
     active_since: AwareDatetime
     last_error: str = Field(max_length=4096)
     occurrences: int = Field(ge=0)
+    acknowledged: bool = False
+    acknowledged_at: AwareDatetime | None = None
 
 
-class AirQualityReading(StrictModel):
+class AirQualityReading(DomainStateModel):
     pm1_0_ug_m3: float | None = None
     pm2_5_ug_m3: float | None = None
     pm4_0_ug_m3: float | None = None
@@ -35,7 +53,7 @@ class AirQualityReading(StrictModel):
     nox_index: float | None = None
 
 
-class SensorNodeState(StrictModel):
+class SensorNodeState(DomainStateModel):
     slave_address: int = Field(ge=1, le=247)
     online: bool
     usable: bool
@@ -61,9 +79,18 @@ class SensorNodeState(StrictModel):
     invalid_measurements: int = Field(ge=0)
     stale_measurements: int = Field(ge=0)
     map_version_errors: int = Field(ge=0)
+    sen55_device_status_supported: bool = False
+    sen55_device_status_valid: bool = False
+    sen55_fan_speed_warning: bool = False
+    sen55_fan_cleaning: bool = False
+    sen55_gas_sensor_error: bool = False
+    sen55_rht_error: bool = False
+    sen55_laser_error: bool = False
+    sen55_fan_error: bool = False
+    sen55_diagnostics_failures: int = Field(default=0, ge=0)
 
 
-class SensorBusState(StrictModel):
+class SensorBusState(DomainStateModel):
     port: str = Field(min_length=1, max_length=256)
     baudrate: int = Field(gt=0)
     addresses: list[int] = Field(min_length=1)
@@ -89,7 +116,79 @@ class SensorBusState(StrictModel):
         return self
 
 
-class VentilationMetrics(StrictModel):
+class AeroTelemetry(DomainStateModel):
+    humidity_percent: float | None = None
+    supply_temperature_celsius: float | None = None
+    extract_temperature_celsius: float | None = None
+    outdoor_temperature_celsius: float | None = None
+    fan_1_percent: int | None = Field(default=None, ge=0, le=100)
+    fan_2_percent: int | None = Field(default=None, ge=0, le=100)
+
+
+class AeroFanPower(DomainStateModel):
+    fan_1_percent: int = Field(ge=0, le=100)
+    fan_2_percent: int = Field(ge=0, le=100)
+
+
+class AeroControlResult(DomainStateModel):
+    kind: str = Field(min_length=1, max_length=32)
+    register_address: int = Field(ge=0, le=0xFFFF)
+    target_value: int
+    state: str = Field(min_length=1, max_length=64)
+    previous_value: int | None = None
+    readback_value: int | None = None
+    baseline_power: AeroFanPower | None = None
+    observed_power: AeroFanPower | None = None
+    recovered: bool = False
+    physical_confirmation: bool = False
+    error: str | None = Field(default=None, max_length=4096)
+
+
+class AeroBusState(DomainStateModel):
+    port: str = Field(min_length=1, max_length=256)
+    baudrate: int = Field(gt=0)
+    slave_address: int = Field(ge=1, le=247)
+    register_addresses: list[int]
+    inter_register_delay_seconds: float = Field(ge=0.0)
+    poll_interval_seconds: float = Field(gt=0.0)
+    ready: bool
+    worker_alive: bool
+    worker_restarts: int = Field(ge=0)
+    online: bool
+    usable: bool
+    telemetry: AeroTelemetry
+    control_busy: bool = False
+    last_control_result: AeroControlResult | None = None
+    last_success_at: AwareDatetime | None = None
+    last_cycle_at: AwareDatetime | None = None
+    last_error: str | None = Field(default=None, max_length=4096)
+    polls: int = Field(ge=0)
+    successful_polls: int = Field(ge=0)
+    communication_errors: int = Field(ge=0)
+    consecutive_failures: int = Field(ge=0)
+    invalid_samples: int = Field(ge=0)
+
+
+class FanTachoState(DomainStateModel):
+    line_name: str = Field(min_length=1, max_length=128)
+    line_offset: int | None = Field(default=None, ge=0)
+    frequency_hz: float = Field(ge=0.0)
+    rpm: float = Field(ge=0.0)
+    sample_count: int = Field(ge=0)
+    age_seconds: float | None = Field(default=None, ge=0.0)
+    valid: bool
+
+
+class TachoMonitorState(DomainStateModel):
+    chip_path: str = Field(min_length=1, max_length=256)
+    ready: bool
+    worker_alive: bool
+    last_error: str | None = Field(default=None, max_length=4096)
+    supply: FanTachoState | None = None
+    extract: FanTachoState | None = None
+
+
+class VentilationMetrics(DomainStateModel):
     mode: Literal["STOP", "MANUAL", "FAULT"]
     setpoints: FanSetpoints
     hardware_ready: bool
@@ -97,6 +196,8 @@ class VentilationMetrics(StrictModel):
     consecutive_hardware_failures: int = Field(ge=0)
     active_alarms: list[AlarmState]
     sensor_bus: SensorBusState | None
+    aero_bus: AeroBusState | None = None
+    tacho: TachoMonitorState | None = None
 
 
 class VentilationTelemetrySample(StrictModel):
