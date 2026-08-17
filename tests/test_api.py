@@ -45,7 +45,7 @@ def sample(sample_id: str, sequence: int):
                             "humidity_percent": 48.5,
                             "temperature_celsius": 22.7,
                             "voc_index": 97.0,
-                            "nox_index": 1.0
+                            "nox_index": 1.0,
                         },
                         "age_seconds": 0,
                         "sensor_errors": 0,
@@ -62,7 +62,7 @@ def sample(sample_id: str, sequence: int):
                         "consecutive_failures": 0,
                         "invalid_measurements": 0,
                         "stale_measurements": 0,
-                        "map_version_errors": 0
+                        "map_version_errors": 0,
                     },
                     {
                         "slave_address": 2,
@@ -81,7 +81,7 @@ def sample(sample_id: str, sequence: int):
                             "humidity_percent": 47.8,
                             "temperature_celsius": 22.4,
                             "voc_index": 91.0,
-                            "nox_index": 1.0
+                            "nox_index": 1.0,
                         },
                         "age_seconds": 0,
                         "sensor_errors": 0,
@@ -98,11 +98,11 @@ def sample(sample_id: str, sequence: int):
                         "consecutive_failures": 0,
                         "invalid_measurements": 0,
                         "stale_measurements": 0,
-                        "map_version_errors": 0
-                    }
-                ]
-            }
-        }
+                        "map_version_errors": 0,
+                    },
+                ],
+            },
+        },
     }
 
 
@@ -112,7 +112,7 @@ def batch(batch_id="batch-1", samples=None):
         "source_id": "workshop-ventilation-cm5-01",
         "batch_id": batch_id,
         "created_at": "2026-08-08T13:30:00+02:00",
-        "samples": samples or [sample("sample-1", 1), sample("sample-2", 2)]
+        "samples": samples or [sample("sample-1", 1), sample("sample-2", 2)],
     }
 
 
@@ -123,6 +123,22 @@ def test_health_reports_database_and_no_control_commands(client):
     assert payload["status"] == "ok"
     assert payload["components"]["database"] == "ok"
     assert payload["control_commands_supported"] is False
+
+
+def test_storage_status_is_read_only_and_non_secret(client):
+    response = client.get("/api/v1/ventilation/storage/status")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload == {
+        "status_schema_version": 1,
+        "backend": "sql",
+        "location_label": "AI Server",
+        "available": True,
+        "switch_supported": False,
+        "configuration_write_supported": False,
+        "control_commands_supported": False,
+    }
+    assert "database_url" not in payload
 
 
 def test_ingest_and_retransmit_is_idempotent(client):
@@ -180,9 +196,20 @@ def test_naive_timestamp_is_rejected(client):
     assert response.status_code == 422
 
 
-def test_extra_unknown_metrics_field_is_rejected(client):
+def test_additive_domain_metrics_field_is_accepted(client):
+    payload = batch("batch-additive", [sample("sample-additive", 1)])
+    payload["samples"][0]["metrics"]["future_additive_field"] = {
+        "value": 1234,
+        "reason": "forward-compatible domain telemetry",
+    }
+    response = client.post("/api/v1/ventilation/telemetry/batches", json=payload)
+    assert response.status_code == 200
+    assert response.json()["stored"] == 1
+
+
+def test_transport_envelope_remains_strict(client):
     payload = batch()
-    payload["samples"][0]["metrics"]["rpm"] = 1234
+    payload["unexpected_transport_field"] = "must-not-be-accepted"
     response = client.post("/api/v1/ventilation/telemetry/batches", json=payload)
     assert response.status_code == 422
 
@@ -190,6 +217,7 @@ def test_extra_unknown_metrics_field_is_rejected(client):
 def test_openapi_exposes_no_control_endpoint(client):
     paths = client.get("/openapi.json").json()["paths"]
     assert "/api/v1/ventilation/telemetry/batches" in paths
+    assert "/api/v1/ventilation/storage/status" in paths
     forbidden = ("control", "command", "set-speed", "actuator")
     assert all(not any(word in path.lower() for word in forbidden) for path in paths)
 
@@ -217,7 +245,7 @@ def test_oversized_content_length_is_rejected_before_ingestion(client):
         content=b"{}",
         headers={
             "content-type": "application/json",
-            "content-length": str(1_048_577)
+            "content-length": str(1_048_577),
         },
     )
     assert response.status_code == 413
