@@ -12,8 +12,8 @@ from ai_bridge.adapters.ventilation.schemas import HealthComponents, HealthRespo
 from ai_bridge.core.errors import BatchIdentityConflict, UnsupportedSchemaVersion
 from ai_bridge.settings import Settings, get_settings
 from ai_bridge.storage.analysis_repository import VentilationAnalysisRepository
+from ai_bridge.storage.backend import build_ventilation_storage_backend
 from ai_bridge.storage.database import Database
-from ai_bridge.storage.repository import VentilationTelemetryRepository
 
 from .ventilation import router as ventilation_router
 
@@ -24,14 +24,14 @@ LOGGER = logging.getLogger(__name__)
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved = settings or get_settings()
     database = Database(resolved.database_url)
-    telemetry_repository = VentilationTelemetryRepository(database)
+    telemetry_storage = build_ventilation_storage_backend(resolved, database)
     analysis_repository = VentilationAnalysisRepository(database)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.settings = resolved
         app.state.database = database
-        app.state.ventilation_repository = telemetry_repository
+        app.state.ventilation_storage_backend = telemetry_storage
         app.state.ventilation_analysis_repository = analysis_repository
         try:
             yield
