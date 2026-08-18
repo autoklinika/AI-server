@@ -9,7 +9,10 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from ai_bridge.adapters.ventilation.analysis import summarize_ventilation_window
+from ai_bridge.adapters.ventilation.analysis import (
+    _counter_summary,
+    summarize_ventilation_window,
+)
 from ai_bridge.adapters.ventilation.analysis_profile import (
     ANALYSIS_THINK,
     PROMPT_VERSION,
@@ -188,6 +191,37 @@ def test_summary_contains_only_deterministic_math() -> None:
     assert summary["system"]["setpoints"]["supply_voltage"]["slope_per_minute"] == 1.0
     assert summary["system"]["active_alarm_sample_count"] == 0
     assert summary["sensor_bus"]["samples_present"] == 0
+
+
+def test_cumulative_counter_summary_is_reset_aware() -> None:
+    summary = _counter_summary(
+        [34, 40, 51, 0, 0, 2],
+        cumulative=True,
+    )
+
+    assert summary["first"] == 34
+    assert summary["last"] == 2
+    assert summary["delta"] == 19
+    assert summary["max"] == 51
+
+    # Zdarzenia nie mogą zniknąć tylko dlatego,
+    # że licznik wrócił do tej samej wartości.
+    assert _counter_summary(
+        [0, 16, 0],
+        cumulative=True,
+    )["delta"] == 16
+
+
+def test_gauge_counter_summary_keeps_signed_state_change() -> None:
+    summary = _counter_summary(
+        [3, 2, 0],
+        cumulative=False,
+    )
+
+    assert summary["first"] == 3
+    assert summary["last"] == 0
+    assert summary["delta"] == -3
+    assert summary["max"] == 3
 
 
 def test_v11_3_compact_packet_keeps_measurements_and_removes_noise() -> None:
