@@ -190,11 +190,11 @@ def test_summary_contains_only_deterministic_math() -> None:
     assert summary["sensor_bus"]["samples_present"] == 0
 
 
-def test_v10_compact_packet_keeps_measurements_and_removes_noise() -> None:
+def test_v11_3_compact_packet_keeps_measurements_and_removes_noise() -> None:
     packet = build_compact_analysis_packet(_compact_packet_source_summary())
 
-    assert PROMPT_VERSION == "ventilation-v10-baseline-safe"
-    assert ANALYSIS_THINK is True
+    assert PROMPT_VERSION == "ventilation-v11.3-semantic-hardening"
+    assert ANALYSIS_THINK is False
     assert "humidity_percent" in packet["measurement_capabilities"]["present_in_packet"]
     assert packet["measurement_capabilities"]["not_provided_by_system"] == [
         "co2",
@@ -211,16 +211,16 @@ def test_v10_compact_packet_keeps_measurements_and_removes_noise() -> None:
     assert packet["sensor_bus"]["nodes"]["1"]["readings"]["voc_index"]["delta"] == 16.0
 
 
-def test_prompt_v10_freezes_baseline_safe_report_rules() -> None:
+def test_prompt_v11_3_freezes_semantic_hardening_rules() -> None:
     messages = build_ventilation_prompt(_compact_packet_source_summary())
     system = messages[0]["content"]
     user = messages[1]["content"]
 
     assert "wszystkie trzy pola tekstowe odpowiedzi muszą być napisane po polsku" in system
     assert "nie używaj określeń „w normie”, „typowe”, „bezpieczne”" in system
-    assert "nie klasyfikować ich względem normalnej pracy warsztatu" in system
-    assert "status `no_anomaly_detected` oznacza wyłącznie" in system
-    assert "nie oznacza to" in system
+    assert "brak historycznego baseline'u lub punktu odniesienia" in system
+    assert "`no_anomaly_detected`: brak jednoznacznej anomalii technicznej" in system
+    assert "hierarchię: `anomaly` > `attention` > `no_anomaly_detected`" in system
     assert "operator_recommendation_pl" in system
     assert "data_quality_pl" in system
     assert "STOP i setpointy 0 V nie są" in system
@@ -329,7 +329,7 @@ def test_service_skips_ollama_when_sample_count_is_below_gate() -> None:
     assert repository.saved["sample_count"] == 1
 
 
-def test_service_uses_structured_schema_and_thinking() -> None:
+def test_service_uses_structured_schema_without_thinking() -> None:
     repository = FakeRepository([_sample(minute=0, supply=0.0, extract=0.0)])
     ollama = CapturingOllama()
     service = VentilationAnalysisService(
@@ -349,7 +349,7 @@ def test_service_uses_structured_schema_and_thinking() -> None:
 
     assert result.result.status == "no_anomaly_detected"
     assert ollama.kwargs is not None
-    assert ollama.kwargs["think"] is True
+    assert ollama.kwargs["think"] is False
     assert ollama.kwargs["response_schema"]["properties"]["analysis_pl"]["type"] == "string"
 
 
@@ -382,7 +382,7 @@ def test_service_reuses_existing_analysis_without_calling_ollama() -> None:
     assert repository.saved is None
 
 
-def test_ollama_structured_chat_uses_schema_non_streaming_and_think_true(monkeypatch) -> None:
+def test_ollama_structured_chat_uses_schema_non_streaming_and_think_false(monkeypatch) -> None:
     captured: dict[str, Any] = {}
 
     class FakeResponse:
@@ -428,7 +428,7 @@ def test_ollama_structured_chat_uses_schema_non_streaming_and_think_true(monkeyp
 
     assert captured["url"] == "http://127.0.0.1:11434/api/chat"
     assert captured["json"]["stream"] is False
-    assert captured["json"]["think"] is True
+    assert captured["json"]["think"] is False
     assert captured["json"]["format"] == schema
     assert captured["json"]["options"]["temperature"] == 0.0
     assert captured["timeout"] == 300.0
