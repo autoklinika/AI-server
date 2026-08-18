@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
@@ -22,6 +22,10 @@ class AlarmState(StrictModel):
     active_since: AwareDatetime
     last_error: str = Field(max_length=4096)
     occurrences: int = Field(ge=0)
+    alert_id: int | None = Field(default=None, ge=1)
+    source: str = Field(default="core", min_length=1, max_length=128)
+    acknowledged: bool = False
+    acknowledged_at: AwareDatetime | None = None
 
 
 class AirQualityReading(StrictModel):
@@ -61,6 +65,15 @@ class SensorNodeState(StrictModel):
     invalid_measurements: int = Field(ge=0)
     stale_measurements: int = Field(ge=0)
     map_version_errors: int = Field(ge=0)
+    sen55_device_status_supported: bool = False
+    sen55_device_status_valid: bool = False
+    sen55_fan_speed_warning: bool = False
+    sen55_fan_cleaning: bool = False
+    sen55_gas_sensor_error: bool = False
+    sen55_rht_error: bool = False
+    sen55_laser_error: bool = False
+    sen55_fan_error: bool = False
+    sen55_diagnostics_failures: int = Field(default=0, ge=0)
 
 
 class SensorBusState(StrictModel):
@@ -90,6 +103,14 @@ class SensorBusState(StrictModel):
 
 
 class VentilationMetrics(StrictModel):
+    """Validated transport view of the authoritative CM5 CoreState.
+
+    Stable controller/SENSOR BUS fields remain strongly typed. Newer, already
+    validated CM5 subsystems are explicit top-level members and are preserved
+    verbatim as JSON objects so ingestion does not lag behind CoreState rollout.
+    Unknown top-level metrics are still rejected.
+    """
+
     mode: Literal["STOP", "MANUAL", "FAULT"]
     setpoints: FanSetpoints
     hardware_ready: bool
@@ -97,6 +118,11 @@ class VentilationMetrics(StrictModel):
     consecutive_hardware_failures: int = Field(ge=0)
     active_alarms: list[AlarmState]
     sensor_bus: SensorBusState | None
+    aero_bus: dict[str, Any] | None = None
+    tacho: dict[str, Any] | None = None
+    zigbee: dict[str, Any] | None = None
+    schedule: dict[str, Any] | None = None
+    shadow_automation: dict[str, Any] | None = None
 
 
 class VentilationTelemetrySample(StrictModel):
