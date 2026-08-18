@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 
-PROMPT_VERSION = "ventilation-v11.3-semantic-hardening"
+PROMPT_VERSION = "ventilation-v11.4-corestate-alignment"
 ANALYSIS_THINK = False
 
 READING_FIELDS = (
@@ -18,15 +18,20 @@ READING_FIELDS = (
     "nox_index",
 )
 
-COUNTER_FIELDS = (
+CUMULATIVE_COUNTER_FIELDS = (
     "sensor_errors",
     "modbus_service_errors",
     "communication_errors",
-    "consecutive_failures",
     "invalid_measurements",
     "stale_measurements",
     "map_version_errors",
 )
+
+GAUGE_COUNTER_FIELDS = (
+    "consecutive_failures",
+)
+
+COUNTER_FIELDS = CUMULATIVE_COUNTER_FIELDS + GAUGE_COUNTER_FIELDS
 
 
 def _pick(mapping: dict[str, Any] | None, *keys: str) -> dict[str, Any]:
@@ -83,8 +88,14 @@ def build_compact_analysis_packet(summary: dict[str, Any]) -> dict[str, Any]:
                     and isinstance(raw_counters.get(field), dict)
                     else None
                 )
-                for field in COUNTER_FIELDS
+                for field in CUMULATIVE_COUNTER_FIELDS
             }
+            consecutive_failures_max = (
+                raw_counters.get("consecutive_failures", {}).get("max")
+                if isinstance(raw_counters, dict)
+                and isinstance(raw_counters.get("consecutive_failures"), dict)
+                else None
+            )
 
             nodes[str(address)] = {
                 "samples_present": node.get("samples_present"),
@@ -94,6 +105,7 @@ def build_compact_analysis_packet(summary: dict[str, Any]) -> dict[str, Any]:
                 "sensor_present_ratio": node.get("sensor_present_true_ratio"),
                 "readings": readings,
                 "diagnostic_counter_deltas": counter_deltas,
+                "consecutive_failures_max": consecutive_failures_max,
                 "latest_error": (
                     node.get("latest", {}).get("last_error")
                     if isinstance(node.get("latest"), dict)
@@ -119,7 +131,8 @@ def build_compact_analysis_packet(summary: dict[str, Any]) -> dict[str, Any]:
         },
         "measurement_capabilities": {
             "present_in_packet": sorted(measurements_present),
-            "not_provided_by_system": ["co2", "fan_rpm", "airflow"],
+            "not_provided_by_system": ["co2", "airflow"],
+            "excluded_from_current_analysis_packet": ["fan_rpm", "tacho"],
         },
         "controller": {
             "latest_mode": system.get("latest_mode"),
@@ -181,8 +194,14 @@ Zasady nadrzędne:
   ich na ppm, ppb ani inne jednostki stężenia,
 - supply_voltage i extract_voltage to zadane sygnały sterujące 0-10 V, nie RPM,
   przepływ ani rzeczywiste napięcie wentylatora,
-- system nie ma pomiaru CO2, RPM/tacho ani przepływu; nie wnioskuj o przepływie,
-  wydajności wentylatorów ani RPM na podstawie samych setpointów 0-10 V,
+- CO2 i przepływ nie są dostarczane do bieżącego profilu analitycznego. Surowy
+  CoreState może zawierać TACHO/RPM, ale profil v11.4 świadomie wyłącza je z
+  bieżącego pakietu analitycznego; nie twierdź, że system nie ma TACHO/RPM i nie
+  wnioskuj o RPM ani przepływie na podstawie samych setpointów 0-10 V,
+- diagnostic_counter_deltas zawiera reset-aware przyrosty liczników kumulacyjnych;
+  nie interpretuj resetu licznika jako ujemnej liczby zdarzeń. Pole
+  consecutive_failures_max jest maksymalną liczbą kolejnych niepowodzeń w obrębie
+  okna i nie może być zastępowane różnicą wartości końcowej i początkowej,
 - nie używaj określeń „w normie”, „typowe”, „bezpieczne”, „prawidłowe”,
   „wysokie”, „niskie”, „podwyższone”, „obniżone” ani „nie przekracza progów”
   jako klasyfikacji wartości, jeśli odpowiedni baseline, norma lub próg nie został
