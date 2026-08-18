@@ -204,8 +204,6 @@ def test_cumulative_counter_summary_is_reset_aware() -> None:
     assert summary["delta"] == 19
     assert summary["max"] == 51
 
-    # Zdarzenia nie mogą zniknąć tylko dlatego,
-    # że licznik wrócił do tej samej wartości.
     assert _counter_summary(
         [0, 16, 0],
         cumulative=True,
@@ -224,16 +222,21 @@ def test_gauge_counter_summary_keeps_signed_state_change() -> None:
     assert summary["max"] == 3
 
 
-def test_v11_3_compact_packet_keeps_measurements_and_removes_noise() -> None:
-    packet = build_compact_analysis_packet(_compact_packet_source_summary())
+def test_v11_4_compact_packet_keeps_measurements_and_corestate_semantics() -> None:
+    summary = _compact_packet_source_summary()
+    summary["sensor_bus"]["nodes"]["1"]["counters"]["consecutive_failures"]["max"] = 3
+    packet = build_compact_analysis_packet(summary)
 
-    assert PROMPT_VERSION == "ventilation-v11.3-semantic-hardening"
+    assert PROMPT_VERSION == "ventilation-v11.4-corestate-alignment"
     assert ANALYSIS_THINK is False
     assert "humidity_percent" in packet["measurement_capabilities"]["present_in_packet"]
     assert packet["measurement_capabilities"]["not_provided_by_system"] == [
         "co2",
-        "fan_rpm",
         "airflow",
+    ]
+    assert packet["measurement_capabilities"]["excluded_from_current_analysis_packet"] == [
+        "fan_rpm",
+        "tacho",
     ]
     humidity = packet["sensor_bus"]["nodes"]["1"]["readings"]["humidity_percent"]
     assert humidity["count"] == 179
@@ -242,10 +245,13 @@ def test_v11_3_compact_packet_keeps_measurements_and_removes_noise() -> None:
     assert "stddev" not in humidity
     assert "first" not in humidity
     assert "last" not in humidity
-    assert packet["sensor_bus"]["nodes"]["1"]["readings"]["voc_index"]["delta"] == 16.0
+    node = packet["sensor_bus"]["nodes"]["1"]
+    assert node["readings"]["voc_index"]["delta"] == 16.0
+    assert node["consecutive_failures_max"] == 3
+    assert "consecutive_failures" not in node["diagnostic_counter_deltas"]
 
 
-def test_prompt_v11_3_freezes_semantic_hardening_rules() -> None:
+def test_prompt_v11_4_freezes_corestate_alignment_rules() -> None:
     messages = build_ventilation_prompt(_compact_packet_source_summary())
     system = messages[0]["content"]
     user = messages[1]["content"]
@@ -258,9 +264,13 @@ def test_prompt_v11_3_freezes_semantic_hardening_rules() -> None:
     assert "operator_recommendation_pl" in system
     assert "data_quality_pl" in system
     assert "STOP i setpointy 0 V nie są" in system
+    assert "profil v11.4 świadomie wyłącza je" in system
+    assert "nie twierdź, że system nie ma TACHO/RPM" in system
+    assert "consecutive_failures_max" in system
     assert "Przeanalizuj poniższy pakiet danych" in user
     assert '"humidity_percent"' in user
     assert '"co2"' in user
+    assert '"excluded_from_current_analysis_packet"' in user
     assert '"stddev"' not in user
 
 
