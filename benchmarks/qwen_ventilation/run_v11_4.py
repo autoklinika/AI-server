@@ -50,15 +50,20 @@ def load_scenarios_v11_4():
         if scenario_id == "missing_voc_on_one_node":
             for rule in scenario.get("must_not_match", []):
                 if rule.get("name") == "does_not_invent_missing_voc_value":
-                    # Node 1 legitimately has VOC values. Only reject a numeric
+                    # Node 1 legitimately has VOC values. Reject only a numeric
                     # VOC value explicitly attributed to the missing node 2.
+                    # Do not let a value for node 1 plus a later mention of node 2
+                    # in another clause create a false positive.
+                    node2 = r"(?:węzeł|węźle|node|adres|SEN55)[^.;\n]{0,20}(?:2|drugi|drugiego)"
+                    numeric_voc = (
+                        r"VOC Index[^.;\n]{0,30}"
+                        r"(?:wynosi|średni|średnia|maksymaln)[^.;\n]{0,10}[1-9][0-9]*"
+                    )
                     rule["pattern"] = (
-                        r"(?:(?:węzeł|węźle|node|adres|SEN55).{0,20}"
-                        r"(?:2|drugi|drugiego).{0,80}VOC Index.{0,30}"
-                        r"(?:wynosi|średni|maksymaln).{0,10}[1-9][0-9]*|"
-                        r"VOC Index.{0,30}(?:wynosi|średni|maksymaln).{0,10}"
-                        r"[1-9][0-9]*.{0,80}(?:węzeł|węźle|node|adres|SEN55)"
-                        r".{0,20}(?:2|drugi|drugiego))"
+                        rf"(?:{node2}[^.;\n]{{0,80}}{numeric_voc}|"
+                        rf"VOC Index[^.;\n]{{0,30}}(?:dla|w|na)[^.;\n]{{0,20}}"
+                        rf"{node2}[^.;\n]{{0,30}}(?:wynosi|średni|średnia|maksymaln)"
+                        rf"[^.;\n]{{0,10}}[1-9][0-9]*)"
                     )
 
     return scenarios
