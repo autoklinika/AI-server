@@ -10,6 +10,21 @@ class StrictAnalysisModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class VentilationOperatorView(StrictAnalysisModel):
+    """Deterministic operator-facing presentation prepared by AI Server.
+
+    GUI clients render these fields verbatim. They do not summarize, classify or
+    reinterpret the analysis result themselves.
+    """
+
+    schema_version: Literal[1] = 1
+    status_label_pl: str = Field(min_length=1, max_length=80)
+    headline_pl: str = Field(min_length=1, max_length=200)
+    summary_pl: str = Field(min_length=1, max_length=1200)
+    recommendation_pl: str = Field(min_length=1, max_length=600)
+    data_quality_short_pl: str = Field(min_length=1, max_length=400)
+
+
 class VentilationAnalysisResult(StrictAnalysisModel):
     """Minimal, extensible structured envelope for Qwen's advisory report.
 
@@ -29,6 +44,7 @@ class VentilationAnalysisResult(StrictAnalysisModel):
     analysis_pl: str = Field(min_length=1, max_length=6000)
     operator_recommendation_pl: str = Field(min_length=1, max_length=3000)
     data_quality_pl: str = Field(min_length=1, max_length=3000)
+    operator_view: VentilationOperatorView | None = None
 
 
 class VentilationAnalysisDelivery(StrictAnalysisModel):
