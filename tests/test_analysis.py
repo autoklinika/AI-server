@@ -81,8 +81,8 @@ def _compact_packet_source_summary() -> dict[str, Any]:
             "min": minimum,
             "max": maximum,
             "stddev": 0.5,
-            "first": mean - delta,
-            "last": mean,
+            "first": round(mean - delta, 4),
+            "last": round(mean, 4),
             "delta": delta,
             "slope_per_minute": slope,
         }
