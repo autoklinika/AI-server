@@ -6,6 +6,8 @@ from ai_bridge.adapters.ventilation.analysis_profile_v11_7 import (
 
 
 def test_v11_7_profile_freezes_second_real_window_grounding_rules() -> None:
+    normalized_prompt = " ".join(SYSTEM_PROMPT.split())
+
     assert PROMPT_VERSION == "ventilation-v11.7-semantic-grounding"
     assert ANALYSIS_THINK is False
     assert "zachowuj tożsamość kanałów setpointów" in SYSTEM_PROMPT
@@ -18,5 +20,5 @@ def test_v11_7_profile_freezes_second_real_window_grounding_rules() -> None:
     assert "współczynnikiem nachylenia liniowej regresji" in SYSTEM_PROMPT
     assert "Nie jest „końcowym”" in SYSTEM_PROMPT
     assert "active_alarm_sample_count" in SYSTEM_PROMPT
-    assert "nie przypisuj tej liczby żadnemu pojedynczemu kodowi" in SYSTEM_PROMPT
+    assert "nie przypisuj tej liczby żadnemu pojedynczemu kodowi" in normalized_prompt
     assert "profil v11.7 świadomie wyłącza je" in SYSTEM_PROMPT
