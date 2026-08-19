@@ -16,7 +16,7 @@ def test_v11_7_profile_freezes_second_real_window_grounding_rules() -> None:
     assert "proces oczyszczania" in SYSTEM_PROMPT
     assert "nie wolno takiej emisji wnioskować z samego VOC Index" in SYSTEM_PROMPT
     assert "współczynnikiem nachylenia liniowej regresji" in SYSTEM_PROMPT
-    assert "nie jest „końcowym”" in SYSTEM_PROMPT
+    assert "Nie jest „końcowym”" in SYSTEM_PROMPT
     assert "active_alarm_sample_count" in SYSTEM_PROMPT
     assert "nie przypisuj tej liczby żadnemu pojedynczemu kodowi" in SYSTEM_PROMPT
     assert "profil v11.7 świadomie wyłącza je" in SYSTEM_PROMPT
