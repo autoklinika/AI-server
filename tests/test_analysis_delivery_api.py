@@ -11,7 +11,18 @@ def _save_analysis(
     window_start: datetime,
     window_end: datetime,
     analysis_text: str,
+    operator_view: dict | None = None,
 ) -> None:
+    result = {
+        "schema_version": 2,
+        "status": "no_anomaly_detected",
+        "analysis_pl": analysis_text,
+        "operator_recommendation_pl": "Raport doradczy; obserwować kolejne okna.",
+        "data_quality_pl": "Kompletne okno testowe.",
+    }
+    if operator_view is not None:
+        result["operator_view"] = operator_view
+
     client.app.state.ventilation_analysis_repository.save_analysis(
         analysis_id=analysis_id,
         source_id=source_id,
@@ -21,13 +32,7 @@ def _save_analysis(
         prompt_version="ventilation-v10-baseline-safe",
         sample_count=180,
         input_summary={"audit_only": True},
-        result={
-            "schema_version": 2,
-            "status": "no_anomaly_detected",
-            "analysis_pl": analysis_text,
-            "operator_recommendation_pl": "Raport doradczy; obserwować kolejne okna.",
-            "data_quality_pl": "Kompletne okno testowe.",
-        },
+        result=result,
         raw_response="internal raw response must not be delivered",
         prompt_eval_count=100,
         eval_count=20,
@@ -63,6 +68,14 @@ def test_latest_analysis_returns_newest_stored_result_with_safety_flags(client) 
         window_start=second_start,
         window_end=second_end,
         analysis_text="Najnowsza analiza.",
+        operator_view={
+            "schema_version": 1,
+            "status_label_pl": "BRAK ANOMALII",
+            "headline_pl": "Brak istotnych zmian",
+            "summary_pl": "W bieżącym oknie nie wykryto zmian wymagających uwagi operatora.",
+            "recommendation_pl": "Brak dodatkowych zaleceń dla tego okna.",
+            "data_quality_short_pl": "Dane kompletne · 180 próbek",
+        },
     )
 
     response = client.get(
@@ -85,6 +98,14 @@ def test_latest_analysis_returns_newest_stored_result_with_safety_flags(client) 
     assert payload["control_actions_supported"] is False
     assert payload["result"]["schema_version"] == 2
     assert payload["result"]["analysis_pl"] == "Najnowsza analiza."
+    assert payload["result"]["operator_view"] == {
+        "schema_version": 1,
+        "status_label_pl": "BRAK ANOMALII",
+        "headline_pl": "Brak istotnych zmian",
+        "summary_pl": "W bieżącym oknie nie wykryto zmian wymagających uwagi operatora.",
+        "recommendation_pl": "Brak dodatkowych zaleceń dla tego okna.",
+        "data_quality_short_pl": "Dane kompletne · 180 próbek",
+    }
 
     # Delivery intentionally excludes audit/raw/model-runtime internals.
     assert "input_summary" not in payload
