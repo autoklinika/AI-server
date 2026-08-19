@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 
-PROMPT_VERSION = "ventilation-v11.4-corestate-alignment"
+PROMPT_VERSION = "ventilation-v11.5-real-data-hardening"
 ANALYSIS_THINK = False
 
 READING_FIELDS = (
@@ -47,6 +47,8 @@ def _compact_numeric(summary: dict[str, Any] | None) -> dict[str, Any]:
         "mean",
         "min",
         "max",
+        "first",
+        "last",
         "delta",
         "slope_per_minute",
     )
@@ -143,6 +145,8 @@ def build_compact_analysis_packet(summary: dict[str, Any]) -> dict[str, Any]:
                     "mean",
                     "min",
                     "max",
+                    "first",
+                    "last",
                     "delta",
                 ),
                 "extract_voltage": _pick(
@@ -150,6 +154,8 @@ def build_compact_analysis_packet(summary: dict[str, Any]) -> dict[str, Any]:
                     "mean",
                     "min",
                     "max",
+                    "first",
+                    "last",
                     "delta",
                 ),
             },
@@ -192,21 +198,35 @@ Zasady nadrzędne:
   w takim przypadku napisz po prostu, że przyczyna różnicy nie jest znana,
 - VOC Index i NOx Index są indeksami. Nie nazywaj ich stężeniem i nie przeliczaj
   ich na ppm, ppb ani inne jednostki stężenia,
+- dla statystyk liczbowych `first` i `last` są chronologicznie pierwszą i ostatnią
+  zaobserwowaną wartością w oknie. `min` i `max` są wyłącznie ekstremami i nie
+  określają kolejności w czasie. Jeżeli opisujesz zmianę „z X do Y”, używaj
+  wyłącznie `first` jako X i `last` jako Y,
+- nie rekonstruuj ani nie zgaduj `first` lub `last` na podstawie `min`, `max`,
+  `mean`, `delta` ani `slope_per_minute`. Jeżeli `first` lub `last` jest null,
+  opisz tylko przekazane statystyki bez wymyślania wartości początku lub końca,
+- `delta` oznacza `last - first`; nie traktuj różnicy `max - min` jako `delta` i
+  nie przedstawiaj `min -> max` jako przebiegu chronologicznego, chyba że pola
+  `first` i `last` jawnie mają takie same wartości,
 - supply_voltage i extract_voltage to zadane sygnały sterujące 0-10 V, nie RPM,
-  przepływ ani rzeczywiste napięcie wentylatora,
+  przepływ ani rzeczywiste napięcie wentylatora. Dla setpointów obowiązują te same
+  zasady `first`/`last` kontra `min`/`max`,
 - CO2 i przepływ nie są dostarczane do bieżącego profilu analitycznego. Surowy
-  CoreState może zawierać TACHO/RPM, ale profil v11.4 świadomie wyłącza je z
+  CoreState może zawierać TACHO/RPM, ale profil v11.5 świadomie wyłącza je z
   bieżącego pakietu analitycznego; nie twierdź, że system nie ma TACHO/RPM i nie
   wnioskuj o RPM ani przepływie na podstawie samych setpointów 0-10 V,
 - diagnostic_counter_deltas zawiera reset-aware przyrosty liczników kumulacyjnych;
   nie interpretuj resetu licznika jako ujemnej liczby zdarzeń. Pole
   consecutive_failures_max jest maksymalną liczbą kolejnych niepowodzeń w obrębie
   okna i nie może być zastępowane różnicą wartości końcowej i początkowej,
+- jeżeli dla dowolnego kanału `missing > 0`, ten kanał nie jest kompletny. Nie
+  używaj wtedy wobec niego sformułowań „kompletne dane”, „pełne próbkowanie” ani
+  „brak brakujących próbek”; podaj liczbę brakujących próbek, gdy jest istotna,
 - nie używaj określeń „w normie”, „typowe”, „bezpieczne”, „prawidłowe”,
   „wysokie”, „niskie”, „podwyższone”, „obniżone” ani „nie przekracza progów”
   jako klasyfikacji wartości, jeśli odpowiedni baseline, norma lub próg nie został
   przekazany; możesz natomiast opisywać kierunek i wielkość zmiany w obrębie
-  bieżącego okna, np. „wzrost z X do Y”,
+  bieżącego okna, np. „wzrost z X do Y”, jeżeli X=`first` i Y=`last`,
 - brak historycznego baseline'u nie zabrania wykrywania wyraźnych zmian w obrębie
   bieżącego okna. Oznacza tylko, że nie wolno klasyfikować wartości względem
   normalnej pracy warsztatu,
@@ -242,7 +262,9 @@ Reguły pierwszeństwa statusu:
   obniżaj tego do `attention` tylko dlatego, że pomiary środowiskowe są kompletne
   lub stabilne,
 - jeżeli active_alarm_sample_count > 0 albo active_alarm_codes nie jest puste,
-  zwróć `anomaly`,
+  zwróć `anomaly`. `analysis_pl` musi wtedy jawnie wskazać co najmniej jeden
+  konkretny kod z `active_alarm_codes` jako podstawę statusu `anomaly`; nie wolno
+  przenosić jedynej wzmianki o alarmie wyłącznie do `data_quality_pl`,
 - jeżeli latest_error SENSOR BUS jawnie informuje o zatrzymaniu lub awarii workera,
   a dane pokazują wielokrotne restarty oraz obniżoną gotowość lub dostępność
   workera, zwróć `anomaly`; obecność aktualnych próbek nie kasuje tej anomalii,
@@ -264,11 +286,13 @@ Spójność statusu i treści:
   mocniejsza podstawa do `anomaly`,
 - jeżeli data_quality_pl stwierdza brak całego kanału lub pełny zestaw brakujących
   próbek dla kanału, wynik `no_anomaly_detected` byłby niespójny z treścią,
+- jeżeli `missing > 0`, data_quality_pl nie może jednocześnie twierdzić, że ten
+  kanał ma pełną kompletność lub zero brakujących próbek,
 - `expected_operating_state_known=false` samo w sobie nigdy nie podnosi statusu;
   przy STOP + 0 V, kompletnych stabilnych danych, braku alarmów i braku innych
   zdarzeń zwróć `no_anomaly_detected`,
 - jeśli zwracasz `anomaly`, analysis_pl musi wskazywać konkretną obserwację, która
-  ten status uzasadnia.
+  ten status uzasadnia; przy aktywnym alarmie ma to być konkretny kod alarmu.
 
 Pozostałe zasady:
 - operator_recommendation_pl ma zawierać wyłącznie zalecenie wynikające z
