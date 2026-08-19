@@ -94,10 +94,11 @@ def test_attention_operator_view_is_short_and_human_readable():
     assert view.headline_pl == "Wzrost VOC Index — strefa 1"
     assert "VOC Index — strefa 1: wzrósł z 84 do 166." in view.summary_pl
     assert "VOC Index — strefa 2: wzrósł z 35 do 37." in view.summary_pl
+    assert "historycznego punktu odniesienia" in view.summary_pl
     assert "slope_per_minute" not in view.summary_pl
     assert "missing=" not in view.summary_pl
-    assert "179 próbek" in view.data_quality_short_pl
-    assert "brak historycznego baseline'u" in view.data_quality_short_pl
+    assert view.data_quality_short_pl == "Dane kompletne · 179 próbek"
+    assert "baseline" not in view.data_quality_short_pl.lower()
 
 
 def test_no_anomaly_operator_view_does_not_invent_measurement_claims():
@@ -112,12 +113,14 @@ def test_no_anomaly_operator_view_does_not_invent_measurement_claims():
     view = render_operator_view(compact, decision, build_fact_catalog(compact))
 
     assert view.status_label_pl == "BRAK ANOMALII"
-    assert view.headline_pl == "Brak istotnych zmian"
+    assert view.headline_pl == "Brak zmian wymagających uwagi"
     assert "nie wykryto zmian wymagających uwagi" in view.summary_pl
+    assert "historycznego punktu odniesienia" in view.summary_pl
+    assert view.data_quality_short_pl == "Dane kompletne · 179 próbek"
     assert view.recommendation_pl == "Brak dodatkowych zaleceń dla tego okna."
 
 
-def test_alarm_operator_view_uses_cm5_alarm_code():
+def test_alarm_operator_view_translates_known_cm5_alarm_for_operator():
     compact = packet()
     compact["controller"]["active_alarm_sample_count"] = 5
     compact["controller"]["active_alarm_codes"] = ["SENSOR_BUS_UNAVAILABLE"]
@@ -132,8 +135,45 @@ def test_alarm_operator_view_uses_cm5_alarm_code():
 
     assert view.status_label_pl == "ANOMALIA"
     assert view.headline_pl == "Aktywny alarm systemu"
-    assert "SENSOR_BUS_UNAVAILABLE" in view.summary_pl
+    assert view.summary_pl.startswith("Magistrala czujników jest niedostępna.")
+    assert "SENSOR_BUS_UNAVAILABLE" not in view.summary_pl
+    assert view.data_quality_short_pl == "Dane kompletne · 179 próbek"
     assert "Sprawdź aktywne alarmy CM5" in view.recommendation_pl
+
+
+def test_alarm_operator_view_hides_unknown_technical_code_from_main_copy():
+    compact = packet()
+    compact["controller"]["active_alarm_sample_count"] = 1
+    compact["controller"]["active_alarm_codes"] = ["SOME_FUTURE_TECHNICAL_CODE"]
+    decision = VentilationDecisionV12(
+        status="anomaly",
+        reason_codes=["technical_alarm"],
+        selected_fact_ids=["alarm:SOME_FUTURE_TECHNICAL_CODE"],
+        recommendation_code="diagnose_active_alarm",
+    )
+
+    view = render_operator_view(compact, decision, build_fact_catalog(compact))
+
+    assert view.summary_pl.startswith("CM5 zgłasza dodatkowy alarm techniczny.")
+    assert "SOME_FUTURE_TECHNICAL_CODE" not in view.summary_pl
+    assert view.data_quality_short_pl == "Dane kompletne · 179 próbek"
+
+
+def test_data_quality_short_reports_missing_samples_without_mixing_alarm_state():
+    compact = packet()
+    compact["sensor_bus"]["nodes"]["1"]["readings"]["voc_index"]["missing"] = 4
+    decision = VentilationDecisionV12(
+        status="attention",
+        reason_codes=["environmental_change"],
+        selected_fact_ids=["node:1:reading:voc_index"],
+        recommendation_code="observe_next_windows",
+    )
+
+    view = render_operator_view(compact, decision, build_fact_catalog(compact))
+
+    assert view.data_quality_short_pl == (
+        "Występują braki danych · 179 próbek · 4 brakujących odczytów"
+    )
 
 
 def test_insufficient_operator_view_is_deterministic():
@@ -142,3 +182,4 @@ def test_insufficient_operator_view_is_deterministic():
     assert view.status_label_pl == "NIEWYSTARCZAJĄCE DANE"
     assert "20 próbek" in view.summary_pl
     assert "120" in view.summary_pl
+    assert view.data_quality_short_pl == "Niepełne okno · 20 próbek"
