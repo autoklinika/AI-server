@@ -152,7 +152,7 @@ def load_scenarios_v11_7() -> list[dict[str, Any]]:
                     {
                         "name": "does_not_relabel_setpoint_as_ventilation",
                         "field": "analysis_pl",
-                        "pattern": r"(?:spadek|wzrost|zmniejszen|zwiększen)[^.!?]{0,45}wentylacj",
+                        "pattern": r"(?:spadek|wzrost|zmniejszen\w*|zwiększen\w*)\s+(?:rzeczywist\w+\s+)?(?:wentylacj\w*|przepływ\w*|wydajnoś\w*(?:\s+wentylacj\w*)?)|wentylacj\w*\s+(?:spadł\w*|wzrósł\w*|zmniejsz\w*|zwiększ\w*)",
                     },
                     {
                         "name": "does_not_invent_reverse_or_third_cause_story",
@@ -288,7 +288,7 @@ def load_scenarios_v11_7() -> list[dict[str, Any]]:
                     {
                         "name": "does_not_relabel_setpoint_as_ventilation",
                         "field": "analysis_pl",
-                        "pattern": r"(?:spadek|wzrost|zmniejszen|zwiększen)[^.!?]{0,45}wentylacj",
+                        "pattern": r"(?:spadek|wzrost|zmniejszen\w*|zwiększen\w*)\s+(?:rzeczywist\w+\s+)?(?:wentylacj\w*|przepływ\w*|wydajnoś\w*(?:\s+wentylacj\w*)?)|wentylacj\w*\s+(?:spadł\w*|wzrósł\w*|zmniejsz\w*|zwiększ\w*)",
                     },
                 ],
             },
