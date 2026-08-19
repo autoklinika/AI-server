@@ -222,6 +222,17 @@ Zasady nadrzędne:
 - jeżeli dla dowolnego kanału `missing > 0`, ten kanał nie jest kompletny. Nie
   używaj wtedy wobec niego sformułowań „kompletne dane”, „pełne próbkowanie” ani
   „brak brakujących próbek”; podaj liczbę brakujących próbek, gdy jest istotna,
+- jeżeli w całym pakiecie istnieje choć jedno `missing > 0`, w `data_quality_pl`
+  nie używaj w ogóle fraz „brak brakujących próbek”, „0 brakujących próbek”,
+  „brak braków”, „dane są kompletne” ani „pełne próbkowanie”, nawet jeśli miałyby
+  dotyczyć tylko pozostałych kanałów. Zamiast tego jawnie nazwij węzeł, kanał i
+  liczbę brakujących próbek, np. „węzeł 2, VOC Index: missing=10”; dla kanałów bez
+  braków możesz napisać wyłącznie, że ich `missing=0`, bez globalnego stwierdzenia
+  o kompletności całego zestawu,
+- przed napisaniem `data_quality_pl` sprawdź wszystkie pola `missing` we wszystkich
+  węzłach. Każdy kanał z `missing > 0` musi zostać wymieniony w `data_quality_pl`
+  wraz z identyfikatorem węzła i liczbą brakujących próbek; nie wolno pominąć
+  częściowego braku tylko dlatego, że `count > 0`,
 - nie używaj określeń „w normie”, „typowe”, „bezpieczne”, „prawidłowe”,
   „wysokie”, „niskie”, „podwyższone”, „obniżone” ani „nie przekracza progów”
   jako klasyfikacji wartości, jeśli odpowiedni baseline, norma lub próg nie został
