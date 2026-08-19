@@ -23,6 +23,10 @@ _CHANNEL_LABELS = {
     "nox_index": "NOx Index",
 }
 
+_ALARM_OPERATOR_MESSAGES = {
+    "SENSOR_BUS_UNAVAILABLE": "Magistrala czujników jest niedostępna.",
+}
+
 
 def _fmt(value: Any, *, max_digits: int = 1) -> str:
     if not isinstance(value, (int, float)) or isinstance(value, bool):
@@ -51,8 +55,8 @@ def _baseline_suffix(packet: dict[str, Any]) -> str:
     context = packet.get("analysis_context", {})
     if isinstance(context, dict) and context.get("historical_baseline_available") is False:
         return (
-            " Brak historycznego punktu odniesienia, dlatego wynik opisuje zmianę "
-            "w tym oknie, a nie odchylenie od typowej pracy warsztatu."
+            " Brak historycznego punktu odniesienia, dlatego wynik dotyczy wyłącznie "
+            "bieżącego okna i nie klasyfikuje go względem typowej pracy warsztatu."
         )
     return ""
 
@@ -90,6 +94,26 @@ def _reading_headline(fact: dict[str, Any]) -> str:
     return f"Zmiana {label} — {zone}"
 
 
+def _alarm_summary(alarms: list[dict[str, Any]]) -> str:
+    messages: list[str] = []
+    unknown_count = 0
+
+    for fact in alarms:
+        code = fact.get("code")
+        message = _ALARM_OPERATOR_MESSAGES.get(str(code)) if code else None
+        if message:
+            messages.append(message)
+        else:
+            unknown_count += 1
+
+    if unknown_count == 1:
+        messages.append("CM5 zgłasza dodatkowy alarm techniczny.")
+    elif unknown_count > 1:
+        messages.append(f"CM5 zgłasza także {unknown_count} dodatkowe alarmy techniczne.")
+
+    return " ".join(messages) if messages else "CM5 zgłasza aktywny alarm techniczny."
+
+
 def _data_quality_short(packet: dict[str, Any]) -> str:
     window = packet.get("window", {})
     sample_count = window.get("sample_count") if isinstance(window, dict) else None
@@ -120,10 +144,6 @@ def _data_quality_short(packet: dict[str, Any]) -> str:
         parts.append(f"{sample_count} próbek")
     if missing_total:
         parts.append(f"{missing_total} brakujących odczytów")
-
-    context = packet.get("analysis_context", {})
-    if isinstance(context, dict) and context.get("historical_baseline_available") is False:
-        parts.append("brak historycznego baseline'u")
 
     return " · ".join(parts)
 
@@ -157,9 +177,8 @@ def render_operator_view(
     ]
 
     if status == "anomaly" and alarms:
-        codes = [str(fact.get("code")) for fact in alarms if fact.get("code")]
         headline = "Aktywny alarm systemu"
-        summary = "CM5 zgłasza: " + ", ".join(codes) + "."
+        summary = _alarm_summary(alarms)
     elif status == "anomaly" and health:
         headline = "Problem techniczny systemu"
         summary = "Telemetria wskazuje problem komunikacji lub dostępności podsystemu pomiarowego."
@@ -198,7 +217,7 @@ def render_operator_view(
         headline = "System wymaga uwagi"
         summary = "W bieżącym oknie wykryto zmianę wymagającą dalszej obserwacji."
     elif status == "no_anomaly_detected":
-        headline = "Brak istotnych zmian"
+        headline = "Brak zmian wymagających uwagi"
         summary = "W bieżącym oknie nie wykryto zmian wymagających uwagi operatora."
     else:
         headline = "Za mało danych do analizy"
