@@ -222,12 +222,12 @@ def test_gauge_counter_summary_keeps_signed_state_change() -> None:
     assert summary["max"] == 3
 
 
-def test_v11_4_compact_packet_keeps_measurements_and_corestate_semantics() -> None:
+def test_v11_5_compact_packet_keeps_chronology_and_corestate_semantics() -> None:
     summary = _compact_packet_source_summary()
     summary["sensor_bus"]["nodes"]["1"]["counters"]["consecutive_failures"]["max"] = 3
     packet = build_compact_analysis_packet(summary)
 
-    assert PROMPT_VERSION == "ventilation-v11.4-corestate-alignment"
+    assert PROMPT_VERSION == "ventilation-v11.5-real-data-hardening"
     assert ANALYSIS_THINK is False
     assert "humidity_percent" in packet["measurement_capabilities"]["present_in_packet"]
     assert packet["measurement_capabilities"]["not_provided_by_system"] == [
@@ -242,16 +242,21 @@ def test_v11_4_compact_packet_keeps_measurements_and_corestate_semantics() -> No
     assert humidity["count"] == 179
     assert humidity["missing"] == 0
     assert humidity["mean"] == 42.1
+    assert humidity["first"] == 41.85
+    assert humidity["last"] == 42.1
     assert "stddev" not in humidity
-    assert "first" not in humidity
-    assert "last" not in humidity
     node = packet["sensor_bus"]["nodes"]["1"]
     assert node["readings"]["voc_index"]["delta"] == 16.0
+    assert node["readings"]["voc_index"]["first"] == 5.1
+    assert node["readings"]["voc_index"]["last"] == 21.1
     assert node["consecutive_failures_max"] == 3
     assert "consecutive_failures" not in node["diagnostic_counter_deltas"]
+    supply = packet["controller"]["setpoints"]["supply_voltage"]
+    assert supply["first"] == 0.0
+    assert supply["last"] == 0.0
 
 
-def test_prompt_v11_4_freezes_corestate_alignment_rules() -> None:
+def test_prompt_v11_5_freezes_real_data_hardening_rules() -> None:
     messages = build_ventilation_prompt(_compact_packet_source_summary())
     system = messages[0]["content"]
     user = messages[1]["content"]
@@ -264,13 +269,20 @@ def test_prompt_v11_4_freezes_corestate_alignment_rules() -> None:
     assert "operator_recommendation_pl" in system
     assert "data_quality_pl" in system
     assert "STOP i setpointy 0 V nie są" in system
-    assert "profil v11.4 świadomie wyłącza je" in system
+    assert "profil v11.5 świadomie wyłącza je" in system
     assert "nie twierdź, że system nie ma TACHO/RPM" in system
     assert "consecutive_failures_max" in system
+    assert "`first` i `last` są chronologicznie pierwszą i ostatnią" in system
+    assert "`min` i `max` są wyłącznie ekstremami" in system
+    assert "nie rekonstruuj ani nie zgaduj `first` lub `last`" in system
+    assert "jeżeli dla dowolnego kanału `missing > 0`, ten kanał nie jest kompletny" in system
+    assert "co najmniej jeden\n  konkretny kod z `active_alarm_codes`" in system
     assert "Przeanalizuj poniższy pakiet danych" in user
     assert '"humidity_percent"' in user
     assert '"co2"' in user
     assert '"excluded_from_current_analysis_packet"' in user
+    assert '"first"' in user
+    assert '"last"' in user
     assert '"stddev"' not in user
 
 
