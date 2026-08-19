@@ -4,8 +4,8 @@ import json
 from typing import Any
 
 
-PROMPT_VERSION = "ventilation-v10-baseline-safe"
-ANALYSIS_THINK = True
+PROMPT_VERSION = "ventilation-v11.5-real-data-hardening"
+ANALYSIS_THINK = False
 
 READING_FIELDS = (
     "pm1_0_ug_m3",
@@ -18,15 +18,20 @@ READING_FIELDS = (
     "nox_index",
 )
 
-COUNTER_FIELDS = (
+CUMULATIVE_COUNTER_FIELDS = (
     "sensor_errors",
     "modbus_service_errors",
     "communication_errors",
-    "consecutive_failures",
     "invalid_measurements",
     "stale_measurements",
     "map_version_errors",
 )
+
+GAUGE_COUNTER_FIELDS = (
+    "consecutive_failures",
+)
+
+COUNTER_FIELDS = CUMULATIVE_COUNTER_FIELDS + GAUGE_COUNTER_FIELDS
 
 
 def _pick(mapping: dict[str, Any] | None, *keys: str) -> dict[str, Any]:
@@ -42,6 +47,8 @@ def _compact_numeric(summary: dict[str, Any] | None) -> dict[str, Any]:
         "mean",
         "min",
         "max",
+        "first",
+        "last",
         "delta",
         "slope_per_minute",
     )
@@ -83,8 +90,14 @@ def build_compact_analysis_packet(summary: dict[str, Any]) -> dict[str, Any]:
                     and isinstance(raw_counters.get(field), dict)
                     else None
                 )
-                for field in COUNTER_FIELDS
+                for field in CUMULATIVE_COUNTER_FIELDS
             }
+            consecutive_failures_max = (
+                raw_counters.get("consecutive_failures", {}).get("max")
+                if isinstance(raw_counters, dict)
+                and isinstance(raw_counters.get("consecutive_failures"), dict)
+                else None
+            )
 
             nodes[str(address)] = {
                 "samples_present": node.get("samples_present"),
@@ -94,6 +107,7 @@ def build_compact_analysis_packet(summary: dict[str, Any]) -> dict[str, Any]:
                 "sensor_present_ratio": node.get("sensor_present_true_ratio"),
                 "readings": readings,
                 "diagnostic_counter_deltas": counter_deltas,
+                "consecutive_failures_max": consecutive_failures_max,
                 "latest_error": (
                     node.get("latest", {}).get("last_error")
                     if isinstance(node.get("latest"), dict)
@@ -119,7 +133,8 @@ def build_compact_analysis_packet(summary: dict[str, Any]) -> dict[str, Any]:
         },
         "measurement_capabilities": {
             "present_in_packet": sorted(measurements_present),
-            "not_provided_by_system": ["co2", "fan_rpm", "airflow"],
+            "not_provided_by_system": ["co2", "airflow"],
+            "excluded_from_current_analysis_packet": ["fan_rpm", "tacho"],
         },
         "controller": {
             "latest_mode": system.get("latest_mode"),
@@ -130,6 +145,8 @@ def build_compact_analysis_packet(summary: dict[str, Any]) -> dict[str, Any]:
                     "mean",
                     "min",
                     "max",
+                    "first",
+                    "last",
                     "delta",
                 ),
                 "extract_voltage": _pick(
@@ -137,6 +154,8 @@ def build_compact_analysis_packet(summary: dict[str, Any]) -> dict[str, Any]:
                     "mean",
                     "min",
                     "max",
+                    "first",
+                    "last",
                     "delta",
                 ),
             },
@@ -164,25 +183,136 @@ Dostajesz kompaktowe statystyki z zamkniętego 15-minutowego okna. Przeanalizuj
 stan sterownika, SENSOR BUS, oba węzły SEN55 oraz trendy PM, VOC, NOx,
 temperatury i wilgotności.
 
-Zasady:
+Zasady nadrzędne:
 - opieraj się wyłącznie na przekazanych danych,
 - wszystkie trzy pola tekstowe odpowiedzi muszą być napisane po polsku,
 - podawaj konkretne liczby, gdy są istotne dla wniosku,
+- rozróżniaj obserwację od przyczyny: zbieżność, różnica między węzłami ani trend
+  nie potwierdzają przyczynowości,
+- nie wymyślaj źródeł PM, VOC ani NOx ani czynności wykonywanych w warsztacie;
+  bez bezpośrednich danych nie przypisuj wzrostu do spawania, szlifowania,
+  lakierowania, rozpuszczalników, silnika, spalin, pieca ani innych procesów,
+- jeśli tylko jeden węzeł pokazuje zmianę, opisz różnicę między węzłami, ale nie
+  wyprowadzaj z niej hipotezy o lokalnym źródle, aktywności generującej pył ani
+  uszkodzeniu czujnika, jeżeli diagnostyka nie potwierdza takiej przyczyny;
+  w takim przypadku napisz po prostu, że przyczyna różnicy nie jest znana,
+- VOC Index i NOx Index są indeksami. Nie nazywaj ich stężeniem i nie przeliczaj
+  ich na ppm, ppb ani inne jednostki stężenia,
+- dla statystyk liczbowych `first` i `last` są chronologicznie pierwszą i ostatnią
+  zaobserwowaną wartością w oknie. `min` i `max` są wyłącznie ekstremami i nie
+  określają kolejności w czasie. Jeżeli opisujesz zmianę „z X do Y”, używaj
+  wyłącznie `first` jako X i `last` jako Y,
+- nie rekonstruuj ani nie zgaduj `first` lub `last` na podstawie `min`, `max`,
+  `mean`, `delta` ani `slope_per_minute`. Jeżeli `first` lub `last` jest null,
+  opisz tylko przekazane statystyki bez wymyślania wartości początku lub końca,
+- `delta` oznacza `last - first`; nie traktuj różnicy `max - min` jako `delta` i
+  nie przedstawiaj `min -> max` jako przebiegu chronologicznego, chyba że pola
+  `first` i `last` jawnie mają takie same wartości,
 - supply_voltage i extract_voltage to zadane sygnały sterujące 0-10 V, nie RPM,
-  przepływ ani rzeczywiste napięcie wentylatora,
-- system nie ma pomiaru CO2, RPM/tacho ani przepływu,
-- nie używaj określeń „w normie”, „typowe”, „bezpieczne” ani „nie przekracza
-  progów”, jeśli takie normy, baseline lub progi nie zostały przekazane w danych,
-- brak historycznego baseline'u oznacza, że możesz opisywać wartości i trendy,
-  ale nie klasyfikować ich względem normalnej pracy warsztatu,
-- nie wiadomo, czy system miał w tym oknie pracować; STOP i setpointy 0 V nie są
-  same w sobie usterką,
-- status `no_anomaly_detected` oznacza wyłącznie, że w tym 15-minutowym oknie nie
-  wykryto jednoznacznej anomalii na podstawie dostępnych danych; nie oznacza to,
-  że wartości są normalne, typowe, bezpieczne ani mieszczą się w progach,
-- status `anomaly` stosuj tylko przy konkretnej anomalii opisanej w analysis_pl,
-- operator_recommendation_pl ma zawierać praktyczne zalecenie albo jasno napisać,
-  że na podstawie tego okna nie ma dodatkowych zaleceń,
+  przepływ ani rzeczywiste napięcie wentylatora. Dla setpointów obowiązują te same
+  zasady `first`/`last` kontra `min`/`max`,
+- CO2 i przepływ nie są dostarczane do bieżącego profilu analitycznego. Surowy
+  CoreState może zawierać TACHO/RPM, ale profil v11.5 świadomie wyłącza je z
+  bieżącego pakietu analitycznego; nie twierdź, że system nie ma TACHO/RPM i nie
+  wnioskuj o RPM ani przepływie na podstawie samych setpointów 0-10 V,
+- diagnostic_counter_deltas zawiera reset-aware przyrosty liczników kumulacyjnych;
+  nie interpretuj resetu licznika jako ujemnej liczby zdarzeń. Pole
+  consecutive_failures_max jest maksymalną liczbą kolejnych niepowodzeń w obrębie
+  okna i nie może być zastępowane różnicą wartości końcowej i początkowej,
+- jeżeli dla dowolnego kanału `missing > 0`, ten kanał nie jest kompletny. Nie
+  używaj wtedy wobec niego sformułowań „kompletne dane”, „pełne próbkowanie” ani
+  „brak brakujących próbek”; podaj liczbę brakujących próbek, gdy jest istotna,
+- jeżeli w całym pakiecie istnieje choć jedno `missing > 0`, w `data_quality_pl`
+  nie używaj w ogóle fraz „brak brakujących próbek”, „0 brakujących próbek”,
+  „brak braków”, „dane są kompletne” ani „pełne próbkowanie”, nawet jeśli miałyby
+  dotyczyć tylko pozostałych kanałów. Zamiast tego jawnie nazwij węzeł, kanał i
+  liczbę brakujących próbek, np. „węzeł 2, VOC Index: missing=10”; dla kanałów bez
+  braków możesz napisać wyłącznie, że ich `missing=0`, bez globalnego stwierdzenia
+  o kompletności całego zestawu,
+- przed napisaniem `data_quality_pl` sprawdź wszystkie pola `missing` we wszystkich
+  węzłach. Każdy kanał z `missing > 0` musi zostać wymieniony w `data_quality_pl`
+  wraz z identyfikatorem węzła i liczbą brakujących próbek; nie wolno pominąć
+  częściowego braku tylko dlatego, że `count > 0`,
+- nie używaj określeń „w normie”, „typowe”, „bezpieczne”, „prawidłowe”,
+  „wysokie”, „niskie”, „podwyższone”, „obniżone” ani „nie przekracza progów”
+  jako klasyfikacji wartości, jeśli odpowiedni baseline, norma lub próg nie został
+  przekazany; możesz natomiast opisywać kierunek i wielkość zmiany w obrębie
+  bieżącego okna, np. „wzrost z X do Y”, jeżeli X=`first` i Y=`last`,
+- brak historycznego baseline'u nie zabrania wykrywania wyraźnych zmian w obrębie
+  bieżącego okna. Oznacza tylko, że nie wolno klasyfikować wartości względem
+  normalnej pracy warsztatu,
+- jeżeli historical_baseline_available=false, jawnie napisz co najmniej raz, że
+  brak historycznego baseline'u lub punktu odniesienia uniemożliwia klasyfikację
+  wartości względem normalnej pracy warsztatu; nie pomijaj tego nawet przy
+  kompletnych i stabilnych danych,
+- jeżeli expected_operating_state_known=false, nie wiadomo, czy aktualny tryb i
+  setpointy są zgodne z zamiarem operatora. Jest to wyłącznie ograniczenie
+  kontekstu, a nie anomalia i nie powód do statusu `attention` lub `anomaly`,
+- gdy opisujesz STOP lub 0 V przy expected_operating_state_known=false, zaznacz
+  jawnie tę niewiedzę, ale nie wyciągaj z niej wniosku o awarii, braku aktywności,
+  stanie spoczynku ani potrzebie interwencji. STOP i setpointy 0 V nie są same w
+  sobie usterką,
+- brak jednego kanału pomiarowego przez całe okno jest problemem jakości danych;
+  opisz go w data_quality_pl i nie zastępuj brakującej wartości domysłem.
+
+Wybór statusu:
+- `no_anomaly_detected`: brak jednoznacznej anomalii technicznej, brak istotnego
+  problemu jakości danych i brak wyraźnego zdarzenia lub trendu wymagającego uwagi
+  w bieżącym oknie,
+- `attention`: występuje wyraźna zmiana lub trend w bieżącym oknie albo istotny,
+  częściowy problem jakości danych, ale bez jednoznacznie potwierdzonej awarii,
+- `anomaly`: występuje konkretna anomalia techniczna potwierdzona danymi, np.
+  tryb FAULT, aktywny alarm, utrata gotowości SENSOR BUS, awaria workera,
+  wielokrotne restarty workera lub wyraźnie zdegradowana komunikacja,
+- `insufficient_data`: danych jest zasadniczo zbyt mało, aby wykonać sensowną
+  analizę. Sam brak baseline'u nie oznacza insufficient_data.
+
+Reguły pierwszeństwa statusu:
+- stosuj hierarchię: `anomaly` > `attention` > `no_anomaly_detected`;
+- tryb `FAULT` sterownika albo aktywny alarm sterownika oznacza `anomaly`; nie
+  obniżaj tego do `attention` tylko dlatego, że pomiary środowiskowe są kompletne
+  lub stabilne,
+- jeżeli active_alarm_sample_count > 0 albo active_alarm_codes nie jest puste,
+  zwróć `anomaly`. `analysis_pl` musi wtedy jawnie wskazać co najmniej jeden
+  konkretny kod z `active_alarm_codes` jako podstawę statusu `anomaly`; nie wolno
+  przenosić jedynej wzmianki o alarmie wyłącznie do `data_quality_pl`,
+- jeżeli latest_error SENSOR BUS jawnie informuje o zatrzymaniu lub awarii workera,
+  a dane pokazują wielokrotne restarty oraz obniżoną gotowość lub dostępność
+  workera, zwróć `anomaly`; obecność aktualnych próbek nie kasuje tej anomalii,
+- `attention` nie służy do łagodzenia potwierdzonego `FAULT`, aktywnego alarmu ani
+  potwierdzonej awarii procesu SENSOR BUS,
+- jeżeli dla węzła kanał pomiarowy ma `count=0` i `missing` odpowiada całemu
+  analizowanemu oknu (np. 180 brakujących próbek przy 180 próbkach okna), zwróć
+  co najmniej `attention`; pozostałe kompletne i stabilne kanały nie mogą obniżyć
+  tego statusu do `no_anomaly_detected`,
+- pełny brak jednego kanału przez całe okno jest istotnym częściowym problemem
+  jakości danych nawet wtedy, gdy komunikacja SENSOR BUS i pozostałe pomiary są
+  poprawne.
+
+Spójność statusu i treści:
+- jeżeli w analysis_pl sam opisujesz wyraźny wzrost, spadek lub inne zdarzenie
+  wymagające uwagi, nie zwracaj `no_anomaly_detected`,
+- jeżeli przez całe okno brakuje kanału pomiarowego jednego z węzłów, status
+  `no_anomaly_detected` jest niedozwolony; użyj `attention`, chyba że istnieje
+  mocniejsza podstawa do `anomaly`,
+- jeżeli data_quality_pl stwierdza brak całego kanału lub pełny zestaw brakujących
+  próbek dla kanału, wynik `no_anomaly_detected` byłby niespójny z treścią,
+- jeżeli `missing > 0`, data_quality_pl nie może jednocześnie twierdzić, że ten
+  kanał ma pełną kompletność lub zero brakujących próbek,
+- `expected_operating_state_known=false` samo w sobie nigdy nie podnosi statusu;
+  przy STOP + 0 V, kompletnych stabilnych danych, braku alarmów i braku innych
+  zdarzeń zwróć `no_anomaly_detected`,
+- jeśli zwracasz `anomaly`, analysis_pl musi wskazywać konkretną obserwację, która
+  ten status uzasadnia; przy aktywnym alarmie ma to być konkretny kod alarmu.
+
+Pozostałe zasady:
+- operator_recommendation_pl ma zawierać wyłącznie zalecenie wynikające z
+  przekazanych danych albo jasno napisać, że na podstawie tego okna nie ma
+  dodatkowych zaleceń,
+- nie zalecaj zwiększania ani zmniejszania przepływu, jeżeli przepływ nie jest
+  mierzony,
+- nie zalecaj szukania konkretnego źródła emisji lub aktywności warsztatowej,
+  jeżeli źródło nie jest bezpośrednio wskazane w danych,
 - data_quality_pl ma krótko opisać kompletność i ograniczenia danych,
 - nie dodawaj ofert typu „mogę zrobić wykres” ani innych meta-komentarzy.
 

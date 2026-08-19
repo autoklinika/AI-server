@@ -9,7 +9,10 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from ai_bridge.adapters.ventilation.analysis import summarize_ventilation_window
+from ai_bridge.adapters.ventilation.analysis import (
+    _counter_summary,
+    summarize_ventilation_window,
+)
 from ai_bridge.adapters.ventilation.analysis_profile import (
     ANALYSIS_THINK,
     PROMPT_VERSION,
@@ -78,8 +81,8 @@ def _compact_packet_source_summary() -> dict[str, Any]:
             "min": minimum,
             "max": maximum,
             "stddev": 0.5,
-            "first": mean - delta,
-            "last": mean,
+            "first": round(mean - delta, 4),
+            "last": round(mean, 4),
             "delta": delta,
             "slope_per_minute": slope,
         }
@@ -190,43 +193,96 @@ def test_summary_contains_only_deterministic_math() -> None:
     assert summary["sensor_bus"]["samples_present"] == 0
 
 
-def test_v10_compact_packet_keeps_measurements_and_removes_noise() -> None:
-    packet = build_compact_analysis_packet(_compact_packet_source_summary())
+def test_cumulative_counter_summary_is_reset_aware() -> None:
+    summary = _counter_summary(
+        [34, 40, 51, 0, 0, 2],
+        cumulative=True,
+    )
 
-    assert PROMPT_VERSION == "ventilation-v10-baseline-safe"
-    assert ANALYSIS_THINK is True
+    assert summary["first"] == 34
+    assert summary["last"] == 2
+    assert summary["delta"] == 19
+    assert summary["max"] == 51
+
+    assert _counter_summary(
+        [0, 16, 0],
+        cumulative=True,
+    )["delta"] == 16
+
+
+def test_gauge_counter_summary_keeps_signed_state_change() -> None:
+    summary = _counter_summary(
+        [3, 2, 0],
+        cumulative=False,
+    )
+
+    assert summary["first"] == 3
+    assert summary["last"] == 0
+    assert summary["delta"] == -3
+    assert summary["max"] == 3
+
+
+def test_v11_5_compact_packet_keeps_chronology_and_corestate_semantics() -> None:
+    summary = _compact_packet_source_summary()
+    summary["sensor_bus"]["nodes"]["1"]["counters"]["consecutive_failures"]["max"] = 3
+    packet = build_compact_analysis_packet(summary)
+
+    assert PROMPT_VERSION == "ventilation-v11.5-real-data-hardening"
+    assert ANALYSIS_THINK is False
     assert "humidity_percent" in packet["measurement_capabilities"]["present_in_packet"]
     assert packet["measurement_capabilities"]["not_provided_by_system"] == [
         "co2",
-        "fan_rpm",
         "airflow",
+    ]
+    assert packet["measurement_capabilities"]["excluded_from_current_analysis_packet"] == [
+        "fan_rpm",
+        "tacho",
     ]
     humidity = packet["sensor_bus"]["nodes"]["1"]["readings"]["humidity_percent"]
     assert humidity["count"] == 179
     assert humidity["missing"] == 0
     assert humidity["mean"] == 42.1
+    assert humidity["first"] == 41.85
+    assert humidity["last"] == 42.1
     assert "stddev" not in humidity
-    assert "first" not in humidity
-    assert "last" not in humidity
-    assert packet["sensor_bus"]["nodes"]["1"]["readings"]["voc_index"]["delta"] == 16.0
+    node = packet["sensor_bus"]["nodes"]["1"]
+    assert node["readings"]["voc_index"]["delta"] == 16.0
+    assert node["readings"]["voc_index"]["first"] == 5.1
+    assert node["readings"]["voc_index"]["last"] == 21.1
+    assert node["consecutive_failures_max"] == 3
+    assert "consecutive_failures" not in node["diagnostic_counter_deltas"]
+    supply = packet["controller"]["setpoints"]["supply_voltage"]
+    assert supply["first"] == 0.0
+    assert supply["last"] == 0.0
 
 
-def test_prompt_v10_freezes_baseline_safe_report_rules() -> None:
+def test_prompt_v11_5_freezes_real_data_hardening_rules() -> None:
     messages = build_ventilation_prompt(_compact_packet_source_summary())
     system = messages[0]["content"]
     user = messages[1]["content"]
 
     assert "wszystkie trzy pola tekstowe odpowiedzi muszą być napisane po polsku" in system
     assert "nie używaj określeń „w normie”, „typowe”, „bezpieczne”" in system
-    assert "nie klasyfikować ich względem normalnej pracy warsztatu" in system
-    assert "status `no_anomaly_detected` oznacza wyłącznie" in system
-    assert "nie oznacza to" in system
+    assert "brak historycznego baseline'u lub punktu odniesienia" in system
+    assert "`no_anomaly_detected`: brak jednoznacznej anomalii technicznej" in system
+    assert "hierarchię: `anomaly` > `attention` > `no_anomaly_detected`" in system
     assert "operator_recommendation_pl" in system
     assert "data_quality_pl" in system
     assert "STOP i setpointy 0 V nie są" in system
+    assert "profil v11.5 świadomie wyłącza je" in system
+    assert "nie twierdź, że system nie ma TACHO/RPM" in system
+    assert "consecutive_failures_max" in system
+    assert "`first` i `last` są chronologicznie pierwszą i ostatnią" in system
+    assert "`min` i `max` są wyłącznie ekstremami" in system
+    assert "nie rekonstruuj ani nie zgaduj `first` lub `last`" in system
+    assert "jeżeli dla dowolnego kanału `missing > 0`, ten kanał nie jest kompletny" in system
+    assert "co najmniej jeden\n  konkretny kod z `active_alarm_codes`" in system
     assert "Przeanalizuj poniższy pakiet danych" in user
     assert '"humidity_percent"' in user
     assert '"co2"' in user
+    assert '"excluded_from_current_analysis_packet"' in user
+    assert '"first"' in user
+    assert '"last"' in user
     assert '"stddev"' not in user
 
 
@@ -329,7 +385,7 @@ def test_service_skips_ollama_when_sample_count_is_below_gate() -> None:
     assert repository.saved["sample_count"] == 1
 
 
-def test_service_uses_structured_schema_and_thinking() -> None:
+def test_service_uses_structured_schema_without_thinking() -> None:
     repository = FakeRepository([_sample(minute=0, supply=0.0, extract=0.0)])
     ollama = CapturingOllama()
     service = VentilationAnalysisService(
@@ -349,7 +405,7 @@ def test_service_uses_structured_schema_and_thinking() -> None:
 
     assert result.result.status == "no_anomaly_detected"
     assert ollama.kwargs is not None
-    assert ollama.kwargs["think"] is True
+    assert ollama.kwargs["think"] is False
     assert ollama.kwargs["response_schema"]["properties"]["analysis_pl"]["type"] == "string"
 
 
@@ -382,7 +438,7 @@ def test_service_reuses_existing_analysis_without_calling_ollama() -> None:
     assert repository.saved is None
 
 
-def test_ollama_structured_chat_uses_schema_non_streaming_and_think_true(monkeypatch) -> None:
+def test_ollama_structured_chat_uses_schema_non_streaming_and_think_false(monkeypatch) -> None:
     captured: dict[str, Any] = {}
 
     class FakeResponse:
@@ -428,7 +484,7 @@ def test_ollama_structured_chat_uses_schema_non_streaming_and_think_true(monkeyp
 
     assert captured["url"] == "http://127.0.0.1:11434/api/chat"
     assert captured["json"]["stream"] is False
-    assert captured["json"]["think"] is True
+    assert captured["json"]["think"] is False
     assert captured["json"]["format"] == schema
     assert captured["json"]["options"]["temperature"] == 0.0
     assert captured["timeout"] == 300.0

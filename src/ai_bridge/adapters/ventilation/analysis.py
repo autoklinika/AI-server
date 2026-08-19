@@ -21,15 +21,20 @@ READING_FIELDS = (
     "nox_index",
 )
 
-COUNTER_FIELDS = (
+CUMULATIVE_COUNTER_FIELDS = (
     "sensor_errors",
     "modbus_service_errors",
     "communication_errors",
-    "consecutive_failures",
     "invalid_measurements",
     "stale_measurements",
     "map_version_errors",
 )
+
+GAUGE_COUNTER_FIELDS = (
+    "consecutive_failures",
+)
+
+COUNTER_FIELDS = CUMULATIVE_COUNTER_FIELDS + GAUGE_COUNTER_FIELDS
 
 
 def _round(value: float | None, digits: int = 4) -> float | None:
@@ -91,13 +96,36 @@ def _numeric_summary(
     }
 
 
-def _counter_summary(values: list[int]) -> dict[str, int | None]:
+def _counter_summary(
+    values: list[int],
+    *,
+    cumulative: bool,
+) -> dict[str, int | None]:
     if not values:
         return {"first": None, "last": None, "delta": None, "max": None}
+
+    if cumulative:
+        delta = 0
+
+        for previous, current in zip(values, values[1:]):
+            if current >= previous:
+                delta += current - previous
+            else:
+                # Counter discontinuity/reset.
+                #
+                # Nie interpretujemy spadku jako ujemnej liczby zdarzeń.
+                # Jeżeli po resecie pierwsza zaobserwowana wartość jest
+                # większa od zera, należy już do nowej epoki licznika.
+                delta += current
+    else:
+        # Gauge/state, np. consecutive_failures.
+        # Spadek jest tu prawidłową zmianą stanu.
+        delta = values[-1] - values[0]
+
     return {
         "first": values[0],
         "last": values[-1],
-        "delta": values[-1] - values[0],
+        "delta": delta,
         "max": max(values),
     }
 
@@ -179,12 +207,18 @@ def summarize_ventilation_window(
                 expected_count=len(node_points),
             )
 
-        counter_summaries = {
-            field: _counter_summary(
-                [int(getattr(node, field)) for _, node in node_points]
+        counter_summaries = {}
+
+        for field in COUNTER_FIELDS:
+            values = [
+                int(getattr(node, field))
+                for _, node in node_points
+            ]
+
+            counter_summaries[field] = _counter_summary(
+                values,
+                cumulative=field in CUMULATIVE_COUNTER_FIELDS,
             )
-            for field in COUNTER_FIELDS
-        }
 
         latest_node = node_points[-1][1] if node_points else None
         nodes[str(address)] = {
