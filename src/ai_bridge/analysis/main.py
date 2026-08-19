@@ -5,8 +5,9 @@ from datetime import datetime, timedelta, timezone
 import json
 import logging
 
-from ai_bridge.adapters.ventilation.analysis_profile import ANALYSIS_THINK
-from ai_bridge.analysis.service import VentilationAnalysisService, aligned_window
+from ai_bridge.adapters.ventilation.analysis_v12_2 import ANALYSIS_THINK
+from ai_bridge.analysis.service import aligned_window
+from ai_bridge.analysis.service_v12_2 import VentilationAnalysisServiceV122
 from ai_bridge.ollama.client import OllamaClient
 from ai_bridge.settings import get_settings
 from ai_bridge.storage.analysis_repository import VentilationAnalysisRepository
@@ -71,7 +72,7 @@ def main() -> int:
             base_url=settings.ollama_url,
             timeout_seconds=settings.ollama_analysis_timeout_seconds,
         )
-        service = VentilationAnalysisService(
+        service = VentilationAnalysisServiceV122(
             repository=repository,
             ollama=ollama,
             model=settings.ollama_model,
