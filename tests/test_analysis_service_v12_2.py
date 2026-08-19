@@ -107,7 +107,7 @@ def test_v12_2_service_uses_environmental_decision_schema_and_python_renderer() 
     )
     assert result.result.operator_view is not None
     assert result.result.operator_view.status_label_pl == "BRAK ANOMALII"
-    assert result.result.operator_view.headline_pl == "Brak istotnych zmian"
+    assert result.result.operator_view.headline_pl == "Brak zmian wymagających uwagi"
     assert ollama.kwargs is not None
     assert ollama.kwargs["think"] is False
     assert (
