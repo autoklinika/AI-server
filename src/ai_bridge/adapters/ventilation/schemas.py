@@ -26,6 +26,7 @@ class AlarmState(StrictModel):
     source: str = Field(default="core", min_length=1, max_length=128)
     acknowledged: bool = False
     acknowledged_at: AwareDatetime | None = None
+    alert_v2: dict[str, Any] | None = None
 
 
 class AirQualityReading(StrictModel):
@@ -108,7 +109,8 @@ class VentilationMetrics(StrictModel):
     Stable controller/SENSOR BUS fields remain strongly typed. Newer, already
     validated CM5 subsystems are explicit top-level members and are preserved
     verbatim as JSON objects so ingestion does not lag behind CoreState rollout.
-    Unknown top-level metrics are still rejected.
+    AlertV2 metadata is accepted only in its two explicit read-only extension
+    points; unrelated top-level and alarm fields remain forbidden.
     """
 
     mode: Literal["STOP", "MANUAL", "FAULT"]
@@ -123,6 +125,7 @@ class VentilationMetrics(StrictModel):
     zigbee: dict[str, Any] | None = None
     schedule: dict[str, Any] | None = None
     shadow_automation: dict[str, Any] | None = None
+    alert_v2: dict[str, Any] | None = None
 
 
 class VentilationTelemetrySample(StrictModel):

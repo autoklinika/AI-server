@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import pytest
+from pydantic import ValidationError
+
 from ai_bridge.adapters.ventilation.schemas import VentilationTelemetryBatch
 
 
@@ -26,6 +29,21 @@ def integrated_sample():
                     "occurrences": 1,
                     "acknowledged": False,
                     "acknowledged_at": None,
+                    "alert_v2": {
+                        "mapped": True,
+                        "policy_version": "2",
+                        "enabled": True,
+                        "weight": 2,
+                        "severity": "warning",
+                        "reaction": "continue",
+                        "scope": "zigbee",
+                        "affects_control": False,
+                        "hmi_color": "yellow",
+                        "category": "service",
+                        "correlation_group": "zigbee",
+                        "correlation_priority": 10,
+                        "title": "Zigbee data stale",
+                    },
                 }
             ],
             "sensor_bus": {
@@ -127,6 +145,28 @@ def integrated_sample():
                 "status": "TUNING_REQUIRED",
                 "zones": [],
             },
+            "alert_v2": {
+                "runtime_mode": "read_only_mapping",
+                "loaded": True,
+                "policy_version": "2",
+                "sha256": "example-policy-sha",
+                "alert_count": 24,
+                "source_path": "/etc/workshop-ventilation/alerts-v2.toml",
+                "loaded_at": "2026-08-19T08:00:00+00:00",
+                "last_attempt_at": "2026-08-19T08:00:00+00:00",
+                "last_error": None,
+                "control_policy_applied": False,
+                "active_weight": 2,
+                "hmi_color": "yellow",
+                "mapped_active_alerts": 1,
+                "disabled_active_alerts": 0,
+                "unmapped_active_alerts": 0,
+                "service_plane": {
+                    "monitor": {"available": True},
+                    "correlation": {"available": True},
+                    "control_policy_applied": False,
+                },
+            },
         },
     }
 
@@ -160,8 +200,28 @@ def test_integrated_corestate_extensions_survive_schema_serialization():
     assert metrics["sensor_bus"]["nodes"][0]["sen55_device_status_valid"] is True
     assert metrics["active_alarms"][0]["alert_id"] == 123
     assert metrics["active_alarms"][0]["source"] == "zigbee"
+    assert metrics["active_alarms"][0]["alert_v2"]["mapped"] is True
+    assert metrics["active_alarms"][0]["alert_v2"]["affects_control"] is False
     assert metrics["aero_bus"]["online"] is True
     assert metrics["tacho"]["chip_path"] == "/dev/gpiochip0"
     assert metrics["zigbee"]["sensor_list"][0]["friendly_name"] == "temp_zew"
     assert metrics["schedule"]["available"] is True
     assert metrics["shadow_automation"]["actuation_supported"] is False
+    assert metrics["alert_v2"]["runtime_mode"] == "read_only_mapping"
+    assert metrics["alert_v2"]["control_policy_applied"] is False
+
+
+def test_unrelated_corestate_extension_remains_rejected():
+    batch = integrated_batch()
+    batch["samples"][0]["metrics"]["unexpected_control_plane"] = {"enabled": True}
+
+    with pytest.raises(ValidationError):
+        VentilationTelemetryBatch.model_validate(batch)
+
+
+def test_unrelated_alarm_extension_remains_rejected():
+    batch = integrated_batch()
+    batch["samples"][0]["metrics"]["active_alarms"][0]["unexpected_field"] = True
+
+    with pytest.raises(ValidationError):
+        VentilationTelemetryBatch.model_validate(batch)
