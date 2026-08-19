@@ -7,11 +7,17 @@ from uuid import uuid4
 
 from ai_bridge.adapters.ventilation.analysis import summarize_ventilation_window
 from ai_bridge.adapters.ventilation.analysis_profile import build_compact_analysis_packet
+from ai_bridge.adapters.ventilation.analysis_v12 import build_fact_catalog
 from ai_bridge.adapters.ventilation.analysis_v12_2 import (
     PROMPT_VERSION,
     EnvironmentalDecisionV122,
     build_environment_prompt_from_compact,
     render_result,
+    resolve_final_decision,
+)
+from ai_bridge.analysis.operator_view import (
+    render_insufficient_operator_view,
+    render_operator_view,
 )
 from ai_bridge.analysis.schemas import VentilationAnalysisResult
 from ai_bridge.ollama.client import OllamaClient, compact_schema_for_ollama
@@ -119,6 +125,10 @@ class VentilationAnalysisServiceV122:
                     "Model AI nie został uruchomiony, ponieważ liczba próbek nie spełniła "
                     "minimalnego warunku jakości danych."
                 ),
+                operator_view=render_insufficient_operator_view(
+                    sample_count=len(samples),
+                    min_samples=self.min_samples,
+                ),
             )
             chat = None
         else:
@@ -134,7 +144,16 @@ class VentilationAnalysisServiceV122:
                 temperature=self.temperature,
             )
             environmental = EnvironmentalDecisionV122.model_validate_json(chat.content)
-            result = render_result(compact, environmental)
+            decision = resolve_final_decision(compact, environmental)
+            result = render_result(compact, environmental).model_copy(
+                update={
+                    "operator_view": render_operator_view(
+                        compact,
+                        decision,
+                        build_fact_catalog(compact),
+                    )
+                }
+            )
 
         analysis_id = str(uuid4())
         self.repository.save_analysis(
