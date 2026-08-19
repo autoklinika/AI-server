@@ -105,6 +105,9 @@ def test_v12_2_service_uses_environmental_decision_schema_and_python_renderer() 
     assert result.result.operator_recommendation_pl == (
         "Na podstawie tego okna nie ma dodatkowych zaleceń."
     )
+    assert result.result.operator_view is not None
+    assert result.result.operator_view.status_label_pl == "BRAK ANOMALII"
+    assert result.result.operator_view.headline_pl == "Brak istotnych zmian"
     assert ollama.kwargs is not None
     assert ollama.kwargs["think"] is False
     assert (
@@ -115,6 +118,7 @@ def test_v12_2_service_uses_environmental_decision_schema_and_python_renderer() 
     assert repository.saved is not None
     assert repository.saved["prompt_version"] == PROMPT_VERSION
     assert repository.saved["result"]["status"] == "no_anomaly_detected"
+    assert repository.saved["result"]["operator_view"]["schema_version"] == 1
     assert "environmental_attention" in repository.saved["raw_response"]
 
 
@@ -130,6 +134,9 @@ def test_v12_2_service_keeps_sample_gate_without_ollama_call() -> None:
 
     assert result.prompt_version == PROMPT_VERSION
     assert result.result.status == "insufficient_data"
+    assert result.result.operator_view is not None
+    assert result.result.operator_view.status_label_pl == "NIEWYSTARCZAJĄCE DANE"
     assert repository.saved is not None
     assert repository.saved["raw_response"] is None
     assert repository.saved["prompt_version"] == PROMPT_VERSION
+    assert repository.saved["result"]["operator_view"]["schema_version"] == 1
