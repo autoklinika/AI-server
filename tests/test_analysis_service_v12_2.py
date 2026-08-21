@@ -13,8 +13,25 @@ from ai_bridge.ollama.client import OllamaChatResult
 from ai_bridge.storage.models import TelemetrySampleRecord
 
 
-def _sample(*, minute: int = 0) -> TelemetrySampleRecord:
+def _sample(*, minute: int = 0, active_alarm: bool = False) -> TelemetrySampleRecord:
     captured_at = datetime(2026, 8, 19, 10, minute, tzinfo=timezone.utc)
+    alarms = []
+    if active_alarm:
+        alarms = [
+            {
+                "code": "AERO_BUS_UNAVAILABLE",
+                "severity": "critical",
+                "message": "Rekuperator AERO niedostępny",
+                "active_since": captured_at.isoformat(),
+                "last_error": "timeout",
+                "occurrences": 1,
+                "alert_id": 42,
+                "source": "aero",
+                "acknowledged": False,
+                "acknowledged_at": None,
+                "alert_v2": {"weight": 4},
+            }
+        ]
     return TelemetrySampleRecord(
         batch_record_id=1,
         source_id="workshop-ventilation-cm5-01",
@@ -31,7 +48,7 @@ def _sample(*, minute: int = 0) -> TelemetrySampleRecord:
             "hardware_ready": True,
             "output_state_known": True,
             "consecutive_hardware_failures": 0,
-            "active_alarms": [],
+            "active_alarms": alarms,
             "sensor_bus": None,
         },
     )
@@ -120,6 +137,37 @@ def test_v12_2_service_uses_environmental_decision_schema_and_python_renderer() 
     assert repository.saved["result"]["status"] == "no_anomaly_detected"
     assert repository.saved["result"]["operator_view"]["schema_version"] == 1
     assert "environmental_attention" in repository.saved["raw_response"]
+
+
+def test_v12_2_service_does_not_prioritize_or_render_active_alerts() -> None:
+    repository = FakeRepository([_sample(active_alarm=True)])
+    ollama = EnvironmentalOllama()
+    service = _service(repository, ollama, min_samples=1)
+
+    result = service.analyze_window(
+        source_id="workshop-ventilation-cm5-01",
+        window_start=datetime(2026, 8, 19, 10, 0, tzinfo=timezone.utc),
+        window_end=datetime(2026, 8, 19, 10, 15, tzinfo=timezone.utc),
+    )
+
+    # Audit storage keeps the authoritative source summary, including alarms.
+    assert repository.saved is not None
+    assert repository.saved["input_summary"]["system"]["active_alarm_sample_count"] == 1
+    assert repository.saved["input_summary"]["system"]["active_alarm_codes"] == [
+        "AERO_BUS_UNAVAILABLE"
+    ]
+
+    # Advisory output and model input are intentionally alert-blind.
+    assert result.result.status == "no_anomaly_detected"
+    serialized_result = str(repository.saved["result"])
+    assert "AERO_BUS_UNAVAILABLE" not in serialized_result
+    assert "Aktywny alarm" not in serialized_result
+    assert "alarmów CM5" not in serialized_result
+    assert ollama.kwargs is not None
+    serialized_messages = str(ollama.kwargs["messages"])
+    assert "AERO_BUS_UNAVAILABLE" not in serialized_messages
+    assert "active_alarm_codes" not in serialized_messages
+    assert "active_alarm_sample_count" not in serialized_messages
 
 
 def test_v12_2_service_keeps_sample_gate_without_ollama_call() -> None:
