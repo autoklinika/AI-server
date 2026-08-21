@@ -14,6 +14,7 @@ from ai_bridge.adapters.ventilation.analysis_v12_2 import (
     build_environment_prompt_from_compact,
     render_result,
     resolve_final_decision,
+    strip_alert_context,
 )
 from ai_bridge.analysis.operator_view import (
     render_insufficient_operator_view,
@@ -44,9 +45,10 @@ class VentilationAnalysisServiceV122:
     """Production service for the grounded v12.2 ventilation analysis profile.
 
     Qwen receives only the environmental decision packet and returns a tiny
-    structured environmental decision. Technical alarms, data-quality floors,
-    final status hierarchy, recommendation text and all numerical prose are
-    resolved/rendered deterministically by Python.
+    structured environmental decision. Operator alerts are explicitly excluded
+    from advisory input and deterministic result priority; the Alerts tab remains
+    the only operator-facing alert authority. Technical telemetry, data-quality
+    floors, recommendation text and numerical prose remain deterministic.
     """
 
     def __init__(
@@ -132,7 +134,10 @@ class VentilationAnalysisServiceV122:
             )
             chat = None
         else:
-            compact = build_compact_analysis_packet(summary)
+            # The full deterministic summary is retained for audit/history, but
+            # alert lifecycle state is intentionally removed from advisory input
+            # and from the deterministic advisory decision/rendering path.
+            compact = strip_alert_context(build_compact_analysis_packet(summary))
             sampling_schema = compact_schema_for_ollama(
                 EnvironmentalDecisionV122.model_json_schema()
             )
