@@ -47,8 +47,10 @@ def test_gateway_metadata_is_sent_as_headers(monkeypatch) -> None:
 def test_direct_ollama_client_does_not_add_gateway_headers(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
-    def fake_post(url, *, json, headers, timeout):
-        captured["headers"] = headers
+    def fake_post(url, *, json, timeout):
+        captured["url"] = url
+        captured["json"] = json
+        captured["timeout"] = timeout
         return _success_response()
 
     monkeypatch.setattr(httpx, "post", fake_post)
@@ -59,4 +61,4 @@ def test_direct_ollama_client_does_not_add_gateway_headers(monkeypatch) -> None:
         response_schema={"type": "object"},
     )
 
-    assert captured["headers"] is None
+    assert captured["url"] == "http://127.0.0.1:11434/api/chat"
