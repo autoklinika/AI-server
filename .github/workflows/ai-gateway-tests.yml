@@ -23,6 +23,7 @@ on:
       - "tools/validate_ai_gateway_telegram_stage5.sh"
       - "tools/benchmark_ollama_parallel_stage6.sh"
       - "tools/diagnose_ollama_parallel_lock_stage6b.sh"
+      - "tools/benchmark_dual_ollama_runners_stage7.sh"
       - "deploy/ai-gateway.env.example"
       - "deploy/systemd/ai-gateway.service"
       - "pyproject.toml"
@@ -51,5 +52,6 @@ jobs:
           bash -n tools/validate_ai_gateway_telegram_stage5.sh
           bash -n tools/benchmark_ollama_parallel_stage6.sh
           bash -n tools/diagnose_ollama_parallel_lock_stage6b.sh
+          bash -n tools/benchmark_dual_ollama_runners_stage7.sh
       - name: Test
         run: pytest
