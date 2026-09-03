@@ -5,24 +5,35 @@ ROOT="${HOME}/AI-server"
 BRANCH="feat/ai-gateway-scheduler"
 WT="${HOME}/ai-server-gateway-stage2-cutover"
 GATEWAY_DEPLOY="/opt/ai-gateway"
-GATEWAY_NEXT="/opt/ai-gateway.next"
 GATEWAY_BACKUP="/opt/ai-gateway.pre-stage2"
-GATEWAY_ENV="/etc/ai-gateway/ai-gateway.env"
-AI_ENV="/etc/ai-bridge/ai-bridge.env"
-AI_ENV_BACKUP="/etc/ai-bridge/ai-bridge.env.pre-ai-gateway-stage2"
+UNIT_FILE="/etc/systemd/system/ai-gateway.service"
+UNIT_BACKUP="/etc/systemd/system/ai-gateway.service.pre-stage2"
+ANALYSIS_DROPIN_DIR="/etc/systemd/system/ai-bridge-analysis.service.d"
+ANALYSIS_DROPIN="${ANALYSIS_DROPIN_DIR}/10-ai-gateway.conf"
 TARGET_OLLAMA_URL="http://127.0.0.1:11435/clients/ventilation"
-DIRECT_OLLAMA_URL="http://127.0.0.1:11434"
 BOOTSTRAP_PYTHON="/opt/ai-bridge/.venv/bin/python"
-CUTOVER_APPLIED=0
-GATEWAY_SWAPPED=0
+GATEWAY_UPDATED=0
+ROUTE_APPLIED=0
 SUCCESS=0
 
+restore_route() {
+    if [ "$ROUTE_APPLIED" -eq 1 ]; then
+        echo "restoring direct Ollama routing for ventilation analysis"
+        sudo rm -f "$ANALYSIS_DROPIN"
+        sudo systemctl daemon-reload
+    fi
+}
+
 restore_gateway() {
-    if [ "$GATEWAY_SWAPPED" -eq 1 ] && [ -d "$GATEWAY_BACKUP" ]; then
+    if [ "$GATEWAY_UPDATED" -eq 1 ] && [ -d "$GATEWAY_BACKUP" ]; then
         echo "restoring previous gateway deployment"
         sudo systemctl stop ai-gateway.service >/dev/null 2>&1 || true
         sudo rm -rf "$GATEWAY_DEPLOY"
         sudo mv "$GATEWAY_BACKUP" "$GATEWAY_DEPLOY"
+        if [ -r "$UNIT_BACKUP" ]; then
+            sudo cp -a "$UNIT_BACKUP" "$UNIT_FILE"
+        fi
+        sudo systemctl daemon-reload
         sudo systemctl start ai-gateway.service >/dev/null 2>&1 || true
     fi
 }
@@ -30,17 +41,11 @@ restore_gateway() {
 cleanup() {
     rc=$?
     trap - EXIT INT TERM
-    if [ "$SUCCESS" -ne 1 ] && { [ "$CUTOVER_APPLIED" -eq 1 ] || [ "$GATEWAY_SWAPPED" -eq 1 ]; }; then
+    if [ "$SUCCESS" -ne 1 ] && { [ "$ROUTE_APPLIED" -eq 1 ] || [ "$GATEWAY_UPDATED" -eq 1 ]; }; then
         echo
         echo "===== AUTOMATIC ROLLBACK ====="
-        if [ "$CUTOVER_APPLIED" -eq 1 ] && [ -r "$AI_ENV_BACKUP" ]; then
-            sudo cp -a "$AI_ENV_BACKUP" "$AI_ENV"
-            echo "restored: $AI_ENV"
-        fi
+        restore_route
         restore_gateway
-    fi
-    if [ -d "$GATEWAY_NEXT" ]; then
-        sudo rm -rf "$GATEWAY_NEXT" >/dev/null 2>&1 || true
     fi
     if [ -d "$WT" ]; then
         git -C "$ROOT" worktree remove --force "$WT" >/dev/null 2>&1 || true
@@ -53,8 +58,8 @@ echo "===== AI GATEWAY STAGE-2 VENTILATION CUTOVER ====="
 
 [ -d "$ROOT/.git" ] || { echo "FAIL: repository not found at $ROOT"; exit 1; }
 [ -x "$BOOTSTRAP_PYTHON" ] || { echo "FAIL: production Python not found"; exit 1; }
-[ -r "$AI_ENV" ] || { echo "FAIL: AI Bridge env not readable: $AI_ENV"; exit 1; }
-[ -r "$GATEWAY_ENV" ] || { echo "FAIL: gateway env not readable: $GATEWAY_ENV"; exit 1; }
+[ -d "$GATEWAY_DEPLOY" ] || { echo "FAIL: gateway deployment missing: $GATEWAY_DEPLOY"; exit 1; }
+[ -r "$UNIT_FILE" ] || { echo "FAIL: gateway systemd unit missing: $UNIT_FILE"; exit 1; }
 [ "$(systemctl is-active ai-gateway.service 2>/dev/null || true)" = "active" ] || {
     echo "FAIL: ai-gateway.service is not active"
     exit 1
@@ -67,74 +72,60 @@ AI_STATE_BEFORE="$(systemctl is-active ai-bridge.service 2>/dev/null || true)"
 TIMER_STATE_BEFORE="$(systemctl is-active ai-bridge-analysis.timer 2>/dev/null || true)"
 OLLAMA_STATE_BEFORE="$(systemctl is-active ollama.service 2>/dev/null || true)"
 HERMES_STATE_BEFORE="$(systemctl is-active hermes.service 2>/dev/null || true)"
-CURRENT_OLLAMA_URL_RAW="$(grep -E '^AI_BRIDGE_OLLAMA_URL=' "$AI_ENV" | tail -n 1 | cut -d= -f2- || true)"
-CURRENT_OLLAMA_URL="${CURRENT_OLLAMA_URL_RAW:-$DIRECT_OLLAMA_URL}"
 
-if [ -n "$CURRENT_OLLAMA_URL_RAW" ]; then
-    CURRENT_OLLAMA_DISPLAY="$CURRENT_OLLAMA_URL"
-else
-    CURRENT_OLLAMA_DISPLAY="$CURRENT_OLLAMA_URL (implicit code default)"
-fi
-
-echo
-echo "===== PRECHECK ====="
-echo "local branch:      $(git branch --show-current)"
-echo "local HEAD:        $(git rev-parse HEAD)"
-echo "ai-bridge:         $AI_STATE_BEFORE pid=$AI_PID_BEFORE"
-echo "analysis timer:    $TIMER_STATE_BEFORE"
-echo "ollama:            $OLLAMA_STATE_BEFORE"
-echo "gateway:           $(systemctl is-active ai-gateway.service)"
-echo "hermes:            $HERMES_STATE_BEFORE"
-echo "current AI URL:    $CURRENT_OLLAMA_DISPLAY"
-echo "target AI URL:     $TARGET_OLLAMA_URL"
+printf '\n===== PRECHECK =====\n'
+printf 'local branch:      %s\n' "$(git branch --show-current)"
+printf 'local HEAD:        %s\n' "$(git rev-parse HEAD)"
+printf 'ai-bridge:         %s pid=%s\n' "$AI_STATE_BEFORE" "$AI_PID_BEFORE"
+printf 'analysis timer:    %s\n' "$TIMER_STATE_BEFORE"
+printf 'ollama:            %s\n' "$OLLAMA_STATE_BEFORE"
+printf 'gateway:           %s\n' "$(systemctl is-active ai-gateway.service)"
+printf 'hermes:            %s\n' "$HERMES_STATE_BEFORE"
+printf 'ventilation route: direct Ollama (current)\n'
+printf 'target route:      %s\n' "$TARGET_OLLAMA_URL"
 
 [ "$AI_STATE_BEFORE" = "active" ] || { echo "FAIL: ai-bridge.service is not active"; exit 1; }
 [ "$TIMER_STATE_BEFORE" = "active" ] || { echo "FAIL: analysis timer is not active"; exit 1; }
 [ "$OLLAMA_STATE_BEFORE" = "active" ] || { echo "FAIL: ollama.service is not active"; exit 1; }
-if [ "$CURRENT_OLLAMA_URL" != "$DIRECT_OLLAMA_URL" ] && [ "$CURRENT_OLLAMA_URL" != "$TARGET_OLLAMA_URL" ]; then
-    echo "FAIL: unexpected effective AI_BRIDGE_OLLAMA_URL=$CURRENT_OLLAMA_URL"
+if [ -e "$ANALYSIS_DROPIN" ]; then
+    echo "FAIL: analysis gateway drop-in already exists: $ANALYSIS_DROPIN"
     exit 1
 fi
 
-echo
-echo "===== FETCH FEATURE BRANCH ====="
+printf '\n===== FETCH FEATURE BRANCH =====\n'
 git fetch origin main "$BRANCH"
-echo "origin/main:  $(git rev-parse origin/main)"
-echo "gateway HEAD: $(git rev-parse "origin/$BRANCH")"
+printf 'origin/main:  %s\n' "$(git rev-parse origin/main)"
+printf 'gateway HEAD: %s\n' "$(git rev-parse "origin/$BRANCH")"
 if [ -d "$WT" ]; then
     git worktree remove --force "$WT" >/dev/null 2>&1 || true
 fi
 git worktree add --detach "$WT" "origin/$BRANCH"
 
-echo
-echo "===== STATIC PRECHECK ====="
+printf '\n===== STATIC PRECHECK =====\n'
 bash -n "$WT/tools/cutover_ventilation_to_ai_gateway_stage2.sh"
-"$BOOTSTRAP_PYTHON" -m py_compile "$WT/src/ai_bridge/gateway/app.py"
+"$BOOTSTRAP_PYTHON" -m py_compile \
+    "$WT/src/ai_bridge/gateway/app.py" \
+    "$WT/src/ai_bridge/gateway/scheduler.py" \
+    "$WT/src/ai_bridge/gateway/main.py"
 
-echo
-echo "===== BUILD NEXT GATEWAY BESIDE PRODUCTION ====="
-sudo rm -rf "$GATEWAY_NEXT"
-sudo install -d -m 0755 -o harrypotter -g harrypotter "$GATEWAY_NEXT"
-rsync -a \
+printf '\n===== UPDATE GATEWAY IN STABLE PATH =====\n'
+sudo rm -rf "$GATEWAY_BACKUP"
+sudo cp -a "$GATEWAY_DEPLOY" "$GATEWAY_BACKUP"
+sudo cp -a "$UNIT_FILE" "$UNIT_BACKUP"
+GATEWAY_UPDATED=1
+
+sudo systemctl stop ai-gateway.service
+rsync -a --delete \
     --exclude='.git' \
     --exclude='.venv' \
     --exclude='__pycache__' \
-    "$WT/" "$GATEWAY_NEXT/"
-"$BOOTSTRAP_PYTHON" -m venv "$GATEWAY_NEXT/.venv"
-"$GATEWAY_NEXT/.venv/bin/python" -m pip install --disable-pip-version-check "$GATEWAY_NEXT"
-"$GATEWAY_NEXT/.venv/bin/python" -m py_compile \
-    "$GATEWAY_NEXT/src/ai_bridge/gateway/app.py" \
-    "$GATEWAY_NEXT/src/ai_bridge/gateway/scheduler.py"
-echo "PASS: next gateway build ready"
-
-echo
-echo "===== ATOMIC GATEWAY SWAP ====="
-sudo systemctl stop ai-gateway.service
-sudo rm -rf "$GATEWAY_BACKUP"
-sudo mv "$GATEWAY_DEPLOY" "$GATEWAY_BACKUP"
-sudo mv "$GATEWAY_NEXT" "$GATEWAY_DEPLOY"
-GATEWAY_SWAPPED=1
-sudo install -m 0644 "$WT/deploy/systemd/ai-gateway.service" /etc/systemd/system/ai-gateway.service
+    "$WT/" "$GATEWAY_DEPLOY/"
+"$GATEWAY_DEPLOY/.venv/bin/python" -m pip install \
+    --disable-pip-version-check \
+    --no-deps \
+    --force-reinstall \
+    "$GATEWAY_DEPLOY"
+sudo install -m 0644 "$WT/deploy/systemd/ai-gateway.service" "$UNIT_FILE"
 sudo systemctl daemon-reload
 sudo systemctl start ai-gateway.service
 
@@ -156,64 +147,22 @@ PY
     fi
     sleep 0.2
 done
-[ "$GATEWAY_HEALTHY" -eq 1 ] || { echo "FAIL: updated gateway failed health check"; exit 1; }
+if [ "$GATEWAY_HEALTHY" -ne 1 ]; then
+    echo "FAIL: updated gateway failed health check"
+    systemctl --no-pager --full status ai-gateway.service || true
+    journalctl -u ai-gateway.service -n 40 --no-pager || true
+    exit 1
+fi
 echo "PASS: updated gateway healthy; ventilation route reachable"
 
-echo
-echo "===== BACKUP + CUTOVER CONFIG ====="
-if [ "$CURRENT_OLLAMA_URL" != "$TARGET_OLLAMA_URL" ]; then
-    if [ ! -e "$AI_ENV_BACKUP" ]; then
-        sudo cp -a "$AI_ENV" "$AI_ENV_BACKUP"
-        echo "backup created: $AI_ENV_BACKUP"
-    else
-        echo "backup preserved: $AI_ENV_BACKUP"
-    fi
-    sudo python3 - "$AI_ENV" "$TARGET_OLLAMA_URL" <<'PY'
-from pathlib import Path
-import sys
-path = Path(sys.argv[1])
-target = sys.argv[2]
-lines = path.read_text(encoding="utf-8").splitlines()
-out = []
-found = False
-for line in lines:
-    if line.startswith("AI_BRIDGE_OLLAMA_URL="):
-        if not found:
-            out.append(f"AI_BRIDGE_OLLAMA_URL={target}")
-            found = True
-        continue
-    out.append(line)
-if not found:
-    out.append(f"AI_BRIDGE_OLLAMA_URL={target}")
-path.write_text("\n".join(out) + "\n", encoding="utf-8")
-PY
-    CUTOVER_APPLIED=1
-else
-    echo "configuration already points to ventilation gateway route"
-fi
-
-NEW_OLLAMA_URL="$(grep -E '^AI_BRIDGE_OLLAMA_URL=' "$AI_ENV" | tail -n 1 | cut -d= -f2-)"
-[ "$NEW_OLLAMA_URL" = "$TARGET_OLLAMA_URL" ] || { echo "FAIL: cutover URL was not written correctly"; exit 1; }
-echo "AI_BRIDGE_OLLAMA_URL=$NEW_OLLAMA_URL"
-
-echo
-echo "===== REAL QWEN VIA PRODUCTION ROUTE ====="
-"$BOOTSTRAP_PYTHON" - "$AI_ENV" "$TARGET_OLLAMA_URL" <<'PY'
+printf '\n===== REAL QWEN THROUGH VENTILATION ROUTE =====\n'
+"$GATEWAY_DEPLOY/.venv/bin/python" - "$TARGET_OLLAMA_URL" <<'PY'
 import json
-from pathlib import Path
 import sys
 import urllib.request
-
-env_path = Path(sys.argv[1])
-base = sys.argv[2].rstrip("/")
-model = "qwen3.6:35b"
-for raw in env_path.read_text(encoding="utf-8").splitlines():
-    if raw.startswith("AI_BRIDGE_OLLAMA_MODEL="):
-        model = raw.split("=", 1)[1].strip() or model
-        break
-
+base = sys.argv[1].rstrip("/")
 payload = json.dumps({
-    "model": model,
+    "model": "qwen3.6:35b",
     "messages": [{"role": "user", "content": "Zwróć krótki JSON potwierdzający test infrastruktury."}],
     "stream": False,
     "think": False,
@@ -240,15 +189,31 @@ assert body.get("done") is True, body
 assert int(body.get("prompt_eval_count") or 0) > 0, body
 assert priority == "10", priority
 assert job_id, "missing gateway job id"
-assert wait_ms is not None, "missing wait time"
-print(
-    "PASS: production-config route -> gateway -> Qwen "
-    f"job={job_id} priority={priority} wait_ms={wait_ms}"
-)
+assert wait_ms is not None, "missing gateway wait time"
+print(f"PASS: gateway -> Qwen job={job_id} priority={priority} wait_ms={wait_ms}")
 PY
 
-echo
-echo "===== ANALYSIS SERVICE CHECK ====="
+printf '\n===== APPLY ANALYSIS-ONLY ROUTE =====\n'
+sudo install -d -m 0755 "$ANALYSIS_DROPIN_DIR"
+printf '%s\n' \
+    '[Service]' \
+    'ExecStart=' \
+    "ExecStart=/usr/bin/env AI_BRIDGE_OLLAMA_URL=${TARGET_OLLAMA_URL} /opt/ai-bridge/.venv/bin/ai-bridge-analyze-ventilation" \
+    | sudo tee "$ANALYSIS_DROPIN" >/dev/null
+ROUTE_APPLIED=1
+sudo systemctl daemon-reload
+
+echo "drop-in: $ANALYSIS_DROPIN"
+systemctl cat ai-bridge-analysis.service | tail -n 8
+EFFECTIVE_EXEC="$(systemctl show ai-bridge-analysis.service -p ExecStart --value)"
+case "$EFFECTIVE_EXEC" in
+    *"AI_BRIDGE_OLLAMA_URL=${TARGET_OLLAMA_URL}"*) ;;
+    *) echo "FAIL: analysis service does not contain gateway route"; exit 1 ;;
+esac
+
+echo "PASS: only ai-bridge-analysis.service is routed through gateway"
+
+printf '\n===== ANALYSIS SERVICE CHECK =====\n'
 for _ in $(seq 1 600); do
     if [ "$(systemctl is-active ai-bridge-analysis.service 2>/dev/null || true)" != "active" ]; then
         break
@@ -260,26 +225,25 @@ ANALYSIS_RESULT="$(systemctl show ai-bridge-analysis.service -p Result --value 2
 ANALYSIS_EXIT="$(systemctl show ai-bridge-analysis.service -p ExecMainStatus --value 2>/dev/null || true)"
 echo "analysis result: $ANALYSIS_RESULT"
 echo "analysis exit:   $ANALYSIS_EXIT"
-[ "$ANALYSIS_RESULT" = "success" ] && [ "$ANALYSIS_EXIT" = "0" ] || {
+if [ "$ANALYSIS_RESULT" != "success" ] || [ "$ANALYSIS_EXIT" != "0" ]; then
     echo "FAIL: production ventilation analysis service failed after cutover"
-    journalctl -u ai-bridge-analysis.service -n 30 --no-pager || true
+    journalctl -u ai-bridge-analysis.service -n 40 --no-pager || true
     exit 1
-}
+fi
 
-echo
-echo "===== POSTCHECK ====="
+printf '\n===== POSTCHECK =====\n'
 AI_PID_AFTER="$(systemctl show ai-bridge.service -p MainPID --value 2>/dev/null || true)"
 AI_STATE_AFTER="$(systemctl is-active ai-bridge.service 2>/dev/null || true)"
 TIMER_STATE_AFTER="$(systemctl is-active ai-bridge-analysis.timer 2>/dev/null || true)"
 OLLAMA_STATE_AFTER="$(systemctl is-active ollama.service 2>/dev/null || true)"
 HERMES_STATE_AFTER="$(systemctl is-active hermes.service 2>/dev/null || true)"
 GATEWAY_STATE_AFTER="$(systemctl is-active ai-gateway.service 2>/dev/null || true)"
-echo "ai-bridge:      $AI_STATE_AFTER pid=$AI_PID_AFTER"
-echo "analysis timer: $TIMER_STATE_AFTER"
-echo "ollama:         $OLLAMA_STATE_AFTER"
-echo "gateway:        $GATEWAY_STATE_AFTER"
-echo "hermes:         $HERMES_STATE_AFTER"
-echo "AI URL:         $NEW_OLLAMA_URL"
+printf 'ai-bridge:      %s pid=%s\n' "$AI_STATE_AFTER" "$AI_PID_AFTER"
+printf 'analysis timer: %s\n' "$TIMER_STATE_AFTER"
+printf 'ollama:         %s\n' "$OLLAMA_STATE_AFTER"
+printf 'gateway:        %s\n' "$GATEWAY_STATE_AFTER"
+printf 'hermes:         %s\n' "$HERMES_STATE_AFTER"
+printf 'analysis route: %s\n' "$TARGET_OLLAMA_URL"
 
 [ "$AI_PID_BEFORE" = "$AI_PID_AFTER" ] || { echo "FAIL: ai-bridge PID changed"; exit 1; }
 [ "$AI_STATE_BEFORE" = "$AI_STATE_AFTER" ] || { echo "FAIL: ai-bridge state changed"; exit 1; }
@@ -289,10 +253,11 @@ echo "AI URL:         $NEW_OLLAMA_URL"
 [ "$HERMES_STATE_BEFORE" = "$HERMES_STATE_AFTER" ] || { echo "FAIL: Hermes state changed"; exit 1; }
 
 SUCCESS=1
-CUTOVER_APPLIED=0
-GATEWAY_SWAPPED=0
+ROUTE_APPLIED=0
+GATEWAY_UPDATED=0
 
 echo
 echo "PASS: ventilation analysis is routed through AI Gateway with priority 10"
+echo "main ai-bridge.service configuration was not changed"
 echo "previous gateway kept at: $GATEWAY_BACKUP"
 echo "ROLLBACK ROUTE: git show origin/$BRANCH:tools/rollback_ventilation_ai_gateway_stage2.sh | bash"
