@@ -1,4 +1,4 @@
-name: Stage 15-17 progressive tools
+name: Stage 15-18 progressive tools
 
 on:
   push:
@@ -9,6 +9,7 @@ on:
       - "tools/validate_hermes_deferred_tool_e2e_stage16.sh"
       - "tools/validate_hermes_deferred_tool_e2e_stage16b.sh"
       - "tools/diagnose_qwen_tool_choice_stage17.sh"
+      - "tools/diagnose_hermes_system_prompt_tool_suppression_stage18.sh"
       - ".github/workflows/stage15-progressive-tools.yml"
   pull_request:
     paths:
@@ -16,6 +17,7 @@ on:
       - "tools/validate_hermes_deferred_tool_e2e_stage16.sh"
       - "tools/validate_hermes_deferred_tool_e2e_stage16b.sh"
       - "tools/diagnose_qwen_tool_choice_stage17.sh"
+      - "tools/diagnose_hermes_system_prompt_tool_suppression_stage18.sh"
       - ".github/workflows/stage15-progressive-tools.yml"
 
 jobs:
@@ -29,3 +31,4 @@ jobs:
           bash -n tools/validate_hermes_deferred_tool_e2e_stage16.sh
           bash -n tools/validate_hermes_deferred_tool_e2e_stage16b.sh
           bash -n tools/diagnose_qwen_tool_choice_stage17.sh
+          bash -n tools/diagnose_hermes_system_prompt_tool_suppression_stage18.sh
