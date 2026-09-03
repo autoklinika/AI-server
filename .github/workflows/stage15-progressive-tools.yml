@@ -1,4 +1,4 @@
-name: Stage 15-19 progressive tools
+name: Stage 15-20 progressive tools
 
 on:
   push:
@@ -11,6 +11,7 @@ on:
       - "tools/diagnose_qwen_tool_choice_stage17.sh"
       - "tools/diagnose_hermes_system_prompt_tool_suppression_stage18.sh"
       - "tools/diagnose_hermes_streaming_tool_calls_stage19.sh"
+      - "tools/diagnose_hermes_run_conversation_payload_stage20.sh"
       - ".github/workflows/stage15-progressive-tools.yml"
   pull_request:
     paths:
@@ -20,6 +21,7 @@ on:
       - "tools/diagnose_qwen_tool_choice_stage17.sh"
       - "tools/diagnose_hermes_system_prompt_tool_suppression_stage18.sh"
       - "tools/diagnose_hermes_streaming_tool_calls_stage19.sh"
+      - "tools/diagnose_hermes_run_conversation_payload_stage20.sh"
       - ".github/workflows/stage15-progressive-tools.yml"
 
 jobs:
@@ -35,3 +37,4 @@ jobs:
           bash -n tools/diagnose_qwen_tool_choice_stage17.sh
           bash -n tools/diagnose_hermes_system_prompt_tool_suppression_stage18.sh
           bash -n tools/diagnose_hermes_streaming_tool_calls_stage19.sh
+          bash -n tools/diagnose_hermes_run_conversation_payload_stage20.sh
