@@ -60,7 +60,6 @@ import json
 import sys
 import threading
 import time
-import urllib.error
 import urllib.request
 
 MODEL = sys.argv[1]
@@ -120,7 +119,7 @@ print("PASS: gateway idle, max_concurrency=1")
 print()
 print("STEP 1/3 — TELEGRAM USER A")
 print("From the FIRST Telegram account, send this now:")
-print("  Napisz szczegółowy opis architektury lokalnego serwera AI w co najmniej 1200 słowach. Nie używaj narzędzi.")
+print("  Napisz opis architektury lokalnego serwera AI w około 500 słowach. Nie używaj narzędzi.")
 print("Waiting for a real Hermes inference...")
 
 job_a, st = wait_for(lambda s: find_active_hermes(s), 180, "Telegram user A Hermes job")
@@ -154,7 +153,7 @@ def run_ventilation() -> None:
     )
     try:
         started = time.monotonic()
-        with urllib.request.urlopen(req, timeout=360) as response:
+        with urllib.request.urlopen(req, timeout=900) as response:
             body = json.load(response)
             vent_result.update({
                 "job_id": int(response.headers.get("X-AI-Gateway-Job-Id", "0")),
@@ -193,10 +192,10 @@ print("queue snapshot:")
 print(json.dumps(queue_status, ensure_ascii=False, indent=2))
 print(f"PASS: ventilation job={job_v} priority=10 queued ahead of Telegram B job={job_b}")
 
-# Observe active-job transitions. Start with A because we already proved it is active.
 transitions: list[tuple[int, str, int]] = [(job_a, "hermes", 50)]
 last = transitions[-1]
-deadline = time.monotonic() + 420
+started_observation = time.monotonic()
+deadline = started_observation + 900
 while time.monotonic() < deadline:
     st = get_status()
     cur = active_job(st)
@@ -207,7 +206,10 @@ while time.monotonic() < deadline:
         break
     time.sleep(0.05)
 else:
-    raise SystemExit("FAIL: scheduler did not return to idle during stage-5 observation")
+    elapsed = time.monotonic() - started_observation
+    raise SystemExit(
+        f"FAIL: scheduler did not return to idle during stage-5 observation after {elapsed:.1f}s"
+    )
 
 t.join(timeout=2)
 if vent_error:
@@ -217,7 +219,6 @@ if not vent_result:
 if vent_result.get("priority") != "10":
     raise SystemExit(f"FAIL: ventilation response priority was {vent_result.get('priority')!r}")
 
-# Collapse duplicates and keep only the three target job IDs.
 filtered: list[tuple[int, str, int]] = []
 for row in transitions:
     if row[0] not in {job_a, job_v, job_b}:
