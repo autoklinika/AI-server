@@ -1,17 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-AI_ENV="/etc/ai-bridge/ai-bridge.env"
-AI_ENV_BACKUP="/etc/ai-bridge/ai-bridge.env.pre-ai-gateway-stage2"
-DIRECT_OLLAMA_URL="http://127.0.0.1:11434"
+ANALYSIS_DROPIN="/etc/systemd/system/ai-bridge-analysis.service.d/10-ai-gateway.conf"
 PYTHON="/opt/ai-bridge/.venv/bin/python"
+DIRECT_OLLAMA_URL="http://127.0.0.1:11434"
 
 echo "===== ROLLBACK VENTILATION FROM AI GATEWAY ====="
 
-[ -r "$AI_ENV_BACKUP" ] || {
-    echo "FAIL: rollback backup missing: $AI_ENV_BACKUP"
-    exit 1
-}
 [ -x "$PYTHON" ] || {
     echo "FAIL: production Python missing: $PYTHON"
     exit 1
@@ -20,20 +15,13 @@ echo "===== ROLLBACK VENTILATION FROM AI GATEWAY ====="
 AI_PID_BEFORE="$(systemctl show ai-bridge.service -p MainPID --value 2>/dev/null || true)"
 HERMES_STATE_BEFORE="$(systemctl is-active hermes.service 2>/dev/null || true)"
 
-echo "backup: $AI_ENV_BACKUP"
-sudo cp -a "$AI_ENV_BACKUP" "$AI_ENV"
-
-RESTORED_URL_RAW="$(grep -E '^AI_BRIDGE_OLLAMA_URL=' "$AI_ENV" | tail -n 1 | cut -d= -f2- || true)"
-RESTORED_URL="${RESTORED_URL_RAW:-$DIRECT_OLLAMA_URL}"
-if [ -n "$RESTORED_URL_RAW" ]; then
-    echo "restored AI URL: $RESTORED_URL"
+if [ -e "$ANALYSIS_DROPIN" ]; then
+    sudo rm -f "$ANALYSIS_DROPIN"
+    sudo systemctl daemon-reload
+    echo "removed: $ANALYSIS_DROPIN"
 else
-    echo "restored AI URL: $RESTORED_URL (implicit code default)"
+    echo "analysis gateway drop-in already absent"
 fi
-[ "$RESTORED_URL" = "$DIRECT_OLLAMA_URL" ] || {
-    echo "FAIL: backup does not restore the expected direct Ollama URL"
-    exit 1
-}
 
 "$PYTHON" - <<'PY'
 import json
@@ -44,6 +32,15 @@ assert isinstance(data, dict), data
 print("PASS: direct Ollama endpoint reachable")
 PY
 
+EFFECTIVE_EXEC="$(systemctl show ai-bridge-analysis.service -p ExecStart --value 2>/dev/null || true)"
+case "$EFFECTIVE_EXEC" in
+    *"AI_BRIDGE_OLLAMA_URL=http://127.0.0.1:11435/clients/ventilation"*)
+        echo "FAIL: analysis service still contains gateway override"
+        exit 1
+        ;;
+    *) ;;
+esac
+
 AI_PID_AFTER="$(systemctl show ai-bridge.service -p MainPID --value 2>/dev/null || true)"
 HERMES_STATE_AFTER="$(systemctl is-active hermes.service 2>/dev/null || true)"
 TIMER_STATE="$(systemctl is-active ai-bridge-analysis.timer 2>/dev/null || true)"
@@ -51,12 +48,13 @@ GATEWAY_STATE="$(systemctl is-active ai-gateway.service 2>/dev/null || true)"
 
 echo "ai-bridge pid:  $AI_PID_AFTER"
 echo "analysis timer: $TIMER_STATE"
-echo "gateway:        $GATEWAY_STATE (left running, but ventilation bypasses it)"
+echo "gateway:        $GATEWAY_STATE (left running, ventilation bypasses it)"
 echo "hermes:         $HERMES_STATE_AFTER"
+echo "analysis route: $DIRECT_OLLAMA_URL (code default)"
 
 [ "$AI_PID_BEFORE" = "$AI_PID_AFTER" ] || { echo "FAIL: ai-bridge PID changed"; exit 1; }
 [ "$TIMER_STATE" = "active" ] || { echo "FAIL: analysis timer is not active"; exit 1; }
 [ "$HERMES_STATE_BEFORE" = "$HERMES_STATE_AFTER" ] || { echo "FAIL: Hermes state changed"; exit 1; }
 
 echo
-echo "PASS: ventilation restored to direct Ollama routing"
+echo "PASS: ventilation analysis restored to direct Ollama routing"
