@@ -23,8 +23,13 @@ HERMES_STATE_BEFORE="$(systemctl is-active hermes.service 2>/dev/null || true)"
 echo "backup: $AI_ENV_BACKUP"
 sudo cp -a "$AI_ENV_BACKUP" "$AI_ENV"
 
-RESTORED_URL="$(grep -E '^AI_BRIDGE_OLLAMA_URL=' "$AI_ENV" | tail -n 1 | cut -d= -f2- || true)"
-echo "restored AI URL: $RESTORED_URL"
+RESTORED_URL_RAW="$(grep -E '^AI_BRIDGE_OLLAMA_URL=' "$AI_ENV" | tail -n 1 | cut -d= -f2- || true)"
+RESTORED_URL="${RESTORED_URL_RAW:-$DIRECT_OLLAMA_URL}"
+if [ -n "$RESTORED_URL_RAW" ]; then
+    echo "restored AI URL: $RESTORED_URL"
+else
+    echo "restored AI URL: $RESTORED_URL (implicit code default)"
+fi
 [ "$RESTORED_URL" = "$DIRECT_OLLAMA_URL" ] || {
     echo "FAIL: backup does not restore the expected direct Ollama URL"
     exit 1
