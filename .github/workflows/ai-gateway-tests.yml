@@ -20,24 +20,14 @@ on:
       - "tools/cutover_hermes_to_ai_gateway_stage3.sh"
       - "tools/rollback_hermes_ai_gateway_stage3.sh"
       - "tools/validate_ai_gateway_priority_stage4.sh"
-      - "tools/validate_ai_gateway_telegram_stage5.sh"
-      - "tools/benchmark_ollama_parallel_stage6.sh"
-      - "tools/diagnose_ollama_parallel_lock_stage6b.sh"
-      - "tools/benchmark_dual_ollama_runners_stage7.sh"
-      - "tools/benchmark_dual_ollama_runners_stage7b.sh"
-      - "tools/benchmark_dual_ollama_runners_stage7c.sh"
-      - "tools/profile_hermes_inference_stage8.sh"
-      - "tools/profile_hermes_thinking_controls_stage8b.sh"
-      - "tools/cutover_hermes_reasoning_none_stage9.sh"
-      - "tools/repair_hermes_reasoning_none_stage9b.sh"
+      - "tools/configure_hermes_reasoning_none.sh"
       - "tools/rollback_hermes_reasoning_none_stage9.sh"
-      - "tools/validate_hermes_telegram_latency_stage10.sh"
-      - "tools/audit_hermes_prompt_overhead_stage11.sh"
-      - "tools/audit_hermes_telegram_tool_surface_stage12.sh"
-      - "tools/benchmark_hermes_toolset_latency_stage13.sh"
-      - "tools/benchmark_hermes_toolset_components_stage14.sh"
+      - "tools/cutover_hermes_telegram_static_profile_stage22.sh"
+      - "tools/rollback_hermes_telegram_static_profile_stage22.sh"
       - "deploy/ai-gateway.env.example"
       - "deploy/systemd/ai-gateway.service"
+      - "docs/ADR-005_AI_GATEWAY_SCHEDULER_PL.md"
+      - "docs/AI_GATEWAY_PRODUCTION_PL.md"
       - "pyproject.toml"
       - ".github/workflows/ai-gateway-tests.yml"
 
@@ -51,7 +41,7 @@ jobs:
           python-version: "3.12"
       - name: Install
         run: python -m pip install -e '.[dev]'
-      - name: Validate deployment scripts syntax
+      - name: Validate production scripts syntax
         run: |
           bash -n tools/validate_ai_gateway_real_server.sh
           bash -n tools/install_ai_gateway_stage1.sh
@@ -61,21 +51,9 @@ jobs:
           bash -n tools/cutover_hermes_to_ai_gateway_stage3.sh
           bash -n tools/rollback_hermes_ai_gateway_stage3.sh
           bash -n tools/validate_ai_gateway_priority_stage4.sh
-          bash -n tools/validate_ai_gateway_telegram_stage5.sh
-          bash -n tools/benchmark_ollama_parallel_stage6.sh
-          bash -n tools/diagnose_ollama_parallel_lock_stage6b.sh
-          bash -n tools/benchmark_dual_ollama_runners_stage7.sh
-          bash -n tools/benchmark_dual_ollama_runners_stage7b.sh
-          bash -n tools/benchmark_dual_ollama_runners_stage7c.sh
-          bash -n tools/profile_hermes_inference_stage8.sh
-          bash -n tools/profile_hermes_thinking_controls_stage8b.sh
-          bash -n tools/cutover_hermes_reasoning_none_stage9.sh
-          bash -n tools/repair_hermes_reasoning_none_stage9b.sh
+          bash -n tools/configure_hermes_reasoning_none.sh
           bash -n tools/rollback_hermes_reasoning_none_stage9.sh
-          bash -n tools/validate_hermes_telegram_latency_stage10.sh
-          bash -n tools/audit_hermes_prompt_overhead_stage11.sh
-          bash -n tools/audit_hermes_telegram_tool_surface_stage12.sh
-          bash -n tools/benchmark_hermes_toolset_latency_stage13.sh
-          bash -n tools/benchmark_hermes_toolset_components_stage14.sh
+          bash -n tools/cutover_hermes_telegram_static_profile_stage22.sh
+          bash -n tools/rollback_hermes_telegram_static_profile_stage22.sh
       - name: Test
         run: pytest

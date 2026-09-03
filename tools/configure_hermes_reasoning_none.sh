@@ -14,7 +14,6 @@ section() { printf '\n===== %s =====\n' "$1"; }
 
 [ -x "$HERMES_PYTHON" ] || { say "FAIL: Hermes Python missing: $HERMES_PYTHON"; exit 1; }
 [ -r "$HERMES_CONFIG" ] || { say "FAIL: Hermes config missing: $HERMES_CONFIG"; exit 1; }
-[ -r "$BACKUP" ] || { say "FAIL: Stage-9 backup missing: $BACKUP"; exit 1; }
 [ -d "$HERMES_SOURCE" ] || { say "FAIL: Hermes source missing: $HERMES_SOURCE"; exit 1; }
 [ "$(systemctl --user is-active hermes-gateway.service 2>/dev/null || true)" = "active" ] || {
     say "FAIL: hermes-gateway.service is not active"
@@ -25,10 +24,10 @@ section() { printf '\n===== %s =====\n' "$1"; }
     exit 1
 }
 
-section "STAGE-9B REPAIR HERMES REASONING-OFF"
+section "CONFIGURE HERMES REASONING OFF"
 say "config: $HERMES_CONFIG"
 say "rollback backup: $BACKUP"
-say "This repairs the Stage-9 YAML null -> literal string 'none' and validates the installed Hermes runtime."
+say "Writes literal YAML string 'none' and validates the installed Hermes runtime."
 
 section "PRECHECK"
 "$HERMES_PYTHON" - "$HERMES_CONFIG" <<'PY'
@@ -46,6 +45,15 @@ with urllib.request.urlopen("http://127.0.0.1:11435/status", timeout=2) as r:
 assert s.get("active_count") == 0 and s.get("queued_count") == 0, s
 print("PASS: AI Gateway idle")
 PY
+
+section "BACKUP"
+if [ ! -e "$BACKUP" ]; then
+    cp --preserve=mode,timestamps "$HERMES_CONFIG" "$BACKUP"
+    say "PASS: created rollback backup $BACKUP"
+else
+    [ -r "$BACKUP" ] || { say "FAIL: existing backup is not readable: $BACKUP"; exit 1; }
+    say "INFO: rollback backup already exists; preserving it unchanged: $BACKUP"
+fi
 
 section "WRITE LITERAL STRING none"
 "$HERMES_PYTHON" - "$HERMES_CONFIG" <<'PY'
@@ -65,7 +73,7 @@ if not isinstance(agent, dict):
 agent["reasoning_effort"] = "none"
 
 text = yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True, default_flow_style=False)
-fd, tmp = tempfile.mkstemp(prefix="config.yaml.stage9b.", dir=str(path.parent), text=True)
+fd, tmp = tempfile.mkstemp(prefix="config.yaml.reasoning-none.", dir=str(path.parent), text=True)
 try:
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(text)
@@ -177,6 +185,6 @@ print("PASS: AI Gateway healthy and idle")
 PY
 
 say
-echo "PASS: Stage-9B Hermes reasoning-off repair completed"
-say "Hermes runtime now resolves literal agent.reasoning_effort='none' to enabled=False."
-say "Rollback remains: git show origin/feat/ai-gateway-scheduler:tools/rollback_hermes_reasoning_none_stage9.sh | bash"
+echo "PASS: Hermes reasoning-off configuration completed"
+say "Hermes runtime resolves literal agent.reasoning_effort='none' to enabled=False."
+say "Rollback: tools/rollback_hermes_reasoning_none_stage9.sh"
