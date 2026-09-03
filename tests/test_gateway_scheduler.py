@@ -74,3 +74,36 @@ def test_queue_limit_is_enforced() -> None:
         await scheduler.release(first)
 
     asyncio.run(run())
+
+
+def test_cancellation_after_dispatch_does_not_leak_active_slot() -> None:
+    async def run() -> None:
+        scheduler = PriorityScheduler(max_concurrency=1, max_queue_size=10)
+        first = await scheduler.acquire(priority=1, source="block")
+        waiting = asyncio.create_task(
+            scheduler.acquire(priority=50, source="cancel-after-dispatch")
+        )
+        await asyncio.sleep(0)
+
+        # release() grants the waiting job a slot by resolving its future, but
+        # this task resumes before the waiting task can return from acquire().
+        await scheduler.release(first)
+        waiting.cancel()
+        try:
+            await waiting
+        except asyncio.CancelledError:
+            pass
+        else:
+            raise AssertionError("expected waiting task cancellation")
+
+        snapshot = await scheduler.snapshot()
+        assert snapshot["active_count"] == 0
+        assert snapshot["queued_count"] == 0
+
+        next_ticket = await asyncio.wait_for(
+            scheduler.acquire(priority=50, source="next"), 1
+        )
+        assert next_ticket.source == "next"
+        await scheduler.release(next_ticket)
+
+    asyncio.run(run())
