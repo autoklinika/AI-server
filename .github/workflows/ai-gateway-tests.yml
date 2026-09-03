@@ -16,6 +16,7 @@ on:
       - "tools/install_ai_gateway_stage1.sh"
       - "tools/cutover_ventilation_to_ai_gateway_stage2.sh"
       - "tools/rollback_ventilation_ai_gateway_stage2.sh"
+      - "tools/audit_hermes_runtime_stage3.sh"
       - "deploy/ai-gateway.env.example"
       - "deploy/systemd/ai-gateway.service"
       - "pyproject.toml"
@@ -37,5 +38,6 @@ jobs:
           bash -n tools/install_ai_gateway_stage1.sh
           bash -n tools/cutover_ventilation_to_ai_gateway_stage2.sh
           bash -n tools/rollback_ventilation_ai_gateway_stage2.sh
+          bash -n tools/audit_hermes_runtime_stage3.sh
       - name: Test
         run: pytest
