@@ -266,6 +266,10 @@ def create_gateway_app(
     async def openai_models(request: Request) -> Response:
         return await proxy_direct(request, "/v1/models")
 
+    @app.get("/clients/hermes/v1/models")
+    async def hermes_openai_models(request: Request) -> Response:
+        return await proxy_direct(request, "/v1/models")
+
     @app.post("/api/chat")
     async def ollama_chat(request: Request) -> Response:
         return await proxy_scheduled(
@@ -320,6 +324,15 @@ def create_gateway_app(
             default_source="interactive",
         )
 
+    @app.post("/clients/hermes/v1/chat/completions")
+    async def hermes_openai_chat_completions(request: Request) -> Response:
+        return await proxy_scheduled(
+            request,
+            "/v1/chat/completions",
+            default_priority=resolved.gateway_priority_interactive,
+            default_source="hermes",
+        )
+
     @app.post("/v1/embeddings")
     async def openai_embeddings(request: Request) -> Response:
         return await proxy_scheduled(
@@ -327,6 +340,15 @@ def create_gateway_app(
             "/v1/embeddings",
             default_priority=resolved.gateway_priority_normal,
             default_source="embedding",
+        )
+
+    @app.post("/clients/hermes/v1/embeddings")
+    async def hermes_openai_embeddings(request: Request) -> Response:
+        return await proxy_scheduled(
+            request,
+            "/v1/embeddings",
+            default_priority=resolved.gateway_priority_interactive,
+            default_source="hermes",
         )
 
     return app
