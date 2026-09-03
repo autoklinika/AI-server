@@ -21,9 +21,33 @@ class Settings(BaseSettings):
     # through AI_BRIDGE_DATABASE_URL without changing application code.
     database_url: str = "sqlite+pysqlite:///./data/ai_bridge.sqlite3"
 
+    # Ollama remains the inference backend. The AI Gateway is a local admission
+    # layer in front of it and must therefore use this direct upstream URL.
     ollama_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen3.6:35b"
     ollama_analysis_timeout_seconds: float = Field(default=300.0, gt=0.0)
+
+    # Central inference gateway. It binds to localhost by default because both
+    # Hermes and the ventilation analysis runner live on the AI Server.
+    gateway_host: str = "127.0.0.1"
+    gateway_port: int = Field(default=11435, ge=1, le=65535)
+    gateway_url: str = "http://127.0.0.1:11435"
+    gateway_max_concurrency: int = Field(default=1, ge=1, le=16)
+    gateway_max_queue_size: int = Field(default=128, ge=1, le=10_000)
+    gateway_connect_timeout_seconds: float = Field(default=5.0, gt=0.0)
+    gateway_upstream_timeout_seconds: float = Field(default=600.0, gt=0.0)
+    gateway_health_timeout_seconds: float = Field(default=2.0, gt=0.0)
+
+    # Lower numeric value means higher priority. These defaults leave wide gaps
+    # so future workloads can be inserted without renumbering existing classes.
+    gateway_priority_ventilation: int = Field(default=10, ge=-1000, le=1000)
+    gateway_priority_interactive: int = Field(default=50, ge=-1000, le=1000)
+    gateway_priority_normal: int = Field(default=100, ge=-1000, le=1000)
+    gateway_priority_background: int = Field(default=200, ge=-1000, le=1000)
+
+    # Safe rollout switch: production analysis continues to talk directly to
+    # Ollama until the local gateway has been deployed and validated.
+    analysis_use_gateway: bool = False
 
     analysis_window_minutes: int = Field(default=15, ge=1, le=60)
     analysis_min_samples: int = Field(default=120, ge=1)

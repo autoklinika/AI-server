@@ -111,6 +111,16 @@ class OllamaClient:
     base_url: str
     timeout_seconds: float = 300.0
     availability_timeout_seconds: float = 2.0
+    request_source: str | None = None
+    request_priority: int | None = None
+
+    def _gateway_headers(self) -> dict[str, str] | None:
+        headers: dict[str, str] = {}
+        if self.request_source:
+            headers["X-AI-Source"] = self.request_source
+        if self.request_priority is not None:
+            headers["X-AI-Priority"] = str(self.request_priority)
+        return headers or None
 
     def is_available(self) -> bool:
         try:
@@ -143,6 +153,7 @@ class OllamaClient:
             response = httpx.post(
                 f"{self.base_url.rstrip('/')}/api/chat",
                 json=payload,
+                headers=self._gateway_headers(),
                 timeout=self.timeout_seconds,
             )
             response.raise_for_status()
