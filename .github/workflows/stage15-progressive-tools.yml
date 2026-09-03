@@ -1,0 +1,21 @@
+name: Stage 15 progressive tools
+
+on:
+  push:
+    branches:
+      - feat/ai-gateway-scheduler
+    paths:
+      - "tools/benchmark_hermes_progressive_tools_stage15.sh"
+      - ".github/workflows/stage15-progressive-tools.yml"
+  pull_request:
+    paths:
+      - "tools/benchmark_hermes_progressive_tools_stage15.sh"
+      - ".github/workflows/stage15-progressive-tools.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate shell syntax
+        run: bash -n tools/benchmark_hermes_progressive_tools_stage15.sh
