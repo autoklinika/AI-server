@@ -30,7 +30,7 @@ restore_gateway() {
 cleanup() {
     rc=$?
     trap - EXIT INT TERM
-    if [ "$SUCCESS" -ne 1 ]; then
+    if [ "$SUCCESS" -ne 1 ] && { [ "$CUTOVER_APPLIED" -eq 1 ] || [ "$GATEWAY_SWAPPED" -eq 1 ]; }; then
         echo
         echo "===== AUTOMATIC ROLLBACK ====="
         if [ "$CUTOVER_APPLIED" -eq 1 ] && [ -r "$AI_ENV_BACKUP" ]; then
@@ -67,7 +67,14 @@ AI_STATE_BEFORE="$(systemctl is-active ai-bridge.service 2>/dev/null || true)"
 TIMER_STATE_BEFORE="$(systemctl is-active ai-bridge-analysis.timer 2>/dev/null || true)"
 OLLAMA_STATE_BEFORE="$(systemctl is-active ollama.service 2>/dev/null || true)"
 HERMES_STATE_BEFORE="$(systemctl is-active hermes.service 2>/dev/null || true)"
-CURRENT_OLLAMA_URL="$(grep -E '^AI_BRIDGE_OLLAMA_URL=' "$AI_ENV" | tail -n 1 | cut -d= -f2- || true)"
+CURRENT_OLLAMA_URL_RAW="$(grep -E '^AI_BRIDGE_OLLAMA_URL=' "$AI_ENV" | tail -n 1 | cut -d= -f2- || true)"
+CURRENT_OLLAMA_URL="${CURRENT_OLLAMA_URL_RAW:-$DIRECT_OLLAMA_URL}"
+
+if [ -n "$CURRENT_OLLAMA_URL_RAW" ]; then
+    CURRENT_OLLAMA_DISPLAY="$CURRENT_OLLAMA_URL"
+else
+    CURRENT_OLLAMA_DISPLAY="$CURRENT_OLLAMA_URL (implicit code default)"
+fi
 
 echo
 echo "===== PRECHECK ====="
@@ -78,14 +85,14 @@ echo "analysis timer:    $TIMER_STATE_BEFORE"
 echo "ollama:            $OLLAMA_STATE_BEFORE"
 echo "gateway:           $(systemctl is-active ai-gateway.service)"
 echo "hermes:            $HERMES_STATE_BEFORE"
-echo "current AI URL:    $CURRENT_OLLAMA_URL"
+echo "current AI URL:    $CURRENT_OLLAMA_DISPLAY"
 echo "target AI URL:     $TARGET_OLLAMA_URL"
 
 [ "$AI_STATE_BEFORE" = "active" ] || { echo "FAIL: ai-bridge.service is not active"; exit 1; }
 [ "$TIMER_STATE_BEFORE" = "active" ] || { echo "FAIL: analysis timer is not active"; exit 1; }
 [ "$OLLAMA_STATE_BEFORE" = "active" ] || { echo "FAIL: ollama.service is not active"; exit 1; }
 if [ "$CURRENT_OLLAMA_URL" != "$DIRECT_OLLAMA_URL" ] && [ "$CURRENT_OLLAMA_URL" != "$TARGET_OLLAMA_URL" ]; then
-    echo "FAIL: unexpected current AI_BRIDGE_OLLAMA_URL=$CURRENT_OLLAMA_URL"
+    echo "FAIL: unexpected effective AI_BRIDGE_OLLAMA_URL=$CURRENT_OLLAMA_URL"
     exit 1
 fi
 
