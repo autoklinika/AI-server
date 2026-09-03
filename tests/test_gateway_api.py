@@ -15,6 +15,7 @@ def _settings(**overrides) -> Settings:
         "gateway_connect_timeout_seconds": 1.0,
         "gateway_upstream_timeout_seconds": 10.0,
         "gateway_health_timeout_seconds": 1.0,
+        "gateway_priority_ventilation": 10,
         "gateway_priority_normal": 100,
         "gateway_priority_interactive": 50,
     }
@@ -72,6 +73,36 @@ def test_gateway_sends_higher_priority_waiter_first() -> None:
                 assert all(response.status_code == 200 for response in responses)
                 assert calls == ["block", "high", "low"]
                 assert high.result().headers["x-ai-gateway-priority"] == "10"
+
+    asyncio.run(run())
+
+
+def test_ventilation_namespace_defaults_to_priority_10_and_native_ollama_path() -> None:
+    async def run() -> None:
+        seen_paths: list[str] = []
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            seen_paths.append(request.url.path)
+            return httpx.Response(200, json={"ok": True})
+
+        app = create_gateway_app(
+            _settings(),
+            upstream_transport=httpx.MockTransport(handler),
+        )
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://gateway",
+            ) as client:
+                tags = await client.get("/clients/ventilation/api/tags")
+                response = await client.post(
+                    "/clients/ventilation/api/chat",
+                    json={"stream": False},
+                )
+                assert tags.status_code == 200
+                assert response.status_code == 200
+                assert response.headers["x-ai-gateway-priority"] == "10"
+                assert seen_paths == ["/api/tags", "/api/chat"]
 
     asyncio.run(run())
 
