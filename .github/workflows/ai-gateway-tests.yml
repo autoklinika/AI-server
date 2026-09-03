@@ -19,6 +19,7 @@ on:
       - "tools/audit_hermes_runtime_stage3.sh"
       - "tools/cutover_hermes_to_ai_gateway_stage3.sh"
       - "tools/rollback_hermes_ai_gateway_stage3.sh"
+      - "tools/validate_ai_gateway_priority_stage4.sh"
       - "deploy/ai-gateway.env.example"
       - "deploy/systemd/ai-gateway.service"
       - "pyproject.toml"
@@ -43,5 +44,6 @@ jobs:
           bash -n tools/audit_hermes_runtime_stage3.sh
           bash -n tools/cutover_hermes_to_ai_gateway_stage3.sh
           bash -n tools/rollback_hermes_ai_gateway_stage3.sh
+          bash -n tools/validate_ai_gateway_priority_stage4.sh
       - name: Test
         run: pytest
