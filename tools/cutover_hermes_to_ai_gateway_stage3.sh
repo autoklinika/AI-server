@@ -18,6 +18,13 @@ GATEWAY_UPDATED=0
 CONFIG_UPDATED=0
 SUCCESS=0
 
+read_vent_route() {
+    systemctl cat ai-bridge-analysis.service 2>/dev/null \
+        | grep -oE 'AI_BRIDGE_OLLAMA_URL=[^[:space:]]+' \
+        | tail -n 1 \
+        | cut -d= -f2- || true
+}
+
 restore_gateway() {
     if [ "$GATEWAY_UPDATED" -eq 1 ] && [ -d "$GATEWAY_BACKUP" ]; then
         echo "restoring previous gateway deployment"
@@ -112,7 +119,7 @@ echo "===== AI GATEWAY STAGE-3 HERMES CUTOVER ====="
 cd "$ROOT"
 
 AI_PID_BEFORE="$(systemctl show ai-bridge.service -p MainPID --value 2>/dev/null || true)"
-VENT_ROUTE_BEFORE="$(systemctl show ai-bridge-analysis.service -p Environment --value 2>/dev/null | tr ' ' '\n' | grep '^AI_BRIDGE_OLLAMA_URL=' | cut -d= -f2- || true)"
+VENT_ROUTE_BEFORE="$(read_vent_route)"
 HERMES_PID_BEFORE="$(systemctl --user show "$HERMES_SERVICE" -p MainPID --value 2>/dev/null || true)"
 SESSION_KEYS_BEFORE="$($BOOTSTRAP_PYTHON - "$HERMES_HOME/sessions/sessions.json" <<'PY'
 import json
@@ -187,7 +194,6 @@ echo "target base_url:    $TARGET_BASE_URL"
     exit 1
 }
 
-# Stage 2 must remain in force while Hermes is cut over.
 [ "$VENT_ROUTE_BEFORE" = "http://127.0.0.1:11435/clients/ventilation" ] || {
     echo "FAIL: ventilation is not currently routed through its priority-10 gateway namespace"
     exit 1
@@ -326,7 +332,7 @@ PY
 echo
 echo "===== POSTCHECK ====="
 AI_PID_AFTER="$(systemctl show ai-bridge.service -p MainPID --value 2>/dev/null || true)"
-VENT_ROUTE_AFTER="$(systemctl show ai-bridge-analysis.service -p Environment --value 2>/dev/null | tr ' ' '\n' | grep '^AI_BRIDGE_OLLAMA_URL=' | cut -d= -f2- || true)"
+VENT_ROUTE_AFTER="$(read_vent_route)"
 echo "ai-bridge pid:      $AI_PID_AFTER"
 echo "ventilation route:  $VENT_ROUTE_AFTER"
 echo "gateway:            $(systemctl is-active ai-gateway.service)"
