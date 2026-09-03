@@ -149,12 +149,17 @@ class OllamaClient:
             "think": think,
             "options": {"temperature": temperature},
         }
+        request_kwargs: dict[str, Any] = {
+            "json": payload,
+            "timeout": self.timeout_seconds,
+        }
+        gateway_headers = self._gateway_headers()
+        if gateway_headers is not None:
+            request_kwargs["headers"] = gateway_headers
         try:
             response = httpx.post(
                 f"{self.base_url.rstrip('/')}/api/chat",
-                json=payload,
-                headers=self._gateway_headers(),
-                timeout=self.timeout_seconds,
+                **request_kwargs,
             )
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
