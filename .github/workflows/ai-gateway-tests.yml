@@ -1,0 +1,29 @@
+name: AI Gateway tests
+
+on:
+  push:
+    branches:
+      - feat/ai-gateway-scheduler
+  pull_request:
+    paths:
+      - "src/ai_bridge/gateway/**"
+      - "src/ai_bridge/ollama/client.py"
+      - "src/ai_bridge/analysis/main.py"
+      - "src/ai_bridge/settings.py"
+      - "tests/test_gateway_*.py"
+      - "tests/test_ollama_gateway_headers.py"
+      - "pyproject.toml"
+      - ".github/workflows/ai-gateway-tests.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install -e '.[dev]'
+      - name: Test
+        run: pytest
