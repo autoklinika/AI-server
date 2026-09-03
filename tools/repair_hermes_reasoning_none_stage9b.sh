@@ -28,7 +28,7 @@ section() { printf '\n===== %s =====\n' "$1"; }
 section "STAGE-9B REPAIR HERMES REASONING-OFF"
 say "config: $HERMES_CONFIG"
 say "rollback backup: $BACKUP"
-say "This repairs the Stage-9 YAML null -> literal string 'none'."
+say "This repairs the Stage-9 YAML null -> literal string 'none' and validates the installed Hermes runtime."
 
 section "PRECHECK"
 "$HERMES_PYTHON" - "$HERMES_CONFIG" <<'PY'
@@ -107,8 +107,8 @@ print("Hermes resolve_reasoning_config:", repr(resolved))
 if not isinstance(resolved, dict) or resolved.get("enabled") is not False:
     raise SystemExit(f"FAIL: Hermes runtime did not resolve reasoning disabled: {resolved!r}")
 
-from providers import get_provider
-profile = get_provider("custom")
+from providers import get_provider_profile
+profile = get_provider_profile("custom")
 if profile is None:
     raise SystemExit("FAIL: custom provider profile not found")
 extra, top = profile.build_api_kwargs_extras(
