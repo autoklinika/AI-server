@@ -7,11 +7,13 @@ on:
     paths:
       - "tools/benchmark_hermes_progressive_tools_stage15.sh"
       - "tools/validate_hermes_deferred_tool_e2e_stage16.sh"
+      - "tools/validate_hermes_deferred_tool_e2e_stage16b.sh"
       - ".github/workflows/stage15-progressive-tools.yml"
   pull_request:
     paths:
       - "tools/benchmark_hermes_progressive_tools_stage15.sh"
       - "tools/validate_hermes_deferred_tool_e2e_stage16.sh"
+      - "tools/validate_hermes_deferred_tool_e2e_stage16b.sh"
       - ".github/workflows/stage15-progressive-tools.yml"
 
 jobs:
@@ -23,3 +25,4 @@ jobs:
         run: |
           bash -n tools/benchmark_hermes_progressive_tools_stage15.sh
           bash -n tools/validate_hermes_deferred_tool_e2e_stage16.sh
+          bash -n tools/validate_hermes_deferred_tool_e2e_stage16b.sh
