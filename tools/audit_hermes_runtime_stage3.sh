@@ -14,7 +14,7 @@ safe_cmd() {
 }
 
 redact_stream() {
-    "$PYTHON" - <<'PY'
+    "$PYTHON" -c '
 import re
 import sys
 
@@ -34,12 +34,11 @@ for raw in sys.stdin:
     if m and SECRET_KEYS.search(m.group(1)):
         print(f"{m.group(1).strip()}=***REDACTED***")
         continue
-    # Telegram bot tokens have a recognizable numeric-prefix form.
     line = re.sub(r"\b\d{6,12}:[A-Za-z0-9_-]{20,}\b", "***TELEGRAM_TOKEN_REDACTED***", line)
     if SECRET_KEYS.search(line):
         line = LONG_TOKEN.sub("***REDACTED***", line)
     print(line)
-PY
+'
 }
 
 section "HERMES RUNTIME AUDIT - READ ONLY"
@@ -68,9 +67,35 @@ section "SYSTEMD UNIT FILES"
 } | grep -Ei 'hermes|telegram|agent' | sort -u | redact_stream || true
 
 section "PROCESSES"
-ps -eo user,pid,ppid,lstart,args --ww \
-    | grep -Ei '[h]ermes|[t]elegram|[o]llama|[u]vicorn|[f]astapi' \
-    | redact_stream || true
+# Use /proc instead of GNU-specific ps switches so the audit works regardless of
+# procps/busybox/localized ps option parsing.
+"$PYTHON" - <<'PY' | redact_stream || true
+from pathlib import Path
+import os
+import re
+
+wanted = re.compile(r"(?i)(hermes|telegram|ollama|uvicorn|fastapi)")
+for proc in sorted(Path("/proc").iterdir(), key=lambda p: int(p.name) if p.name.isdigit() else 10**9):
+    if not proc.name.isdigit():
+        continue
+    try:
+        cmdline = (proc / "cmdline").read_bytes().replace(b"\0", b" ").decode("utf-8", "replace").strip()
+        if not cmdline or not wanted.search(cmdline):
+            continue
+        status = (proc / "status").read_text(encoding="utf-8", errors="replace")
+        uid_line = next((line for line in status.splitlines() if line.startswith("Uid:")), "")
+        ppid_line = next((line for line in status.splitlines() if line.startswith("PPid:")), "")
+        uid = int(uid_line.split()[1]) if uid_line else -1
+        try:
+            import pwd
+            user = pwd.getpwuid(uid).pw_name
+        except Exception:
+            user = str(uid)
+        ppid = ppid_line.split()[1] if ppid_line else "?"
+        print(f"{user}\tpid={proc.name}\tppid={ppid}\t{cmdline}")
+    except (OSError, ValueError):
+        continue
+PY
 
 section "CONTAINERS"
 if command -v docker >/dev/null 2>&1; then
@@ -90,12 +115,12 @@ fi
 
 section "TMUX / SCREEN"
 if command -v tmux >/dev/null 2>&1; then
-    safe_cmd tmux list-sessions | redact_stream
+    safe_cmd tmux list-sessions | redact_stream || true
 else
     echo "tmux: not installed"
 fi
 if command -v screen >/dev/null 2>&1; then
-    safe_cmd screen -ls | redact_stream
+    safe_cmd screen -ls | redact_stream || true
 else
     echo "screen: not installed"
 fi
@@ -107,13 +132,28 @@ safe_cmd ss -ltnp \
     | redact_stream || true
 
 section "HERMES COMMAND DISCOVERY"
+FOUND_HERMES=0
 for cmd in hermes hermes-agent hermes-agent-cli; do
     if command -v "$cmd" >/dev/null 2>&1; then
+        FOUND_HERMES=1
         path="$(command -v "$cmd")"
         echo "$cmd: $path"
-        safe_cmd "$cmd" --version | head -n 5 | redact_stream
+        echo "-- version/help probe --"
+        { safe_cmd timeout 5s "$cmd" --version; safe_cmd timeout 5s "$cmd" version; } \
+            | head -n 12 | redact_stream || true
     fi
 done
+[ "$FOUND_HERMES" -eq 1 ] || echo "No Hermes CLI found in PATH"
+
+section "HERMES EXECUTABLE DETAILS"
+if command -v hermes >/dev/null 2>&1; then
+    HERMES_BIN="$(command -v hermes)"
+    safe_cmd ls -l "$HERMES_BIN" | redact_stream || true
+    safe_cmd readlink -f "$HERMES_BIN" | redact_stream || true
+    if head -n 1 "$HERMES_BIN" 2>/dev/null | grep -q '^#!'; then
+        head -n 3 "$HERMES_BIN" | redact_stream || true
+    fi
+fi
 
 section "LIKELY HERMES PATHS"
 CANDIDATES=(
@@ -130,9 +170,9 @@ for path in "${CANDIDATES[@]}"; do
     if [ -e "$path" ]; then
         if [ -d "$path" ]; then
             echo "DIR  $path"
-            find "$path" -maxdepth 2 -type f -printf '  %p\n' 2>/dev/null \
-                | head -n 120 \
-                | redact_stream
+            find "$path" -maxdepth 3 -type f -printf '  %p\n' 2>/dev/null \
+                | head -n 180 \
+                | redact_stream || true
         else
             echo "FILE $path"
         fi
@@ -157,10 +197,10 @@ roots = [
     Path("/etc/hermes"),
 ]
 
-interesting_name = re.compile(r"(?i)(config|setting|provider|profile|telegram|gateway|env|yaml|yml|json|toml)$")
+interesting_name = re.compile(r"(?i)(config|setting|provider|profile|telegram|gateway|env|yaml|yml|json|toml)")
 interesting_line = re.compile(
     r"(?i)(ollama|openai|base[_-]?url|endpoint|provider|model|telegram|session|chat[_-]?id|"
-    r"concurr|parallel|busy|queue|stream|memory|workspace)"
+    r"concurr|parallel|busy|queue|stream|memory|workspace|inference|api[_-]?base)"
 )
 secret_key = re.compile(r"(?i)(token|api[_-]?key|secret|password|passwd|authorization|bearer)")
 assignment = re.compile(r"^(\s*[^=:#]+\s*[:=]\s*)(.*)$")
@@ -173,13 +213,12 @@ for root in roots:
     if not root.exists() or not root.is_dir():
         continue
     for path in root.rglob("*"):
-        if len(files) >= 250:
+        if len(files) >= 300:
             break
         if not path.is_file() or path in seen:
             continue
         seen.add(path)
-        # Avoid caches, models, databases and large files.
-        if any(part.lower() in {"cache", ".git", "node_modules", ".venv", "venv"} for part in path.parts):
+        if any(part.lower() in {"cache", ".git", "node_modules", ".venv", "venv", "models"} for part in path.parts):
             continue
         try:
             size = path.stat().st_size
@@ -206,19 +245,52 @@ for path in files:
         if m and secret_key.search(m.group(1)):
             line = m.group(1) + "***REDACTED***"
         elif secret_key.search(line):
-            # Do not risk printing a secret-bearing free-form line.
             line = "***REDACTED_SECRET_BEARING_LINE***"
         matches.append((lineno, line[:500]))
     if matches:
         print(f"--- {path}")
-        for lineno, line in matches[:80]:
+        for lineno, line in matches[:100]:
             print(f"{lineno}: {line}")
+PY
+
+section "HERMES PROCESS ENVIRONMENT (SANITIZED KEYS ONLY)"
+"$PYTHON" - <<'PY'
+from pathlib import Path
+import re
+
+wanted_process = re.compile(r"(?i)hermes")
+wanted_key = re.compile(r"(?i)(ollama|openai|base.*url|endpoint|provider|model|telegram|session|concurr|parallel|queue|workspace|api.*base)")
+secret_key = re.compile(r"(?i)(token|key|secret|password|passwd|authorization|bearer)")
+
+for proc in Path("/proc").iterdir():
+    if not proc.name.isdigit():
+        continue
+    try:
+        cmd = (proc / "cmdline").read_bytes().replace(b"\0", b" ").decode("utf-8", "replace")
+        if not wanted_process.search(cmd):
+            continue
+        env = (proc / "environ").read_bytes().split(b"\0")
+    except OSError:
+        continue
+    print(f"--- pid={proc.name}")
+    for item in env:
+        if b"=" not in item:
+            continue
+        key_b, value_b = item.split(b"=", 1)
+        key = key_b.decode("utf-8", "replace")
+        if not wanted_key.search(key):
+            continue
+        if secret_key.search(key):
+            value = "***REDACTED***"
+        else:
+            value = value_b.decode("utf-8", "replace")[:500]
+        print(f"{key}={value}")
 PY
 
 section "RECENT HERMES-RELATED JOURNAL"
 {
-    safe_cmd journalctl --no-pager -n 150 -u hermes.service
-    safe_cmd journalctl --user --no-pager -n 150 -u hermes.service
+    safe_cmd journalctl --no-pager -n 200 -u hermes.service
+    safe_cmd journalctl --user --no-pager -n 200 -u hermes.service
 } | grep -Ei 'hermes|telegram|ollama|openai|provider|session|error|cuda|gpu' | redact_stream || true
 
 section "AUDIT COMPLETE"
