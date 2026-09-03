@@ -24,6 +24,7 @@ on:
       - "tools/benchmark_ollama_parallel_stage6.sh"
       - "tools/diagnose_ollama_parallel_lock_stage6b.sh"
       - "tools/benchmark_dual_ollama_runners_stage7.sh"
+      - "tools/benchmark_dual_ollama_runners_stage7b.sh"
       - "deploy/ai-gateway.env.example"
       - "deploy/systemd/ai-gateway.service"
       - "pyproject.toml"
@@ -53,5 +54,6 @@ jobs:
           bash -n tools/benchmark_ollama_parallel_stage6.sh
           bash -n tools/diagnose_ollama_parallel_lock_stage6b.sh
           bash -n tools/benchmark_dual_ollama_runners_stage7.sh
+          bash -n tools/benchmark_dual_ollama_runners_stage7b.sh
       - name: Test
         run: pytest
