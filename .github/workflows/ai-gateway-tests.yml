@@ -17,6 +17,8 @@ on:
       - "tools/cutover_ventilation_to_ai_gateway_stage2.sh"
       - "tools/rollback_ventilation_ai_gateway_stage2.sh"
       - "tools/audit_hermes_runtime_stage3.sh"
+      - "tools/cutover_hermes_to_ai_gateway_stage3.sh"
+      - "tools/rollback_hermes_ai_gateway_stage3.sh"
       - "deploy/ai-gateway.env.example"
       - "deploy/systemd/ai-gateway.service"
       - "pyproject.toml"
@@ -39,5 +41,7 @@ jobs:
           bash -n tools/cutover_ventilation_to_ai_gateway_stage2.sh
           bash -n tools/rollback_ventilation_ai_gateway_stage2.sh
           bash -n tools/audit_hermes_runtime_stage3.sh
+          bash -n tools/cutover_hermes_to_ai_gateway_stage3.sh
+          bash -n tools/rollback_hermes_ai_gateway_stage3.sh
       - name: Test
         run: pytest
