@@ -68,9 +68,20 @@ def main() -> int:
     database = Database(settings.database_url)
     try:
         repository = VentilationAnalysisRepository(database)
+        use_gateway = settings.analysis_use_gateway
+        inference_url = settings.gateway_url if use_gateway else settings.ollama_url
+        logging.info(
+            "Ventilation inference route=%s url=%s",
+            "ai-gateway" if use_gateway else "direct-ollama",
+            inference_url,
+        )
         ollama = OllamaClient(
-            base_url=settings.ollama_url,
+            base_url=inference_url,
             timeout_seconds=settings.ollama_analysis_timeout_seconds,
+            request_source="ventilation" if use_gateway else None,
+            request_priority=(
+                settings.gateway_priority_ventilation if use_gateway else None
+            ),
         )
         service = VentilationAnalysisServiceV122(
             repository=repository,

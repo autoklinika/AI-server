@@ -1,0 +1,59 @@
+name: AI Gateway tests
+
+on:
+  push:
+    branches:
+      - feat/ai-gateway-scheduler
+  pull_request:
+    paths:
+      - "src/ai_bridge/gateway/**"
+      - "src/ai_bridge/ollama/client.py"
+      - "src/ai_bridge/analysis/main.py"
+      - "src/ai_bridge/settings.py"
+      - "tests/test_gateway_*.py"
+      - "tests/test_ollama_gateway_headers.py"
+      - "tools/validate_ai_gateway_real_server.sh"
+      - "tools/install_ai_gateway_stage1.sh"
+      - "tools/cutover_ventilation_to_ai_gateway_stage2.sh"
+      - "tools/rollback_ventilation_ai_gateway_stage2.sh"
+      - "tools/audit_hermes_runtime_stage3.sh"
+      - "tools/cutover_hermes_to_ai_gateway_stage3.sh"
+      - "tools/rollback_hermes_ai_gateway_stage3.sh"
+      - "tools/validate_ai_gateway_priority_stage4.sh"
+      - "tools/configure_hermes_reasoning_none.sh"
+      - "tools/rollback_hermes_reasoning_none_stage9.sh"
+      - "tools/cutover_hermes_telegram_static_profile_stage22.sh"
+      - "tools/rollback_hermes_telegram_static_profile_stage22.sh"
+      - "deploy/ai-gateway.env.example"
+      - "deploy/systemd/ai-gateway.service"
+      - "docs/ADR-005_AI_GATEWAY_SCHEDULER_PL.md"
+      - "docs/AI_GATEWAY_PRODUCTION_PL.md"
+      - "pyproject.toml"
+      - ".github/workflows/ai-gateway-tests.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install -e '.[dev]'
+      - name: Validate production scripts syntax
+        run: |
+          bash -n tools/validate_ai_gateway_real_server.sh
+          bash -n tools/install_ai_gateway_stage1.sh
+          bash -n tools/cutover_ventilation_to_ai_gateway_stage2.sh
+          bash -n tools/rollback_ventilation_ai_gateway_stage2.sh
+          bash -n tools/audit_hermes_runtime_stage3.sh
+          bash -n tools/cutover_hermes_to_ai_gateway_stage3.sh
+          bash -n tools/rollback_hermes_ai_gateway_stage3.sh
+          bash -n tools/validate_ai_gateway_priority_stage4.sh
+          bash -n tools/configure_hermes_reasoning_none.sh
+          bash -n tools/rollback_hermes_reasoning_none_stage9.sh
+          bash -n tools/cutover_hermes_telegram_static_profile_stage22.sh
+          bash -n tools/rollback_hermes_telegram_static_profile_stage22.sh
+      - name: Test
+        run: pytest
