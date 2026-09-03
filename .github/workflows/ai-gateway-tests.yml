@@ -26,6 +26,7 @@ on:
       - "tools/benchmark_dual_ollama_runners_stage7.sh"
       - "tools/benchmark_dual_ollama_runners_stage7b.sh"
       - "tools/benchmark_dual_ollama_runners_stage7c.sh"
+      - "tools/profile_hermes_inference_stage8.sh"
       - "deploy/ai-gateway.env.example"
       - "deploy/systemd/ai-gateway.service"
       - "pyproject.toml"
@@ -57,5 +58,6 @@ jobs:
           bash -n tools/benchmark_dual_ollama_runners_stage7.sh
           bash -n tools/benchmark_dual_ollama_runners_stage7b.sh
           bash -n tools/benchmark_dual_ollama_runners_stage7c.sh
+          bash -n tools/profile_hermes_inference_stage8.sh
       - name: Test
         run: pytest
