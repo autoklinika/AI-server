@@ -31,6 +31,7 @@ on:
       - "tools/cutover_hermes_reasoning_none_stage9.sh"
       - "tools/repair_hermes_reasoning_none_stage9b.sh"
       - "tools/rollback_hermes_reasoning_none_stage9.sh"
+      - "tools/validate_hermes_telegram_latency_stage10.sh"
       - "deploy/ai-gateway.env.example"
       - "deploy/systemd/ai-gateway.service"
       - "pyproject.toml"
@@ -67,5 +68,6 @@ jobs:
           bash -n tools/cutover_hermes_reasoning_none_stage9.sh
           bash -n tools/repair_hermes_reasoning_none_stage9b.sh
           bash -n tools/rollback_hermes_reasoning_none_stage9.sh
+          bash -n tools/validate_hermes_telegram_latency_stage10.sh
       - name: Test
         run: pytest
