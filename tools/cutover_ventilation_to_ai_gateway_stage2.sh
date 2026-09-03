@@ -173,17 +173,22 @@ echo "AI_BRIDGE_OLLAMA_URL=$NEW_OLLAMA_URL"
 
 echo
 echo "===== REAL QWEN VIA PRODUCTION ROUTE ====="
-set -a
-# shellcheck disable=SC1090
-. "$AI_ENV"
-set +a
-"$BOOTSTRAP_PYTHON" - <<'PY'
+"$BOOTSTRAP_PYTHON" - "$AI_ENV" "$TARGET_OLLAMA_URL" <<'PY'
 import json
-import os
+from pathlib import Path
+import sys
 import urllib.request
-base = os.environ["AI_BRIDGE_OLLAMA_URL"].rstrip("/")
+
+env_path = Path(sys.argv[1])
+base = sys.argv[2].rstrip("/")
+model = "qwen3.6:35b"
+for raw in env_path.read_text(encoding="utf-8").splitlines():
+    if raw.startswith("AI_BRIDGE_OLLAMA_MODEL="):
+        model = raw.split("=", 1)[1].strip() or model
+        break
+
 payload = json.dumps({
-    "model": os.environ.get("AI_BRIDGE_OLLAMA_MODEL", "qwen3.6:35b"),
+    "model": model,
     "messages": [{"role": "user", "content": "Zwróć krótki JSON potwierdzający test infrastruktury."}],
     "stream": False,
     "think": False,
