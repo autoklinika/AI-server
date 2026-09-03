@@ -34,6 +34,7 @@ on:
       - "tools/validate_hermes_telegram_latency_stage10.sh"
       - "tools/audit_hermes_prompt_overhead_stage11.sh"
       - "tools/audit_hermes_telegram_tool_surface_stage12.sh"
+      - "tools/benchmark_hermes_toolset_latency_stage13.sh"
       - "deploy/ai-gateway.env.example"
       - "deploy/systemd/ai-gateway.service"
       - "pyproject.toml"
@@ -73,5 +74,6 @@ jobs:
           bash -n tools/validate_hermes_telegram_latency_stage10.sh
           bash -n tools/audit_hermes_prompt_overhead_stage11.sh
           bash -n tools/audit_hermes_telegram_tool_surface_stage12.sh
+          bash -n tools/benchmark_hermes_toolset_latency_stage13.sh
       - name: Test
         run: pytest
