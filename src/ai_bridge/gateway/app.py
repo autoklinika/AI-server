@@ -258,6 +258,10 @@ def create_gateway_app(
     async def ollama_tags(request: Request) -> Response:
         return await proxy_direct(request, "/api/tags")
 
+    @app.get("/clients/ventilation/api/tags")
+    async def ventilation_ollama_tags(request: Request) -> Response:
+        return await proxy_direct(request, "/api/tags")
+
     @app.get("/v1/models")
     async def openai_models(request: Request) -> Response:
         return await proxy_direct(request, "/v1/models")
@@ -269,6 +273,15 @@ def create_gateway_app(
             "/api/chat",
             default_priority=resolved.gateway_priority_normal,
             default_source="ollama-native",
+        )
+
+    @app.post("/clients/ventilation/api/chat")
+    async def ventilation_ollama_chat(request: Request) -> Response:
+        return await proxy_scheduled(
+            request,
+            "/api/chat",
+            default_priority=resolved.gateway_priority_ventilation,
+            default_source="ventilation",
         )
 
     @app.post("/api/generate")
