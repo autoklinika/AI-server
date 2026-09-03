@@ -84,8 +84,13 @@ class PriorityScheduler:
         try:
             return await future
         except asyncio.CancelledError:
+            # Cancellation can happen while queued or in the narrow window after
+            # _dispatch_locked() granted this job a slot but before this task
+            # resumed from ``await future``. Clean up both states so an
+            # abandoned admission can never leak an active slot.
             async with self._lock:
                 self._pending.pop(job_id, None)
+                self._active.pop(job_id, None)
                 self._dispatch_locked()
             raise
 
