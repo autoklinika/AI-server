@@ -14,6 +14,8 @@ on:
       - "tests/test_ollama_gateway_headers.py"
       - "tools/validate_ai_gateway_real_server.sh"
       - "tools/install_ai_gateway_stage1.sh"
+      - "tools/cutover_ventilation_to_ai_gateway_stage2.sh"
+      - "tools/rollback_ventilation_ai_gateway_stage2.sh"
       - "deploy/ai-gateway.env.example"
       - "deploy/systemd/ai-gateway.service"
       - "pyproject.toml"
@@ -33,5 +35,7 @@ jobs:
         run: |
           bash -n tools/validate_ai_gateway_real_server.sh
           bash -n tools/install_ai_gateway_stage1.sh
+          bash -n tools/cutover_ventilation_to_ai_gateway_stage2.sh
+          bash -n tools/rollback_ventilation_ai_gateway_stage2.sh
       - name: Test
         run: pytest
