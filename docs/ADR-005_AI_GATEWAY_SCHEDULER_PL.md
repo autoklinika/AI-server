@@ -103,13 +103,24 @@ To jest kolejny etap po walidacji ruchu `Hermes + wentylacja + Ollama`.
 Hermesa i analizy wentylacji działają na tym samym Serwerze AI, więc nie ma potrzeby
 wystawiania endpointu schedulera do LAN.
 
+Gateway ma osobny deployment i konfigurację:
+
+- kod i własne venv: `/opt/ai-gateway`,
+- konfiguracja: `/etc/ai-gateway/ai-gateway.env`,
+- systemd: `ai-gateway.service`.
+
+Nie instalujemy gatewaya do `/opt/ai-bridge` i nie modyfikujemy produkcyjnego venv
+AI Bridge podczas etapu 1. Dzięki temu uruchomienie, zatrzymanie lub ponowna instalacja
+gatewaya nie wymaga restartu działającego AI Bridge.
+
 Ollama nadal może zostać ograniczona do localhost. Docelowo klienci aplikacyjni nie
 powinni omijać gatewaya.
 
 ## Bezpieczny rollout
 
-1. Zainstalować kod 0.4.0 bez zmiany istniejącej trasy analizy.
-2. Uruchomić `ai-gateway.service` obok działającej Ollamy.
+1. Wykonać odwracalny smoke test `tools/validate_ai_gateway_real_server.sh` bez deploymentu.
+2. Zainstalować izolowany gateway do `/opt/ai-gateway` przez
+   `tools/install_ai_gateway_stage1.sh`; routing klientów pozostaje bez zmian.
 3. Sprawdzić `GET http://127.0.0.1:11435/health` i `/status`.
 4. Wykonać kontrolny request przez `/api/chat`.
 5. Ustawić `AI_BRIDGE_ANALYSIS_USE_GATEWAY=true` i zwalidować pełne okno wentylacji.
