@@ -131,6 +131,47 @@ def test_openai_chat_defaults_to_interactive_priority() -> None:
     asyncio.run(run())
 
 
+def test_hermes_namespace_defaults_to_priority_50_and_openai_paths() -> None:
+    async def run() -> None:
+        seen_paths: list[str] = []
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            seen_paths.append(request.url.path)
+            return httpx.Response(200, json={"ok": True})
+
+        app = create_gateway_app(
+            _settings(),
+            upstream_transport=httpx.MockTransport(handler),
+        )
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://gateway",
+            ) as client:
+                models = await client.get("/clients/hermes/v1/models")
+                chat = await client.post(
+                    "/clients/hermes/v1/chat/completions",
+                    json={"stream": False},
+                )
+                embeddings = await client.post(
+                    "/clients/hermes/v1/embeddings",
+                    json={"input": "test"},
+                )
+
+                assert models.status_code == 200
+                assert chat.status_code == 200
+                assert embeddings.status_code == 200
+                assert chat.headers["x-ai-gateway-priority"] == "50"
+                assert embeddings.headers["x-ai-gateway-priority"] == "50"
+                assert seen_paths == [
+                    "/v1/models",
+                    "/v1/chat/completions",
+                    "/v1/embeddings",
+                ]
+
+    asyncio.run(run())
+
+
 def test_invalid_priority_is_rejected_before_upstream() -> None:
     async def run() -> None:
         calls = 0
