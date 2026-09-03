@@ -11,6 +11,13 @@ DIRECT_BASE_URL="http://192.168.1.55:11434/v1"
 TARGET_BASE_URL="http://127.0.0.1:11435/clients/hermes/v1"
 PYTHON="/opt/ai-bridge/.venv/bin/python"
 
+read_vent_route() {
+    systemctl cat ai-bridge-analysis.service 2>/dev/null \
+        | grep -oE 'AI_BRIDGE_OLLAMA_URL=[^[:space:]]+' \
+        | tail -n 1 \
+        | cut -d= -f2- || true
+}
+
 echo "===== ROLLBACK HERMES FROM AI GATEWAY ====="
 
 [ -r "$HERMES_CONFIG_BACKUP" ] || {
@@ -27,7 +34,7 @@ echo "===== ROLLBACK HERMES FROM AI GATEWAY ====="
 }
 
 AI_PID_BEFORE="$(systemctl show ai-bridge.service -p MainPID --value 2>/dev/null || true)"
-VENT_ROUTE_BEFORE="$(systemctl show ai-bridge-analysis.service -p Environment --value 2>/dev/null | tr ' ' '\n' | grep '^AI_BRIDGE_OLLAMA_URL=' | cut -d= -f2- || true)"
+VENT_ROUTE_BEFORE="$(read_vent_route)"
 
 echo "restoring Hermes config: $HERMES_CONFIG_BACKUP"
 cp -a "$HERMES_CONFIG_BACKUP" "$HERMES_CONFIG"
@@ -49,6 +56,7 @@ sudo rm -rf "$GATEWAY_DEPLOY"
 sudo cp -a "$GATEWAY_BACKUP" "$GATEWAY_DEPLOY"
 sudo systemctl start ai-gateway.service
 
+GATEWAY_OK=0
 for _ in $(seq 1 60); do
     if "$PYTHON" - <<'PY' >/dev/null 2>&1
 import json
@@ -61,12 +69,15 @@ with urllib.request.urlopen("http://127.0.0.1:11435/clients/ventilation/api/tags
     assert response.status == 200
 PY
     then
+        GATEWAY_OK=1
         break
     fi
     sleep 0.25
 done
+[ "$GATEWAY_OK" -eq 1 ] || { echo "FAIL: restored gateway did not become healthy"; exit 1; }
 
 systemctl --user restart "$HERMES_SERVICE"
+HERMES_OK=0
 for _ in $(seq 1 120); do
     if [ "$(systemctl --user is-active "$HERMES_SERVICE" 2>/dev/null || true)" = "active" ] \
         && "$PYTHON" - "$HERMES_HOME/gateway_state.json" <<'PY' >/dev/null 2>&1
@@ -79,13 +90,15 @@ platforms = data.get("platforms") or {}
 assert (platforms.get("telegram") or {}).get("state") == "connected", data
 PY
     then
+        HERMES_OK=1
         break
     fi
     sleep 0.5
 done
+[ "$HERMES_OK" -eq 1 ] || { echo "FAIL: Hermes/Telegram did not recover after rollback"; exit 1; }
 
 AI_PID_AFTER="$(systemctl show ai-bridge.service -p MainPID --value 2>/dev/null || true)"
-VENT_ROUTE_AFTER="$(systemctl show ai-bridge-analysis.service -p Environment --value 2>/dev/null | tr ' ' '\n' | grep '^AI_BRIDGE_OLLAMA_URL=' | cut -d= -f2- || true)"
+VENT_ROUTE_AFTER="$(read_vent_route)"
 HERMES_STATE="$(systemctl --user is-active "$HERMES_SERVICE" 2>/dev/null || true)"
 GATEWAY_STATE="$(systemctl is-active ai-gateway.service 2>/dev/null || true)"
 
