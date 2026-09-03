@@ -1,4 +1,4 @@
-name: Stage 15-21 progressive tools
+name: Stage 15-22 Hermes optimization
 
 on:
   push:
@@ -13,6 +13,8 @@ on:
       - "tools/diagnose_hermes_streaming_tool_calls_stage19.sh"
       - "tools/diagnose_hermes_run_conversation_payload_stage20.sh"
       - "tools/validate_hermes_deferred_tool_reliability_stage21.sh"
+      - "tools/cutover_hermes_telegram_static_profile_stage22.sh"
+      - "tools/rollback_hermes_telegram_static_profile_stage22.sh"
       - ".github/workflows/stage15-progressive-tools.yml"
   pull_request:
     paths:
@@ -24,6 +26,8 @@ on:
       - "tools/diagnose_hermes_streaming_tool_calls_stage19.sh"
       - "tools/diagnose_hermes_run_conversation_payload_stage20.sh"
       - "tools/validate_hermes_deferred_tool_reliability_stage21.sh"
+      - "tools/cutover_hermes_telegram_static_profile_stage22.sh"
+      - "tools/rollback_hermes_telegram_static_profile_stage22.sh"
       - ".github/workflows/stage15-progressive-tools.yml"
 
 jobs:
@@ -41,3 +45,5 @@ jobs:
           bash -n tools/diagnose_hermes_streaming_tool_calls_stage19.sh
           bash -n tools/diagnose_hermes_run_conversation_payload_stage20.sh
           bash -n tools/validate_hermes_deferred_tool_reliability_stage21.sh
+          bash -n tools/cutover_hermes_telegram_static_profile_stage22.sh
+          bash -n tools/rollback_hermes_telegram_static_profile_stage22.sh
