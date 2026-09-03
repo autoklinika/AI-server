@@ -28,6 +28,8 @@ on:
       - "tools/benchmark_dual_ollama_runners_stage7c.sh"
       - "tools/profile_hermes_inference_stage8.sh"
       - "tools/profile_hermes_thinking_controls_stage8b.sh"
+      - "tools/cutover_hermes_reasoning_none_stage9.sh"
+      - "tools/rollback_hermes_reasoning_none_stage9.sh"
       - "deploy/ai-gateway.env.example"
       - "deploy/systemd/ai-gateway.service"
       - "pyproject.toml"
@@ -61,5 +63,7 @@ jobs:
           bash -n tools/benchmark_dual_ollama_runners_stage7c.sh
           bash -n tools/profile_hermes_inference_stage8.sh
           bash -n tools/profile_hermes_thinking_controls_stage8b.sh
+          bash -n tools/cutover_hermes_reasoning_none_stage9.sh
+          bash -n tools/rollback_hermes_reasoning_none_stage9.sh
       - name: Test
         run: pytest
