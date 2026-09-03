@@ -7,7 +7,6 @@ HERMES_PYTHON="${HERMES_SOURCE}/venv/bin/python"
 HERMES_CONFIG="${HERMES_HOME}/config.yaml"
 STATE_FILE="${HERMES_HOME}/gateway_state.json"
 BACKUP="${HERMES_HOME}/config.yaml.pre-telegram-static-stage22"
-TARGET_PROFILE="terminal,file,web"
 
 say() { printf '%s\n' "$*"; }
 section() { printf '\n===== %s =====\n' "$1"; }
@@ -111,12 +110,55 @@ if telegram != ["terminal", "file", "web"]:
 if reasoning != "none":
     raise SystemExit("FAIL: reasoning_effort changed unexpectedly")
 
-from hermes_cli.tools_config import _get_platform_tools
-resolved = sorted(_get_platform_tools(cfg, "telegram"))
-print("Hermes resolved Telegram toolsets:", resolved)
-if set(resolved) != {"terminal", "file", "web"}:
-    raise SystemExit(f"FAIL: installed Hermes resolved unexpected toolsets: {resolved!r}")
-print("PASS: installed Hermes resolves the target Telegram profile")
+from hermes_cli.tools_config import _get_platform_tools, _checklist_toolset_keys
+resolved = set(_get_platform_tools(cfg, "telegram"))
+print("Hermes resolved Telegram toolsets:", sorted(resolved))
+
+# Hermes intentionally recovers non-configurable runtime toolsets such as
+# 'kanban'. Validate only the configurable user-selected surface here.
+configurable = set(_checklist_toolset_keys("telegram"))
+resolved_configurable = resolved & configurable
+expected_configurable = {"terminal", "file", "web"}
+print("Hermes resolved configurable Telegram toolsets:", sorted(resolved_configurable))
+if resolved_configurable != expected_configurable:
+    raise SystemExit(
+        "FAIL: installed Hermes resolved unexpected configurable toolsets: "
+        f"{sorted(resolved_configurable)!r}"
+    )
+runtime_only = resolved - resolved_configurable
+if runtime_only:
+    print("INFO: Hermes runtime-only/non-configurable toolsets:", sorted(runtime_only))
+
+# Validate the actual raw model-facing schemas after all check_fn gates.
+import model_tools
+model_tools._clear_tool_defs_cache()
+defs = model_tools.get_tool_definitions(
+    enabled_toolsets=sorted(resolved),
+    quiet_mode=True,
+    skip_tool_search_assembly=True,
+)
+visible_names = {
+    str((tool.get("function") or {}).get("name") or "")
+    for tool in defs
+    if (tool.get("function") or {}).get("name")
+}
+expected_names = {
+    "terminal", "process_manage",
+    "read_file", "write_file", "patch", "search_files",
+    "web_search", "web_extract",
+}
+print("raw model-facing Telegram tools:", sorted(visible_names))
+if visible_names != expected_names:
+    raise SystemExit(
+        "FAIL: unexpected model-facing Telegram tools after runtime gating: "
+        f"{sorted(visible_names)!r}"
+    )
+if any(name.startswith("kanban_") for name in visible_names):
+    raise SystemExit("FAIL: kanban tools unexpectedly visible to Telegram model")
+
+print("PASS: raw config is [terminal, file, web]")
+print("PASS: configurable Hermes surface is exactly [terminal, file, web]")
+print("PASS: model-facing schemas are exactly terminal/file/web tools; runtime kanban is gated off")
 PY
 
 section "RESTART HERMES"
