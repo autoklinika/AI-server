@@ -12,6 +12,7 @@ def test_foto_skill_is_native_slash_skill_contract():
     assert "requires_toolsets: [terminal]" in text
     assert "`/foto`" in text
     assert "/usr/local/bin/generate-image-telegram" in text
+    assert "/srv/ai-data/hermes/bin/generate-image-telegram" not in text
 
 
 def test_foto_skill_uses_validated_local_flux_pipeline_only():
