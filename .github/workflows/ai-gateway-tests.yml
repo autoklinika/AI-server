@@ -32,6 +32,8 @@ on:
       - "tools/repair_hermes_telegram_foto_stage23d.sh"
       - "tools/audit_hermes_foto_image_edit_stage24.sh"
       - "tools/install_hermes_foto_image_edit_stage25.sh"
+      - "tools/patch_hermes_foto_media_path_stage25.py"
+      - "tools/repair_hermes_foto_image_edit_stage25b.sh"
       - "tools/rollback_hermes_foto_image_edit_stage25.sh"
       - "deploy/hermes/skills/foto/SKILL.md"
       - "deploy/local-bin/generate-image-edit"
@@ -72,8 +74,9 @@ jobs:
           bash -n tools/repair_hermes_telegram_foto_stage23d.sh
           bash -n tools/audit_hermes_foto_image_edit_stage24.sh
           bash -n tools/install_hermes_foto_image_edit_stage25.sh
+          bash -n tools/repair_hermes_foto_image_edit_stage25b.sh
           bash -n tools/rollback_hermes_foto_image_edit_stage25.sh
           bash -n deploy/local-bin/generate-image-edit-telegram
-          python -m py_compile deploy/local-bin/generate-image-edit
+          python -m py_compile deploy/local-bin/generate-image-edit tools/patch_hermes_foto_media_path_stage25.py
       - name: Test
         run: pytest
