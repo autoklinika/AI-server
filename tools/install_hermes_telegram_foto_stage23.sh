@@ -12,6 +12,10 @@ HERMES_CONFIG="${HERMES_HOME}/config.yaml"
 HERMES_STATE="${HERMES_HOME}/gateway_state.json"
 HERMES_EXPECTED_SHA="254158f4530cada634c4ef8f4cff93257c5b4f77"
 
+GENERATOR="/usr/local/bin/generate-image"
+TELEGRAM_GENERATOR="/usr/local/bin/generate-image-telegram"
+COMFYUI_URL="http://127.0.0.1:8188/system_stats"
+
 SKILL_DIR="${HERMES_HOME}/skills/foto"
 SKILL_FILE="${SKILL_DIR}/SKILL.md"
 SKILL_MARKER="${HERMES_HOME}/.stage23-foto-skill.sha256"
@@ -24,18 +28,22 @@ section() { printf '\n===== %s =====\n' "$1"; }
 fail() { say "FAIL: $*"; exit 1; }
 
 section "STAGE-23 HERMES TELEGRAM /FOTO INSTALL"
-say "Adds a native Hermes skill command: /foto <prompt>"
-say "Telegram toolsets remain intentionally small: [terminal, file, web, image_gen]"
+say "Adds native Hermes skill command: /foto <prompt>"
+say "Uses the already-validated LOCAL pipeline: terminal -> generate-image-telegram -> ComfyUI/FLUX.2 -> Telegram"
+say "Telegram toolsets stay at the fast Stage-22 profile: [terminal, file, web]"
 say "No Hermes core source files are patched."
-say "main/AI Gateway/ventilation routing are not modified."
+say "AI Gateway, Ollama policy and ventilation routing are not modified."
 
 section "PRECHECK"
 [ -d "$AI_REPO/.git" ] || fail "AI-server repo missing: $AI_REPO"
 [ -d "$HERMES_SOURCE/.git" ] || fail "Hermes source missing: $HERMES_SOURCE"
 [ -x "$HERMES_PYTHON" ] || fail "Hermes Python missing: $HERMES_PYTHON"
 [ -r "$HERMES_CONFIG" ] || fail "Hermes config missing: $HERMES_CONFIG"
+[ -x "$GENERATOR" ] || fail "local image generator missing/not executable: $GENERATOR"
+[ -x "$TELEGRAM_GENERATOR" ] || fail "Telegram image wrapper missing/not executable: $TELEGRAM_GENERATOR"
 [ "$(systemctl is-active ai-gateway.service 2>/dev/null || true)" = "active" ] || fail "ai-gateway.service is not active"
 [ "$(systemctl is-active ollama.service 2>/dev/null || true)" = "active" ] || fail "ollama.service is not active"
+[ "$(systemctl is-active comfyui.service 2>/dev/null || true)" = "active" ] || fail "comfyui.service is not active"
 [ "$(systemctl --user is-active hermes-gateway.service 2>/dev/null || true)" = "active" ] || fail "hermes-gateway.service is not active"
 
 installed_sha="$(git -C "$HERMES_SOURCE" rev-parse HEAD)"
@@ -65,6 +73,15 @@ print("Gateway active_count:", s.get("active_count"), "queued_count:", s.get("qu
 print("PASS: AI Gateway healthy")
 PY
 
+"$HERMES_PYTHON" - "$COMFYUI_URL" <<'PY'
+import json, sys, urllib.request
+url = sys.argv[1]
+with urllib.request.urlopen(url, timeout=5) as r:
+    data = json.load(r)
+print("PASS: ComfyUI API reachable")
+print("ComfyUI system_stats keys:", sorted(data.keys()))
+PY
+
 section "LOAD VERSIONED /FOTO SKILL"
 tmp_skill="$(mktemp)"
 trap 'rm -f "${tmp_skill:-}"' EXIT
@@ -79,7 +96,7 @@ say "source skill SHA: $source_skill_sha"
 if [ -e "$SKILL_FILE" ]; then
     current_skill_sha="$(sha256sum "$SKILL_FILE" | awk '{print $1}')"
     if [ -r "$SKILL_MARKER" ] && [ "$(cat "$SKILL_MARKER")" = "$current_skill_sha" ]; then
-        say "INFO: an earlier Stage-23 managed /foto skill exists; safe idempotent update"
+        say "INFO: earlier Stage-23 managed /foto skill found; safe idempotent replacement"
     elif [ "$current_skill_sha" = "$source_skill_sha" ]; then
         say "INFO: identical /foto skill already present; adopting it as Stage-23 managed"
     else
@@ -93,8 +110,6 @@ if [ -r "$ROLLBACK_STATE" ]; then
     [ -r "$rollback_config" ] || fail "recorded rollback config is missing: $rollback_config"
     say "INFO: preserving recorded rollback source: $rollback_config"
 elif [ -r "$LEGACY_PRE_STAGE_BACKUP" ]; then
-    # The first temporary Stage-23 attempt created this before adding image_gen.
-    # Reuse it so rollback returns precisely to the validated Stage-22 profile.
     rollback_config="$LEGACY_PRE_STAGE_BACKUP"
     printf '%s\n' "$rollback_config" > "$ROLLBACK_STATE"
     chmod 600 "$ROLLBACK_STATE"
@@ -109,11 +124,10 @@ else
     say "PASS: created Stage-23 config backup: $rollback_config"
 fi
 
-section "ATOMIC CONFIG UPDATE"
+section "RESTORE FAST TELEGRAM PROFILE"
 "$HERMES_PYTHON" - "$HERMES_CONFIG" <<'PY'
 from pathlib import Path
 import os, sys, tempfile, yaml
-
 path = Path(sys.argv[1])
 cfg = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 agent = cfg.setdefault("agent", {})
@@ -122,22 +136,20 @@ if not isinstance(agent, dict) or agent.get("reasoning_effort") != "none":
 platform = cfg.setdefault("platform_toolsets", {})
 if not isinstance(platform, dict):
     raise SystemExit("FAIL: config.platform_toolsets is not a mapping")
-platform["telegram"] = ["terminal", "file", "web", "image_gen"]
-
+# Stage-23B deliberately does NOT expose Hermes image_generate. /foto uses the
+# validated local ComfyUI wrapper through the already-enabled terminal tool.
+platform["telegram"] = ["terminal", "file", "web"]
 fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".stage23foto.", dir=str(path.parent), text=True)
 try:
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         yaml.safe_dump(cfg, f, allow_unicode=True, sort_keys=False)
-        f.flush()
-        os.fsync(f.fileno())
+        f.flush(); os.fsync(f.fileno())
     os.chmod(tmp_name, path.stat().st_mode)
     os.replace(tmp_name, path)
 finally:
-    try:
-        os.unlink(tmp_name)
-    except FileNotFoundError:
-        pass
-print("PASS: platform_toolsets.telegram = ['terminal', 'file', 'web', 'image_gen']")
+    try: os.unlink(tmp_name)
+    except FileNotFoundError: pass
+print("PASS: platform_toolsets.telegram = ['terminal', 'file', 'web']")
 PY
 
 section "INSTALL /FOTO SKILL"
@@ -155,13 +167,12 @@ cd "$HERMES_SOURCE"
 env HERMES_HOME="$HERMES_HOME" HERMES_PLATFORM="telegram" "$HERMES_PYTHON" - "$HERMES_CONFIG" <<'PY'
 from pathlib import Path
 import sys, yaml
-
 cfg = yaml.safe_load(Path(sys.argv[1]).read_text(encoding="utf-8")) or {}
 telegram = (cfg.get("platform_toolsets") or {}).get("telegram")
 reasoning = (cfg.get("agent") or {}).get("reasoning_effort")
 print("raw platform_toolsets.telegram:", repr(telegram))
 print("agent.reasoning_effort:", repr(reasoning), "type:", type(reasoning).__name__)
-if telegram != ["terminal", "file", "web", "image_gen"]:
+if telegram != ["terminal", "file", "web"]:
     raise SystemExit(f"FAIL: unexpected Telegram toolsets: {telegram!r}")
 if not isinstance(reasoning, str) or reasoning != "none":
     raise SystemExit("FAIL: reasoning_effort changed or is not a string")
@@ -169,39 +180,22 @@ if not isinstance(reasoning, str) or reasoning != "none":
 from hermes_cli.tools_config import _get_platform_tools
 resolved = set(_get_platform_tools(cfg, "telegram"))
 print("Hermes resolved Telegram toolsets:", sorted(resolved))
-if not {"terminal", "file", "web", "image_gen"}.issubset(resolved):
-    raise SystemExit(f"FAIL: required Telegram toolsets not resolved: {sorted(resolved)!r}")
+if not {"terminal", "file", "web"}.issubset(resolved):
+    raise SystemExit(f"FAIL: Stage-22 Telegram toolsets not resolved: {sorted(resolved)!r}")
 
-# Validate actual model-facing definitions after provider/check_fn gating.
 import model_tools
 model_tools._clear_tool_defs_cache()
-defs = model_tools.get_tool_definitions(
-    enabled_toolsets=sorted(resolved),
-    quiet_mode=True,
-    skip_tool_search_assembly=True,
-)
-visible = {
-    str((tool.get("function") or {}).get("name") or "")
-    for tool in defs
-    if (tool.get("function") or {}).get("name")
-}
+defs = model_tools.get_tool_definitions(enabled_toolsets=sorted(resolved), quiet_mode=True, skip_tool_search_assembly=True)
+visible = {str((tool.get("function") or {}).get("name") or "") for tool in defs if (tool.get("function") or {}).get("name")}
 print("raw model-facing Telegram tools:", sorted(visible))
-base_required = {
-    "terminal", "process_manage",
-    "read_file", "write_file", "patch", "search_files",
-    "web_search", "web_extract",
-}
-missing_base = base_required - visible
-if missing_base:
-    raise SystemExit(f"FAIL: Stage-22 base tools disappeared: {sorted(missing_base)!r}")
-if "image_generate" not in visible:
-    raise SystemExit(
-        "FAIL: image_generate is not model-facing. The image provider/tool requirements "
-        "are not ready; /foto must not be enabled until this is fixed."
-    )
-print("PASS: image_generate is model-facing")
+base_required = {"terminal", "process_manage", "read_file", "write_file", "patch", "search_files", "web_search", "web_extract"}
+missing = base_required - visible
+if missing:
+    raise SystemExit(f"FAIL: Stage-22 base tools disappeared: {sorted(missing)!r}")
+if "image_generate" in visible:
+    raise SystemExit("FAIL: image_generate unexpectedly visible; /foto must remain on local wrapper path")
+print("PASS: fast Stage-22 model-facing tool surface preserved; image_generate absent")
 
-# Validate native dynamic skill-command registration in the exact installed Hermes.
 from agent.skill_commands import scan_skill_commands, build_skill_invocation_message
 skills = scan_skill_commands()
 if "/foto" not in skills:
@@ -213,9 +207,11 @@ if not expanded:
     raise SystemExit("FAIL: build_skill_invocation_message('/foto') returned no message")
 if probe not in expanded:
     raise SystemExit("FAIL: /foto argument was not forwarded into the skill invocation")
-if "image_generate" not in expanded:
-    raise SystemExit("FAIL: deployed /foto skill does not instruct Hermes to call image_generate")
-print("PASS: /foto is registered and forwards its argument to the image-generation skill")
+if "/usr/local/bin/generate-image-telegram" not in expanded:
+    raise SystemExit("FAIL: /foto skill does not target the validated local Telegram image wrapper")
+if "image_generate`" in expanded or "użyj narzędzia `image_generate`" in expanded:
+    raise SystemExit("FAIL: /foto skill still instructs Hermes to use image_generate")
+print("PASS: /foto registered and routes its argument to local generate-image-telegram")
 PY
 
 section "RESTART HERMES"
@@ -227,24 +223,13 @@ section "WAIT FOR TELEGRAM + API"
 "$HERMES_PYTHON" - "$HERMES_STATE" <<'PY'
 from pathlib import Path
 import json, sys, time
-path = Path(sys.argv[1])
-deadline = time.monotonic() + 90
-last = None
+path = Path(sys.argv[1]); deadline = time.monotonic() + 90; last = None
 while time.monotonic() < deadline:
-    try:
-        state = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        time.sleep(1)
-        continue
-    last = state
-    platforms = state.get("platforms") or {}
-    if (
-        state.get("gateway_state") == "running"
-        and (platforms.get("telegram") or {}).get("state") == "connected"
-        and (platforms.get("api_server") or {}).get("state") == "connected"
-    ):
-        print("PASS: Hermes gateway running, Telegram connected, API connected")
-        break
+    try: state = json.loads(path.read_text(encoding="utf-8"))
+    except Exception: time.sleep(1); continue
+    last = state; platforms = state.get("platforms") or {}
+    if state.get("gateway_state") == "running" and (platforms.get("telegram") or {}).get("state") == "connected" and (platforms.get("api_server") or {}).get("state") == "connected":
+        print("PASS: Hermes gateway running, Telegram connected, API connected"); break
     time.sleep(1)
 else:
     print(json.dumps(last, ensure_ascii=False, indent=2) if last else "<no readable gateway_state>")
@@ -254,15 +239,15 @@ PY
 section "POSTCHECK"
 "$HERMES_PYTHON" - <<'PY'
 import json, urllib.request
-with urllib.request.urlopen("http://127.0.0.1:11435/health", timeout=3) as r:
-    h = json.load(r)
+with urllib.request.urlopen("http://127.0.0.1:11435/health", timeout=3) as r: h = json.load(r)
 assert h.get("status") == "ok" and h.get("ollama") == "ok", h
 print("PASS: AI Gateway healthy")
 PY
 
 section "DONE"
 say "PASS: Stage-23 native Telegram /foto installed"
+say "Route: /foto -> Hermes skill -> terminal -> generate-image-telegram -> local ComfyUI/FLUX -> Telegram PNG"
+say "Normal Telegram chat remains on [terminal, file, web] with no image_generate schema overhead."
 say "Use: /foto <opis obrazu>"
-say "No Hermes core patch was applied."
 say "Rollback script: tools/rollback_hermes_telegram_foto_stage23.sh"
 say "Rollback config source: $rollback_config"
