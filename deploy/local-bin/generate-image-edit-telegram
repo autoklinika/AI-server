@@ -1,0 +1,66 @@
+#!/bin/bash
+set -euo pipefail
+
+GENERATOR="/usr/local/bin/generate-image-edit"
+HERMES="/home/harrypotter/.local/bin/hermes"
+
+if [ "$#" -lt 4 ]; then
+    echo 'Usage: generate-image-edit-telegram --input "/path/image.jpg" --prompt "edit instruction"' >&2
+    exit 2
+fi
+
+if [ ! -x "$GENERATOR" ]; then
+    echo "ERROR: local image edit generator missing: $GENERATOR" >&2
+    exit 1
+fi
+
+if [ ! -x "$HERMES" ]; then
+    echo "ERROR: Hermes CLI missing: $HERMES" >&2
+    exit 1
+fi
+
+echo "===== EDITING IMAGE ====="
+
+set +e
+OUTPUT="$("$GENERATOR" "$@" 2>&1)"
+RC=$?
+set -e
+
+printf '%s\n' "$OUTPUT"
+
+if [ "$RC" -ne 0 ]; then
+    echo "ERROR: image edit failed" >&2
+    exit "$RC"
+fi
+
+IMAGE="$(
+    printf '%s\n' "$OUTPUT" \
+    | sed -n 's/^Image[[:space:]]*:[[:space:]]*//p' \
+    | tail -1
+)"
+
+if [ -z "$IMAGE" ]; then
+    echo "ERROR: edited image path not found" >&2
+    exit 1
+fi
+
+if [ ! -f "$IMAGE" ]; then
+    echo "ERROR: edited image does not exist: $IMAGE" >&2
+    exit 1
+fi
+
+echo
+echo "===== SEND EDIT TO TELEGRAM ====="
+
+"$HERMES" send --to telegram \
+    "Przerobione lokalnie przez FLUX.2 Klein MEDIA:$IMAGE"
+
+RC=$?
+if [ "$RC" -ne 0 ]; then
+    echo "ERROR: Telegram delivery failed" >&2
+    exit "$RC"
+fi
+
+echo
+echo "TELEGRAM_MEDIA_SENT: $IMAGE"
+echo "DONE"
