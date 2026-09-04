@@ -28,6 +28,7 @@ on:
       - "tools/rollback_hermes_telegram_static_profile_stage22.sh"
       - "tools/install_hermes_telegram_foto_stage23.sh"
       - "tools/rollback_hermes_telegram_foto_stage23.sh"
+      - "tools/repair_hermes_telegram_foto_stage23d.sh"
       - "deploy/hermes/skills/foto/SKILL.md"
       - "deploy/ai-gateway.env.example"
       - "deploy/systemd/ai-gateway.service"
@@ -62,5 +63,6 @@ jobs:
           bash -n tools/rollback_hermes_telegram_static_profile_stage22.sh
           bash -n tools/install_hermes_telegram_foto_stage23.sh
           bash -n tools/rollback_hermes_telegram_foto_stage23.sh
+          bash -n tools/repair_hermes_telegram_foto_stage23d.sh
       - name: Test
         run: pytest
