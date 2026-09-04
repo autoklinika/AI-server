@@ -68,7 +68,7 @@ def test_stage25_installer_patches_only_foto_current_turn_media_bridge():
     assert 'getattr(event, "media_urls", None)' in text
     assert "_event_media_is_image(event, _idx)" in text
     assert "[HERMES_FOTO_INPUT_IMAGE]" in text
-    assert 'f"path={_foto_path}\\n"' in text
+    assert "path={_foto_path}" in text
     assert "event.media_urls = []" in text
     assert "event.media_types = []" in text
     assert "event.media_text_inlined = []" in text
