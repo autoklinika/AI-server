@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/ai-gateway-scheduler
+      - feat/hermes-telegram-foto
   pull_request:
     paths:
       - "src/ai_bridge/gateway/**"
@@ -12,6 +13,7 @@ on:
       - "src/ai_bridge/settings.py"
       - "tests/test_gateway_*.py"
       - "tests/test_ollama_gateway_headers.py"
+      - "tests/test_hermes_foto_skill.py"
       - "tools/validate_ai_gateway_real_server.sh"
       - "tools/install_ai_gateway_stage1.sh"
       - "tools/cutover_ventilation_to_ai_gateway_stage2.sh"
@@ -24,6 +26,9 @@ on:
       - "tools/rollback_hermes_reasoning_none_stage9.sh"
       - "tools/cutover_hermes_telegram_static_profile_stage22.sh"
       - "tools/rollback_hermes_telegram_static_profile_stage22.sh"
+      - "tools/install_hermes_telegram_foto_stage23.sh"
+      - "tools/rollback_hermes_telegram_foto_stage23.sh"
+      - "deploy/hermes/skills/foto/SKILL.md"
       - "deploy/ai-gateway.env.example"
       - "deploy/systemd/ai-gateway.service"
       - "docs/ADR-005_AI_GATEWAY_SCHEDULER_PL.md"
@@ -55,5 +60,7 @@ jobs:
           bash -n tools/rollback_hermes_reasoning_none_stage9.sh
           bash -n tools/cutover_hermes_telegram_static_profile_stage22.sh
           bash -n tools/rollback_hermes_telegram_static_profile_stage22.sh
+          bash -n tools/install_hermes_telegram_foto_stage23.sh
+          bash -n tools/rollback_hermes_telegram_foto_stage23.sh
       - name: Test
         run: pytest
