@@ -136,8 +136,8 @@ if not isinstance(agent, dict) or agent.get("reasoning_effort") != "none":
 platform = cfg.setdefault("platform_toolsets", {})
 if not isinstance(platform, dict):
     raise SystemExit("FAIL: config.platform_toolsets is not a mapping")
-# Stage-23B deliberately does NOT expose Hermes image_generate. /foto uses the
-# validated local ComfyUI wrapper through the already-enabled terminal tool.
+# Deliberately do NOT expose Hermes image_generate. /foto uses the validated
+# local ComfyUI wrapper through the already-enabled terminal tool.
 platform["telegram"] = ["terminal", "file", "web"]
 fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".stage23foto.", dir=str(path.parent), text=True)
 try:
@@ -209,8 +209,8 @@ if probe not in expanded:
     raise SystemExit("FAIL: /foto argument was not forwarded into the skill invocation")
 if "/usr/local/bin/generate-image-telegram" not in expanded:
     raise SystemExit("FAIL: /foto skill does not target the validated local Telegram image wrapper")
-if "image_generate`" in expanded or "użyj narzędzia `image_generate`" in expanded:
-    raise SystemExit("FAIL: /foto skill still instructs Hermes to use image_generate")
+if "requires_toolsets: [image_gen]" in expanded:
+    raise SystemExit("FAIL: /foto skill still requires the Hermes image_gen toolset")
 print("PASS: /foto registered and routes its argument to local generate-image-telegram")
 PY
 
