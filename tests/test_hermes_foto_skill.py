@@ -9,15 +9,16 @@ def test_foto_skill_is_native_slash_skill_contract():
 
     assert text.startswith("---\n")
     assert "\nname: foto\n" in text
-    assert "requires_toolsets: [image_gen]" in text
+    assert "requires_toolsets: [terminal]" in text
     assert "`/foto`" in text
-    assert "`image_generate`" in text
+    assert "/usr/local/bin/generate-image-telegram" in text
 
 
-def test_foto_skill_forces_one_image_and_avoids_unrelated_tools():
+def test_foto_skill_uses_validated_local_flux_pipeline_only():
     text = SKILL.read_text(encoding="utf-8")
 
-    assert "dokładnie jeden obraz" in text
-    assert "musisz** użyć narzędzia `image_generate` dokładnie jeden raz" in text
-    assert "nie używaj `terminal`" in text
-    assert "nie udawaj wywołania narzędzia" in text
+    assert "narzędzia `terminal` dokładnie jeden raz" in text
+    assert "lokalny ComfyUI + FLUX.2 Klein 4B" in text
+    assert "Nie używaj `image_generate`" in text
+    assert "Wrapper sam wysyła wygenerowany PNG do Telegrama" in text
+    assert "jeden poprawnie zacytowany argument powłoki" in text
