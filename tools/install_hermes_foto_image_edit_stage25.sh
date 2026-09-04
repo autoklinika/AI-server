@@ -15,6 +15,7 @@ HERMES_EXPECTED_SHA="254158f4530cada634c4ef8f4cff93257c5b4f77"
 SKILL_SOURCE="deploy/hermes/skills/foto/SKILL.md"
 EDIT_SOURCE="deploy/local-bin/generate-image-edit"
 EDIT_TG_SOURCE="deploy/local-bin/generate-image-edit-telegram"
+PATCHER_SOURCE="tools/patch_hermes_foto_media_path_stage25.py"
 SKILL_DEST="${HERMES_HOME}/skills/foto/SKILL.md"
 EDIT_DEST="/usr/local/bin/generate-image-edit"
 EDIT_TG_DEST="/usr/local/bin/generate-image-edit-telegram"
@@ -67,21 +68,25 @@ PY
 section "LOAD VERSIONED FILES"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-for path in "$SKILL_SOURCE" "$EDIT_SOURCE" "$EDIT_TG_SOURCE"; do
+for path in "$SKILL_SOURCE" "$EDIT_SOURCE" "$EDIT_TG_SOURCE" "$PATCHER_SOURCE"; do
     out="$work/$(basename "$path")"
     git -C "$AI_REPO" show "${SOURCE_REF}:${path}" > "$out" || fail "cannot load ${path} from ${SOURCE_REF}"
     [ -s "$out" ] || fail "empty source file: $path"
     say "PASS: loaded $path"
 done
 
-# basename collision is intentional only for unique names here; SKILL.md needs explicit copy.
 git -C "$AI_REPO" show "${SOURCE_REF}:${SKILL_SOURCE}" > "$work/SKILL.md"
 git -C "$AI_REPO" show "${SOURCE_REF}:${EDIT_SOURCE}" > "$work/generate-image-edit"
 git -C "$AI_REPO" show "${SOURCE_REF}:${EDIT_TG_SOURCE}" > "$work/generate-image-edit-telegram"
+git -C "$AI_REPO" show "${SOURCE_REF}:${PATCHER_SOURCE}" > "$work/patch_hermes_foto_media_path_stage25.py"
 
-"$HERMES_PYTHON" -m py_compile "$work/generate-image-edit"
+"$HERMES_PYTHON" -m py_compile "$work/generate-image-edit" "$work/patch_hermes_foto_media_path_stage25.py"
 bash -n "$work/generate-image-edit-telegram"
-say "PASS: versioned generator syntax valid"
+say "PASS: versioned generator and patcher syntax valid"
+
+section "VALIDATE HERMES PATCH TARGET BEFORE CHANGES"
+"$HERMES_PYTHON" "$work/patch_hermes_foto_media_path_stage25.py" --target "$HERMES_RUN" --check-only
+say "PASS: semantic Stage25 patch target validated before mutating production files"
 
 section "CREATE REVERSIBLE BACKUP"
 if [ ! -d "$BACKUP_DIR" ]; then
@@ -123,30 +128,7 @@ grep -Fq 'HERMES_FOTO_INPUT_IMAGE' "$SKILL_DEST" || fail "updated skill lacks cu
 say "PASS: installed dual-mode /foto skill"
 
 section "PATCH PINNED HERMES SLASH-SKILL DISPATCH"
-"$HERMES_PYTHON" - "$HERMES_RUN" "$PATCH_BEGIN" "$PATCH_END" <<'PY'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-begin, end = sys.argv[2], sys.argv[3]
-text = path.read_text(encoding="utf-8")
-
-if begin in text:
-    if end not in text:
-        raise SystemExit("FAIL: partial Stage25 Hermes patch marker found")
-    print("INFO: Stage25 Hermes patch already present; leaving unchanged")
-    raise SystemExit(0)
-
-needle = "                    user_instruction = event.get_command_args().strip()\n"
-if text.count(needle) != 1:
-    raise SystemExit(f"FAIL: expected exactly one slash-skill user_instruction anchor, found {text.count(needle)}")
-
-patch = '''                    user_instruction = event.get_command_args().strip()\n                    # AI_SERVER_STAGE25_FOTO_MEDIA_PATH_BEGIN\n                    # /foto image editing needs the exact cached path from THIS inbound\n                    # event.  Inject it into the skill instruction before normal media\n                    # enrichment, then consume the image attachment so Qwen does not\n                    # waste a vision pass merely to route a deterministic local edit.\n                    if cmd_key == "/foto":\n                        _foto_image_paths = [\n                            str(_path)\n                            for _idx, _path in enumerate(getattr(event, "media_urls", None) or [])\n                            if _event_media_is_image(event, _idx)\n                        ]\n                        if _foto_image_paths:\n                            _foto_path = _foto_image_paths[0]\n                            user_instruction = (\n                                f"{user_instruction}\\n\\n"\n                                "[HERMES_FOTO_INPUT_IMAGE]\\n"\n                                f"path={_foto_path}\\n"\n                                "[/HERMES_FOTO_INPUT_IMAGE]"\n                            )\n                            event.media_urls = []\n                            event.media_types = []\n                            event.media_text_inlined = []\n                    # AI_SERVER_STAGE25_FOTO_MEDIA_PATH_END\n'''
-
-text = text.replace(needle, patch, 1)
-path.write_text(text, encoding="utf-8")
-print("PASS: injected exact-current-turn /foto image path bridge")
-PY
+"$HERMES_PYTHON" "$work/patch_hermes_foto_media_path_stage25.py" --target "$HERMES_RUN"
 
 "$HERMES_PYTHON" -m py_compile "$HERMES_RUN"
 grep -Fq "$PATCH_BEGIN" "$HERMES_RUN" || fail "Hermes patch begin marker missing"
@@ -169,6 +151,10 @@ required = [
 missing = [item for item in required if item not in text]
 if missing:
     raise SystemExit(f"FAIL: patched bridge contract missing: {missing!r}")
+if text.count('# AI_SERVER_STAGE25_FOTO_MEDIA_PATH_BEGIN') != 1:
+    raise SystemExit("FAIL: Stage25 patch begin marker is not unique")
+if text.count('# AI_SERVER_STAGE25_FOTO_MEDIA_PATH_END') != 1:
+    raise SystemExit("FAIL: Stage25 patch end marker is not unique")
 print("PASS: /foto slash-skill receives exact current-turn image path and consumes vision attachment")
 PY
 
