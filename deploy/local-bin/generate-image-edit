@@ -1,0 +1,282 @@
+#!/opt/comfyui/venv/bin/python
+
+import argparse
+import fcntl
+import json
+import random
+import shutil
+import subprocess
+import sys
+import time
+import urllib.request
+import uuid
+from pathlib import Path
+
+COMFY = "http://127.0.0.1:8188"
+OLLAMA_DEFAULT = "qwen3.6:35b-hermes64k"
+OUTPUT = Path("/srv/ai-data/comfyui-output")
+COMFY_INPUT = Path("/opt/comfyui/data/input")
+HERMES_ROOT = Path("/srv/ai-data/hermes")
+
+MODEL_FILES = {
+    "diffusion": Path("/opt/comfyui/data/models/diffusion_models/flux-2-klein-4b-fp8.safetensors"),
+    "clip": Path("/opt/comfyui/data/models/text_encoders/qwen_3_4b.safetensors"),
+    "vae": Path("/opt/comfyui/data/models/vae/flux2-vae.safetensors"),
+}
+
+EXPECTED_NODE_INPUTS = {
+    "LoadImage": {"image"},
+    "ImageScaleToTotalPixels": {"image", "upscale_method", "megapixels", "resolution_steps"},
+    "GetImageSize": {"image"},
+    "UNETLoader": {"unet_name", "weight_dtype"},
+    "CLIPLoader": {"clip_name", "type", "device"},
+    "VAELoader": {"vae_name"},
+    "CLIPTextEncode": {"text", "clip"},
+    "ConditioningZeroOut": {"conditioning"},
+    "VAEEncode": {"pixels", "vae"},
+    "ReferenceLatent": {"conditioning", "latent"},
+    "CFGGuider": {"model", "positive", "negative", "cfg"},
+    "RandomNoise": {"noise_seed"},
+    "KSamplerSelect": {"sampler_name"},
+    "Flux2Scheduler": {"steps", "width", "height"},
+    "EmptyFlux2LatentImage": {"width", "height", "batch_size"},
+    "SamplerCustomAdvanced": {"noise", "guider", "sampler", "sigmas", "latent_image"},
+    "VAEDecode": {"samples", "vae"},
+    "SaveImage": {"images", "filename_prefix"},
+}
+
+SUPPORTED_INPUT_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
+
+
+def request_json(url, data=None, timeout=30):
+    headers = {}
+    if data is not None:
+        body = json.dumps(data).encode()
+        headers["Content-Type"] = "application/json"
+    else:
+        body = None
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers=headers,
+        method="POST" if data is not None else "GET",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        raw = response.read()
+        return json.loads(raw) if raw else {}
+
+
+def free_comfy():
+    try:
+        request_json(COMFY + "/free", {"unload_models": True, "free_memory": True})
+    except Exception as exc:
+        print("WARNING: ComfyUI free:", exc)
+
+
+def unload_ollama():
+    try:
+        result = subprocess.run(["ollama", "ps"], text=True, capture_output=True, check=False)
+        for line in result.stdout.splitlines()[1:]:
+            line = line.strip()
+            if not line:
+                continue
+            model = line.split()[0]
+            print("Unloading Ollama:", model)
+            subprocess.run(
+                ["ollama", "stop", model],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+    except Exception as exc:
+        print("WARNING: Ollama unload:", exc)
+
+
+def restore_qwen():
+    print("Restoring Ollama:", OLLAMA_DEFAULT)
+    result = subprocess.run(
+        ["/usr/local/sbin/ollama-preload-qwen36"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        print("WARNING: Qwen preload failed")
+        if result.stderr:
+            print(result.stderr.strip())
+
+
+def validate_runtime():
+    missing_models = [str(path) for path in MODEL_FILES.values() if not path.is_file()]
+    if missing_models:
+        raise RuntimeError("Missing FLUX.2 model file(s): " + ", ".join(missing_models))
+
+    request_json(COMFY + "/system_stats", timeout=5)
+    object_info = request_json(COMFY + "/object_info", timeout=15)
+
+    errors = []
+    for node_name, expected in EXPECTED_NODE_INPUTS.items():
+        node = object_info.get(node_name)
+        if not isinstance(node, dict):
+            errors.append(f"missing node {node_name}")
+            continue
+        inputs = node.get("input") or {}
+        available = set((inputs.get("required") or {}).keys()) | set((inputs.get("optional") or {}).keys())
+        missing = expected - available
+        if missing:
+            errors.append(f"{node_name} missing inputs {sorted(missing)}")
+    if errors:
+        raise RuntimeError("ComfyUI edit workflow incompatible: " + "; ".join(errors))
+
+
+def _allowed_hermes_image(path: Path) -> bool:
+    main_cache = (HERMES_ROOT / "cache" / "images").resolve()
+    if path.is_relative_to(main_cache):
+        return True
+
+    profiles = (HERMES_ROOT / "profiles").resolve()
+    if path.is_relative_to(profiles):
+        rel = path.relative_to(profiles)
+        parts = rel.parts
+        return len(parts) >= 4 and parts[1:3] == ("cache", "images")
+    return False
+
+
+def validate_input_path(raw: str) -> Path:
+    path = Path(raw).expanduser().resolve(strict=True)
+    if not path.is_file():
+        raise ValueError(f"input image is not a file: {path}")
+    if path.suffix.lower() not in SUPPORTED_INPUT_EXTS:
+        raise ValueError(f"unsupported input image extension: {path.suffix}")
+    if not _allowed_hermes_image(path):
+        raise ValueError("input image must come from the Hermes inbound image cache")
+    return path
+
+
+def build_workflow(staged_name: str, prompt: str, seed: int):
+    # Direct API equivalent of ComfyUI's official
+    # Image Edit (Flux.2 Klein 4B Distilled) one-reference-image workflow.
+    return {
+        "1": {"class_type": "UNETLoader", "inputs": {"unet_name": "flux-2-klein-4b-fp8.safetensors", "weight_dtype": "default"}},
+        "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen_3_4b.safetensors", "type": "flux2", "device": "default"}},
+        "3": {"class_type": "VAELoader", "inputs": {"vae_name": "flux2-vae.safetensors"}},
+        "4": {"class_type": "LoadImage", "inputs": {"image": staged_name}},
+        "5": {"class_type": "ImageScaleToTotalPixels", "inputs": {"image": ["4", 0], "upscale_method": "nearest-exact", "megapixels": 1.0, "resolution_steps": 1}},
+        "6": {"class_type": "GetImageSize", "inputs": {"image": ["5", 0]}},
+        "7": {"class_type": "CLIPTextEncode", "inputs": {"text": prompt, "clip": ["2", 0]}},
+        "8": {"class_type": "ConditioningZeroOut", "inputs": {"conditioning": ["7", 0]}},
+        "9": {"class_type": "VAEEncode", "inputs": {"pixels": ["5", 0], "vae": ["3", 0]}},
+        "10": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["7", 0], "latent": ["9", 0]}},
+        "11": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["8", 0], "latent": ["9", 0]}},
+        "12": {"class_type": "CFGGuider", "inputs": {"model": ["1", 0], "positive": ["10", 0], "negative": ["11", 0], "cfg": 1.0}},
+        "13": {"class_type": "RandomNoise", "inputs": {"noise_seed": seed}},
+        "14": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler"}},
+        "15": {"class_type": "Flux2Scheduler", "inputs": {"steps": 4, "width": ["6", 0], "height": ["6", 1]}},
+        "16": {"class_type": "EmptyFlux2LatentImage", "inputs": {"width": ["6", 0], "height": ["6", 1], "batch_size": 1}},
+        "17": {"class_type": "SamplerCustomAdvanced", "inputs": {"noise": ["13", 0], "guider": ["12", 0], "sampler": ["14", 0], "sigmas": ["15", 0], "latent_image": ["16", 0]}},
+        "18": {"class_type": "VAEDecode", "inputs": {"samples": ["17", 0], "vae": ["3", 0]}},
+        "19": {"class_type": "SaveImage", "inputs": {"images": ["18", 0], "filename_prefix": "Flux2-Klein-Edit"}},
+    }
+
+
+def wait_for_image(prompt_id: str) -> Path:
+    started = time.time()
+    for _ in range(900):
+        time.sleep(1)
+        history = request_json(COMFY + "/history/" + prompt_id)
+        if prompt_id not in history:
+            continue
+        entry = history[prompt_id]
+        status = entry.get("status") or {}
+        if status.get("status_str") == "error":
+            raise RuntimeError("ComfyUI edit job failed")
+        for output in (entry.get("outputs") or {}).values():
+            images = output.get("images") or []
+            if not images:
+                continue
+            image = images[0]
+            path = OUTPUT / image.get("subfolder", "") / image["filename"]
+            if path.is_file():
+                print("Elapsed:", f"{time.time() - started:.1f}s")
+                return path
+    raise TimeoutError("Timed out waiting for ComfyUI edit output")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Edit a Hermes inbound image locally with FLUX.2 Klein 4B")
+    parser.add_argument("--input", dest="input_image")
+    parser.add_argument("--prompt")
+    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--validate-only", action="store_true")
+    args = parser.parse_args()
+
+    validate_runtime()
+    if args.validate_only:
+        print("PASS: FLUX.2 Klein 4B image-edit runtime ready")
+        return 0
+
+    if not args.input_image or not args.prompt:
+        parser.error("--input and --prompt are required unless --validate-only is used")
+
+    input_path = validate_input_path(args.input_image)
+    prompt = args.prompt.strip()
+    if not prompt:
+        raise ValueError("edit prompt must not be empty")
+    seed = args.seed if args.seed is not None else random.randrange(0, 2**63)
+
+    COMFY_INPUT.mkdir(parents=True, exist_ok=True)
+    staged_name = f"stage25_foto_edit_{uuid.uuid4().hex}{input_path.suffix.lower()}"
+    staged_path = COMFY_INPUT / staged_name
+
+    lock_path = "/tmp/generate-image.lock"
+    qwen_unloaded = False
+    with open(lock_path, "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            shutil.copy2(input_path, staged_path)
+            print("===== LOCAL IMAGE EDIT =====")
+            print("Input  :", input_path)
+            print("Prompt :", prompt)
+            print("Seed   :", seed)
+            print("Comfy input:", staged_name)
+
+            print("Checking ComfyUI...")
+            request_json(COMFY + "/system_stats")
+
+            print("Freeing GPU from Ollama...")
+            unload_ollama()
+            qwen_unloaded = True
+            time.sleep(1)
+
+            print("Preparing ComfyUI...")
+            free_comfy()
+            time.sleep(1)
+
+            workflow = build_workflow(staged_name, prompt, seed)
+            print("Submitting FLUX.2 Klein image-edit job...")
+            result = request_json(COMFY + "/prompt", {"prompt": workflow})
+            if result.get("node_errors"):
+                print(json.dumps(result["node_errors"], indent=2, ensure_ascii=False))
+                raise RuntimeError("ComfyUI image-edit workflow validation failed")
+            prompt_id = result["prompt_id"]
+            print("Prompt ID:", prompt_id)
+            print("Editing...")
+            output = wait_for_image(prompt_id)
+            print("Image :", output)
+            return 0
+        finally:
+            try:
+                staged_path.unlink(missing_ok=True)
+            except Exception as exc:
+                print("WARNING: temporary ComfyUI input cleanup failed:", exc)
+            if qwen_unloaded:
+                restore_qwen()
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        raise SystemExit(1)
