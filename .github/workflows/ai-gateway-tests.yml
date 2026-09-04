@@ -14,6 +14,7 @@ on:
       - "tests/test_gateway_*.py"
       - "tests/test_ollama_gateway_headers.py"
       - "tests/test_hermes_foto_skill.py"
+      - "tests/test_hermes_foto_image_edit.py"
       - "tools/validate_ai_gateway_real_server.sh"
       - "tools/install_ai_gateway_stage1.sh"
       - "tools/cutover_ventilation_to_ai_gateway_stage2.sh"
@@ -30,7 +31,11 @@ on:
       - "tools/rollback_hermes_telegram_foto_stage23.sh"
       - "tools/repair_hermes_telegram_foto_stage23d.sh"
       - "tools/audit_hermes_foto_image_edit_stage24.sh"
+      - "tools/install_hermes_foto_image_edit_stage25.sh"
+      - "tools/rollback_hermes_foto_image_edit_stage25.sh"
       - "deploy/hermes/skills/foto/SKILL.md"
+      - "deploy/local-bin/generate-image-edit"
+      - "deploy/local-bin/generate-image-edit-telegram"
       - "deploy/ai-gateway.env.example"
       - "deploy/systemd/ai-gateway.service"
       - "docs/ADR-005_AI_GATEWAY_SCHEDULER_PL.md"
@@ -66,5 +71,9 @@ jobs:
           bash -n tools/rollback_hermes_telegram_foto_stage23.sh
           bash -n tools/repair_hermes_telegram_foto_stage23d.sh
           bash -n tools/audit_hermes_foto_image_edit_stage24.sh
+          bash -n tools/install_hermes_foto_image_edit_stage25.sh
+          bash -n tools/rollback_hermes_foto_image_edit_stage25.sh
+          bash -n deploy/local-bin/generate-image-edit-telegram
+          python -m py_compile deploy/local-bin/generate-image-edit
       - name: Test
         run: pytest
