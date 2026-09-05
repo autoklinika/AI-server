@@ -40,6 +40,25 @@ def test_graph_generates_audio_and_video():
     assert g["20"]["inputs"]["format"] == "mp4"
 
 
+def test_two_stage_upscale_graph_matches_official_shape():
+    g = graph(upscale_2x=True)
+    assert g["17"]["class_type"] == "LatentUpscaleModelLoader"
+    assert g["17"]["inputs"]["model_name"] == ltx.UPSCALER
+    assert g["18"]["class_type"] == "LTXVLatentUpsampler"
+    assert g["18"]["inputs"]["samples"] == ["16", 0]
+    assert g["19"]["inputs"]["audio_latent"] == ["16", 1]
+    assert g["22"]["inputs"]["sampler_name"] == "euler_cfg_pp"
+    assert g["23"]["inputs"]["sigmas"] == ltx.UPSCALE_SIGMAS
+    assert g["24"]["class_type"] == "SamplerCustomAdvanced"
+    assert g["26"]["class_type"] == "LTXVTiledVAEDecode"
+    assert g["26"]["inputs"]["horizontal_tiles"] == 2
+    assert g["26"]["inputs"]["vertical_tiles"] == 2
+    assert g["26"]["inputs"]["overlap"] == 6
+    assert g["27"]["class_type"] == "LTXVAudioVAEDecode"
+    assert g["28"]["inputs"]["audio"] == ["27", 0]
+    assert g["29"]["inputs"]["format"] == "mp4"
+
+
 def test_dimensions_are_multiple_of_32():
     with pytest.raises(ValueError, match="divisible by 32"):
         graph(width=641)
@@ -54,6 +73,19 @@ def test_preflight_detects_missing_model(monkeypatch):
     out = ltx.preflight("http://localhost")
     assert out["ok"] is False
     assert out["missing_models"] == [ltx.TEXT_ENCODER]
+
+
+def test_upscale_preflight_checks_node_and_model(monkeypatch):
+    required = ltx.REQUIRED_NODES | ltx.UPSCALE_NODES
+    info = {name: {"input": {"required": {}}} for name in required}
+    info["CheckpointLoaderSimple"] = {"input": {"required": {"ckpt_name": [[ltx.CHECKPOINT], {}]}}}
+    info["LTXAVTextEncoderLoader"] = {"input": {"required": {"text_encoder": [[ltx.TEXT_ENCODER], {}]}}}
+    info["LoraLoaderModelOnly"] = {"input": {"required": {"lora_name": [[ltx.DISTILLED_LORA], {}]}}}
+    info["LatentUpscaleModelLoader"] = {"input": {"required": {"model_name": [["wrong.safetensors"], {}]}}}
+    monkeypatch.setattr(ltx, "req_json", lambda *_a, **_kw: info)
+    out = ltx.preflight("http://localhost", require_upscale=True)
+    assert out["ok"] is False
+    assert out["missing_models"] == [ltx.UPSCALER]
 
 
 def test_find_video():
