@@ -1,29 +1,33 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PRESET="${HERMES_VIDEO_PRESET:-fast}"
-IMAGE=""
+LTX_BIN="${HERMES_LTX_VIDEO_BIN:-/usr/local/bin/generate-video-ltx23}"
+HQ=0
 PROMPT_PARTS=()
 
 usage() {
   cat >&2 <<'EOF'
 Usage:
-  generate-video-telegram [--preset smoke|fast|balanced|quality] [--image /path/to/image] -- prompt text
+  generate-video-telegram [--hq] -- prompt text
+  generate-video-telegram hq prompt text
   generate-video-telegram prompt text
 EOF
 }
 
 while (($#)); do
   case "$1" in
-    --preset)
-      [[ $# -ge 2 ]] || { usage; exit 2; }
-      PRESET="$2"
-      shift 2
+    --hq)
+      HQ=1
+      shift
       ;;
-    --image)
-      [[ $# -ge 2 ]] || { usage; exit 2; }
-      IMAGE="$2"
-      shift 2
+    hq|HQ)
+      if ((${#PROMPT_PARTS[@]} == 0)); then
+        HQ=1
+        shift
+      else
+        PROMPT_PARTS+=("$1")
+        shift
+      fi
       ;;
     --)
       shift
@@ -42,8 +46,13 @@ done
 
 PROMPT="${PROMPT_PARTS[*]-}"
 [[ -n "$PROMPT" ]] || { usage; exit 2; }
+[[ -x "$LTX_BIN" ]] || { printf 'ERROR: LTX video generator is not executable: %s\n' "$LTX_BIN" >&2; exit 1; }
 
-ARGS=(--preset "$PRESET" --prompt "$PROMPT")
-[[ -z "$IMAGE" ]] || ARGS+=(--image "$IMAGE")
+ARGS=(--prompt "$PROMPT")
+if (( HQ == 1 )); then
+  ARGS=(--upscale-2x "${ARGS[@]}")
+fi
 
-exec /usr/local/bin/generate-video "${ARGS[@]}"
+# IMPORTANT: successful stdout must remain the bare absolute MP4 path emitted by
+# generate-video-ltx23. Hermes detects that path and returns the file to Telegram.
+exec "$LTX_BIN" "${ARGS[@]}"
