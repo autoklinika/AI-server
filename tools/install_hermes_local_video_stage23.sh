@@ -83,7 +83,7 @@ if missing:
 print('PASS: installed ComfyUI exposes every Wan2.2/API node required by Stage 23')
 PY
 
-section "DISCOVER COMFYUI ROOT"
+section "DISCOVER COMFYUI PATHS"
 if [[ "$COMFY_SCOPE" == "system" ]]; then
   MAIN_PID="$(systemctl show comfyui.service -p MainPID --value)"
   WORKDIR="$(systemctl show comfyui.service -p WorkingDirectory --value 2>/dev/null || true)"
@@ -96,30 +96,76 @@ COMFY_ROOT=""
 if [[ "$MAIN_PID" =~ ^[0-9]+$ ]] && [[ "$MAIN_PID" != "0" ]] && [[ -e "/proc/${MAIN_PID}/cwd" ]]; then
   COMFY_ROOT="$(readlink -f "/proc/${MAIN_PID}/cwd" 2>/dev/null || true)"
 fi
-if [[ -z "$COMFY_ROOT" || ! -d "$COMFY_ROOT/models" ]]; then
-  if [[ -n "$WORKDIR" && -d "$WORKDIR/models" ]]; then
-    COMFY_ROOT="$WORKDIR"
-  fi
+if [[ -z "$COMFY_ROOT" && -n "$WORKDIR" && -d "$WORKDIR" ]]; then
+  COMFY_ROOT="$WORKDIR"
 fi
-[[ -n "$COMFY_ROOT" && -d "$COMFY_ROOT/models" ]] || fail "could not discover ComfyUI root/models directory"
-say "ComfyUI root: $COMFY_ROOT"
+[[ -n "$COMFY_ROOT" && -d "$COMFY_ROOT" ]] || fail "could not discover ComfyUI working directory"
 
-MODEL_DIR="${COMFY_ROOT}/models/diffusion_models"
-TEXT_DIR="${COMFY_ROOT}/models/text_encoders"
-VAE_DIR="${COMFY_ROOT}/models/vae"
-mkdir -p "$MODEL_DIR" "$TEXT_DIR" "$VAE_DIR"
+COMFY_MODELS_DIR="$(python3 - "$COMFY_URL" "$COMFY_ROOT" <<'PY'
+from pathlib import Path
+import json, sys, urllib.request
+base = sys.argv[1].rstrip('/')
+root = Path(sys.argv[2])
+with urllib.request.urlopen(base + '/system_stats', timeout=10) as r:
+    stats = json.load(r)
+argv = list((stats.get('system') or {}).get('argv') or [])
+models = None
+for i, arg in enumerate(argv):
+    if arg == '--models-directory' and i + 1 < len(argv):
+        models = argv[i + 1]
+        break
+    if isinstance(arg, str) and arg.startswith('--models-directory='):
+        models = arg.split('=', 1)[1]
+        break
+path = Path(models).expanduser() if models else (root / 'models')
+if not path.is_absolute():
+    path = root / path
+print(path.resolve())
+PY
+)"
+
+[[ -n "$COMFY_MODELS_DIR" ]] || fail "could not resolve ComfyUI models directory"
+LEGACY_MODELS_DIR="${COMFY_ROOT}/models"
+say "ComfyUI root:       $COMFY_ROOT"
+say "ComfyUI models dir: $COMFY_MODELS_DIR"
+if [[ "$LEGACY_MODELS_DIR" != "$COMFY_MODELS_DIR" ]]; then
+  say "Legacy/default dir:  $LEGACY_MODELS_DIR"
+fi
+
+MODEL_DIR="${COMFY_MODELS_DIR}/diffusion_models"
+TEXT_DIR="${COMFY_MODELS_DIR}/text_encoders"
+VAE_DIR="${COMFY_MODELS_DIR}/vae"
+mkdir -p "$MODEL_DIR" "$TEXT_DIR" "$VAE_DIR" || fail "cannot create/access ComfyUI model directories"
+
+LEGACY_MODEL_PATH="${LEGACY_MODELS_DIR}/diffusion_models/${MODEL_NAME}"
+LEGACY_TEXT_PATH="${LEGACY_MODELS_DIR}/text_encoders/${TEXT_NAME}"
+LEGACY_VAE_PATH="${LEGACY_MODELS_DIR}/vae/${VAE_NAME}"
+
+verify_sha() {
+  local path="$1" expected="$2"
+  [[ -s "$path" ]] || return 1
+  printf '%s  %s\n' "$expected" "$path" | sha256sum --check --status
+}
 
 section "DISK PRECHECK"
-MISSING_COUNT=0
-[[ -s "${MODEL_DIR}/${MODEL_NAME}" ]] || MISSING_COUNT=$((MISSING_COUNT + 1))
-[[ -s "${TEXT_DIR}/${TEXT_NAME}" ]] || MISSING_COUNT=$((MISSING_COUNT + 1))
-[[ -s "${VAE_DIR}/${VAE_NAME}" ]] || MISSING_COUNT=$((MISSING_COUNT + 1))
-if (( MISSING_COUNT > 0 )); then
-  AVAIL_BYTES="$(df -B1 --output=avail "$COMFY_ROOT" | tail -n1 | tr -d ' ')"
+NEEDS_DOWNLOAD=0
+if ! verify_sha "${MODEL_DIR}/${MODEL_NAME}" "$MODEL_SHA256" && ! verify_sha "$LEGACY_MODEL_PATH" "$MODEL_SHA256"; then
+  NEEDS_DOWNLOAD=1
+fi
+if ! verify_sha "${TEXT_DIR}/${TEXT_NAME}" "$TEXT_SHA256" && ! verify_sha "$LEGACY_TEXT_PATH" "$TEXT_SHA256"; then
+  NEEDS_DOWNLOAD=1
+fi
+if ! verify_sha "${VAE_DIR}/${VAE_NAME}" "$VAE_SHA256" && ! verify_sha "$LEGACY_VAE_PATH" "$VAE_SHA256"; then
+  NEEDS_DOWNLOAD=1
+fi
+if (( NEEDS_DOWNLOAD > 0 )); then
+  AVAIL_BYTES="$(df -B1 --output=avail "$COMFY_MODELS_DIR" | tail -n1 | tr -d ' ')"
   MIN_BYTES=$((24 * 1024 * 1024 * 1024))
   if [[ "$AVAIL_BYTES" =~ ^[0-9]+$ ]] && (( AVAIL_BYTES < MIN_BYTES )); then
-    fail "less than 24 GiB free on ComfyUI filesystem; refusing model download"
+    fail "less than 24 GiB free on ComfyUI models filesystem; refusing model download"
   fi
+else
+  say "PASS: all required weights already exist either in the active or recoverable legacy location"
 fi
 say "PASS: storage precheck"
 
@@ -157,24 +203,35 @@ if [[ ! -e "${BACKUP_DIR}/skill-wideo" && ! -e "${BACKUP_DIR}/skill-wideo.absent
   fi
 fi
 
-section "DOWNLOAD LOCAL WAN2.2 MODELS"
-verify_sha() {
-  local path="$1" expected="$2"
-  [[ -s "$path" ]] || return 1
-  printf '%s  %s\n' "$expected" "$path" | sha256sum --check --status
-}
+section "PLACE LOCAL WAN2.2 MODELS"
+MODELS_CHANGED=0
 
-download_model() {
-  local url="$1" dst="$2" expected_sha="$3"
+place_model() {
+  local url="$1" dst="$2" expected_sha="$3" legacy="$4"
+
   if [[ -s "$dst" ]]; then
-    say "Verifying existing: $(basename "$dst")"
+    say "Verifying active model: $(basename "$dst")"
     if verify_sha "$dst" "$expected_sha"; then
-      say "PASS: existing file checksum OK: $dst"
+      say "PASS: active file checksum OK: $dst"
       return
     fi
     local bad="${dst}.corrupt.$(date +%Y%m%d-%H%M%S)"
     mv -f "$dst" "$bad"
-    say "WARN: checksum mismatch; moved existing file to $bad"
+    say "WARN: active file checksum mismatch; moved to $bad"
+  fi
+
+  if [[ "$legacy" != "$dst" && -s "$legacy" ]]; then
+    say "Checking previously downloaded legacy copy: $legacy"
+    if verify_sha "$legacy" "$expected_sha"; then
+      mkdir -p "$(dirname "$dst")"
+      mv -f "$legacy" "$dst"
+      MODELS_CHANGED=1
+      say "PASS: moved verified existing file into active ComfyUI models directory: $dst"
+      return
+    fi
+    local legacy_bad="${legacy}.corrupt.$(date +%Y%m%d-%H%M%S)"
+    mv -f "$legacy" "$legacy_bad"
+    say "WARN: legacy file checksum mismatch; moved to $legacy_bad"
   fi
 
   local part="${dst}.part"
@@ -188,12 +245,37 @@ download_model() {
   fi
   mv -f "$part" "$dst"
   sync "$dst" || true
+  MODELS_CHANGED=1
   say "PASS: downloaded and verified $dst"
 }
 
-download_model "$MODEL_URL" "${MODEL_DIR}/${MODEL_NAME}" "$MODEL_SHA256"
-download_model "$TEXT_URL" "${TEXT_DIR}/${TEXT_NAME}" "$TEXT_SHA256"
-download_model "$VAE_URL" "${VAE_DIR}/${VAE_NAME}" "$VAE_SHA256"
+place_model "$MODEL_URL" "${MODEL_DIR}/${MODEL_NAME}" "$MODEL_SHA256" "$LEGACY_MODEL_PATH"
+place_model "$TEXT_URL" "${TEXT_DIR}/${TEXT_NAME}" "$TEXT_SHA256" "$LEGACY_TEXT_PATH"
+place_model "$VAE_URL" "${VAE_DIR}/${VAE_NAME}" "$VAE_SHA256" "$LEGACY_VAE_PATH"
+
+if (( MODELS_CHANGED > 0 )); then
+  section "RESTART COMFYUI TO REFRESH MODEL CATALOG"
+  if [[ "$COMFY_SCOPE" == "system" ]]; then
+    sudo systemctl restart comfyui.service
+    sudo systemctl is-active --quiet comfyui.service || fail "comfyui.service did not restart cleanly"
+  else
+    systemctl --user restart comfyui.service
+    systemctl --user is-active --quiet comfyui.service || fail "user comfyui.service did not restart cleanly"
+  fi
+
+  READY=0
+  for _ in $(seq 1 60); do
+    if curl -fsS --max-time 3 "${COMFY_URL}/system_stats" >/dev/null 2>&1; then
+      READY=1
+      break
+    fi
+    sleep 1
+  done
+  (( READY == 1 )) || fail "ComfyUI API did not return after restart"
+  say "PASS: ComfyUI restarted and API is reachable"
+else
+  say "INFO: model files already active; ComfyUI restart not required"
+fi
 
 section "INSTALL LOCAL GENERATOR"
 sudo install -d -m 0755 "$LIBEXEC_DIR"
