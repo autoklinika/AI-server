@@ -5,6 +5,7 @@ on:
     branches:
       - feat/ai-gateway-scheduler
       - feat/hermes-local-video-stage23
+      - feat/hermes-ltx23-stage24
   pull_request:
     paths:
       - "src/ai_bridge/gateway/**"
@@ -14,9 +15,13 @@ on:
       - "tests/test_gateway_*.py"
       - "tests/test_ollama_gateway_headers.py"
       - "tests/test_local_video_generator.py"
+      - "tests/test_ltx23_generator.py"
       - "tools/local_video/**"
       - "tools/install_hermes_local_video_stage23.sh"
       - "tools/rollback_hermes_local_video_stage23.sh"
+      - "tools/install_ltx23_stage24.sh"
+      - "tools/rollback_ltx23_stage24.sh"
+      - "tools/apply_ltx23_standard_vae_compat_stage24.sh"
       - "tools/validate_ai_gateway_real_server.sh"
       - "tools/install_ai_gateway_stage1.sh"
       - "tools/cutover_ventilation_to_ai_gateway_stage2.sh"
@@ -63,7 +68,11 @@ jobs:
           bash -n tools/rollback_hermes_telegram_static_profile_stage22.sh
           bash -n tools/install_hermes_local_video_stage23.sh
           bash -n tools/rollback_hermes_local_video_stage23.sh
+          bash -n tools/install_ltx23_stage24.sh
+          bash -n tools/rollback_ltx23_stage24.sh
+          bash -n tools/apply_ltx23_standard_vae_compat_stage24.sh
           bash -n tools/local_video/generate-video-telegram
           python -m py_compile tools/local_video/generate_video.py
+          python -m py_compile tools/local_video/generate_ltx23.py
       - name: Test
         run: pytest
