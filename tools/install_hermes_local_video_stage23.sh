@@ -19,6 +19,10 @@ MODEL_URL="https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/m
 TEXT_URL="https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/${TEXT_NAME}"
 VAE_URL="https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/${VAE_NAME}"
 
+MODEL_SHA256="456f901338bd9eadbded3828b819109a9b68e8a525ca5cf8d0049a69fcfeca1e"
+TEXT_SHA256="c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68"
+VAE_SHA256="e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156"
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="${SCRIPT_DIR}/local_video"
 GENERATOR_SRC="${SOURCE_DIR}/generate_video.py"
@@ -34,6 +38,7 @@ fail() { say "FAIL: $*" >&2; exit 1; }
 [[ -r "$SKILL_SRC" ]] || fail "missing $SKILL_SRC"
 command -v curl >/dev/null || fail "curl is required"
 command -v python3 >/dev/null || fail "python3 is required"
+command -v sha256sum >/dev/null || fail "sha256sum is required"
 
 section "STAGE-23 LOCAL VIDEO"
 say "Architecture: Hermes /wideo -> local wrapper -> ComfyUI -> Wan2.2 TI2V-5B -> local MP4"
@@ -153,24 +158,42 @@ if [[ ! -e "${BACKUP_DIR}/skill-wideo" && ! -e "${BACKUP_DIR}/skill-wideo.absent
 fi
 
 section "DOWNLOAD LOCAL WAN2.2 MODELS"
+verify_sha() {
+  local path="$1" expected="$2"
+  [[ -s "$path" ]] || return 1
+  printf '%s  %s\n' "$expected" "$path" | sha256sum --check --status
+}
+
 download_model() {
-  local url="$1" dst="$2"
+  local url="$1" dst="$2" expected_sha="$3"
   if [[ -s "$dst" ]]; then
-    say "PASS: already present: $dst"
-    return
+    say "Verifying existing: $(basename "$dst")"
+    if verify_sha "$dst" "$expected_sha"; then
+      say "PASS: existing file checksum OK: $dst"
+      return
+    fi
+    local bad="${dst}.corrupt.$(date +%Y%m%d-%H%M%S)"
+    mv -f "$dst" "$bad"
+    say "WARN: checksum mismatch; moved existing file to $bad"
   fi
+
   local part="${dst}.part"
   say "Downloading: $(basename "$dst")"
   curl --fail --location --retry 4 --retry-delay 5 --continue-at - --output "$part" "$url"
   [[ -s "$part" ]] || fail "download produced empty file: $part"
+  say "Verifying SHA-256: $(basename "$dst")"
+  if ! verify_sha "$part" "$expected_sha"; then
+    rm -f "$part"
+    fail "SHA-256 mismatch after download: $(basename "$dst"); partial file removed"
+  fi
   mv -f "$part" "$dst"
   sync "$dst" || true
-  say "PASS: downloaded $dst"
+  say "PASS: downloaded and verified $dst"
 }
 
-download_model "$MODEL_URL" "${MODEL_DIR}/${MODEL_NAME}"
-download_model "$TEXT_URL" "${TEXT_DIR}/${TEXT_NAME}"
-download_model "$VAE_URL" "${VAE_DIR}/${VAE_NAME}"
+download_model "$MODEL_URL" "${MODEL_DIR}/${MODEL_NAME}" "$MODEL_SHA256"
+download_model "$TEXT_URL" "${TEXT_DIR}/${TEXT_NAME}" "$TEXT_SHA256"
+download_model "$VAE_URL" "${VAE_DIR}/${VAE_NAME}" "$VAE_SHA256"
 
 section "INSTALL LOCAL GENERATOR"
 sudo install -d -m 0755 "$LIBEXEC_DIR"
