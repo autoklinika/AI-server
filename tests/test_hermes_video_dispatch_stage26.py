@@ -150,7 +150,15 @@ def test_worker_renders_expected_mode_and_sends_native_media_to_origin_chat(tmp_
 
 
 def test_patcher_inserts_shell_quoted_argument_forwarding_once():
-    original = '''\n        exec_cmd = qcmd.get("command", "")\n        if exec_cmd:\n            try:\n                # Sanitize env\n                pass\n'''
+    original = '''async def handle(event, qcmd):
+    exec_cmd = qcmd.get("command", "")
+    if exec_cmd:
+        try:
+            # Sanitize env
+            pass
+        except Exception:
+            pass
+'''
     assert patcher.check_text(original) == "patchable"
     patched = patcher.patch_text(original)
     assert patcher.MARKER in patched
