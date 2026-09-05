@@ -7,6 +7,7 @@ on:
       - feat/hermes-local-video-stage23
       - feat/hermes-ltx23-stage24
       - feat/hermes-ltx23-telegram-stage25
+      - feat/hermes-ltx23-direct-stage26
   pull_request:
     paths:
       - "src/ai_bridge/gateway/**"
@@ -18,6 +19,7 @@ on:
       - "tests/test_local_video_generator.py"
       - "tests/test_ltx23_generator.py"
       - "tests/test_ltx23_telegram_wrapper.py"
+      - "tests/test_hermes_video_dispatch_stage26.py"
       - "tools/local_video/**"
       - "tools/install_hermes_local_video_stage23.sh"
       - "tools/rollback_hermes_local_video_stage23.sh"
@@ -26,6 +28,9 @@ on:
       - "tools/apply_ltx23_standard_vae_compat_stage24.sh"
       - "tools/cutover_hermes_ltx23_stage25.sh"
       - "tools/rollback_hermes_ltx23_stage25.sh"
+      - "tools/cutover_hermes_ltx23_direct_stage26.sh"
+      - "tools/rollback_hermes_ltx23_direct_stage26.sh"
+      - "tools/patch_hermes_quick_command_args_stage26.py"
       - "tools/validate_ai_gateway_real_server.sh"
       - "tools/install_ai_gateway_stage1.sh"
       - "tools/cutover_ventilation_to_ai_gateway_stage2.sh"
@@ -77,8 +82,13 @@ jobs:
           bash -n tools/apply_ltx23_standard_vae_compat_stage24.sh
           bash -n tools/cutover_hermes_ltx23_stage25.sh
           bash -n tools/rollback_hermes_ltx23_stage25.sh
+          bash -n tools/cutover_hermes_ltx23_direct_stage26.sh
+          bash -n tools/rollback_hermes_ltx23_direct_stage26.sh
           bash -n tools/local_video/generate-video-telegram
+          bash -n tools/local_video/hermes-video-dispatch
           python -m py_compile tools/local_video/generate_video.py
           python -m py_compile tools/local_video/generate_ltx23.py
+          python -m py_compile tools/local_video/hermes_video_dispatch.py
+          python -m py_compile tools/patch_hermes_quick_command_args_stage26.py
       - name: Test
         run: pytest
