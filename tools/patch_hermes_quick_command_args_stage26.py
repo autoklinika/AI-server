@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 MARKER = "STAGE26_WIDEO_QUICK_ARGS"
@@ -36,6 +38,8 @@ class PatchError(RuntimeError):
 
 def patch_text(text: str) -> str:
     if MARKER in text:
+        if text.count(MARKER) != 1:
+            raise PatchError("duplicate Stage26 quick-command marker")
         return text
     matches = list(PATTERN.finditer(text))
     if len(matches) != 1:
@@ -45,16 +49,39 @@ def patch_text(text: str) -> str:
     match = matches[0]
     indent = match.group("indent")
     replacement = INSERT.format(indent=indent, marker=MARKER)
-    return text[: match.start()] + replacement + text[match.end() :]
+    patched = text[: match.start()] + replacement + text[match.end() :]
+    compile(patched, "gateway/run.py", "exec")
+    return patched
 
 
 def check_text(text: str) -> str:
     if MARKER in text:
-        return "patched"
+        return "patched" if text.count(MARKER) == 1 else "unsupported:duplicate-marker"
     matches = list(PATTERN.finditer(text))
     if len(matches) == 1:
         return "patchable"
     return f"unsupported:{len(matches)}"
+
+
+def atomic_write(path: Path, text: str) -> None:
+    stat = path.stat()
+    fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".stage26.", dir=str(path.parent), text=True)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(tmp_name, stat.st_mode)
+        try:
+            os.chown(tmp_name, stat.st_uid, stat.st_gid)
+        except PermissionError:
+            pass
+        os.replace(tmp_name, path)
+    finally:
+        try:
+            os.unlink(tmp_name)
+        except FileNotFoundError:
+            pass
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -73,10 +100,10 @@ def main(argv: list[str] | None = None) -> int:
         if patched == text:
             print("already patched")
             return 0
-        args.path.write_text(patched, encoding="utf-8")
+        atomic_write(args.path, patched)
         print("patched")
         return 0
-    except (OSError, PatchError) as exc:
+    except (OSError, PatchError, SyntaxError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
