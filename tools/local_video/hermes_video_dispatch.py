@@ -32,9 +32,9 @@ def parse_request_args(parts: list[str]) -> tuple[bool, str]:
     if not raw:
         raise DispatchError("Użycie: /wideo [hq] <opis filmu>")
 
-    first, sep, rest = raw.partition(" ")
+    first, _sep, rest = raw.partition(" ")
     hq = first.casefold() == "hq"
-    prompt = rest.strip() if hq and sep else raw
+    prompt = rest.strip() if hq else raw
     if not prompt:
         raise DispatchError("Użycie: /wideo [hq] <opis filmu>")
     return hq, prompt
