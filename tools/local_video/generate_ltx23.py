@@ -19,31 +19,20 @@ OUTPUT_DIR_DEFAULT = Path("/srv/ai-data/hermes-media/video")
 CHECKPOINT = "ltx-2.3-22b-dev-fp8.safetensors"
 TEXT_ENCODER = "gemma_3_12B_it_fp4_mixed.safetensors"
 DISTILLED_LORA = "ltx_2.3_22b_distilled_1.1_lora_dynamic_fro09_avg_rank_111_bf16.safetensors"
+UPSCALER = "ltx-2.3-spatial-upscaler-x2-1.1.safetensors"
 
 NEGATIVE = "pc game, console game, video game, cartoon, childish, ugly, blurry, low quality, watermark, subtitles"
 DISTILLED_SIGMAS = "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"
+UPSCALE_SIGMAS = "0.85, 0.7250, 0.4219, 0.0"
 
 REQUIRED_NODES = {
-    "CheckpointLoaderSimple",
-    "LoraLoaderModelOnly",
-    "LTXAVTextEncoderLoader",
-    "CLIPTextEncode",
-    "LTXVConditioning",
-    "EmptyLTXVLatentVideo",
-    "LTXVAudioVAELoader",
-    "LTXVEmptyLatentAudio",
-    "LTXVConcatAVLatent",
-    "CFGGuider",
-    "RandomNoise",
-    "KSamplerSelect",
-    "ManualSigmas",
-    "SamplerCustomAdvanced",
-    "LTXVSeparateAVLatent",
-    "VAEDecode",
-    "LTXVAudioVAEDecode",
-    "CreateVideo",
-    "SaveVideo",
+    "CheckpointLoaderSimple", "LoraLoaderModelOnly", "LTXAVTextEncoderLoader", "CLIPTextEncode",
+    "LTXVConditioning", "EmptyLTXVLatentVideo", "LTXVAudioVAELoader", "LTXVEmptyLatentAudio",
+    "LTXVConcatAVLatent", "CFGGuider", "RandomNoise", "KSamplerSelect", "ManualSigmas",
+    "SamplerCustomAdvanced", "LTXVSeparateAVLatent", "VAEDecode", "LTXVAudioVAEDecode",
+    "CreateVideo", "SaveVideo",
 }
+UPSCALE_NODES = {"LatentUpscaleModelLoader", "LTXVLatentUpsampler", "LTXVTiledVAEDecode"}
 
 
 class LTXError(RuntimeError):
@@ -86,9 +75,12 @@ def _options(info: dict, node: str, input_name: str) -> set[str]:
     return set()
 
 
-def preflight(base: str) -> dict:
+def preflight(base: str, *, require_upscale: bool = False) -> dict:
     info = req_json(base, "/object_info", timeout=60)
-    missing_nodes = sorted(REQUIRED_NODES - set(info))
+    required = set(REQUIRED_NODES)
+    if require_upscale:
+        required |= UPSCALE_NODES
+    missing_nodes = sorted(required - set(info))
     missing_models = []
     for node, inp, name in (
         ("CheckpointLoaderSimple", "ckpt_name", CHECKPOINT),
@@ -98,19 +90,23 @@ def preflight(base: str) -> dict:
         opts = _options(info, node, inp)
         if opts and name not in opts:
             missing_models.append(name)
+    if require_upscale:
+        opts = _options(info, "LatentUpscaleModelLoader", "model_name")
+        if opts and UPSCALER not in opts:
+            missing_models.append(UPSCALER)
     return {"ok": not missing_nodes and not missing_models, "missing_nodes": missing_nodes, "missing_models": missing_models}
 
 
-def build_prompt(prompt: str, *, width: int, height: int, frames: int, fps: int, seed: int, negative: str) -> dict:
+def _validate(width: int, height: int, frames: int) -> None:
     if width % 32 or height % 32:
         raise ValueError("LTX width and height must be divisible by 32")
     if frames < 9:
         raise ValueError("frames must be >= 9")
 
-    # Distilled single-stage branch derived from the official LTX-2.3 ComfyUI workflow:
-    # dev FP8 checkpoint + distilled LoRA (0.5), CFG=1, euler_ancestral_cfg_pp,
-    # and the official 8-step distilled sigma schedule.
-    return {
+
+def build_prompt(prompt: str, *, width: int, height: int, frames: int, fps: int, seed: int, negative: str, upscale_2x: bool = False) -> dict:
+    _validate(width, height, frames)
+    g = {
         "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": CHECKPOINT}},
         "2": {"class_type": "LoraLoaderModelOnly", "inputs": {"model": ["1", 0], "lora_name": DISTILLED_LORA, "strength_model": 0.5}},
         "3": {"class_type": "LTXAVTextEncoderLoader", "inputs": {"text_encoder": TEXT_ENCODER, "ckpt_name": CHECKPOINT, "device": "default"}},
@@ -127,11 +123,32 @@ def build_prompt(prompt: str, *, width: int, height: int, frames: int, fps: int,
         "14": {"class_type": "ManualSigmas", "inputs": {"sigmas": DISTILLED_SIGMAS}},
         "15": {"class_type": "SamplerCustomAdvanced", "inputs": {"noise": ["12", 0], "guider": ["11", 0], "sampler": ["13", 0], "sigmas": ["14", 0], "latent_image": ["10", 0]}},
         "16": {"class_type": "LTXVSeparateAVLatent", "inputs": {"av_latent": ["15", 0]}},
-        "17": {"class_type": "VAEDecode", "inputs": {"samples": ["16", 0], "vae": ["1", 2]}},
-        "18": {"class_type": "LTXVAudioVAEDecode", "inputs": {"samples": ["16", 1], "audio_vae": ["8", 0]}},
-        "19": {"class_type": "CreateVideo", "inputs": {"images": ["17", 0], "audio": ["18", 0], "fps": float(fps)}},
-        "20": {"class_type": "SaveVideo", "inputs": {"video": ["19", 0], "filename_prefix": "hermes-video/LTX23", "format": "mp4", "codec": "h264"}},
     }
+    if not upscale_2x:
+        g.update({
+            "17": {"class_type": "VAEDecode", "inputs": {"samples": ["16", 0], "vae": ["1", 2]}},
+            "18": {"class_type": "LTXVAudioVAEDecode", "inputs": {"samples": ["16", 1], "audio_vae": ["8", 0]}},
+            "19": {"class_type": "CreateVideo", "inputs": {"images": ["17", 0], "audio": ["18", 0], "fps": float(fps)}},
+            "20": {"class_type": "SaveVideo", "inputs": {"video": ["19", 0], "filename_prefix": "hermes-video/LTX23", "format": "mp4", "codec": "h264"}},
+        })
+        return g
+
+    g.update({
+        "17": {"class_type": "LatentUpscaleModelLoader", "inputs": {"model_name": UPSCALER}},
+        "18": {"class_type": "LTXVLatentUpsampler", "inputs": {"samples": ["16", 0], "upscale_model": ["17", 0], "vae": ["1", 2]}},
+        "19": {"class_type": "LTXVConcatAVLatent", "inputs": {"video_latent": ["18", 0], "audio_latent": ["16", 1]}},
+        "20": {"class_type": "CFGGuider", "inputs": {"model": ["2", 0], "positive": ["6", 0], "negative": ["6", 1], "cfg": 1.0}},
+        "21": {"class_type": "RandomNoise", "inputs": {"noise_seed": seed}},
+        "22": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler_cfg_pp"}},
+        "23": {"class_type": "ManualSigmas", "inputs": {"sigmas": UPSCALE_SIGMAS}},
+        "24": {"class_type": "SamplerCustomAdvanced", "inputs": {"noise": ["21", 0], "guider": ["20", 0], "sampler": ["22", 0], "sigmas": ["23", 0], "latent_image": ["19", 0]}},
+        "25": {"class_type": "LTXVSeparateAVLatent", "inputs": {"av_latent": ["24", 0]}},
+        "26": {"class_type": "LTXVTiledVAEDecode", "inputs": {"vae": ["1", 2], "latents": ["25", 0], "horizontal_tiles": 2, "vertical_tiles": 2, "overlap": 6, "last_frame_fix": False, "working_device": "auto", "working_dtype": "auto"}},
+        "27": {"class_type": "LTXVAudioVAEDecode", "inputs": {"samples": ["25", 1], "audio_vae": ["8", 0]}},
+        "28": {"class_type": "CreateVideo", "inputs": {"images": ["26", 0], "audio": ["27", 0], "fps": float(fps)}},
+        "29": {"class_type": "SaveVideo", "inputs": {"video": ["28", 0], "filename_prefix": "hermes-video/LTX23-2X", "format": "mp4", "codec": "h264"}},
+    })
+    return g
 
 
 def find_video(entry: dict) -> dict | None:
@@ -164,12 +181,13 @@ def wait_result(base: str, prompt_id: str, timeout: int) -> dict:
     raise LTXError("Timed out waiting for LTX-2.3 render")
 
 
-def download_output(base: str, rec: dict, output_dir: Path, prompt_id: str) -> Path:
+def download_output(base: str, rec: dict, output_dir: Path, prompt_id: str, *, upscale_2x: bool = False) -> Path:
     params = urlencode({"filename": rec.get("filename", ""), "subfolder": rec.get("subfolder", ""), "type": rec.get("type", "output")})
     data = req_bytes(base, "/view?" + params)
     output_dir.mkdir(parents=True, exist_ok=True)
     suffix = Path(str(rec.get("filename") or "out.mp4")).suffix or ".mp4"
-    dst = output_dir / f"ltx23-{time.strftime('%Y%m%d-%H%M%S')}-{prompt_id[:8]}{suffix}"
+    tag = "ltx23-2x" if upscale_2x else "ltx23"
+    dst = output_dir / f"{tag}-{time.strftime('%Y%m%d-%H%M%S')}-{prompt_id[:8]}{suffix}"
     dst.write_bytes(data)
     if not dst.stat().st_size:
         raise LTXError("Generated file is empty")
@@ -184,7 +202,7 @@ def free_memory(base: str) -> None:
 
 
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(description="Local LTX-2.3 22B distilled single-stage benchmark via ComfyUI")
+    p = argparse.ArgumentParser(description="Local LTX-2.3 22B distilled benchmark via ComfyUI")
     p.add_argument("--prompt")
     p.add_argument("--negative", default=NEGATIVE)
     p.add_argument("--width", type=int, default=640)
@@ -195,26 +213,27 @@ def main(argv=None) -> int:
     p.add_argument("--timeout", type=int, default=7200)
     p.add_argument("--comfy-url", default=os.environ.get("COMFYUI_URL", COMFY_URL_DEFAULT))
     p.add_argument("--output-dir", default=str(OUTPUT_DIR_DEFAULT))
+    p.add_argument("--upscale-2x", action="store_true")
     p.add_argument("--preflight", action="store_true")
     p.add_argument("--json", action="store_true")
     args = p.parse_args(argv)
     try:
         if args.preflight:
-            out = preflight(args.comfy_url)
+            out = preflight(args.comfy_url, require_upscale=args.upscale_2x)
             print(json.dumps(out, ensure_ascii=False, indent=2))
             return 0 if out["ok"] else 2
         if not args.prompt:
             raise LTXError("--prompt is required")
         seed = args.seed if args.seed is not None else random.randrange(0, 2**63 - 1)
-        graph = build_prompt(args.prompt, width=args.width, height=args.height, frames=args.frames, fps=args.fps, seed=seed, negative=args.negative)
+        graph = build_prompt(args.prompt, width=args.width, height=args.height, frames=args.frames, fps=args.fps, seed=seed, negative=args.negative, upscale_2x=args.upscale_2x)
         submitted = req_json(args.comfy_url, "/prompt", method="POST", payload={"prompt": graph, "client_id": uuid.uuid4().hex}, timeout=60)
         pid = str(submitted.get("prompt_id") or "")
         if not pid:
             raise LTXError("ComfyUI rejected prompt: " + json.dumps(submitted, ensure_ascii=False))
         rec = wait_result(args.comfy_url, pid, args.timeout)
-        dst = download_output(args.comfy_url, rec, Path(args.output_dir), pid)
+        dst = download_output(args.comfy_url, rec, Path(args.output_dir), pid, upscale_2x=args.upscale_2x)
         free_memory(args.comfy_url)
-        print(json.dumps({"ok": True, "path": str(dst)}, ensure_ascii=False) if args.json else dst)
+        print(json.dumps({"ok": True, "path": str(dst), "upscale_2x": args.upscale_2x}, ensure_ascii=False) if args.json else dst)
         return 0
     except (LTXError, ValueError) as e:
         print(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False) if args.json else f"ERROR: {e}", file=sys.stderr)
