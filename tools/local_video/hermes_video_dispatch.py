@@ -22,12 +22,19 @@ class DispatchError(RuntimeError):
 
 
 def parse_request_args(parts: list[str]) -> tuple[bool, str]:
-    args = list(parts)
-    hq = False
-    if args and args[0].lower() == "hq":
-        hq = True
-        args = args[1:]
-    prompt = " ".join(args).strip()
+    """Parse quick-command argv.
+
+    Hermes Stage-26 patches gateway exec quick_commands to append the whole
+    user argument string as ONE shell-quoted argv item. Accept multiple argv
+    items as well so the dispatcher is convenient to run manually/tests.
+    """
+    raw = " ".join(str(part) for part in parts).strip()
+    if not raw:
+        raise DispatchError("Użycie: /wideo [hq] <opis filmu>")
+
+    first, sep, rest = raw.partition(" ")
+    hq = first.casefold() == "hq"
+    prompt = rest.strip() if hq and sep else raw
     if not prompt:
         raise DispatchError("Użycie: /wideo [hq] <opis filmu>")
     return hq, prompt
@@ -105,6 +112,7 @@ def _resolve_hermes_bin() -> str:
     if found:
         return found
     candidates = (
+        "/srv/ai-data/hermes/hermes-agent/venv/bin/hermes",
         "/srv/ai-data/hermes/hermes-agent/.venv/bin/hermes",
         str(Path.home() / ".local/bin/hermes"),
     )
@@ -183,6 +191,9 @@ def run_worker(request_path: Path) -> int:
                 f"LTX zakończył się kodem {render.returncode}: {render.stdout[-1600:]}"
             )
         mp4 = _extract_mp4(render.stdout)
+
+        # Native media delivery, independent of the LLM/agent final response.
+        # `hermes send` on the pinned Hermes build explicitly supports MEDIA:<path>.
         _send(target, f"MEDIA:{mp4}")
         _write_result(
             job_dir,
