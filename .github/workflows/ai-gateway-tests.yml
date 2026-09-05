@@ -24,10 +24,13 @@ on:
       - "tools/rollback_hermes_reasoning_none_stage9.sh"
       - "tools/cutover_hermes_telegram_static_profile_stage22.sh"
       - "tools/rollback_hermes_telegram_static_profile_stage22.sh"
+      - "tools/cutover_hermes_video_generation_stage23.sh"
+      - "tools/rollback_hermes_video_generation_stage23.sh"
       - "deploy/ai-gateway.env.example"
       - "deploy/systemd/ai-gateway.service"
       - "docs/ADR-005_AI_GATEWAY_SCHEDULER_PL.md"
       - "docs/AI_GATEWAY_PRODUCTION_PL.md"
+      - "docs/HERMES_VIDEO_GENERATION_STAGE23_PL.md"
       - "pyproject.toml"
       - ".github/workflows/ai-gateway-tests.yml"
 
@@ -55,5 +58,7 @@ jobs:
           bash -n tools/rollback_hermes_reasoning_none_stage9.sh
           bash -n tools/cutover_hermes_telegram_static_profile_stage22.sh
           bash -n tools/rollback_hermes_telegram_static_profile_stage22.sh
+          bash -n tools/cutover_hermes_video_generation_stage23.sh
+          bash -n tools/rollback_hermes_video_generation_stage23.sh
       - name: Test
         run: pytest
