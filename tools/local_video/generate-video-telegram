@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PRESET="${HERMES_VIDEO_PRESET:-fast}"
+IMAGE=""
+PROMPT_PARTS=()
+
+usage() {
+  cat >&2 <<'EOF'
+Usage:
+  generate-video-telegram [--preset smoke|fast|balanced|quality] [--image /path/to/image] -- prompt text
+  generate-video-telegram prompt text
+EOF
+}
+
+while (($#)); do
+  case "$1" in
+    --preset)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      PRESET="$2"
+      shift 2
+      ;;
+    --image)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      IMAGE="$2"
+      shift 2
+      ;;
+    --)
+      shift
+      while (($#)); do PROMPT_PARTS+=("$1"); shift; done
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      PROMPT_PARTS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+PROMPT="${PROMPT_PARTS[*]-}"
+[[ -n "$PROMPT" ]] || { usage; exit 2; }
+
+ARGS=(--preset "$PRESET" --prompt "$PROMPT")
+[[ -z "$IMAGE" ]] || ARGS+=(--image "$IMAGE")
+
+exec /usr/local/bin/generate-video "${ARGS[@]}"

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/ai-gateway-scheduler
+      - feat/hermes-local-video-stage23
   pull_request:
     paths:
       - "src/ai_bridge/gateway/**"
@@ -12,6 +13,10 @@ on:
       - "src/ai_bridge/settings.py"
       - "tests/test_gateway_*.py"
       - "tests/test_ollama_gateway_headers.py"
+      - "tests/test_local_video_generator.py"
+      - "tools/local_video/**"
+      - "tools/install_hermes_local_video_stage23.sh"
+      - "tools/rollback_hermes_local_video_stage23.sh"
       - "tools/validate_ai_gateway_real_server.sh"
       - "tools/install_ai_gateway_stage1.sh"
       - "tools/cutover_ventilation_to_ai_gateway_stage2.sh"
@@ -28,6 +33,7 @@ on:
       - "deploy/systemd/ai-gateway.service"
       - "docs/ADR-005_AI_GATEWAY_SCHEDULER_PL.md"
       - "docs/AI_GATEWAY_PRODUCTION_PL.md"
+      - "docs/HERMES_LOCAL_VIDEO_STAGE23_PL.md"
       - "pyproject.toml"
       - ".github/workflows/ai-gateway-tests.yml"
 
@@ -55,5 +61,9 @@ jobs:
           bash -n tools/rollback_hermes_reasoning_none_stage9.sh
           bash -n tools/cutover_hermes_telegram_static_profile_stage22.sh
           bash -n tools/rollback_hermes_telegram_static_profile_stage22.sh
+          bash -n tools/install_hermes_local_video_stage23.sh
+          bash -n tools/rollback_hermes_local_video_stage23.sh
+          bash -n tools/local_video/generate-video-telegram
+          python -m py_compile tools/local_video/generate_video.py
       - name: Test
         run: pytest
