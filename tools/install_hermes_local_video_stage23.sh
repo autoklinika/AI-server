@@ -1,0 +1,228 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+HERMES_HOME="/srv/ai-data/hermes"
+HERMES_SKILL_DIR="${HERMES_HOME}/skills/wideo"
+OUTPUT_DIR="/srv/ai-data/hermes-media/video"
+BACKUP_DIR="${HERMES_HOME}/stage23-local-video-backup"
+LIBEXEC_DIR="/usr/local/libexec/ai-server"
+GENERATOR_DST="${LIBEXEC_DIR}/generate_video.py"
+CLI_DST="/usr/local/bin/generate-video"
+TELEGRAM_DST="/usr/local/bin/generate-video-telegram"
+COMFY_URL="http://127.0.0.1:8188"
+
+MODEL_NAME="wan2.2_ti2v_5B_fp16.safetensors"
+TEXT_NAME="umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+VAE_NAME="wan2.2_vae.safetensors"
+
+MODEL_URL="https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/${MODEL_NAME}"
+TEXT_URL="https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/${TEXT_NAME}"
+VAE_URL="https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/${VAE_NAME}"
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_DIR="${SCRIPT_DIR}/local_video"
+GENERATOR_SRC="${SOURCE_DIR}/generate_video.py"
+TELEGRAM_SRC="${SOURCE_DIR}/generate-video-telegram"
+SKILL_SRC="${SOURCE_DIR}/SKILL.md"
+
+say() { printf '%s\n' "$*"; }
+section() { printf '\n===== %s =====\n' "$1"; }
+fail() { say "FAIL: $*" >&2; exit 1; }
+
+[[ -r "$GENERATOR_SRC" ]] || fail "missing $GENERATOR_SRC"
+[[ -r "$TELEGRAM_SRC" ]] || fail "missing $TELEGRAM_SRC"
+[[ -r "$SKILL_SRC" ]] || fail "missing $SKILL_SRC"
+command -v curl >/dev/null || fail "curl is required"
+command -v python3 >/dev/null || fail "python3 is required"
+
+section "STAGE-23 LOCAL VIDEO"
+say "Architecture: Hermes /wideo -> local wrapper -> ComfyUI -> Wan2.2 TI2V-5B -> local MP4"
+say "Cloud video providers are not configured or used."
+say "Existing FLUX image generation remains untouched."
+
+section "SERVICE PRECHECK"
+COMFY_SCOPE=""
+if systemctl is-active --quiet comfyui.service 2>/dev/null; then
+  COMFY_SCOPE="system"
+elif systemctl --user is-active --quiet comfyui.service 2>/dev/null; then
+  COMFY_SCOPE="user"
+else
+  fail "comfyui.service is not active"
+fi
+
+if ! systemctl --user is-active --quiet hermes-gateway.service 2>/dev/null; then
+  fail "hermes-gateway.service is not active"
+fi
+
+if ! curl -fsS --max-time 5 "${COMFY_URL}/system_stats" >/dev/null; then
+  fail "ComfyUI API is not reachable at ${COMFY_URL}"
+fi
+say "PASS: ComfyUI API reachable"
+say "PASS: Hermes gateway active"
+
+section "COMFYUI CAPABILITY PRECHECK"
+python3 - "$COMFY_URL" <<'PY'
+import json, sys, urllib.request
+url = sys.argv[1].rstrip('/') + '/object_info'
+required = {
+    'UNETLoader', 'CLIPLoader', 'VAELoader', 'CLIPTextEncode',
+    'ModelSamplingSD3', 'Wan22ImageToVideoLatent', 'KSampler',
+    'VAEDecode', 'CreateVideo', 'SaveVideo', 'LoadImage',
+}
+with urllib.request.urlopen(url, timeout=30) as r:
+    info = json.load(r)
+missing = sorted(required - set(info))
+print('required nodes:', ', '.join(sorted(required)))
+if missing:
+    raise SystemExit('FAIL: installed ComfyUI is too old; missing nodes: ' + ', '.join(missing))
+print('PASS: installed ComfyUI exposes every Wan2.2/API node required by Stage 23')
+PY
+
+section "DISCOVER COMFYUI ROOT"
+if [[ "$COMFY_SCOPE" == "system" ]]; then
+  MAIN_PID="$(systemctl show comfyui.service -p MainPID --value)"
+  WORKDIR="$(systemctl show comfyui.service -p WorkingDirectory --value 2>/dev/null || true)"
+else
+  MAIN_PID="$(systemctl --user show comfyui.service -p MainPID --value)"
+  WORKDIR="$(systemctl --user show comfyui.service -p WorkingDirectory --value 2>/dev/null || true)"
+fi
+
+COMFY_ROOT=""
+if [[ "$MAIN_PID" =~ ^[0-9]+$ ]] && [[ "$MAIN_PID" != "0" ]] && [[ -e "/proc/${MAIN_PID}/cwd" ]]; then
+  COMFY_ROOT="$(readlink -f "/proc/${MAIN_PID}/cwd" 2>/dev/null || true)"
+fi
+if [[ -z "$COMFY_ROOT" || ! -d "$COMFY_ROOT/models" ]]; then
+  if [[ -n "$WORKDIR" && -d "$WORKDIR/models" ]]; then
+    COMFY_ROOT="$WORKDIR"
+  fi
+fi
+[[ -n "$COMFY_ROOT" && -d "$COMFY_ROOT/models" ]] || fail "could not discover ComfyUI root/models directory"
+say "ComfyUI root: $COMFY_ROOT"
+
+MODEL_DIR="${COMFY_ROOT}/models/diffusion_models"
+TEXT_DIR="${COMFY_ROOT}/models/text_encoders"
+VAE_DIR="${COMFY_ROOT}/models/vae"
+mkdir -p "$MODEL_DIR" "$TEXT_DIR" "$VAE_DIR"
+
+section "DISK PRECHECK"
+MISSING_COUNT=0
+[[ -s "${MODEL_DIR}/${MODEL_NAME}" ]] || MISSING_COUNT=$((MISSING_COUNT + 1))
+[[ -s "${TEXT_DIR}/${TEXT_NAME}" ]] || MISSING_COUNT=$((MISSING_COUNT + 1))
+[[ -s "${VAE_DIR}/${VAE_NAME}" ]] || MISSING_COUNT=$((MISSING_COUNT + 1))
+if (( MISSING_COUNT > 0 )); then
+  AVAIL_BYTES="$(df -B1 --output=avail "$COMFY_ROOT" | tail -n1 | tr -d ' ')"
+  MIN_BYTES=$((24 * 1024 * 1024 * 1024))
+  if [[ "$AVAIL_BYTES" =~ ^[0-9]+$ ]] && (( AVAIL_BYTES < MIN_BYTES )); then
+    fail "less than 24 GiB free on ComfyUI filesystem; refusing model download"
+  fi
+fi
+say "PASS: storage precheck"
+
+section "BACKUP PRE-STAGE-23 FILES"
+mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
+
+backup_root_file() {
+  local src="$1" name="$2"
+  if [[ -e "${BACKUP_DIR}/${name}" || -e "${BACKUP_DIR}/${name}.absent" ]]; then
+    say "INFO: preserved existing Stage-23 backup marker for $src"
+    return
+  fi
+  if sudo test -e "$src"; then
+    sudo cp -a "$src" "${BACKUP_DIR}/${name}"
+    sudo chown "$(id -u):$(id -g)" "${BACKUP_DIR}/${name}"
+    say "PASS: backed up $src"
+  else
+    : > "${BACKUP_DIR}/${name}.absent"
+    say "INFO: recorded absent pre-stage file $src"
+  fi
+}
+
+backup_root_file "$GENERATOR_DST" "generate_video.py"
+backup_root_file "$CLI_DST" "generate-video"
+backup_root_file "$TELEGRAM_DST" "generate-video-telegram"
+
+if [[ ! -e "${BACKUP_DIR}/skill-wideo" && ! -e "${BACKUP_DIR}/skill-wideo.absent" ]]; then
+  if [[ -e "$HERMES_SKILL_DIR" ]]; then
+    cp -a "$HERMES_SKILL_DIR" "${BACKUP_DIR}/skill-wideo"
+    say "PASS: backed up existing Hermes wideo skill"
+  else
+    : > "${BACKUP_DIR}/skill-wideo.absent"
+    say "INFO: recorded that wideo skill did not exist before Stage 23"
+  fi
+fi
+
+section "DOWNLOAD LOCAL WAN2.2 MODELS"
+download_model() {
+  local url="$1" dst="$2"
+  if [[ -s "$dst" ]]; then
+    say "PASS: already present: $dst"
+    return
+  fi
+  local part="${dst}.part"
+  say "Downloading: $(basename "$dst")"
+  curl --fail --location --retry 4 --retry-delay 5 --continue-at - --output "$part" "$url"
+  [[ -s "$part" ]] || fail "download produced empty file: $part"
+  mv -f "$part" "$dst"
+  sync "$dst" || true
+  say "PASS: downloaded $dst"
+}
+
+download_model "$MODEL_URL" "${MODEL_DIR}/${MODEL_NAME}"
+download_model "$TEXT_URL" "${TEXT_DIR}/${TEXT_NAME}"
+download_model "$VAE_URL" "${VAE_DIR}/${VAE_NAME}"
+
+section "INSTALL LOCAL GENERATOR"
+sudo install -d -m 0755 "$LIBEXEC_DIR"
+sudo install -m 0755 "$GENERATOR_SRC" "$GENERATOR_DST"
+sudo install -m 0755 "$TELEGRAM_SRC" "$TELEGRAM_DST"
+
+TMP_CLI="$(mktemp)"
+cat > "$TMP_CLI" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+exec /usr/bin/python3 /usr/local/libexec/ai-server/generate_video.py "$@"
+EOF
+sudo install -m 0755 "$TMP_CLI" "$CLI_DST"
+rm -f "$TMP_CLI"
+say "PASS: installed $CLI_DST"
+say "PASS: installed $TELEGRAM_DST"
+
+section "INSTALL HERMES /WIDEO SKILL"
+mkdir -p "$HERMES_SKILL_DIR"
+install -m 0644 "$SKILL_SRC" "${HERMES_SKILL_DIR}/SKILL.md"
+mkdir -p "$OUTPUT_DIR"
+chmod 0755 "$(dirname "$OUTPUT_DIR")" "$OUTPUT_DIR" || true
+say "PASS: installed ${HERMES_SKILL_DIR}/SKILL.md"
+
+section "GENERATOR PREFLIGHT"
+PREFLIGHT_OUT="$(mktemp)"
+set +e
+"$CLI_DST" --preflight >"$PREFLIGHT_OUT" 2>&1
+PREFLIGHT_RC=$?
+set -e
+cat "$PREFLIGHT_OUT"
+rm -f "$PREFLIGHT_OUT"
+if (( PREFLIGHT_RC != 0 )); then
+  fail "local video preflight failed after installation"
+fi
+
+section "RESTART HERMES"
+systemctl --user restart hermes-gateway.service
+systemctl --user is-active --quiet hermes-gateway.service || fail "Hermes gateway did not restart cleanly"
+say "PASS: Hermes gateway active"
+
+section "FINAL CHECKS"
+[[ -x "$CLI_DST" ]] || fail "$CLI_DST is not executable"
+[[ -x "$TELEGRAM_DST" ]] || fail "$TELEGRAM_DST is not executable"
+[[ -r "${HERMES_SKILL_DIR}/SKILL.md" ]] || fail "wideo skill missing"
+curl -fsS --max-time 5 "${COMFY_URL}/system_stats" >/dev/null || fail "ComfyUI stopped responding"
+say "PASS: local video tool installed"
+say "PASS: no cloud video API key/provider was configured"
+
+section "DONE"
+say "Stage 23 local video is installed but no render was started automatically."
+say "First hardware smoke test:"
+say "  /usr/local/bin/generate-video --preset smoke --prompt 'A small red robot waves at the camera, static workshop background, gentle camera push-in'"
+say "Telegram skill command: /wideo"
+say "Rollback: tools/rollback_hermes_local_video_stage23.sh"
