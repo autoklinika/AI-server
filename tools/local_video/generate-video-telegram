@@ -20,15 +20,6 @@ while (($#)); do
       HQ=1
       shift
       ;;
-    hq|HQ)
-      if ((${#PROMPT_PARTS[@]} == 0)); then
-        HQ=1
-        shift
-      else
-        PROMPT_PARTS+=("$1")
-        shift
-      fi
-      ;;
     --)
       shift
       while (($#)); do PROMPT_PARTS+=("$1"); shift; done
@@ -38,7 +29,11 @@ while (($#)); do
       exit 0
       ;;
     *)
-      PROMPT_PARTS+=("$1")
+      if ((${#PROMPT_PARTS[@]} == 0)) && [[ "${1,,}" == "hq" ]]; then
+        HQ=1
+      else
+        PROMPT_PARTS+=("$1")
+      fi
       shift
       ;;
   esac
