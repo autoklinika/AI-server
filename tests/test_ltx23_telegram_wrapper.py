@@ -62,6 +62,12 @@ def test_hq_first_token_is_mode_switch(tmp_path: Path):
     assert args == ["--upscale-2x", "--prompt", "red robot waves"]
 
 
+def test_hq_first_token_is_case_insensitive(tmp_path: Path):
+    stdout, args = _run(tmp_path, "Hq", "red", "robot", "waves")
+    assert stdout == "/srv/ai-data/hermes-media/video/test-hq.mp4"
+    assert args == ["--upscale-2x", "--prompt", "red robot waves"]
+
+
 def test_hq_inside_prompt_is_not_mode_switch(tmp_path: Path):
     stdout, args = _run(tmp_path, "render", "hq", "logo")
     assert stdout == "/srv/ai-data/hermes-media/video/test-standard.mp4"
