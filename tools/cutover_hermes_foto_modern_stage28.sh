@@ -144,7 +144,14 @@ say "PASS: exact current-turn image path is bridged only for /foto"
 
 section "INSTALL DETERMINISTIC /FOTO DISPATCHER"
 sudo install -m 0755 "$DISPATCH_SRC" "$DISPATCH_DST"
-"$HERMES_PYTHON" -m py_compile "$DISPATCH_DST"
+# Validate the installed root-owned script without trying to create __pycache__ in /usr/local/bin.
+"$HERMES_PYTHON" - "$DISPATCH_DST" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+compile(path.read_text(encoding="utf-8"), str(path), "exec")
+print("PASS: installed dispatcher Python syntax valid (no bytecode write)")
+PY
 "$DISPATCH_DST" --preflight
 say "PASS: local image generators + Hermes delivery CLI available"
 
