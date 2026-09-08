@@ -25,6 +25,7 @@ on:
       - "tests/test_hermes_video_dispatch_stage27.py"
       - "tests/test_qwen_prompt_compiler_stage27.py"
       - "tests/test_hermes_foto_dispatch_stage28.py"
+      - "tests/test_hermes_foto_prompt_compiler_stage28.py"
       - "tests/test_hermes_foto_media_patch_stage28.py"
       - "tools/local_video/**"
       - "tools/local_image/**"
@@ -108,6 +109,7 @@ jobs:
           python -m py_compile tools/local_video/hermes_video_dispatch_stage27.py
           python -m py_compile tools/local_video/qwen_prompt_compiler.py
           python -m py_compile tools/local_image/hermes_foto_dispatch.py
+          python -m py_compile tools/local_image/hermes_foto_prompt_compiler.py
           python -m py_compile tools/patch_hermes_quick_command_args_stage26.py
           python -m py_compile tools/patch_hermes_foto_quick_media_stage28.py
       - name: Test
