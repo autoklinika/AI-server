@@ -149,7 +149,7 @@ def test_worker_renders_expected_mode_and_sends_native_media_to_origin_chat(tmp_
     assert result["target"] == "telegram:5844876074"
 
 
-def test_patcher_inserts_shell_quoted_argument_forwarding_once():
+def test_patcher_supports_legacy_monolithic_gateway_layout():
     original = '''async def handle(event, qcmd):
     exec_cmd = qcmd.get("command", "")
     if exec_cmd:
@@ -164,6 +164,26 @@ def test_patcher_inserts_shell_quoted_argument_forwarding_once():
     assert patcher.MARKER in patched
     assert "event.get_command_args().strip()" in patched
     assert "_stage26_shlex.quote(_stage26_user_args)" in patched
+    assert patcher.patch_text(patched) == patched
+    assert patcher.check_text(patched) == "patched"
+
+
+def test_patcher_supports_current_modular_run_inbound_layout():
+    original = '''async def dispatch(self, event, qcmd, command):
+    qtype = qcmd.get("type")
+    if qtype == "exec":
+        exec_cmd = qcmd.get("command", "")
+        if not exec_cmd:
+            return True, f"Quick command '/{command}' has no command defined.", command
+        return True, await self._hm_run_exec_quick_command(command, exec_cmd), command
+    return False, None, command
+'''
+    assert patcher.check_text(original) == "patchable"
+    patched = patcher.patch_text(original)
+    assert patcher.MARKER in patched
+    assert "event.get_command_args().strip()" in patched
+    assert "_stage26_shlex.quote(_stage26_user_args)" in patched
+    assert patched.index(patcher.MARKER) < patched.index(patcher.CURRENT_RETURN)
     assert patcher.patch_text(patched) == patched
     assert patcher.check_text(patched) == "patched"
 
