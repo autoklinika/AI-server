@@ -71,7 +71,7 @@ def _write_json(path: Path, data: dict) -> None:
 
 
 def _possible_path(value: str) -> Path | None:
-    value = value.strip().strip('"\'')
+    value = value.strip().strip("\"'")
     if not value:
         return None
     path = Path(value)
@@ -128,7 +128,7 @@ def extract_image_path(output: str) -> Path:
             if found:
                 return found[-1]
 
-    token_re = re.compile(r"(/[^^\s\"']+\.(?:png|jpe?g|webp|bmp))", re.IGNORECASE)
+    token_re = re.compile(r"(/[^\s\"']+\.(?:png|jpe?g|webp|bmp))", re.IGNORECASE)
     for line in reversed(lines):
         for match in reversed(token_re.findall(line)):
             path = _possible_path(match)
