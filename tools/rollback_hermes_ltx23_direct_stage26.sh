@@ -4,7 +4,6 @@ set -euo pipefail
 HERMES_HOME="/srv/ai-data/hermes"
 HERMES_SOURCE="${HERMES_HOME}/hermes-agent"
 HERMES_CONFIG="${HERMES_HOME}/config.yaml"
-HERMES_RUN="${HERMES_SOURCE}/gateway/run.py"
 HERMES_PYTHON="${HERMES_SOURCE}/venv/bin/python"
 LIBEXEC_DIR="/usr/local/libexec/ai-server"
 DISPATCH_DST="${LIBEXEC_DIR}/hermes_video_dispatch.py"
@@ -19,25 +18,45 @@ sha(){ sha256sum "$1" | awk '{print $1}'; }
 section "ROLLBACK STAGE 26"
 [[ -d "$BACKUP_DIR" ]] || fail "backup dir missing: $BACKUP_DIR"
 [[ -r "$BACKUP_DIR/config.yaml" ]] || fail "config backup missing"
-[[ -r "$BACKUP_DIR/gateway-run.py" ]] || fail "gateway/run.py backup missing"
-[[ -r "$BACKUP_DIR/post-config.sha256" ]] || fail "post-config hash missing"
-[[ -r "$BACKUP_DIR/post-gateway-run.sha256" ]] || fail "post-gateway hash missing"
 [[ -r "$HERMES_CONFIG" ]] || fail "current Hermes config missing"
-[[ -r "$HERMES_RUN" ]] || fail "current Hermes gateway/run.py missing"
+[[ -x "$HERMES_PYTHON" ]] || fail "Hermes Python missing"
+
+# New Stage26 records the exact patched module. Keep compatibility with the
+# first Stage26 implementation which always patched gateway/run.py.
+if [[ -r "$BACKUP_DIR/patch-target.rel" ]]; then
+  PATCH_REL="$(cat "$BACKUP_DIR/patch-target.rel")"
+  case "$PATCH_REL" in
+    gateway/run.py|gateway/run_inbound.py) ;;
+    *) fail "unsafe/unknown recorded Hermes patch target: $PATCH_REL" ;;
+  esac
+  HERMES_PATCH_TARGET="$HERMES_SOURCE/$PATCH_REL"
+  PATCH_BACKUP="$BACKUP_DIR/gateway-dispatch.py"
+  POST_PATCH_HASH="$BACKUP_DIR/post-gateway-dispatch.sha256"
+else
+  PATCH_REL="gateway/run.py"
+  HERMES_PATCH_TARGET="$HERMES_SOURCE/$PATCH_REL"
+  PATCH_BACKUP="$BACKUP_DIR/gateway-run.py"
+  POST_PATCH_HASH="$BACKUP_DIR/post-gateway-run.sha256"
+fi
+
+[[ -r "$PATCH_BACKUP" ]] || fail "gateway dispatch backup missing: $PATCH_BACKUP"
+[[ -r "$POST_PATCH_HASH" ]] || fail "post-stage gateway hash missing: $POST_PATCH_HASH"
+[[ -r "$BACKUP_DIR/post-config.sha256" ]] || fail "post-config hash missing"
+[[ -r "$HERMES_PATCH_TARGET" ]] || fail "current Hermes gateway module missing: $HERMES_PATCH_TARGET"
 
 section "REFUSE TO CLOBBER LATER MANUAL CHANGES"
 expected_config="$(cat "$BACKUP_DIR/post-config.sha256")"
-expected_run="$(cat "$BACKUP_DIR/post-gateway-run.sha256")"
+expected_patch="$(cat "$POST_PATCH_HASH")"
 current_config="$(sha "$HERMES_CONFIG")"
-current_run="$(sha "$HERMES_RUN")"
+current_patch="$(sha "$HERMES_PATCH_TARGET")"
 [[ "$current_config" == "$expected_config" ]] || fail "config.yaml changed after Stage26; refusing automatic rollback"
-[[ "$current_run" == "$expected_run" ]] || fail "gateway/run.py changed after Stage26; refusing automatic rollback"
+[[ "$current_patch" == "$expected_patch" ]] || fail "$PATCH_REL changed after Stage26; refusing automatic rollback"
 say "PASS: managed files still match recorded Stage26 state"
 
 section "RESTORE PRE-STAGE-26 HERMES STATE"
 cp -a "$BACKUP_DIR/config.yaml" "$HERMES_CONFIG"
-cp -a "$BACKUP_DIR/gateway-run.py" "$HERMES_RUN"
-"$HERMES_PYTHON" -m py_compile "$HERMES_RUN" || fail "restored gateway/run.py does not compile"
+cp -a "$PATCH_BACKUP" "$HERMES_PATCH_TARGET"
+"$HERMES_PYTHON" -m py_compile "$HERMES_PATCH_TARGET" || fail "restored $PATCH_REL does not compile"
 
 restore_root_file(){
   local dst="$1" name="$2"
@@ -59,5 +78,5 @@ systemctl --user restart hermes-gateway.service
 [[ "$(systemctl --user is-active hermes-gateway.service 2>/dev/null || true)" == "active" ]] || fail "Hermes gateway did not restart cleanly"
 
 section "DONE"
-say "PASS: Stage26 rolled back to the exact pre-stage Hermes config and gateway source."
+say "PASS: Stage26 rolled back to the exact pre-stage Hermes config and $PATCH_REL."
 say "ComfyUI/LTX models, Ollama, AI Gateway and ventilation were not changed."
