@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
+import io
+import json
 from pathlib import Path
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "tools/local_image/hermes_foto_prompt_compiler.py"
@@ -26,18 +28,38 @@ def test_compile_prompt_generate_success(monkeypatch):
     assert out["prompt"].startswith("A small red robot")
 
 
-def test_compile_prompt_edit_with_image_forces_edit(monkeypatch):
-    monkeypatch.setattr(
-        mod,
-        "_request",
-        lambda original, has_input, timeout: (
-            "generate",
-            "Change only the enclosure color to red; keep all other details unchanged.",
-        ),
-    )
-    out = mod.compile_prompt("Zmień kolor obudowy na czerwony.", True)
-    assert out["qwen_used"] is True
-    assert out["intent"] == "generate"  # compile_prompt trusts _request; forcing is tested inside _request contract
+def test_request_with_input_image_forces_edit(monkeypatch):
+    body = json.dumps(
+        {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "intent": "generate",
+                                "prompt": "Change only the enclosure color to red; keep all other details unchanged.",
+                            }
+                        )
+                    }
+                }
+            ]
+        }
+    ).encode("utf-8")
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return body
+
+    monkeypatch.setattr(mod.urllib.request, "urlopen", lambda req, timeout: FakeResponse())
+    intent, prompt = mod._request("Zmień kolor obudowy na czerwony.", True, 5)
+    assert intent == "edit"
+    assert prompt.startswith("Change only the enclosure")
 
 
 def test_compile_prompt_failure_is_explicit(monkeypatch):
