@@ -1,0 +1,3 @@
+Qwen success -> compiled English prompt -> LTX.
+Qwen failure/timeout/empty -> Telegram warning -> original prompt -> LTX.
+Warning delivery failure -> abort before LTX.
