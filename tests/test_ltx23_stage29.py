@@ -90,6 +90,7 @@ def test_image_to_video_injects_first_frame_before_sampling():
     assert graph["32"]["class_type"] == "LTXVImgToVideoInplace"
     assert graph["32"]["inputs"]["latent"] == ["7", 0]
     assert graph["32"]["inputs"]["strength"] == 1.0
+    assert graph["32"]["inputs"]["bypass"] is False
     assert graph["10"]["inputs"]["video_latent"] == ["32", 0]
     _assert_tiled_decode(graph["17"], ["16", 0])
 
@@ -108,6 +109,8 @@ def test_hq_i2v_reinjects_first_frame_after_latent_upscale_and_tiles_decode():
     )
     assert graph["33"]["class_type"] == "LTXVImgToVideoInplace"
     assert graph["33"]["inputs"]["latent"] == ["18", 0]
+    assert graph["33"]["inputs"]["strength"] == 1.0
+    assert graph["33"]["inputs"]["bypass"] is False
     assert graph["19"]["inputs"]["video_latent"] == ["33", 0]
     _assert_tiled_decode(graph["26"], ["25", 0])
 
