@@ -168,8 +168,8 @@ def test_patcher_supports_legacy_monolithic_gateway_layout():
     assert patcher.check_text(patched) == "patched"
 
 
-def test_patcher_supports_current_modular_run_inbound_layout():
-    original = '''async def dispatch(self, event, qcmd, command):
+def _modern_fixture() -> str:
+    return '''async def dispatch(self, event, qcmd, command, source):
     qtype = qcmd.get("type")
     if qtype == "exec":
         exec_cmd = qcmd.get("command", "")
@@ -178,14 +178,44 @@ def test_patcher_supports_current_modular_run_inbound_layout():
         return True, await self._hm_run_exec_quick_command(command, exec_cmd), command
     return False, None, command
 '''
+
+
+def test_patcher_supports_current_modular_run_inbound_layout_and_exact_route():
+    original = _modern_fixture()
     assert patcher.check_text(original) == "patchable"
     patched = patcher.patch_text(original)
     assert patcher.MARKER in patched
+    assert patcher.ROUTE_MARKER in patched
     assert "event.get_command_args().strip()" in patched
     assert "_stage26_shlex.quote(_stage26_user_args)" in patched
-    assert patched.index(patcher.MARKER) < patched.index(patcher.CURRENT_RETURN)
+    assert "source.platform.value" in patched
+    assert "HERMES_SESSION_PLATFORM=" in patched
+    assert "HERMES_SESSION_CHAT_ID=" in patched
+    assert "HERMES_SESSION_THREAD_ID=" in patched
+    assert "_stage26_shlex.quote(_stage26_chat_id)" in patched
+    assert patched.index(patcher.MARKER) < patched.index(patcher.ROUTE_MARKER) < patched.index(patcher.CURRENT_RETURN)
     assert patcher.patch_text(patched) == patched
     assert patcher.check_text(patched) == "patched"
+
+
+def test_patcher_upgrades_already_installed_args_only_modern_stage26():
+    original = _modern_fixture()
+    fully_patched = patcher.patch_text(original)
+    # Simulate the first production Stage-26 revision: argument forwarding existed,
+    # but the per-message route prefix had not yet been added.
+    route_start = fully_patched.index(f"        # {patcher.ROUTE_MARKER}")
+    return_start = fully_patched.index(f"        {patcher.CURRENT_RETURN}")
+    args_only = fully_patched[:route_start] + fully_patched[return_start:]
+
+    assert patcher.MARKER in args_only
+    assert patcher.ROUTE_MARKER not in args_only
+    assert patcher.check_text(args_only) == "patchable-upgrade"
+
+    upgraded = patcher.patch_text(args_only)
+    assert upgraded.count(patcher.MARKER) == 1
+    assert upgraded.count(patcher.ROUTE_MARKER) == 1
+    assert "HERMES_SESSION_CHAT_ID=" in upgraded
+    assert patcher.check_text(upgraded) == "patched"
 
 
 def test_patcher_refuses_ambiguous_source():
