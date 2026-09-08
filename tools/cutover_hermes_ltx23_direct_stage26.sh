@@ -4,9 +4,13 @@ set -euo pipefail
 HERMES_HOME="/srv/ai-data/hermes"
 HERMES_SOURCE="${HERMES_HOME}/hermes-agent"
 HERMES_CONFIG="${HERMES_HOME}/config.yaml"
-HERMES_RUN="${HERMES_SOURCE}/gateway/run.py"
 HERMES_PYTHON="${HERMES_SOURCE}/venv/bin/python"
-HERMES_EXPECTED_SHA="254158f4530cada634c4ef8f4cff93257c5b4f77"
+
+# Both layouts were verified for Stage 26:
+# - 254158f...: older monolithic gateway/run.py
+# - 79445a4...: modular gateway/run_inbound.py (current production checkout)
+HERMES_SUPPORTED_SHA_OLD="254158f4530cada634c4ef8f4cff93257c5b4f77"
+HERMES_SUPPORTED_SHA_CURRENT="79445a496c86a19332ad786494b8384d2167e2d0"
 
 LIBEXEC_DIR="/usr/local/libexec/ai-server"
 DISPATCH_DST="${LIBEXEC_DIR}/hermes_video_dispatch.py"
@@ -25,6 +29,22 @@ section(){ printf '\n===== %s =====\n' "$1"; }
 fail(){ say "FAIL: $*" >&2; exit 1; }
 sha(){ sha256sum "$1" | awk '{print $1}'; }
 
+select_gateway_patch_target(){
+  local candidate
+  for candidate in \
+    "$HERMES_SOURCE/gateway/run_inbound.py" \
+    "$HERMES_SOURCE/gateway/run.py"
+  do
+    [[ -r "$candidate" ]] || continue
+    if grep -q '_hm_run_exec_quick_command' "$candidate" \
+      && grep -q 'qcmd.get("command", "")' "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
 section "STAGE 26 - DETERMINISTIC /WIDEO"
 say "Route: Telegram /wideo -> Hermes exec quick_command -> detached local LTX worker -> hermes send MEDIA:<mp4>."
 say "The LLM is removed from the critical execution/delivery path."
@@ -34,7 +54,6 @@ say "No ComfyUI/Ollama/AI-Gateway/ventilation configuration is changed."
 section "PRECHECK"
 [[ -d "$HERMES_SOURCE/.git" ]] || fail "Hermes source missing: $HERMES_SOURCE"
 [[ -r "$HERMES_CONFIG" ]] || fail "Hermes config missing: $HERMES_CONFIG"
-[[ -r "$HERMES_RUN" ]] || fail "Hermes gateway source missing: $HERMES_RUN"
 [[ -x "$HERMES_PYTHON" ]] || fail "Hermes Python missing: $HERMES_PYTHON"
 [[ -x "$LTX_BIN" ]] || fail "LTX generator missing/not executable: $LTX_BIN"
 [[ -r "$DISPATCH_SRC" ]] || fail "missing source: $DISPATCH_SRC"
@@ -45,15 +64,22 @@ section "PRECHECK"
 
 installed_sha="$(git -C "$HERMES_SOURCE" rev-parse HEAD)"
 say "Hermes installed SHA: $installed_sha"
-[[ "$installed_sha" == "$HERMES_EXPECTED_SHA" ]] || fail "unsupported Hermes checkout; expected $HERMES_EXPECTED_SHA"
+case "$installed_sha" in
+  "$HERMES_SUPPORTED_SHA_OLD"|"$HERMES_SUPPORTED_SHA_CURRENT") ;;
+  *) fail "unsupported Hermes checkout: $installed_sha; supported: $HERMES_SUPPORTED_SHA_OLD or $HERMES_SUPPORTED_SHA_CURRENT" ;;
+esac
 
-"$HERMES_PYTHON" "$PATCHER" "$HERMES_RUN" --check || fail "Hermes quick-command dispatch is not patchable/safely recognized"
+HERMES_PATCH_TARGET="$(select_gateway_patch_target)" || fail "could not locate supported Hermes gateway quick-command dispatch module"
+HERMES_PATCH_REL="${HERMES_PATCH_TARGET#${HERMES_SOURCE}/}"
+say "Hermes gateway dispatch: $HERMES_PATCH_REL"
+
+"$HERMES_PYTHON" "$PATCHER" "$HERMES_PATCH_TARGET" --check || fail "Hermes quick-command dispatch is not patchable/safely recognized"
 
 section "LTX PREFLIGHTS"
 "$LTX_BIN" --preflight || fail "LTX standard preflight failed"
 "$LTX_BIN" --upscale-2x --preflight || fail "LTX HQ preflight failed"
 
-section "VERIFY PINNED HERMES DELIVERY CAPABILITIES"
+section "VERIFY HERMES DELIVERY CAPABILITIES"
 "$HERMES_PYTHON" - "$HERMES_SOURCE" <<'PY'
 from pathlib import Path
 import sys
@@ -61,16 +87,31 @@ root=Path(sys.argv[1])
 local=(root/'tools/environments/local.py').read_text(encoding='utf-8')
 send=(root/'hermes_cli/send_cmd.py').read_text(encoding='utf-8')
 if '_inject_session_context_env' not in local or 'HERMES_SESSION_CHAT_ID' not in local:
-    raise SystemExit('FAIL: pinned Hermes lacks the session-context subprocess bridge')
+    raise SystemExit('FAIL: Hermes lacks the session-context subprocess bridge')
+if 'build_subprocess_env' not in local:
+    raise SystemExit('FAIL: Hermes lacks sanitized quick-command subprocess env factory')
 if 'MEDIA:' not in send or 'send_message_tool' not in send:
-    raise SystemExit('FAIL: pinned Hermes lacks native hermes send MEDIA delivery')
+    raise SystemExit('FAIL: Hermes lacks native hermes send MEDIA delivery')
+if "platform:chat_id:thread_id" not in send:
+    raise SystemExit('FAIL: hermes send target syntax is not the verified platform:chat[:thread] form')
 print('PASS: session routing context is bridged into quick-command subprocesses')
-print('PASS: hermes send supports native MEDIA:<path> delivery')
+print('PASS: hermes send supports native MEDIA:<path> delivery to exact chat/thread')
 PY
 
 section "BACKUP PRE-STAGE-26 STATE"
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
+
+# Never mix backups from different Hermes source layouts/checkouts.
+if [[ -e "$BACKUP_DIR/patch-target.rel" ]]; then
+  recorded_rel="$(cat "$BACKUP_DIR/patch-target.rel")"
+  [[ "$recorded_rel" == "$HERMES_PATCH_REL" ]] || fail "existing Stage26 backup targets $recorded_rel, current Hermes requires $HERMES_PATCH_REL; rollback/clear old Stage26 state first"
+elif [[ -e "$BACKUP_DIR/gateway-run.py" || -e "$BACKUP_DIR/gateway-dispatch.py" ]]; then
+  fail "legacy/incomplete Stage26 backup exists without patch-target.rel; inspect/rollback before reinstalling"
+else
+  printf '%s\n' "$HERMES_PATCH_REL" > "$BACKUP_DIR/patch-target.rel"
+  chmod 600 "$BACKUP_DIR/patch-target.rel"
+fi
 
 backup_once(){
   local src="$1" name="$2"
@@ -88,7 +129,7 @@ backup_once(){
 }
 
 backup_once "$HERMES_CONFIG" "config.yaml"
-backup_once "$HERMES_RUN" "gateway-run.py"
+backup_once "$HERMES_PATCH_TARGET" "gateway-dispatch.py"
 if sudo test -e "$DISPATCH_DST"; then
   sudo cp -a "$DISPATCH_DST" "$BACKUP_DIR/hermes_video_dispatch.py"
 elif [[ ! -e "$BACKUP_DIR/hermes_video_dispatch.py.absent" && ! -e "$BACKUP_DIR/hermes_video_dispatch.py" ]]; then
@@ -100,10 +141,10 @@ elif [[ ! -e "$BACKUP_DIR/hermes-video-dispatch.absent" && ! -e "$BACKUP_DIR/her
   : > "$BACKUP_DIR/hermes-video-dispatch.absent"
 fi
 
-section "PATCH PINNED HERMES EXEC QUICK-COMMAND ARG FORWARDING"
-"$HERMES_PYTHON" "$PATCHER" "$HERMES_RUN" || fail "failed to patch Hermes gateway/run.py"
-"$HERMES_PYTHON" -m py_compile "$HERMES_RUN" || fail "patched Hermes gateway/run.py does not compile"
-grep -q 'STAGE26_WIDEO_QUICK_ARGS' "$HERMES_RUN" || fail "Stage26 quick-command marker missing"
+section "PATCH HERMES EXEC QUICK-COMMAND ARG FORWARDING"
+"$HERMES_PYTHON" "$PATCHER" "$HERMES_PATCH_TARGET" || fail "failed to patch $HERMES_PATCH_REL"
+"$HERMES_PYTHON" -m py_compile "$HERMES_PATCH_TARGET" || fail "patched $HERMES_PATCH_REL does not compile"
+grep -q 'STAGE26_WIDEO_QUICK_ARGS' "$HERMES_PATCH_TARGET" || fail "Stage26 quick-command marker missing"
 say "PASS: /wideo arguments will be passed as one shell-quoted argv item"
 
 section "INSTALL DIRECT VIDEO DISPATCHER"
@@ -144,7 +185,7 @@ PY
 
 section "RECORD MANAGED POST-STATE"
 printf '%s\n' "$(sha "$HERMES_CONFIG")" > "$BACKUP_DIR/post-config.sha256"
-printf '%s\n' "$(sha "$HERMES_RUN")" > "$BACKUP_DIR/post-gateway-run.sha256"
+printf '%s\n' "$(sha "$HERMES_PATCH_TARGET")" > "$BACKUP_DIR/post-gateway-dispatch.sha256"
 printf '%s\n' "$(sha "$DISPATCH_DST")" > "$BACKUP_DIR/post-dispatch.sha256"
 printf '%s\n' "$(sha "$WRAPPER_DST")" > "$BACKUP_DIR/post-wrapper.sha256"
 chmod 600 "$BACKUP_DIR"/*.sha256
@@ -166,12 +207,15 @@ if actual != expected:
 print('PASS: /wideo is a zero-LLM exec quick command')
 PY
 
-grep -q 'STAGE26_WIDEO_QUICK_ARGS' "$HERMES_RUN" || fail "patched Hermes marker disappeared"
+grep -q 'STAGE26_WIDEO_QUICK_ARGS' "$HERMES_PATCH_TARGET" || fail "patched Hermes marker disappeared"
+[[ "$(sha "$HERMES_PATCH_TARGET")" == "$(cat "$BACKUP_DIR/post-gateway-dispatch.sha256")" ]] || fail "$HERMES_PATCH_REL changed unexpectedly after restart"
 [[ "$(sha "$DISPATCH_DST")" == "$(cat "$BACKUP_DIR/post-dispatch.sha256")" ]] || fail "installed dispatcher changed unexpectedly"
 [[ "$(sha "$WRAPPER_DST")" == "$(cat "$BACKUP_DIR/post-wrapper.sha256")" ]] || fail "installed wrapper changed unexpectedly"
 
 section "DONE"
 say "PASS: Stage26 deterministic /wideo cutover installed"
+say "Hermes checkout: $installed_sha"
+say "Patched module:  $HERMES_PATCH_REL"
 say "Standard: /wideo <opis> -> immediate ack -> LTX 640x384 -> MEDIA MP4 to invoking chat"
 say "HQ:       /wideo hq <opis> -> immediate ack -> LTX 1280x768 -> MEDIA MP4 to invoking chat"
 say "Qwen is NOT invoked for /wideo."
