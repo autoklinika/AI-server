@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import re
@@ -15,6 +16,7 @@ from pathlib import Path
 JOB_ROOT_DEFAULT = Path("/srv/ai-data/hermes-foto-jobs")
 TEXT_GENERATOR_DEFAULT = "/usr/local/bin/generate-image"
 EDIT_GENERATOR_DEFAULT = "/usr/local/bin/generate-image-edit"
+PROMPT_COMPILER_PROD = Path("/usr/local/libexec/ai-server/hermes_foto_prompt_compiler.py")
 WORKER_TIMEOUT = 1800
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
 
@@ -62,6 +64,34 @@ def _input_image(env: dict[str, str] | None = None) -> str | None:
     if not path.is_file():
         raise FotoDispatchError(f"Zdjęcie wejściowe nie istnieje: {path}")
     return str(path)
+
+
+def _compiler_path() -> Path:
+    override = str(os.environ.get("HERMES_FOTO_PROMPT_COMPILER") or "").strip()
+    if override:
+        path = Path(override)
+        if path.is_file():
+            return path
+        raise FotoDispatchError(f"Brak prompt-compilera /foto: {path}")
+    local = Path(__file__).resolve().with_name("hermes_foto_prompt_compiler.py")
+    if local.is_file():
+        return local
+    if PROMPT_COMPILER_PROD.is_file():
+        return PROMPT_COMPILER_PROD
+    raise FotoDispatchError(f"Brak prompt-compilera /foto: {PROMPT_COMPILER_PROD}")
+
+
+def compile_image_prompt(original_prompt: str, has_input_image: bool) -> dict:
+    path = _compiler_path()
+    spec = importlib.util.spec_from_file_location("hermes_foto_prompt_compiler_runtime", path)
+    if spec is None or spec.loader is None:
+        raise FotoDispatchError(f"Nie można załadować prompt-compilera /foto: {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    result = module.compile_prompt(original_prompt, has_input_image)
+    if not isinstance(result, dict):
+        raise FotoDispatchError("Prompt-compiler /foto zwrócił niepoprawny wynik.")
+    return result
 
 
 def _write_json(path: Path, data: dict) -> None:
@@ -195,23 +225,73 @@ def worker(job_dir: Path) -> int:
     started = time.monotonic()
     request = json.loads((job_dir / "request.json").read_text(encoding="utf-8"))
     target = str(request["target"])
-    mode = "edit" if request.get("input_image") else "generate"
+    input_image = request.get("input_image")
+    mode = "edit" if input_image else "generate"
+    original_prompt = str(request.get("prompt") or "")
     result: dict = {
         "ok": False,
         "target": target,
         "mode": mode,
-        "prompt": request.get("prompt"),
-        "input_image": request.get("input_image"),
+        "original_prompt": original_prompt,
+        "effective_prompt": None,
+        "input_image": input_image,
+        "qwen_used": False,
+        "qwen_intent": None,
+        "qwen_failure_reason": None,
+        "qwen_elapsed_seconds": None,
     }
 
     with (job_dir / "worker.log").open("a", encoding="utf-8") as log:
         try:
             log.write(f"[stage28] mode={mode} target={target}\n")
-            image = _run_generator(request, log)
+            compiled = compile_image_prompt(original_prompt, bool(input_image))
+            qwen_used = bool(compiled.get("qwen_used"))
+            intent = str(compiled.get("intent") or "")
+            effective_prompt = str(compiled.get("prompt") or "").strip()
+            failure_reason = compiled.get("failure_reason")
+            qwen_elapsed = compiled.get("elapsed_seconds")
+            result.update(
+                qwen_used=qwen_used,
+                qwen_intent=intent,
+                effective_prompt=effective_prompt,
+                qwen_failure_reason=failure_reason,
+                qwen_elapsed_seconds=qwen_elapsed,
+            )
+            log.write(f"[stage28] qwen_used={qwen_used} intent={intent} elapsed={qwen_elapsed}\n")
+            log.write(f"[stage28] original_prompt={original_prompt}\n")
+            log.write(f"[stage28] effective_prompt={effective_prompt}\n")
+            log.flush()
+
+            if not qwen_used:
+                raise FotoDispatchError(
+                    "Qwen nie przygotował promptu dla FLUX; render nie został uruchomiony. "
+                    f"Powód: {failure_reason or 'nieznany błąd'}"
+                )
+
+            if not input_image and intent == "edit":
+                notice = (
+                    "⚠️ To polecenie wygląda na edycję istniejącego obrazu, ale /foto nie dostało zdjęcia. "
+                    "Wyślij zdjęcie z podpisem /foto <instrukcja edycji> w tej samej wiadomości."
+                )
+                _send(target, notice)
+                result.update(
+                    ok=False,
+                    needs_input_image=True,
+                    error="edit intent without input image",
+                    elapsed_seconds=round(time.monotonic() - started, 3),
+                )
+                _write_json(job_dir / "result.json", result)
+                log.write("[stage28] stopped_before_flux=edit_without_input_image\n")
+                return 3
+
+            generator_request = dict(request)
+            generator_request["prompt"] = effective_prompt
+            image = _run_generator(generator_request, log)
             _send(target, f"MEDIA:{image}")
             result.update(
                 ok=True,
                 path=str(image),
+                mode="edit" if input_image else "generate",
                 elapsed_seconds=round(time.monotonic() - started, 3),
             )
             _write_json(job_dir / "result.json", result)
@@ -269,8 +349,8 @@ def dispatch(prompt: str) -> str:
     (job_dir / "worker.pid").write_text(str(proc.pid) + "\n", encoding="utf-8")
 
     if input_image:
-        return "🖼️ Przyjęto edycję zdjęcia. Wynik zostanie automatycznie odesłany do tego czatu."
-    return "🖼️ Przyjęto generowanie obrazu. Wynik zostanie automatycznie odesłany do tego czatu."
+        return "🖼️ Przyjęto edycję zdjęcia. Qwen przygotuje instrukcję dla FLUX, a wynik wróci do tego czatu."
+    return "🖼️ Przyjęto /foto. Qwen przygotuje opis dla FLUX, a wynik wróci do tego czatu."
 
 
 def preflight() -> dict:
@@ -284,16 +364,27 @@ def preflight() -> dict:
         hermes_ok = False
         hermes_path = None
         hermes_error = str(exc)
+    compiler_ok = True
+    compiler_error = None
+    try:
+        compiler_path = str(_compiler_path())
+    except Exception as exc:
+        compiler_ok = False
+        compiler_path = None
+        compiler_error = str(exc)
     out = {
         "ok": bool(
             os.path.isfile(text_bin) and os.access(text_bin, os.X_OK)
             and os.path.isfile(edit_bin) and os.access(edit_bin, os.X_OK)
-            and hermes_ok
+            and hermes_ok and compiler_ok
         ),
         "text_generator": text_bin,
         "text_generator_ok": os.path.isfile(text_bin) and os.access(text_bin, os.X_OK),
         "edit_generator": edit_bin,
         "edit_generator_ok": os.path.isfile(edit_bin) and os.access(edit_bin, os.X_OK),
+        "prompt_compiler": compiler_path,
+        "prompt_compiler_ok": compiler_ok,
+        "prompt_compiler_error": compiler_error,
         "hermes": hermes_path,
         "hermes_ok": hermes_ok,
         "hermes_error": hermes_error,
