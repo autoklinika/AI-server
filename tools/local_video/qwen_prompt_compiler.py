@@ -13,11 +13,20 @@ QWEN_GATEWAY_URL_DEFAULT = "http://127.0.0.1:11435/clients/hermes/v1/chat/comple
 QWEN_MODEL_DEFAULT = "qwen3.6:35b-hermes64k"
 QWEN_TIMEOUT_DEFAULT = 90
 
-SYSTEM_PROMPT = """You compile prompts for LTX-2.3 text-to-video.
+
+def _system_prompt(duration_seconds: int, has_input_image: bool) -> str:
+    mode = (
+        "The user supplied a starting image. Treat that image as the exact first frame: preserve its subject identity, geometry, colors, composition and background unless the user explicitly requests a change. Describe the motion that should develop from that frame; do not invent a conflicting appearance."
+        if has_input_image
+        else
+        "No starting image is supplied. Produce a complete standalone visual description for text-to-video."
+    )
+    return f"""You compile prompts for local LTX-2.3 video generation.
 Return only the final English production prompt. No markdown, JSON, labels, commentary, or analysis.
 Preserve every concrete instruction from the user's description and translate it to natural English when needed.
-Optimize for a very short clip of about two seconds: prioritize one primary action and state its temporal order clearly.
-Describe compactly: subject and scene, exact action, camera framing or movement, lighting/style, and stability/continuity constraints.
+The requested clip duration is about {duration_seconds} seconds. Fit the action sequence naturally inside that duration; do not claim a different duration.
+{mode}
+Describe compactly: subject/scene when needed, exact temporal action sequence, camera framing or movement, lighting/style, and stability/continuity constraints.
 Do not invent dialogue, text, logos, extra characters, or contradictory actions unless requested.
 Avoid excessive adjectives and competing camera moves. Favor clear physical motion and stable identity/geometry.
 If sound is requested or clearly implied, append a concise [SOUNDS]: section. Otherwise do not invent sound.
@@ -69,19 +78,32 @@ def _clean(text: str) -> str:
         lines = text.splitlines()
         text = "\n".join(lines[1:-1]).strip() if len(lines) >= 2 else ""
     text = re.sub(r"^(?:prompt|final prompt)\s*:\s*", "", text, flags=re.IGNORECASE).strip()
-    if len(text) >= 2 and text[0] == text[-1] and text[0] in {'"', "'"}:
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in {'\"', "'"}:
         text = text[1:-1].strip()
     return text
 
 
-def _request(original_prompt: str, timeout: int) -> str:
+def _request(
+    original_prompt: str,
+    timeout: int,
+    *,
+    duration_seconds: int = 2,
+    has_input_image: bool = False,
+) -> str:
     model = os.environ.get("HERMES_VIDEO_QWEN_MODEL", QWEN_MODEL_DEFAULT).strip() or QWEN_MODEL_DEFAULT
     payload = json.dumps(
         {
             "model": model,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": "USER VIDEO DESCRIPTION:\n<<<\n" + original_prompt + "\n>>>"},
+                {"role": "system", "content": _system_prompt(duration_seconds, has_input_image)},
+                {
+                    "role": "user",
+                    "content": (
+                        f"DURATION_SECONDS: {duration_seconds}\n"
+                        f"STARTING_IMAGE: {'yes' if has_input_image else 'no'}\n"
+                        "USER VIDEO DESCRIPTION:\n<<<\n" + original_prompt + "\n>>>"
+                    ),
+                },
             ],
             "stream": False,
             "temperature": 0.1,
@@ -101,7 +123,12 @@ def _request(original_prompt: str, timeout: int) -> str:
     return _clean(_extract_content(body))
 
 
-def compile_prompt(original_prompt: str) -> tuple[str, bool, str | None, float]:
+def compile_prompt(
+    original_prompt: str,
+    *,
+    duration_seconds: int = 2,
+    has_input_image: bool = False,
+) -> tuple[str, bool, str | None, float]:
     """Return effective_prompt, qwen_used, failure_reason, elapsed_seconds.
 
     Failure is intentionally non-fatal. The caller must visibly notify the originating
@@ -110,7 +137,12 @@ def compile_prompt(original_prompt: str) -> tuple[str, bool, str | None, float]:
     started = time.monotonic()
     timeout = _timeout()
     try:
-        compiled = _request(original_prompt, timeout)
+        compiled = _request(
+            original_prompt,
+            timeout,
+            duration_seconds=duration_seconds,
+            has_input_image=has_input_image,
+        )
         elapsed = time.monotonic() - started
         if not compiled:
             return original_prompt, False, "Qwen zwrócił pusty prompt.", elapsed

@@ -10,6 +10,7 @@ on:
       - feat/hermes-ltx23-direct-stage26
       - feat/hermes-ltx23-prompt-compiler-stage27
       - feat/hermes-foto-modern-stage28
+      - feat/hermes-video-duration-i2v-stage29
   pull_request:
     paths:
       - "src/ai_bridge/gateway/**"
@@ -21,12 +22,16 @@ on:
       - "tests/test_local_video_generator.py"
       - "tests/test_ltx23_generator.py"
       - "tests/test_ltx23_telegram_wrapper.py"
+      - "tests/test_ltx23_stage29.py"
       - "tests/test_hermes_video_dispatch_stage26.py"
       - "tests/test_hermes_video_dispatch_stage27.py"
+      - "tests/test_hermes_video_dispatch_stage29.py"
       - "tests/test_qwen_prompt_compiler_stage27.py"
+      - "tests/test_qwen_prompt_compiler_stage29.py"
       - "tests/test_hermes_foto_dispatch_stage28.py"
       - "tests/test_hermes_foto_prompt_compiler_stage28.py"
       - "tests/test_hermes_foto_media_patch_stage28.py"
+      - "tests/test_hermes_wideo_media_patch_stage29.py"
       - "tools/local_video/**"
       - "tools/local_image/**"
       - "tools/install_hermes_local_video_stage23.sh"
@@ -44,6 +49,9 @@ on:
       - "tools/cutover_hermes_foto_modern_stage28.sh"
       - "tools/rollback_hermes_foto_modern_stage28.sh"
       - "tools/patch_hermes_foto_quick_media_stage28.py"
+      - "tools/cutover_hermes_video_duration_i2v_stage29.sh"
+      - "tools/rollback_hermes_video_duration_i2v_stage29.sh"
+      - "tools/patch_hermes_wideo_quick_media_stage29.py"
       - "tools/validate_ai_gateway_real_server.sh"
       - "tools/install_ai_gateway_stage1.sh"
       - "tools/cutover_ventilation_to_ai_gateway_stage2.sh"
@@ -101,16 +109,21 @@ jobs:
           bash -n tools/rollback_hermes_ltx23_prompt_stage27.sh
           bash -n tools/cutover_hermes_foto_modern_stage28.sh
           bash -n tools/rollback_hermes_foto_modern_stage28.sh
+          bash -n tools/cutover_hermes_video_duration_i2v_stage29.sh
+          bash -n tools/rollback_hermes_video_duration_i2v_stage29.sh
           bash -n tools/local_video/generate-video-telegram
           bash -n tools/local_video/hermes-video-dispatch
           python -m py_compile tools/local_video/generate_video.py
           python -m py_compile tools/local_video/generate_ltx23.py
+          python -m py_compile tools/local_video/generate_ltx23_stage29.py
           python -m py_compile tools/local_video/hermes_video_dispatch.py
           python -m py_compile tools/local_video/hermes_video_dispatch_stage27.py
+          python -m py_compile tools/local_video/hermes_video_dispatch_stage29.py
           python -m py_compile tools/local_video/qwen_prompt_compiler.py
           python -m py_compile tools/local_image/hermes_foto_dispatch.py
           python -m py_compile tools/local_image/hermes_foto_prompt_compiler.py
           python -m py_compile tools/patch_hermes_quick_command_args_stage26.py
           python -m py_compile tools/patch_hermes_foto_quick_media_stage28.py
+          python -m py_compile tools/patch_hermes_wideo_quick_media_stage29.py
       - name: Test
         run: pytest
