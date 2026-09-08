@@ -149,7 +149,13 @@ def build_prompt(
         "31": {"class_type": "LTXVPreprocess", "inputs": {"image": ["30", 0], "img_compression": 25}},
         "32": {
             "class_type": "LTXVImgToVideoInplace",
-            "inputs": {"vae": ["1", 2], "image": ["31", 0], "latent": ["7", 0], "strength": 1.0},
+            "inputs": {
+                "vae": ["1", 2],
+                "image": ["31", 0],
+                "latent": ["7", 0],
+                "strength": 1.0,
+                "bypass": False,
+            },
         },
     })
     graph["10"]["inputs"]["video_latent"] = ["32", 0]
@@ -157,7 +163,13 @@ def build_prompt(
     if upscale_2x:
         graph["33"] = {
             "class_type": "LTXVImgToVideoInplace",
-            "inputs": {"vae": ["1", 2], "image": ["31", 0], "latent": ["18", 0], "strength": 1.0},
+            "inputs": {
+                "vae": ["1", 2],
+                "image": ["31", 0],
+                "latent": ["18", 0],
+                "strength": 1.0,
+                "bypass": False,
+            },
         }
         graph["19"]["inputs"]["video_latent"] = ["33", 0]
     return graph
