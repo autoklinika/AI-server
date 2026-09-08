@@ -9,6 +9,7 @@ import tempfile
 from pathlib import Path
 
 MARKER = "STAGE26_WIDEO_QUICK_ARGS"
+ROUTE_MARKER = "STAGE26_WIDEO_ROUTE_ENV"
 
 # Hermes 0.21.x has existed in two relevant layouts:
 # - legacy monolithic gateway/run.py
@@ -27,7 +28,7 @@ class PatchError(RuntimeError):
     pass
 
 
-def _current_dispatch_patch(text: str) -> str | None:
+def _modern_return_match(text: str):
     matches = list(
         re.finditer(
             rf"^(?P<indent>[ \t]+){re.escape(CURRENT_RETURN)}$",
@@ -39,12 +40,54 @@ def _current_dispatch_patch(text: str) -> str | None:
         return None
     if len(matches) != 1:
         raise PatchError(f"expected one modern Hermes quick-command return, found {len(matches)}")
-
     match = matches[0]
-    # Prove this return belongs to the type:exec quick-command block.
-    window = text[max(0, match.start() - 900):match.start()]
+    window = text[max(0, match.start() - 1600):match.start()]
     if 'if qtype == "exec":' not in window or 'exec_cmd = qcmd.get("command", "")' not in window:
         raise PatchError("modern quick-command return found outside expected type:exec block")
+    return match
+
+
+def _route_block(indent: str) -> str:
+    # ContextVars are deliberately reset at _hm_admit_event() entry in modern Hermes and are not
+    # rebound until the normal agent-turn path. Quick commands run BEFORE that bind. Therefore the
+    # invoking route must come directly from this event's SessionSource, not process-global env.
+    return (
+        f'{indent}# {ROUTE_MARKER}: bind the exact invoking chat to THIS quick-command process.\n'
+        f'{indent}# Source values are shell-quoted; no global HERMES_SESSION_* state is consulted.\n'
+        f'{indent}_stage26_platform = source.platform.value if source.platform else ""\n'
+        f'{indent}_stage26_chat_id = str(source.chat_id or "")\n'
+        f'{indent}_stage26_thread_id = str(source.thread_id or "")\n'
+        f'{indent}if _stage26_platform and _stage26_chat_id:\n'
+        f'{indent}    _stage26_route_env = " ".join((\n'
+        f'{indent}        "HERMES_SESSION_PLATFORM=" + _stage26_shlex.quote(_stage26_platform),\n'
+        f'{indent}        "HERMES_SESSION_CHAT_ID=" + _stage26_shlex.quote(_stage26_chat_id),\n'
+        f'{indent}        "HERMES_SESSION_THREAD_ID=" + _stage26_shlex.quote(_stage26_thread_id),\n'
+        f'{indent}    ))\n'
+        f'{indent}    exec_cmd = f"{{_stage26_route_env}} {{exec_cmd}}"\n'
+    )
+
+
+def _upgrade_modern_route(text: str) -> str:
+    """Upgrade a server already carrying the first Stage-26 args-only patch."""
+    if ROUTE_MARKER in text:
+        if text.count(ROUTE_MARKER) != 1:
+            raise PatchError("duplicate Stage26 route marker")
+        return text
+    match = _modern_return_match(text)
+    if match is None:
+        return text
+    if MARKER not in text:
+        return text
+    indent = match.group("indent")
+    patched = text[:match.start()] + _route_block(indent) + text[match.start():]
+    compile(patched, "hermes-gateway-dispatch.py", "exec")
+    return patched
+
+
+def _current_dispatch_patch(text: str) -> str | None:
+    match = _modern_return_match(text)
+    if match is None:
+        return None
 
     indent = match.group("indent")
     insert = (
@@ -54,6 +97,7 @@ def _current_dispatch_patch(text: str) -> str | None:
         f'{indent}_stage26_user_args = event.get_command_args().strip()\n'
         f'{indent}if _stage26_user_args:\n'
         f'{indent}    exec_cmd = f"{{exec_cmd}} {{_stage26_shlex.quote(_stage26_user_args)}}"\n'
+        + _route_block(indent)
     )
     return text[:match.start()] + insert + text[match.start():]
 
@@ -83,9 +127,17 @@ def _legacy_dispatch_patch(text: str) -> str | None:
 
 def patch_text(text: str) -> str:
     marker_count = text.count(MARKER)
-    if marker_count:
-        if marker_count != 1:
-            raise PatchError("duplicate Stage26 quick-command marker")
+    route_count = text.count(ROUTE_MARKER)
+    if marker_count > 1:
+        raise PatchError("duplicate Stage26 quick-command marker")
+    if route_count > 1:
+        raise PatchError("duplicate Stage26 route marker")
+
+    # Upgrade an already-installed modern args-only Stage 26 in place.
+    if marker_count == 1:
+        upgraded = _upgrade_modern_route(text)
+        if upgraded != text:
+            return upgraded
         return text
 
     patched = _current_dispatch_patch(text)
@@ -96,16 +148,24 @@ def patch_text(text: str) -> str:
 
     if patched.count(MARKER) != 1:
         raise PatchError("internal error: Stage26 marker is not unique after patching")
+    if CURRENT_RETURN in patched and patched.count(ROUTE_MARKER) != 1:
+        raise PatchError("internal error: modern Stage26 route marker missing after patching")
     compile(patched, "hermes-gateway-dispatch.py", "exec")
     return patched
 
 
 def check_text(text: str) -> str:
     marker_count = text.count(MARKER)
-    if marker_count == 1:
-        return "patched"
-    if marker_count:
+    route_count = text.count(ROUTE_MARKER)
+    if marker_count > 1 or route_count > 1:
         return "unsupported:duplicate-marker"
+    if marker_count == 1:
+        try:
+            if _modern_return_match(text) is not None and route_count == 0:
+                return "patchable-upgrade"
+        except PatchError as exc:
+            return f"unsupported:{exc}"
+        return "patched"
     try:
         patched = patch_text(text)
     except PatchError as exc:
@@ -135,7 +195,7 @@ def atomic_write(path: Path, text: str) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description="Patch Hermes gateway exec quick_commands to forward /wideo args")
+    p = argparse.ArgumentParser(description="Patch Hermes gateway exec quick_commands to forward /wideo args and route")
     p.add_argument("path", type=Path, help="Hermes gateway dispatch module (run_inbound.py or legacy run.py)")
     p.add_argument("--check", action="store_true")
     args = p.parse_args(argv)
@@ -145,7 +205,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.check:
             state = check_text(text)
             print(state)
-            return 0 if state in {"patched", "patchable"} else 2
+            return 0 if state in {"patched", "patchable", "patchable-upgrade"} else 2
         patched = patch_text(text)
         if patched == text:
             print("already patched")
