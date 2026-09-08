@@ -137,11 +137,12 @@ def test_two_seconds_stays_single_segment(monkeypatch, tmp_path):
     output = tmp_path / "out.mp4"
     output.write_bytes(b"mp4")
     calls = []
-    monkeypatch.setattr(
-        mod,
-        "_run_ltx_segment",
-        lambda ltx, **kwargs: (calls.append(kwargs.copy()) or (output, 5.0)),
-    )
+
+    def fake_single(ltx, **kwargs):
+        calls.append(kwargs.copy())
+        return output, 5.0
+
+    monkeypatch.setattr(mod, "_run_ltx_segment", fake_single)
     monkeypatch.setattr(mod.base, "_send", lambda *args, **kwargs: None)
     assert mod.run_worker(request_path) == 0
     assert len(calls) == 1
