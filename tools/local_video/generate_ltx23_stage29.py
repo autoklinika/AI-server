@@ -27,6 +27,13 @@ COMFY_INPUT_DEFAULT = Path("/opt/comfyui/data/input")
 SUPPORTED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 I2V_NODES = {"LoadImage", "LTXVPreprocess", "LTXVImgToVideoInplace"}
 HQ_NODES = {"LatentUpscaleModelLoader", "LTXVLatentUpsampler"}
+TILED_VAE_NODE = "VAEDecodeTiled"
+TILED_VAE_TILE_SIZE = 512
+TILED_VAE_OVERLAP = 64
+# The host already succeeds with 49-frame normal VAE decode but OOM-killed at 97 frames.
+# Decode at most 32 frames per temporal tile to keep VAE peak below the known-good 49-frame load.
+TILED_VAE_TEMPORAL_SIZE = 32
+TILED_VAE_TEMPORAL_OVERLAP = 8
 MAX_DURATION_SECONDS = 6
 DEFAULT_DURATION_SECONDS = 2
 DEFAULT_FPS = 24
@@ -56,51 +63,54 @@ def validate_frames(frames: int) -> None:
 
 
 def preflight(comfy_url: str, *, require_upscale: bool = False, require_i2v: bool = False) -> dict:
-    # Stage24 real-server validation proved HQ works on this ComfyUI build with
-    # normal VAEDecode even though LTXVTiledVAEDecode is not registered. Do not
-    # delegate the HQ requirement to the older base preflight, because that
-    # would incorrectly make LTXVTiledVAEDecode mandatory again.
+    # Stage29 deliberately uses ComfyUI core VAEDecodeTiled for both standard and HQ output.
+    # This is the official LTX-2.3 blueprint decoder and avoids decoding the entire temporal
+    # latent in one VAE pass on the 128 GiB UMA host.
     out = base.preflight(comfy_url, require_upscale=False)
     missing_nodes = set(out.get("missing_nodes") or [])
     missing_models = set(out.get("missing_models") or [])
-    info = None
+    info = base.req_json(comfy_url, "/object_info", timeout=60)
 
-    if require_upscale or require_i2v:
-        info = base.req_json(comfy_url, "/object_info", timeout=60)
+    if TILED_VAE_NODE not in info:
+        missing_nodes.add(TILED_VAE_NODE)
 
     if require_upscale:
-        missing_nodes |= HQ_NODES - set(info or {})
-        opts = base._options(info or {}, "LatentUpscaleModelLoader", "model_name")
+        missing_nodes |= HQ_NODES - set(info)
+        opts = base._options(info, "LatentUpscaleModelLoader", "model_name")
         if opts and base.UPSCALER not in opts:
             missing_models.add(base.UPSCALER)
-        # HQ decode intentionally uses the already available ordinary VAEDecode.
-        if "VAEDecode" not in (info or {}):
-            missing_nodes.add("VAEDecode")
 
     if require_i2v:
-        missing_nodes |= I2V_NODES - set(info or {})
+        missing_nodes |= I2V_NODES - set(info)
 
     return {
         "ok": not missing_nodes and not missing_models,
         "missing_nodes": sorted(missing_nodes),
         "missing_models": sorted(missing_models),
         "i2v_required": bool(require_i2v),
-        "hq_decode": "VAEDecode" if require_upscale else None,
+        "vae_decode": TILED_VAE_NODE,
+        "vae_tile_size": TILED_VAE_TILE_SIZE,
+        "vae_temporal_size": TILED_VAE_TEMPORAL_SIZE,
     }
 
 
-def _apply_hq_vae_compat(graph: dict) -> None:
-    """Use the real-server-proven standard VAEDecode for Stage29 HQ.
-
-    The production Radeon 890M/ComfyUI installation has no
-    LTXVTiledVAEDecode node. Stage24 compatibility testing already validated
-    this exact decode substitution with the LTX spatial upscaler.
-    """
-    node = graph.get("26")
+def _apply_tiled_vae_decode(graph: dict, *, upscale_2x: bool) -> None:
+    node_id = "26" if upscale_2x else "17"
+    samples = ["25", 0] if upscale_2x else ["16", 0]
+    node = graph.get(node_id)
     if not isinstance(node, dict):
-        raise Stage29Error("HQ graph is missing decode node 26")
-    node["class_type"] = "VAEDecode"
-    node["inputs"] = {"samples": ["25", 0], "vae": ["1", 2]}
+        raise Stage29Error(f"graph is missing VAE decode node {node_id}")
+    graph[node_id] = {
+        "class_type": TILED_VAE_NODE,
+        "inputs": {
+            "samples": samples,
+            "vae": ["1", 2],
+            "tile_size": TILED_VAE_TILE_SIZE,
+            "overlap": TILED_VAE_OVERLAP,
+            "temporal_size": TILED_VAE_TEMPORAL_SIZE,
+            "temporal_overlap": TILED_VAE_TEMPORAL_OVERLAP,
+        },
+    }
 
 
 def build_prompt(
@@ -129,8 +139,7 @@ def build_prompt(
         negative=negative,
         upscale_2x=upscale_2x,
     )
-    if upscale_2x:
-        _apply_hq_vae_compat(graph)
+    _apply_tiled_vae_decode(graph, upscale_2x=upscale_2x)
 
     if not staged_image_name:
         return graph
@@ -251,6 +260,8 @@ def main(argv: list[str] | None = None) -> int:
             "fps": args.fps,
             "duration_seconds": round((frames - 1) / args.fps, 3),
             "mode": "i2v" if args.input_image else "t2v",
+            "vae_decode": TILED_VAE_NODE,
+            "vae_temporal_size": TILED_VAE_TEMPORAL_SIZE,
         }
         print(json.dumps(payload, ensure_ascii=False) if args.json else dst)
         return 0
