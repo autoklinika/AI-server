@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - feat/ai-gateway-scheduler
+      - feat/hermes-local-video-stage23
+      - feat/hermes-ltx23-stage24
+      - feat/hermes-ltx23-telegram-stage25
+      - feat/hermes-ltx23-direct-stage26
+      - feat/hermes-ltx23-prompt-compiler-stage27
+      - feat/hermes-foto-modern-stage28
   pull_request:
     paths:
       - "src/ai_bridge/gateway/**"
@@ -12,6 +18,32 @@ on:
       - "src/ai_bridge/settings.py"
       - "tests/test_gateway_*.py"
       - "tests/test_ollama_gateway_headers.py"
+      - "tests/test_local_video_generator.py"
+      - "tests/test_ltx23_generator.py"
+      - "tests/test_ltx23_telegram_wrapper.py"
+      - "tests/test_hermes_video_dispatch_stage26.py"
+      - "tests/test_hermes_video_dispatch_stage27.py"
+      - "tests/test_qwen_prompt_compiler_stage27.py"
+      - "tests/test_hermes_foto_dispatch_stage28.py"
+      - "tests/test_hermes_foto_prompt_compiler_stage28.py"
+      - "tests/test_hermes_foto_media_patch_stage28.py"
+      - "tools/local_video/**"
+      - "tools/local_image/**"
+      - "tools/install_hermes_local_video_stage23.sh"
+      - "tools/rollback_hermes_local_video_stage23.sh"
+      - "tools/install_ltx23_stage24.sh"
+      - "tools/rollback_ltx23_stage24.sh"
+      - "tools/apply_ltx23_standard_vae_compat_stage24.sh"
+      - "tools/cutover_hermes_ltx23_stage25.sh"
+      - "tools/rollback_hermes_ltx23_stage25.sh"
+      - "tools/cutover_hermes_ltx23_direct_stage26.sh"
+      - "tools/rollback_hermes_ltx23_direct_stage26.sh"
+      - "tools/patch_hermes_quick_command_args_stage26.py"
+      - "tools/cutover_hermes_ltx23_prompt_stage27.sh"
+      - "tools/rollback_hermes_ltx23_prompt_stage27.sh"
+      - "tools/cutover_hermes_foto_modern_stage28.sh"
+      - "tools/rollback_hermes_foto_modern_stage28.sh"
+      - "tools/patch_hermes_foto_quick_media_stage28.py"
       - "tools/validate_ai_gateway_real_server.sh"
       - "tools/install_ai_gateway_stage1.sh"
       - "tools/cutover_ventilation_to_ai_gateway_stage2.sh"
@@ -28,6 +60,7 @@ on:
       - "deploy/systemd/ai-gateway.service"
       - "docs/ADR-005_AI_GATEWAY_SCHEDULER_PL.md"
       - "docs/AI_GATEWAY_PRODUCTION_PL.md"
+      - "docs/HERMES_LOCAL_VIDEO_STAGE23_PL.md"
       - "pyproject.toml"
       - ".github/workflows/ai-gateway-tests.yml"
 
@@ -55,5 +88,29 @@ jobs:
           bash -n tools/rollback_hermes_reasoning_none_stage9.sh
           bash -n tools/cutover_hermes_telegram_static_profile_stage22.sh
           bash -n tools/rollback_hermes_telegram_static_profile_stage22.sh
+          bash -n tools/install_hermes_local_video_stage23.sh
+          bash -n tools/rollback_hermes_local_video_stage23.sh
+          bash -n tools/install_ltx23_stage24.sh
+          bash -n tools/rollback_ltx23_stage24.sh
+          bash -n tools/apply_ltx23_standard_vae_compat_stage24.sh
+          bash -n tools/cutover_hermes_ltx23_stage25.sh
+          bash -n tools/rollback_hermes_ltx23_stage25.sh
+          bash -n tools/cutover_hermes_ltx23_direct_stage26.sh
+          bash -n tools/rollback_hermes_ltx23_direct_stage26.sh
+          bash -n tools/cutover_hermes_ltx23_prompt_stage27.sh
+          bash -n tools/rollback_hermes_ltx23_prompt_stage27.sh
+          bash -n tools/cutover_hermes_foto_modern_stage28.sh
+          bash -n tools/rollback_hermes_foto_modern_stage28.sh
+          bash -n tools/local_video/generate-video-telegram
+          bash -n tools/local_video/hermes-video-dispatch
+          python -m py_compile tools/local_video/generate_video.py
+          python -m py_compile tools/local_video/generate_ltx23.py
+          python -m py_compile tools/local_video/hermes_video_dispatch.py
+          python -m py_compile tools/local_video/hermes_video_dispatch_stage27.py
+          python -m py_compile tools/local_video/qwen_prompt_compiler.py
+          python -m py_compile tools/local_image/hermes_foto_dispatch.py
+          python -m py_compile tools/local_image/hermes_foto_prompt_compiler.py
+          python -m py_compile tools/patch_hermes_quick_command_args_stage26.py
+          python -m py_compile tools/patch_hermes_foto_quick_media_stage28.py
       - name: Test
         run: pytest
