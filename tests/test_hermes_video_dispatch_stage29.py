@@ -68,14 +68,16 @@ def test_worker_passes_duration_hq_and_input_image_to_ltx(monkeypatch, tmp_path)
     request_path = _write_request(tmp_path, input_image=str(input_image))
     output = tmp_path / "out.mp4"
     output.write_bytes(b"mp4")
+    fake_ltx = tmp_path / "generate-video-ltx23"
+    fake_ltx.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake_ltx.chmod(0o755)
+    monkeypatch.setenv("HERMES_LTX_VIDEO_BIN", str(fake_ltx))
 
     monkeypatch.setattr(
         mod.qwen,
         "compile_prompt",
         lambda original, **kwargs: ("A red robot waves from the supplied first frame.", True, None, 0.2),
     )
-    monkeypatch.setattr(mod.os.path, "isfile", lambda path: True)
-    monkeypatch.setattr(mod.os, "access", lambda path, mode: True)
 
     seen = {}
 
@@ -94,7 +96,7 @@ def test_worker_passes_duration_hq_and_input_image_to_ltx(monkeypatch, tmp_path)
 
     assert mod.run_worker(request_path) == 0
     cmd = seen["cmd"]
-    assert cmd[:3] == ["/usr/local/bin/generate-video-ltx23", "--duration-seconds", "4"]
+    assert cmd[:3] == [str(fake_ltx), "--duration-seconds", "4"]
     assert "--upscale-2x" in cmd
     assert cmd[cmd.index("--input-image") + 1] == str(input_image)
     assert cmd[cmd.index("--prompt") + 1].startswith("A red robot")
