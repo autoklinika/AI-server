@@ -1,1 +1,0 @@
-Do not merge Stage 27 without explicit user approval.
