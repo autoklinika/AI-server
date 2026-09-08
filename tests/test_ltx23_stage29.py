@@ -46,6 +46,23 @@ def test_text_to_video_keeps_original_empty_latent_path():
     assert "30" not in graph
 
 
+def test_hq_uses_real_server_proven_standard_vae_decode():
+    graph = mod.build_prompt(
+        "robot waves",
+        width=640,
+        height=384,
+        frames=97,
+        fps=24,
+        seed=1,
+        negative="bad",
+        upscale_2x=True,
+    )
+    assert graph["26"] == {
+        "class_type": "VAEDecode",
+        "inputs": {"samples": ["25", 0], "vae": ["1", 2]},
+    }
+
+
 def test_image_to_video_injects_first_frame_before_sampling():
     graph = mod.build_prompt(
         "robot waves",
@@ -81,6 +98,7 @@ def test_hq_i2v_reinjects_first_frame_after_latent_upscale():
     assert graph["33"]["class_type"] == "LTXVImgToVideoInplace"
     assert graph["33"]["inputs"]["latent"] == ["18", 0]
     assert graph["19"]["inputs"]["video_latent"] == ["33", 0]
+    assert graph["26"]["class_type"] == "VAEDecode"
 
 
 def test_i2v_preflight_adds_required_native_nodes(monkeypatch):
@@ -97,3 +115,25 @@ def test_i2v_preflight_adds_required_native_nodes(monkeypatch):
     out = mod.preflight("http://127.0.0.1:8188", require_i2v=True)
     assert out["ok"] is True
     assert out["missing_nodes"] == []
+
+
+def test_hq_preflight_does_not_require_tiled_decode(monkeypatch):
+    monkeypatch.setattr(
+        mod.base,
+        "preflight",
+        lambda url, require_upscale=False: {"ok": True, "missing_nodes": [], "missing_models": []},
+    )
+    monkeypatch.setattr(
+        mod.base,
+        "req_json",
+        lambda *args, **kwargs: {
+            "LatentUpscaleModelLoader": {},
+            "LTXVLatentUpsampler": {},
+            "VAEDecode": {},
+        },
+    )
+    monkeypatch.setattr(mod.base, "_options", lambda *args, **kwargs: {mod.base.UPSCALER})
+    out = mod.preflight("http://127.0.0.1:8188", require_upscale=True)
+    assert out["ok"] is True
+    assert out["missing_nodes"] == []
+    assert out["hq_decode"] == "VAEDecode"
