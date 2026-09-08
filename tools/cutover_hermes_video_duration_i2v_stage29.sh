@@ -89,12 +89,11 @@ PY
 
 section "STAGE 29 - LONGER + IMAGE-TO-VIDEO"
 say "Syntax: /wideo [hq] [1s..6s] <opis>."
-say "Durations above 2 s are rendered as memory-safe <=2 s LTX segments and chained with first-frame continuation."
+say "Long clips remain single LTX renders, but ComfyUI core VAEDecodeTiled is used to reduce VideoVAE peak memory."
 say "If the same Telegram message contains an image, it becomes the exact first frame for LTX-2.3."
 say "No cloud inference; /foto and ventilation are not changed."
 
 section "PRECHECK"
-command -v ffmpeg >/dev/null 2>&1 || fail "ffmpeg is required for Stage29 chained long-video rendering"
 [[ -d "$HERMES_SOURCE/.git" ]] || fail "Hermes source missing"
 [[ -x "$HERMES_PYTHON" ]] || fail "Hermes Python missing"
 [[ -r "$HERMES_RUN" ]] || fail "gateway/run_inbound.py missing"
@@ -158,7 +157,7 @@ section "LTX NODE/MODEL PREFLIGHTS"
 "$LTX_CLI" --preflight --upscale-2x || fail "HQ LTX preflight failed"
 "$LTX_CLI" --i2v-preflight || fail "image-to-video node preflight failed"
 "$LTX_CLI" --i2v-preflight --upscale-2x || fail "HQ image-to-video node preflight failed"
-say "PASS: text/video, chained longer-video and image-to-video runtime prerequisites available"
+say "PASS: text/video, single-shot longer-video and image-to-video runtime prerequisites available"
 
 section "REAL LOCAL QWEN PREFLIGHT"
 "$PYTHON" "$DISPATCH_DST" --qwen-preflight || fail "Stage29 Qwen prompt compiler preflight failed"
@@ -184,7 +183,7 @@ SUCCESS=1
 MUTATED=0
 section "DONE"
 say "PASS: Stage29 longer + image-to-video installed"
-say "Long-video strategy: >2 s => chained <=2 s LTX segments with I2V continuation."
+say "Long-video strategy: single LTX render + core VAEDecodeTiled (temporal_size=32)."
 say "Examples:"
 say "  /wideo 4s <opis>"
 say "  /wideo hq 4s <opis>"
