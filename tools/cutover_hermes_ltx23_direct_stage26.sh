@@ -80,21 +80,47 @@ section "LTX PREFLIGHTS"
 "$LTX_BIN" --upscale-2x --preflight || fail "LTX HQ preflight failed"
 
 section "VERIFY HERMES DELIVERY CAPABILITIES"
-"$HERMES_PYTHON" - "$HERMES_SOURCE" <<'PY'
+"$HERMES_PYTHON" - "$HERMES_SOURCE" "$HERMES_PATCH_TARGET" <<'PY'
 from pathlib import Path
 import sys
 root=Path(sys.argv[1])
+quick=Path(sys.argv[2]).read_text(encoding='utf-8')
 local=(root/'tools/environments/local.py').read_text(encoding='utf-8')
 send=(root/'hermes_cli/send_cmd.py').read_text(encoding='utf-8')
-if '_inject_session_context_env' not in local or 'HERMES_SESSION_CHAT_ID' not in local:
-    raise SystemExit('FAIL: Hermes lacks the session-context subprocess bridge')
+session_path=root/'gateway/session_context.py'
+session=session_path.read_text(encoding='utf-8') if session_path.exists() else ''
+
+# Current modular Hermes keeps the literal HERMES_SESSION_* names in
+# gateway/session_context.py while tools/environments/local.py consumes _VAR_MAP.
+# Older Hermes may contain the literals directly in local.py. Accept either layout,
+# but require the complete semantic chain used by exec quick_commands.
+if '_inject_session_context_env' not in local:
+    raise SystemExit('FAIL: Hermes lacks the session-context subprocess bridge function')
 if 'build_subprocess_env' not in local:
     raise SystemExit('FAIL: Hermes lacks sanitized quick-command subprocess env factory')
+if 'build_subprocess_env' not in quick:
+    raise SystemExit('FAIL: Hermes exec quick-command path does not use build_subprocess_env')
+
+session_names = local + '\n' + session
+for name in ('HERMES_SESSION_PLATFORM', 'HERMES_SESSION_CHAT_ID', 'HERMES_SESSION_THREAD_ID'):
+    if name not in session_names:
+        raise SystemExit(f'FAIL: Hermes session routing variable missing: {name}')
+
+if session:
+    if '_VAR_MAP' not in session or 'ContextVar' not in session:
+        raise SystemExit('FAIL: current Hermes session_context.py lacks expected ContextVar routing map')
+    if '_inject_session_context_env' in local and '_VAR_MAP' not in local:
+        # The bridge imports _VAR_MAP from gateway.session_context in current Hermes.
+        if 'gateway.session_context' not in local:
+            raise SystemExit('FAIL: session bridge does not source gateway.session_context')
+
 if 'MEDIA:' not in send or 'send_message_tool' not in send:
     raise SystemExit('FAIL: Hermes lacks native hermes send MEDIA delivery')
-if "platform:chat_id:thread_id" not in send:
+if 'platform:chat_id:thread_id' not in send:
     raise SystemExit('FAIL: hermes send target syntax is not the verified platform:chat[:thread] form')
-print('PASS: session routing context is bridged into quick-command subprocesses')
+
+print('PASS: exec quick_commands use build_subprocess_env')
+print('PASS: session platform/chat/thread routing is bridged into subprocesses')
 print('PASS: hermes send supports native MEDIA:<path> delivery to exact chat/thread')
 PY
 
