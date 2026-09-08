@@ -26,6 +26,7 @@ except ImportError:
 COMFY_INPUT_DEFAULT = Path("/opt/comfyui/data/input")
 SUPPORTED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 I2V_NODES = {"LoadImage", "LTXVPreprocess", "LTXVImgToVideoInplace"}
+HQ_NODES = {"LatentUpscaleModelLoader", "LTXVLatentUpsampler"}
 MAX_DURATION_SECONDS = 6
 DEFAULT_DURATION_SECONDS = 2
 DEFAULT_FPS = 24
@@ -55,17 +56,51 @@ def validate_frames(frames: int) -> None:
 
 
 def preflight(comfy_url: str, *, require_upscale: bool = False, require_i2v: bool = False) -> dict:
-    out = base.preflight(comfy_url, require_upscale=require_upscale)
-    missing_nodes = list(out.get("missing_nodes") or [])
-    if require_i2v:
+    # Stage24 real-server validation proved HQ works on this ComfyUI build with
+    # normal VAEDecode even though LTXVTiledVAEDecode is not registered. Do not
+    # delegate the HQ requirement to the older base preflight, because that
+    # would incorrectly make LTXVTiledVAEDecode mandatory again.
+    out = base.preflight(comfy_url, require_upscale=False)
+    missing_nodes = set(out.get("missing_nodes") or [])
+    missing_models = set(out.get("missing_models") or [])
+    info = None
+
+    if require_upscale or require_i2v:
         info = base.req_json(comfy_url, "/object_info", timeout=60)
-        missing_nodes = sorted(set(missing_nodes) | (I2V_NODES - set(info)))
+
+    if require_upscale:
+        missing_nodes |= HQ_NODES - set(info or {})
+        opts = base._options(info or {}, "LatentUpscaleModelLoader", "model_name")
+        if opts and base.UPSCALER not in opts:
+            missing_models.add(base.UPSCALER)
+        # HQ decode intentionally uses the already available ordinary VAEDecode.
+        if "VAEDecode" not in (info or {}):
+            missing_nodes.add("VAEDecode")
+
+    if require_i2v:
+        missing_nodes |= I2V_NODES - set(info or {})
+
     return {
-        "ok": not missing_nodes and not (out.get("missing_models") or []),
-        "missing_nodes": missing_nodes,
-        "missing_models": list(out.get("missing_models") or []),
+        "ok": not missing_nodes and not missing_models,
+        "missing_nodes": sorted(missing_nodes),
+        "missing_models": sorted(missing_models),
         "i2v_required": bool(require_i2v),
+        "hq_decode": "VAEDecode" if require_upscale else None,
     }
+
+
+def _apply_hq_vae_compat(graph: dict) -> None:
+    """Use the real-server-proven standard VAEDecode for Stage29 HQ.
+
+    The production Radeon 890M/ComfyUI installation has no
+    LTXVTiledVAEDecode node. Stage24 compatibility testing already validated
+    this exact decode substitution with the LTX spatial upscaler.
+    """
+    node = graph.get("26")
+    if not isinstance(node, dict):
+        raise Stage29Error("HQ graph is missing decode node 26")
+    node["class_type"] = "VAEDecode"
+    node["inputs"] = {"samples": ["25", 0], "vae": ["1", 2]}
 
 
 def build_prompt(
@@ -94,6 +129,9 @@ def build_prompt(
         negative=negative,
         upscale_2x=upscale_2x,
     )
+    if upscale_2x:
+        _apply_hq_vae_compat(graph)
+
     if not staged_image_name:
         return graph
 
