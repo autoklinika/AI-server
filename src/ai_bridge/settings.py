@@ -38,6 +38,15 @@ class Settings(BaseSettings):
     gateway_upstream_timeout_seconds: float = Field(default=600.0, gt=0.0)
     gateway_health_timeout_seconds: float = Field(default=2.0, gt=0.0)
 
+    # External Resource Manager leases let FLUX/LTX and other non-HTTP workers
+    # reserve the same admission slot as Ollama. Idle leases expire so a crashed
+    # worker cannot block the server indefinitely; active work is never reaped.
+    gateway_external_lease_ttl_seconds: float = Field(
+        default=45.0,
+        ge=10.0,
+        le=600.0,
+    )
+
     # Lower numeric value means higher priority. These defaults leave wide gaps
     # so future workloads can be inserted without renumbering existing classes.
     gateway_priority_ventilation: int = Field(default=10, ge=-1000, le=1000)
