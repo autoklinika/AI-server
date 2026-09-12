@@ -130,7 +130,7 @@ for raw in sys.argv[1:]:
 PY
 
 grep -q 'AI_SERVER_GLOBAL_RESOURCE_QUEUE_V3' "$HERMES_TURN" || fail "queue v3 marker missing"
-grep -q 'AI_SERVER_DISCORD_QUEUE_VOICE_V1' "$HERMES_RUNNER" || fail "Discord queue voice marker missing"
+grep -q 'AI_SERVER_DISCORD_QUEUE_VOICE_V2' "$HERMES_RUNNER" || fail "Discord queue voice v2 marker missing"
 
 echo
 echo "===== RESTART HERMES ====="
@@ -149,6 +149,6 @@ MUTATED=0
 echo
 echo "===== DONE ====="
 say "PASS: Discord queue text notifications preserved."
-say "PASS: Discord Voice queue transitions use Hermes play_ack_in_voice/TTS pipeline."
+say "PASS: Discord Voice queue status uses Hermes TTS + active voice-channel mixer independently of ack_enabled."
 say "PASS: queue voice status does not consume the normal first-tool voice acknowledgement."
 say "PASS: no main merge was performed."
