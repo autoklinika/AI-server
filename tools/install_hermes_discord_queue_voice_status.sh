@@ -118,7 +118,16 @@ sudo install -d -m 0755 "$LIBEXEC"
 sudo install -m 0644 "$WT/tools/hermes_resource_queue.py" "$HELPER"
 "$HERMES_PY" "$WT/tools/patch_hermes_global_resource_queue.py" "$HERMES_TURN"
 "$HERMES_PY" "$WT/tools/patch_hermes_discord_queue_voice.py" "$HERMES_RUNNER"
-"$HERMES_PY" -m py_compile "$HELPER" "$HERMES_TURN" "$HERMES_RUNNER"
+
+# Syntax-check installed files without writing __pycache__ beside root-owned files.
+"$HERMES_PY" - "$HELPER" "$HERMES_TURN" "$HERMES_RUNNER" <<'PY'
+from pathlib import Path
+import sys
+for raw in sys.argv[1:]:
+    path = Path(raw)
+    compile(path.read_text(encoding="utf-8"), str(path), "exec")
+    print(f"syntax OK: {path}")
+PY
 
 grep -q 'AI_SERVER_GLOBAL_RESOURCE_QUEUE_V3' "$HERMES_TURN" || fail "queue v3 marker missing"
 grep -q 'AI_SERVER_DISCORD_QUEUE_VOICE_V1' "$HERMES_RUNNER" || fail "Discord queue voice marker missing"
