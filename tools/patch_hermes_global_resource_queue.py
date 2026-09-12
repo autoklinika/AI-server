@@ -7,8 +7,9 @@ import tempfile
 from pathlib import Path
 
 
-MARKER = "AI_SERVER_GLOBAL_RESOURCE_QUEUE_V3"
+MARKER = "AI_SERVER_GLOBAL_RESOURCE_QUEUE_V4"
 LEGACY_MARKERS = (
+    "AI_SERVER_GLOBAL_RESOURCE_QUEUE_V3",
     "AI_SERVER_GLOBAL_RESOURCE_QUEUE_V2",
     "AI_SERVER_GLOBAL_RESOURCE_QUEUE_V1",
 )
@@ -24,7 +25,7 @@ class PatchError(RuntimeError):
 
 
 def _block() -> str:
-    return '''    # AI_SERVER_GLOBAL_RESOURCE_QUEUE_V3: reserve the global local-AI slot
+    return '''    # AI_SERVER_GLOBAL_RESOURCE_QUEUE_V4: reserve the global local-AI slot
     # for interactive Hermes turns on Telegram and Discord. Session ContextVars
     # are authoritative on the concurrent gateway; process-global HERMES_SESSION_*
     # values are not used.
@@ -89,27 +90,19 @@ def _block() -> str:
                     else None
                 )
 
-                # Discord Voice uses Hermes' existing voice-ack pipeline. The
-                # callback is inert for text-only Discord turns because Hermes
-                # only installs tool_start_callback when a voice mixer is active.
+                # Discord Voice gets a dedicated per-turn callback installed by
+                # gateway/run_turn_runner.py. Unlike the old synthetic tool-start
+                # bridge, this does not depend on voice_fx acknowledgements or an
+                # active VoiceMixer; the callback resolves the real joined VC.
                 _rq_status_callback = None
                 if _rq_platform == "discord" and _rq_first_call:
-                    _rq_voice_phrases = {
-                        "queued": "Serwer AI jest zajęty. Dodałem pytanie do kolejki.",
-                        "active": "Zwolniły się zasoby. Zaczynam.",
-                    }
-
-                    def _rq_discord_voice_status(_rq_event):
-                        _rq_phrase = _rq_voice_phrases.get(str(_rq_event or ""))
-                        _rq_tool_start = getattr(agent, "tool_start_callback", None)
-                        if _rq_phrase and callable(_rq_tool_start):
-                            _rq_tool_start(
-                                "ai-server-resource-queue",
-                                "__ai_server_queue_status__",
-                                {"phrase": _rq_phrase},
-                            )
-
-                    _rq_status_callback = _rq_discord_voice_status
+                    _rq_candidate = getattr(
+                        agent,
+                        "_ai_server_queue_voice_callback",
+                        None,
+                    )
+                    if callable(_rq_candidate):
+                        _rq_status_callback = _rq_candidate
 
                 _rq_lease = _rq_mod.acquire_resource(
                     target=_rq_target,
@@ -159,7 +152,7 @@ def _validate_layout(text: str) -> None:
 
 def patch_text(text: str) -> str:
     if text.count(MARKER) > 1:
-        raise PatchError("duplicate global resource queue v3 marker")
+        raise PatchError("duplicate global resource queue v4 marker")
     legacy = _legacy_marker(text)
     if MARKER in text and legacy:
         raise PatchError("mixed current/legacy global resource queue markers")
@@ -179,7 +172,7 @@ def patch_text(text: str) -> str:
         patched = text.replace(ANCHOR, _block() + ANCHOR, 1)
 
     if patched.count(MARKER) != 1 or any(marker in patched for marker in LEGACY_MARKERS):
-        raise PatchError("v3 marker migration failed")
+        raise PatchError("v4 marker migration failed")
     compile(patched, "agent/turn_api_request.py", "exec")
     return patched
 
@@ -238,7 +231,7 @@ def main(argv: list[str] | None = None) -> int:
             print("already patched")
             return 0
         atomic_write(args.path, patched)
-        print("patched v3")
+        print("patched v4")
         return 0
     except (OSError, PatchError, SyntaxError) as exc:
         print(f"ERROR: {exc}")
