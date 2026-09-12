@@ -179,6 +179,30 @@ Skrypty nie wykonują automatycznie montowania NAS, operacji ECU ani przełącze
 globalnego LLM na CPU. Nie tworzą zadań cyklicznych. Odbiór głosu działa przez
 istniejącą usługę, bez nowego mechanizmu harmonogramu.
 
+## Po restarcie serwera — krótka instrukcja na telefonie
+
+Sprawdzono rzeczywisty restart serwera: Hermes, Ollama i ai-gateway uruchomiły
+się automatycznie, bez potrzeby logowania właściciela do uruchomienia usług
+(usługa użytkownika Hermesa ma włączony linger). Początkowy problem DNS ustąpił
+samoczynnie; Discord i Telegram ponownie się połączyły. Bot nie wraca jednak
+sam do kanału głosowego. Po wykonaniu poniższych kroków użytkownik potwierdził
+poprawną odpowiedź głosową Hermesa na prośbę przedstawienia się.
+
+1. Na telefonie otwórz **Serwer AI → Kanały głosowe → Ogólne** i naciśnij
+   **Dołącz do połączenia głosowego**. Samo otwarcie podglądu kanału nie wystarcza.
+2. Zwiń rozmowę **strzałką w dół w lewym górnym rogu**, pozostając połączonym.
+   Na liście kanałów zielony głośnik, licznik rozmowy i Twoje konto pod „Ogólne”
+   potwierdzają połączenie.
+3. Otwórz **Kanały tekstowe → # ogólny**.
+4. W polu **Napisz na #ogólny** wpisz `/voice`. W karcie komendy wybierz
+   **mode**, następnie **join — join your voice channel** i naciśnij strzałkę
+   wysyłania.
+5. Hermes pojawi się w „Ogólne”; możesz mówić i sprawdzić odpowiedź głosową.
+
+Samo `/voice` przełącza tryb odpowiedzi i nie zastępuje `mode=join`. Jeżeli bot
+odpowie „You need to be in a voice channel first”, sprawdź faktyczne dołączenie
+Twojego konta do kanału głosowego (krok 1), a potem ponów komendę z `mode=join`.
+
 ## Test odbiorczy i powrót do kopii
 
 W nowej sesji sprawdź kolejno: polską krótką odpowiedź, 17+28, utworzenie lokalnego
