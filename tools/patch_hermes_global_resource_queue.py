@@ -7,9 +7,11 @@ import tempfile
 from pathlib import Path
 
 
-MARKER = "AI_SERVER_GLOBAL_RESOURCE_QUEUE_V2"
-LEGACY_MARKER = "AI_SERVER_GLOBAL_RESOURCE_QUEUE_V1"
-LEGACY_BLOCK_START = "    # AI_SERVER_GLOBAL_RESOURCE_QUEUE_V1:"
+MARKER = "AI_SERVER_GLOBAL_RESOURCE_QUEUE_V3"
+LEGACY_MARKERS = (
+    "AI_SERVER_GLOBAL_RESOURCE_QUEUE_V2",
+    "AI_SERVER_GLOBAL_RESOURCE_QUEUE_V1",
+)
 ANCHOR = (
     "    # Private to the in-process MoA facade; added after middleware/hooks/debug dumps so"
 )
@@ -22,7 +24,7 @@ class PatchError(RuntimeError):
 
 
 def _block() -> str:
-    return '''    # AI_SERVER_GLOBAL_RESOURCE_QUEUE_V2: reserve the global local-AI slot
+    return '''    # AI_SERVER_GLOBAL_RESOURCE_QUEUE_V3: reserve the global local-AI slot
     # for interactive Hermes turns on Telegram and Discord. Session ContextVars
     # are authoritative on the concurrent gateway; process-global HERMES_SESSION_*
     # values are not used.
@@ -86,12 +88,36 @@ def _block() -> str:
                     if _rq_first_call
                     else None
                 )
+
+                # Discord Voice uses Hermes' existing voice-ack pipeline. The
+                # callback is inert for text-only Discord turns because Hermes
+                # only installs tool_start_callback when a voice mixer is active.
+                _rq_status_callback = None
+                if _rq_platform == "discord" and _rq_first_call:
+                    _rq_voice_phrases = {
+                        "queued": "Serwer AI jest zajęty. Dodałem pytanie do kolejki.",
+                        "active": "Zwolniły się zasoby. Zaczynam.",
+                    }
+
+                    def _rq_discord_voice_status(_rq_event):
+                        _rq_phrase = _rq_voice_phrases.get(str(_rq_event or ""))
+                        _rq_tool_start = getattr(agent, "tool_start_callback", None)
+                        if _rq_phrase and callable(_rq_tool_start):
+                            _rq_tool_start(
+                                "ai-server-resource-queue",
+                                "__ai_server_queue_status__",
+                                {"phrase": _rq_phrase},
+                            )
+
+                    _rq_status_callback = _rq_discord_voice_status
+
                 _rq_lease = _rq_mod.acquire_resource(
                     target=_rq_target,
                     source=_rq_source,
                     priority=50,
                     queue_message=_rq_queue_message,
                     start_message=_rq_start_message,
+                    status_callback=_rq_status_callback,
                 )
                 _set_extra_header(
                     api_kwargs,
@@ -115,6 +141,13 @@ def _block() -> str:
 '''
 
 
+def _legacy_marker(text: str) -> str | None:
+    found = [marker for marker in LEGACY_MARKERS if marker in text]
+    if len(found) > 1:
+        raise PatchError("mixed legacy global resource queue markers")
+    return found[0] if found else None
+
+
 def _validate_layout(text: str) -> None:
     if EXPECTED_BUILD not in text or EXPECTED_HEADER_HELPER not in text:
         raise PatchError("unsupported Hermes turn_api_request layout")
@@ -126,40 +159,41 @@ def _validate_layout(text: str) -> None:
 
 def patch_text(text: str) -> str:
     if text.count(MARKER) > 1:
-        raise PatchError("duplicate global resource queue v2 marker")
-    if text.count(LEGACY_MARKER) > 1:
-        raise PatchError("duplicate global resource queue v1 marker")
-    if MARKER in text and LEGACY_MARKER in text:
-        raise PatchError("mixed v1/v2 global resource queue markers")
+        raise PatchError("duplicate global resource queue v3 marker")
+    legacy = _legacy_marker(text)
+    if MARKER in text and legacy:
+        raise PatchError("mixed current/legacy global resource queue markers")
     if MARKER in text:
         compile(text, "agent/turn_api_request.py", "exec")
         return text
 
     _validate_layout(text)
-    if LEGACY_MARKER in text:
-        start = text.find(LEGACY_BLOCK_START)
+    if legacy:
+        block_start = f"    # {legacy}:"
+        start = text.find(block_start)
         anchor = text.find(ANCHOR, start)
         if start < 0 or anchor < 0:
-            raise PatchError("legacy v1 queue block boundaries not found")
+            raise PatchError("legacy queue block boundaries not found")
         patched = text[:start] + _block() + text[anchor:]
     else:
         patched = text.replace(ANCHOR, _block() + ANCHOR, 1)
 
-    if patched.count(MARKER) != 1 or LEGACY_MARKER in patched:
-        raise PatchError("v2 marker migration failed")
+    if patched.count(MARKER) != 1 or any(marker in patched for marker in LEGACY_MARKERS):
+        raise PatchError("v3 marker migration failed")
     compile(patched, "agent/turn_api_request.py", "exec")
     return patched
 
 
 def check_text(text: str) -> str:
-    had_legacy = LEGACY_MARKER in text and MARKER not in text
+    legacy = None
     try:
+        legacy = _legacy_marker(text)
         patched = patch_text(text)
     except (PatchError, SyntaxError) as exc:
         return f"unsupported:{exc}"
     if patched == text:
         return "patched"
-    return "upgradeable-v1" if had_legacy else "patchable"
+    return "upgradeable-legacy" if legacy else "patchable"
 
 
 def atomic_write(path: Path, text: str) -> None:
@@ -197,14 +231,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.check:
             state = check_text(text)
             print(state)
-            return 0 if state in {"patched", "patchable", "upgradeable-v1"} else 2
+            return 0 if state in {"patched", "patchable", "upgradeable-legacy"} else 2
 
         patched = patch_text(text)
         if patched == text:
             print("already patched")
             return 0
         atomic_write(args.path, patched)
-        print("patched v2")
+        print("patched v3")
         return 0
     except (OSError, PatchError, SyntaxError) as exc:
         print(f"ERROR: {exc}")
