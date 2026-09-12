@@ -12,7 +12,7 @@ HERMES_RUNNER="${HERMES_SOURCE}/gateway/run_turn_runner.py"
 HERMES_EXPECTED="79445a496c86a19332ad786494b8384d2167e2d0"
 LIBEXEC="/usr/local/libexec/ai-server"
 HELPER="${LIBEXEC}/hermes_resource_queue.py"
-BACKUP="/srv/ai-data/hermes/discord-queue-voice-backup-v1"
+BACKUP="/srv/ai-data/hermes/discord-queue-voice-backup-v3"
 SUCCESS=0
 MUTATED=0
 
@@ -101,6 +101,10 @@ with urllib.request.urlopen("http://127.0.0.1:11435/status", timeout=3) as respo
     status = json.load(response)
 print(json.dumps(status, ensure_ascii=False))
 assert "active_count" in status and "queued_count" in status, "global resource manager not installed"
+leases = (status.get("resource_leases") or {}).get("lease_count")
+assert status.get("active_count") == 0, "AI Gateway has an active job"
+assert status.get("queued_count") == 0, "AI Gateway has queued jobs"
+assert leases == 0, "AI Gateway has resource leases"
 PY
 
 echo
@@ -109,7 +113,7 @@ sudo install -d -o harrypotter -g harrypotter -m 0700 "$BACKUP"
 backup_file "$HERMES_TURN" hermes-turn_api_request.py
 backup_file "$HERMES_RUNNER" hermes-run_turn_runner.py
 backup_file "$HELPER" hermes_resource_queue.py
-say "PASS: reversible backup ready"
+say "PASS: reversible v3 backup ready"
 MUTATED=1
 
 echo
@@ -129,8 +133,8 @@ for raw in sys.argv[1:]:
     print(f"syntax OK: {path}")
 PY
 
-grep -q 'AI_SERVER_GLOBAL_RESOURCE_QUEUE_V3' "$HERMES_TURN" || fail "queue v3 marker missing"
-grep -q 'AI_SERVER_DISCORD_QUEUE_VOICE_V2' "$HERMES_RUNNER" || fail "Discord queue voice v2 marker missing"
+grep -q 'AI_SERVER_GLOBAL_RESOURCE_QUEUE_V4' "$HERMES_TURN" || fail "queue v4 marker missing"
+grep -q 'AI_SERVER_DISCORD_QUEUE_VOICE_V3' "$HERMES_RUNNER" || fail "Discord queue voice v3 marker missing"
 
 echo
 echo "===== RESTART HERMES ====="
@@ -149,6 +153,6 @@ MUTATED=0
 echo
 echo "===== DONE ====="
 say "PASS: Discord queue text notifications preserved."
-say "PASS: Discord Voice queue status uses Hermes TTS + active voice-channel mixer independently of ack_enabled."
-say "PASS: queue voice status does not consume the normal first-tool voice acknowledgement."
+say "PASS: Discord Voice queue status follows the real joined voice connection, independent of ack_enabled and VoiceMixer."
+say "PASS: normal first-tool voice acknowledgement remains unchanged."
 say "PASS: no main merge was performed."
