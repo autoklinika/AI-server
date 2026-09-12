@@ -7,11 +7,14 @@ import tempfile
 from pathlib import Path
 
 
-MARKER = "AI_SERVER_DISCORD_QUEUE_VOICE_V2"
-LEGACY_MARKER = "AI_SERVER_DISCORD_QUEUE_VOICE_V1"
+MARKER = "AI_SERVER_DISCORD_QUEUE_VOICE_V3"
+LEGACY_MARKERS = (
+    "AI_SERVER_DISCORD_QUEUE_VOICE_V2",
+    "AI_SERVER_DISCORD_QUEUE_VOICE_V1",
+)
 TARGET = "gateway/run_turn_runner.py"
 
-BASE = '''    def voice_ack_callback(self, call_id, tool_name, args):
+BASE_VOICE_ACK = '''    def voice_ack_callback(self, call_id, tool_name, args):
         """tool_start_callback: speak a one-time ack in the voice channel."""
         ctx = self._ctx
         if ctx._voice_ack_fired[0] or ctx._voice_ack_guild[0] is None or not ctx._run_still_current():
@@ -28,7 +31,7 @@ BASE = '''    def voice_ack_callback(self, call_id, tool_name, args):
             logger.debug("voice ack schedule failed: %s", err)
 '''
 
-LEGACY = '''    def voice_ack_callback(self, call_id, tool_name, args):
+LEGACY_V1 = '''    def voice_ack_callback(self, call_id, tool_name, args):
         """tool_start_callback: speak a one-time ack or an AI-server queue status in voice."""
         ctx = self._ctx
 
@@ -69,7 +72,7 @@ LEGACY = '''    def voice_ack_callback(self, call_id, tool_name, args):
             logger.debug("voice ack schedule failed: %s", err)
 '''
 
-NEW = '''    def voice_ack_callback(self, call_id, tool_name, args):
+LEGACY_V2 = '''    def voice_ack_callback(self, call_id, tool_name, args):
         """tool_start_callback: speak a one-time ack or an AI-server queue status in voice."""
         ctx = self._ctx
 
@@ -154,46 +157,171 @@ NEW = '''    def voice_ack_callback(self, call_id, tool_name, args):
             logger.debug("voice ack schedule failed: %s", err)
 '''
 
+QUEUE_METHOD = '''
+    # AI_SERVER_DISCORD_QUEUE_VOICE_V3: queue speech follows the same active
+    # Discord voice connection used by normal auto-TTS. It intentionally does
+    # not depend on voice_fx.ack_enabled or voice_mixer_active().
+    def ai_server_queue_voice_status_callback(self, event: str) -> None:
+        ctx = self._ctx
+        if ctx.source.platform != Platform.DISCORD or not ctx._run_still_current():
+            return
+        phrase = {
+            "queued": "Serwer AI jest zajęty. Dodałem pytanie do kolejki.",
+            "active": "Zwolniły się zasoby. Zaczynam.",
+        }.get(str(event or ""))
+        if not phrase:
+            return
+        adapter = self._runner.adapters.get(Platform.DISCORD)
+        if adapter is None or not hasattr(adapter, "play_in_voice_channel"):
+            return
+        voice_text_channels = getattr(adapter, "_voice_text_channels", None)
+        if not isinstance(voice_text_channels, dict):
+            return
+        guild_id = next(
+            (
+                gid
+                for gid, text_channel_id in voice_text_channels.items()
+                if str(text_channel_id) == str(ctx.source.chat_id)
+                and adapter.is_in_voice_channel(gid)
+            ),
+            None,
+        )
+        if guild_id is None:
+            logger.debug(
+                "queue voice status: no active Discord voice connection for chat=%s",
+                ctx.source.chat_id,
+            )
+            return
+
+        async def _play_queue_status():
+            import os as _rq_os
+            import tempfile as _rq_tempfile
+            import uuid as _rq_uuid
+
+            audio_path = _rq_os.path.join(
+                _rq_tempfile.gettempdir(),
+                "hermes_voice",
+                f"queue_{_rq_uuid.uuid4().hex[:12]}.mp3",
+            )
+            actual_path = audio_path
+            _rq_os.makedirs(_rq_os.path.dirname(audio_path), exist_ok=True)
+            try:
+                from tools.tts_tool import text_to_speech_tool as _rq_tts
+
+                raw = await asyncio.to_thread(
+                    _rq_tts,
+                    text=phrase,
+                    output_path=audio_path,
+                )
+                try:
+                    doc = json.loads(raw) if isinstance(raw, str) else {}
+                except Exception:
+                    doc = {}
+                actual_path = str(doc.get("file_path") or audio_path)
+                if not _rq_os.path.isfile(actual_path):
+                    logger.warning("queue voice status TTS produced no audio file")
+                    return
+                ok = await adapter.play_in_voice_channel(guild_id, actual_path)
+                if not ok:
+                    logger.warning(
+                        "queue voice status playback returned false for guild=%s",
+                        guild_id,
+                    )
+            except Exception as err:
+                logger.warning("queue voice status playback failed: %s", err)
+            finally:
+                for path in {audio_path, actual_path}:
+                    try:
+                        if path and _rq_os.path.isfile(path):
+                            _rq_os.unlink(path)
+                    except OSError:
+                        pass
+
+        try:
+            self._schedule(
+                _play_queue_status(),
+                "queue voice status scheduling error",
+                loop=ctx._voice_ack_loop,
+            )
+        except Exception as err:
+            logger.warning("queue voice status schedule failed: %s", err)
+'''
+
+WIRE_ANCHOR = '''        agent.tool_start_callback = (
+            (ctx.native_tool_start_callback or ctx.voice_ack_callback)
+            if (ctx._voice_ack_guild[0] is not None or ctx._native_slack_task_cards) else None
+        )
+'''
+
+WIRE_PATCHED = WIRE_ANCHOR + '''        agent._ai_server_queue_voice_callback = (
+            self.ai_server_queue_voice_status_callback
+            if ctx.source.platform == Platform.DISCORD else None
+        )
+'''
+
 
 class PatchError(RuntimeError):
     pass
 
 
+def _remove_legacy_voice_patch(text: str) -> str:
+    if "AI_SERVER_DISCORD_QUEUE_VOICE_V2" in text:
+        if text.count(LEGACY_V2) != 1:
+            raise PatchError("legacy Discord queue voice v2 block not found exactly once")
+        return text.replace(LEGACY_V2, BASE_VOICE_ACK, 1)
+    if "AI_SERVER_DISCORD_QUEUE_VOICE_V1" in text:
+        if text.count(LEGACY_V1) != 1:
+            raise PatchError("legacy Discord queue voice v1 block not found exactly once")
+        return text.replace(LEGACY_V1, BASE_VOICE_ACK, 1)
+    return text
+
+
 def patch_text(text: str) -> str:
     if text.count(MARKER) > 1:
-        raise PatchError("duplicate Discord queue voice v2 marker")
-    if MARKER in text and LEGACY_MARKER in text:
-        raise PatchError("mixed Discord queue voice v1/v2 markers")
+        raise PatchError("duplicate Discord queue voice v3 marker")
+    legacy_present = [marker for marker in LEGACY_MARKERS if marker in text]
+    if MARKER in text and legacy_present:
+        raise PatchError("mixed current/legacy Discord queue voice markers")
+    if len(legacy_present) > 1:
+        raise PatchError("mixed legacy Discord queue voice markers")
     if MARKER in text:
         compile(text, TARGET, "exec")
         return text
 
-    if LEGACY_MARKER in text:
-        count = text.count(LEGACY)
-        if count != 1:
-            raise PatchError(f"expected one legacy voice callback, found {count}")
-        patched = text.replace(LEGACY, NEW, 1)
-    else:
-        count = text.count(BASE)
-        if count != 1:
-            raise PatchError(f"expected one voice_ack_callback anchor, found {count}")
-        patched = text.replace(BASE, NEW, 1)
+    patched = _remove_legacy_voice_patch(text)
+    if patched.count(BASE_VOICE_ACK) != 1:
+        raise PatchError(
+            f"expected one base voice_ack_callback, found {patched.count(BASE_VOICE_ACK)}"
+        )
+    patched = patched.replace(BASE_VOICE_ACK, BASE_VOICE_ACK + QUEUE_METHOD, 1)
 
-    if patched.count(MARKER) != 1 or LEGACY_MARKER in patched:
-        raise PatchError("Discord queue voice v2 insertion failed")
+    if patched.count(WIRE_ANCHOR) != 1:
+        raise PatchError(
+            f"expected one tool_start_callback wiring anchor, found {patched.count(WIRE_ANCHOR)}"
+        )
+    patched = patched.replace(WIRE_ANCHOR, WIRE_PATCHED, 1)
+
+    if patched.count(MARKER) != 1:
+        raise PatchError("Discord queue voice v3 insertion failed")
+    if any(marker in patched for marker in LEGACY_MARKERS):
+        raise PatchError("legacy Discord queue voice marker survived v3 migration")
     compile(patched, TARGET, "exec")
     return patched
 
 
 def check_text(text: str) -> str:
-    had_legacy = LEGACY_MARKER in text and MARKER not in text
+    legacy = next((marker for marker in LEGACY_MARKERS if marker in text), None)
     try:
         patched = patch_text(text)
     except (PatchError, SyntaxError) as exc:
         return f"unsupported:{exc}"
     if patched == text:
         return "patched"
-    return "upgradeable-v1" if had_legacy else "patchable"
+    if legacy == "AI_SERVER_DISCORD_QUEUE_VOICE_V2":
+        return "upgradeable-v2"
+    if legacy == "AI_SERVER_DISCORD_QUEUE_VOICE_V1":
+        return "upgradeable-v1"
+    return "patchable"
 
 
 def atomic_write(path: Path, text: str) -> None:
@@ -231,13 +359,15 @@ def main(argv: list[str] | None = None) -> int:
         if args.check:
             state = check_text(text)
             print(state)
-            return 0 if state in {"patched", "patchable", "upgradeable-v1"} else 2
+            return 0 if state in {
+                "patched", "patchable", "upgradeable-v1", "upgradeable-v2"
+            } else 2
         patched = patch_text(text)
         if patched == text:
             print("already patched")
             return 0
         atomic_write(args.path, patched)
-        print("patched Discord queue voice v2")
+        print("patched Discord queue voice v3")
         return 0
     except (OSError, PatchError, SyntaxError) as exc:
         print(f"ERROR: {exc}")
