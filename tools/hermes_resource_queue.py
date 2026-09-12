@@ -12,6 +12,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from typing import Callable
 
 GATEWAY_DEFAULT = "http://127.0.0.1:11435"
 QUEUE_NOTICE_AFTER_DEFAULT = 0.75
@@ -136,6 +137,25 @@ def _notify_best_effort(target: str | None, message: str | None) -> bool:
         return False
 
 
+def _status_callback_best_effort(
+    callback: Callable[[str], None] | None,
+    event: str,
+) -> bool:
+    """Opcjonalny hook UX (np. Discord Voice) nie może blokować kolejki AI."""
+    if callback is None:
+        return False
+    try:
+        callback(event)
+        return True
+    except Exception as exc:
+        print(
+            f"WARN: resource queue status callback failed ({event}): {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return False
+
+
 def _float_env(name: str, default: float, low: float, high: float) -> float:
     try:
         value = float(os.environ.get(name, default))
@@ -201,6 +221,7 @@ def acquire_resource(
     priority: int = 50,
     queue_message: str | None = None,
     start_message: str | None = None,
+    status_callback: Callable[[str], None] | None = None,
 ) -> ResourceLease:
     created = _json(
         "POST",
@@ -226,7 +247,6 @@ def acquire_resource(
 
     state = str(created.get("state") or "")
     queued_notice_attempted = False
-    queued_notice_sent = False
     started = time.monotonic()
     notice_after = _float_env(
         "HERMES_RESOURCE_QUEUE_NOTICE_AFTER",
@@ -252,7 +272,8 @@ def acquire_resource(
                 and time.monotonic() - started >= notice_after
             ):
                 queued_notice_attempted = True
-                queued_notice_sent = _notify_best_effort(target, queue_message)
+                _notify_best_effort(target, queue_message)
+                _status_callback_best_effort(status_callback, "queued")
 
             time.sleep(poll)
             status = _json(
@@ -262,8 +283,9 @@ def acquire_resource(
             )
             state = str(status.get("state") or "")
 
-        if queued_notice_sent:
+        if queued_notice_attempted:
             _notify_best_effort(target, start_message)
+            _status_callback_best_effort(status_callback, "active")
         return handle
     except Exception:
         handle.release()
