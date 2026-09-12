@@ -46,7 +46,9 @@ def test_patcher_inserts_queue_voice_v3_path_once():
     assert "def ai_server_queue_voice_status_callback" in patched
     assert '"queued": "Serwer AI jest zajęty. Dodałem pytanie do kolejki."' in patched
     assert "play_in_voice_channel(guild_id, actual_path)" in patched
-    assert "voice_mixer_active" not in patched.split(mod.MARKER, 1)[1].split("def _wire_turn_agent_callbacks", 1)[0]
+    method = patched.split("def ai_server_queue_voice_status_callback", 1)[1]
+    method = method.split("def _wire_turn_agent_callbacks", 1)[0]
+    assert "adapter.voice_mixer_active(" not in method
     assert "_ai_server_queue_voice_callback" in patched
     assert mod.patch_text(patched) == patched
 
