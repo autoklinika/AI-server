@@ -46,6 +46,8 @@ RDP/xrdp nie są częścią docelowej konfiguracji hosta.
 
 ## Dokumentacja
 
+- [Hermes: Discord voice — konfiguracja, diagnoza i odtworzenie 12.09.2026](docs/HERMES_DISCORD_VOICE_2026-09-12_PL.md)
+
 ### Architektura
 
 - [ADR-002 – Strategia analizy danych przez AI](docs/ADR-002_AI_ANALYSIS_STRATEGY_PL.md)

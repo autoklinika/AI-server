@@ -12,11 +12,13 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from typing import Callable
 
 GATEWAY_DEFAULT = "http://127.0.0.1:11435"
 QUEUE_NOTICE_AFTER_DEFAULT = 0.75
 POLL_SECONDS_DEFAULT = 0.35
 HEARTBEAT_SECONDS_DEFAULT = 10.0
+NOTIFIABLE_PLATFORMS = frozenset({"telegram", "discord"})
 
 
 class ResourceQueueError(RuntimeError):
@@ -86,12 +88,23 @@ def _hermes_bin() -> str:
         if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
             return candidate
     raise ResourceQueueError(
-        "Nie znaleziono lokalnego CLI Hermesa do komunikatu Telegram."
+        "Nie znaleziono lokalnego CLI Hermesa do komunikatu statusowego."
     )
 
 
+def _notification_platform(target: str | None) -> str | None:
+    if not target:
+        return None
+    platform, separator, destination = str(target).partition(":")
+    platform = platform.strip().lower()
+    if not separator or not destination.strip() or platform not in NOTIFIABLE_PLATFORMS:
+        return None
+    return platform
+
+
 def _notify(target: str | None, message: str | None) -> None:
-    if not target or not str(target).startswith("telegram:") or not message:
+    platform = _notification_platform(target)
+    if platform is None or not message:
         return
     process = subprocess.run(
         [_hermes_bin(), "send", "--to", str(target), str(message)],
@@ -102,19 +115,41 @@ def _notify(target: str | None, message: str | None) -> None:
         check=False,
     )
     if process.returncode != 0:
-        raise ResourceQueueError("Nie udało się wysłać statusu kolejki Telegram.")
+        raise ResourceQueueError(
+            f"Nie udało się wysłać statusu kolejki przez {platform}."
+        )
 
 
 def _notify_best_effort(target: str | None, message: str | None) -> bool:
     """Status kolejki nie może zatrzymać właściwego zadania użytkownika."""
-    if not target or not str(target).startswith("telegram:") or not message:
+    platform = _notification_platform(target)
+    if platform is None or not message:
         return False
     try:
         _notify(target, message)
         return True
     except Exception as exc:
         print(
-            f"WARN: Telegram queue status delivery failed: {exc}",
+            f"WARN: {platform} queue status delivery failed: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return False
+
+
+def _status_callback_best_effort(
+    callback: Callable[[str], None] | None,
+    event: str,
+) -> bool:
+    """Opcjonalny hook UX (np. Discord Voice) nie może blokować kolejki AI."""
+    if callback is None:
+        return False
+    try:
+        callback(event)
+        return True
+    except Exception as exc:
+        print(
+            f"WARN: resource queue status callback failed ({event}): {exc}",
             file=sys.stderr,
             flush=True,
         )
@@ -186,6 +221,7 @@ def acquire_resource(
     priority: int = 50,
     queue_message: str | None = None,
     start_message: str | None = None,
+    status_callback: Callable[[str], None] | None = None,
 ) -> ResourceLease:
     created = _json(
         "POST",
@@ -211,7 +247,6 @@ def acquire_resource(
 
     state = str(created.get("state") or "")
     queued_notice_attempted = False
-    queued_notice_sent = False
     started = time.monotonic()
     notice_after = _float_env(
         "HERMES_RESOURCE_QUEUE_NOTICE_AFTER",
@@ -237,7 +272,8 @@ def acquire_resource(
                 and time.monotonic() - started >= notice_after
             ):
                 queued_notice_attempted = True
-                queued_notice_sent = _notify_best_effort(target, queue_message)
+                _notify_best_effort(target, queue_message)
+                _status_callback_best_effort(status_callback, "queued")
 
             time.sleep(poll)
             status = _json(
@@ -247,8 +283,9 @@ def acquire_resource(
             )
             state = str(status.get("state") or "")
 
-        if queued_notice_sent:
+        if queued_notice_attempted:
             _notify_best_effort(target, start_message)
+            _status_callback_best_effort(status_callback, "active")
         return handle
     except Exception:
         handle.release()

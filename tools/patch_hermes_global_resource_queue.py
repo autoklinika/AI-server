@@ -7,7 +7,12 @@ import tempfile
 from pathlib import Path
 
 
-MARKER = "AI_SERVER_GLOBAL_RESOURCE_QUEUE_V1"
+MARKER = "AI_SERVER_GLOBAL_RESOURCE_QUEUE_V4"
+LEGACY_MARKERS = (
+    "AI_SERVER_GLOBAL_RESOURCE_QUEUE_V3",
+    "AI_SERVER_GLOBAL_RESOURCE_QUEUE_V2",
+    "AI_SERVER_GLOBAL_RESOURCE_QUEUE_V1",
+)
 ANCHOR = (
     "    # Private to the in-process MoA facade; added after middleware/hooks/debug dumps so"
 )
@@ -20,9 +25,11 @@ class PatchError(RuntimeError):
 
 
 def _block() -> str:
-    return '''    # AI_SERVER_GLOBAL_RESOURCE_QUEUE_V1: reserve the global local-AI slot
-    # for the exact Telegram task. Session ContextVars are authoritative on the
-    # concurrent gateway; process-global HERMES_SESSION_* values are not used.
+    return '''    # AI_SERVER_GLOBAL_RESOURCE_QUEUE_V4: reserve the global local-AI slot
+    # for interactive Hermes turns on Telegram and Discord. Session ContextVars
+    # are authoritative on the concurrent gateway; process-global HERMES_SESSION_*
+    # values are not used.
+    _rq_platform = ""
     try:
         from gateway.session_context import get_session_env as _rq_get_session_env
         _rq_platform = str(
@@ -34,7 +41,7 @@ def _block() -> str:
         _rq_thread = str(
             _rq_get_session_env("HERMES_SESSION_THREAD_ID", "") or ""
         ).strip()
-        if _rq_platform == "telegram" and _rq_chat:
+        if _rq_platform in {"telegram", "discord"} and _rq_chat:
             import importlib.util as _rq_importlib
             import os as _rq_os
             import sys as _rq_sys
@@ -56,9 +63,13 @@ def _block() -> str:
             if _rq_mod.should_manage_base_url(
                 str(getattr(agent, "base_url", "") or "")
             ):
-                _rq_target = "telegram:" + _rq_chat
+                _rq_target = _rq_platform + ":" + _rq_chat
                 if _rq_thread:
                     _rq_target += ":" + _rq_thread
+                _rq_source = {
+                    "telegram": "telegram-chat",
+                    "discord": "discord-chat",
+                }[_rq_platform]
 
                 # One user-facing queue transition per incoming turn is enough.
                 # Tool-loop follow-up calls still use the global scheduler, but
@@ -68,7 +79,7 @@ def _block() -> str:
                 except (TypeError, ValueError):
                     _rq_first_call = True
                 _rq_queue_message = (
-                    "⏳ Twoje zapytanie czeka w kolejce. "
+                    "⏳ Serwer AI jest teraz zajęty. Twoje zapytanie czeka w kolejce. "
                     "Powiadomię Cię, gdy rozpocznie się przetwarzanie."
                     if _rq_first_call
                     else None
@@ -78,12 +89,28 @@ def _block() -> str:
                     if _rq_first_call
                     else None
                 )
+
+                # Discord Voice gets a dedicated per-turn callback installed by
+                # gateway/run_turn_runner.py. Unlike the old synthetic tool-start
+                # bridge, this does not depend on voice_fx acknowledgements or an
+                # active VoiceMixer; the callback resolves the real joined VC.
+                _rq_status_callback = None
+                if _rq_platform == "discord" and _rq_first_call:
+                    _rq_candidate = getattr(
+                        agent,
+                        "_ai_server_queue_voice_callback",
+                        None,
+                    )
+                    if callable(_rq_candidate):
+                        _rq_status_callback = _rq_candidate
+
                 _rq_lease = _rq_mod.acquire_resource(
                     target=_rq_target,
-                    source="telegram-chat",
+                    source=_rq_source,
                     priority=50,
                     queue_message=_rq_queue_message,
                     start_message=_rq_start_message,
+                    status_callback=_rq_status_callback,
                 )
                 _set_extra_header(
                     api_kwargs,
@@ -96,22 +123,25 @@ def _block() -> str:
                     "1",
                 )
     except Exception as _rq_exc:
-        # Fail open to the existing AI Gateway scheduler. The queue UX is an
-        # enhancement and must never make a valid Telegram LLM request unusable.
+        # Fail open to the existing AI Gateway scheduler. Queue UX must never
+        # make an otherwise valid Hermes request unusable.
         logger.warning(
-            "Global resource queue unavailable for Telegram request: %s",
+            "Global resource queue unavailable for %s request: %s",
+            _rq_platform or "unknown-platform",
             _rq_exc,
         )
 
 '''
 
 
-def patch_text(text: str) -> str:
-    if text.count(MARKER) > 1:
-        raise PatchError("duplicate global resource queue marker")
-    if MARKER in text:
-        compile(text, "agent/turn_api_request.py", "exec")
-        return text
+def _legacy_marker(text: str) -> str | None:
+    found = [marker for marker in LEGACY_MARKERS if marker in text]
+    if len(found) > 1:
+        raise PatchError("mixed legacy global resource queue markers")
+    return found[0] if found else None
+
+
+def _validate_layout(text: str) -> None:
     if EXPECTED_BUILD not in text or EXPECTED_HEADER_HELPER not in text:
         raise PatchError("unsupported Hermes turn_api_request layout")
     if text.count(ANCHOR) != 1:
@@ -119,19 +149,44 @@ def patch_text(text: str) -> str:
             f"expected one insertion anchor, found {text.count(ANCHOR)}"
         )
 
-    patched = text.replace(ANCHOR, _block() + ANCHOR, 1)
-    if patched.count(MARKER) != 1:
-        raise PatchError("marker insertion failed")
+
+def patch_text(text: str) -> str:
+    if text.count(MARKER) > 1:
+        raise PatchError("duplicate global resource queue v4 marker")
+    legacy = _legacy_marker(text)
+    if MARKER in text and legacy:
+        raise PatchError("mixed current/legacy global resource queue markers")
+    if MARKER in text:
+        compile(text, "agent/turn_api_request.py", "exec")
+        return text
+
+    _validate_layout(text)
+    if legacy:
+        block_start = f"    # {legacy}:"
+        start = text.find(block_start)
+        anchor = text.find(ANCHOR, start)
+        if start < 0 or anchor < 0:
+            raise PatchError("legacy queue block boundaries not found")
+        patched = text[:start] + _block() + text[anchor:]
+    else:
+        patched = text.replace(ANCHOR, _block() + ANCHOR, 1)
+
+    if patched.count(MARKER) != 1 or any(marker in patched for marker in LEGACY_MARKERS):
+        raise PatchError("v4 marker migration failed")
     compile(patched, "agent/turn_api_request.py", "exec")
     return patched
 
 
 def check_text(text: str) -> str:
+    legacy = None
     try:
+        legacy = _legacy_marker(text)
         patched = patch_text(text)
     except (PatchError, SyntaxError) as exc:
         return f"unsupported:{exc}"
-    return "patched" if patched == text else "patchable"
+    if patched == text:
+        return "patched"
+    return "upgradeable-legacy" if legacy else "patchable"
 
 
 def atomic_write(path: Path, text: str) -> None:
@@ -169,14 +224,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.check:
             state = check_text(text)
             print(state)
-            return 0 if state in {"patched", "patchable"} else 2
+            return 0 if state in {"patched", "patchable", "upgradeable-legacy"} else 2
 
         patched = patch_text(text)
         if patched == text:
             print("already patched")
             return 0
         atomic_write(args.path, patched)
-        print("patched")
+        print("patched v4")
         return 0
     except (OSError, PatchError, SyntaxError) as exc:
         print(f"ERROR: {exc}")

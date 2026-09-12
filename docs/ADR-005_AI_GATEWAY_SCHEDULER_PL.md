@@ -1,38 +1,39 @@
 # ADR-005 – Centralny AI Gateway i scheduler priorytetowy
 
-**Status:** implementacja etapowa  
+**Status:** implementacja etapowa; globalna kolejka Hermes Telegram/Discord zwalidowana 12.09.2026  
 **Wersja platformy:** AI Bridge 0.4.0
 
 ## Kontekst
 
 Serwer AI obsługuje już więcej niż jednego klienta modelu: automatyczną analizę
-wentylacji oraz Hermesa używanego m.in. przez Telegram. Wraz z kolejnymi klientami
-(RAG, robot, generowanie obrazów i zadania tła) bezpośredni dostęp wielu procesów do
-Ollamy nie daje jednego miejsca do kontrolowania kolejności i obciążenia inferencji.
+wentylacji oraz Hermesa używanego m.in. przez Telegram i Discord. Wraz z kolejnymi
+klientami (RAG, robot, generowanie obrazów i zadania tła) bezpośredni dostęp wielu
+procesów do Ollamy nie daje jednego miejsca do kontrolowania kolejności i obciążenia
+inferencji.
 
 Dwa wymagania są nadrzędne:
 
 1. zadania infrastrukturalne, przede wszystkim analiza wentylacji, muszą mieć wyższy
    priorytet niż interaktywne i tła;
 2. Hermes pozostaje warstwą agentową i sesyjną, a zarządzanie dostępem do modelu nie
-   może być zaszyte w logice Telegrama.
+   może być zaszyte w logice jednej platformy komunikacyjnej.
 
 ## Decyzja
 
 Wprowadzamy lokalny proces `ai-gateway` pomiędzy klientami a Ollamą.
 
 ```text
-Telegram / przyszły robot
-          |
-        Hermes
-          |  OpenAI-compatible API
-          v
-    +-------------+
-    | AI Gateway  |----> Ollama ----> Qwen
-    | + scheduler |
-    +-------------+
-          ^
-          |
+Telegram / Discord / przyszły robot
+                 |
+               Hermes
+                 |  OpenAI-compatible API
+                 v
+           +-------------+
+           | AI Gateway  |----> Ollama ----> Qwen
+           | + scheduler |
+           +-------------+
+                 ^
+                 |
 Wentylacja / AI Bridge analysis
 ```
 
@@ -60,15 +61,16 @@ Nagłówki sterujące:
 - `X-AI-Priority` – liczba całkowita; mniejsza wartość oznacza wyższy priorytet;
 - `X-AI-Source` – krótka nazwa źródła zadania do diagnostyki.
 
-Hermes korzystający z endpointu OpenAI otrzymuje domyślnie klasę `interactive`,
-więc nie wymaga własnego nagłówka do pierwszego wdrożenia.
+Hermes używa globalnego mechanizmu lease Resource Managera; finalny patch dla
+Telegrama i Discorda przekazuje lease do AI Gateway nagłówkami
+`X-AI-Resource-Lease` i `X-AI-Resource-Lease-Release`.
 
 ## Klasy priorytetów v1
 
 | Klasa | Wartość | Przykład |
 |---|---:|---|
 | ventilation | 10 | automatyczna analiza CM5 |
-| interactive | 50 | Hermes / Telegram |
+| interactive | 50 | Hermes / Telegram / Discord |
 | normal | 100 | RAG, zwykła analiza |
 | background | 200 | zadania tła |
 
@@ -87,6 +89,54 @@ istniejących klientów.
 Brak preempcji jest świadomą decyzją pierwszego etapu. Przerywanie aktywnej
 odpowiedzi Hermesa wymaga osobnej polityki `preemptible`, żeby nie psuć rozmów
 użytkowników.
+
+## Hermes: globalna kolejka i UX WAIT/START
+
+Stan zwalidowany 12.09.2026:
+
+- Telegram i Discord są obsługiwane przez wspólny helper Resource Managera;
+- Hermes interactive używa priority `50`;
+- wentylacja pozostaje na priority `10`;
+- komunikat użytkownika WAIT pojawia się tylko wtedy, gdy request realnie czeka
+  dłużej niż próg kolejki;
+- po awansie lease do `active` wysyłany jest komunikat START;
+- tylko pierwszy API call danego turnu produkuje użytkownikowi komunikaty kolejki;
+  kolejne wywołania tool-loop nadal podlegają schedulerowi, ale pozostają ciche.
+
+Finalny patch Hermesa ma marker `AI_SERVER_GLOBAL_RESOURCE_QUEUE_V4`.
+
+### Discord tekst
+
+Discord otrzymuje te same semantyczne przejścia co Telegram:
+
+- WAIT — informacja, że zapytanie czeka,
+- START — informacja, że zasób został zwolniony i zaczyna się przetwarzanie.
+
+### Discord Voice
+
+Finalny patch `AI_SERVER_DISCORD_QUEUE_VOICE_V3` dodaje osobny per-turn callback
+kolejki. Nie korzysta z syntetycznego `tool_start_callback`, nie zależy od
+`discord.voice_fx.ack_enabled` ani od aktywnego `VoiceMixer`.
+
+Callback mapuje bieżący tekstowy `chat_id` na realnie połączony Discord Voice przez
+`_voice_text_channels` + `is_in_voice_channel()`, generuje krótkie TTS i odtwarza je
+przez `play_in_voice_channel()`.
+
+Frazy zwalidowane end-to-end:
+
+- WAIT: `Serwer AI jest zajęty. Dodałem pytanie do kolejki.`
+- START: `Zwolniły się zasoby. Zaczynam.`
+
+Kontrolny test z ręcznym lease priority `10` potwierdził:
+
+1. tekstowy WAIT na Discordzie,
+2. głosowy WAIT,
+3. głosowy START po zwolnieniu zasobu,
+4. normalną głosową odpowiedź Hermesa po START,
+5. końcowy scheduler `active_count=0`, `queued_count=0`, `lease_count=0`.
+
+Szczegółowy przebieg, diagnoza wersji V1/V2 i procedura odtworzenia są zapisane w
+`docs/HERMES_GLOBAL_QUEUE_STATUS_2026-09-12_PL.md`.
 
 ## Granica z generowaniem obrazów
 
@@ -128,6 +178,8 @@ powinni omijać gatewaya.
    `http://127.0.0.1:11435/v1`.
 7. Przetestować dwóch użytkowników Telegrama równocześnie i potwierdzić osobne
    sesje po stronie Hermesa.
+8. Przed instalacją zmian patchujących działającego Hermesa wymagać pustego
+   schedulera (`active_count=0`, `queued_count=0`, `lease_count=0`).
 
 ## Obserwowalność
 
@@ -139,3 +191,7 @@ Każda odpowiedź inferencyjna dostaje nagłówki:
 
 `/status` pokazuje aktywne i oczekujące zadania bez treści promptów. Gateway nie
 zapisuje promptów ani odpowiedzi do własnej bazy.
+
+Dodatkowo `/status` jest teraz również kontrolą operacyjną przed wdrożeniem patchy
+Hermesa: installer Discord queue voice odmawia pracy, jeżeli istnieje aktywny job,
+kolejka lub resource lease.
