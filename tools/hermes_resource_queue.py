@@ -17,6 +17,7 @@ GATEWAY_DEFAULT = "http://127.0.0.1:11435"
 QUEUE_NOTICE_AFTER_DEFAULT = 0.75
 POLL_SECONDS_DEFAULT = 0.35
 HEARTBEAT_SECONDS_DEFAULT = 10.0
+NOTIFIABLE_PLATFORMS = frozenset({"telegram", "discord"})
 
 
 class ResourceQueueError(RuntimeError):
@@ -86,12 +87,23 @@ def _hermes_bin() -> str:
         if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
             return candidate
     raise ResourceQueueError(
-        "Nie znaleziono lokalnego CLI Hermesa do komunikatu Telegram."
+        "Nie znaleziono lokalnego CLI Hermesa do komunikatu statusowego."
     )
 
 
+def _notification_platform(target: str | None) -> str | None:
+    if not target:
+        return None
+    platform, separator, destination = str(target).partition(":")
+    platform = platform.strip().lower()
+    if not separator or not destination.strip() or platform not in NOTIFIABLE_PLATFORMS:
+        return None
+    return platform
+
+
 def _notify(target: str | None, message: str | None) -> None:
-    if not target or not str(target).startswith("telegram:") or not message:
+    platform = _notification_platform(target)
+    if platform is None or not message:
         return
     process = subprocess.run(
         [_hermes_bin(), "send", "--to", str(target), str(message)],
@@ -102,19 +114,22 @@ def _notify(target: str | None, message: str | None) -> None:
         check=False,
     )
     if process.returncode != 0:
-        raise ResourceQueueError("Nie udało się wysłać statusu kolejki Telegram.")
+        raise ResourceQueueError(
+            f"Nie udało się wysłać statusu kolejki przez {platform}."
+        )
 
 
 def _notify_best_effort(target: str | None, message: str | None) -> bool:
     """Status kolejki nie może zatrzymać właściwego zadania użytkownika."""
-    if not target or not str(target).startswith("telegram:") or not message:
+    platform = _notification_platform(target)
+    if platform is None or not message:
         return False
     try:
         _notify(target, message)
         return True
     except Exception as exc:
         print(
-            f"WARN: Telegram queue status delivery failed: {exc}",
+            f"WARN: {platform} queue status delivery failed: {exc}",
             file=sys.stderr,
             flush=True,
         )

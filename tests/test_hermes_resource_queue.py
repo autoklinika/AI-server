@@ -20,7 +20,39 @@ def test_should_manage_only_local_gateway():
     assert not mod.should_manage_base_url("https://example.com:11435/v1")
 
 
-def test_acquire_notifies_only_after_real_queue(monkeypatch):
+def test_notification_targets_are_limited_to_telegram_and_discord():
+    assert mod._notification_platform("telegram:123") == "telegram"
+    assert mod._notification_platform("discord:456") == "discord"
+    assert mod._notification_platform("discord:456:789") == "discord"
+    assert mod._notification_platform("slack:C01") is None
+    assert mod._notification_platform("discord") is None
+    assert mod._notification_platform(None) is None
+
+
+def test_discord_notification_uses_hermes_send(monkeypatch):
+    calls = []
+
+    class Result:
+        returncode = 0
+
+    monkeypatch.setattr(mod, "_hermes_bin", lambda: "/fake/hermes")
+    monkeypatch.setattr(
+        mod.subprocess,
+        "run",
+        lambda argv, **kwargs: calls.append((argv, kwargs)) or Result(),
+    )
+
+    mod._notify("discord:456", "WAIT")
+    assert calls[0][0] == [
+        "/fake/hermes",
+        "send",
+        "--to",
+        "discord:456",
+        "WAIT",
+    ]
+
+
+def test_acquire_notifies_only_after_real_queue_for_discord(monkeypatch):
     states = iter(
         [
             {"lease_id": "lease-A", "job_id": 7, "state": "queued"},
@@ -56,14 +88,14 @@ def test_acquire_notifies_only_after_real_queue(monkeypatch):
     monkeypatch.setattr(mod.ResourceLease, "start_heartbeat", lambda self: None)
 
     handle = mod.acquire_resource(
-        target="telegram:123",
-        source="telegram-chat",
+        target="discord:456",
+        source="discord-chat",
         queue_message="WAIT",
         start_message="START",
     )
     assert notices == [
-        ("telegram:123", "WAIT"),
-        ("telegram:123", "START"),
+        ("discord:456", "WAIT"),
+        ("discord:456", "START"),
     ]
     handle.release()
 
@@ -84,8 +116,8 @@ def test_immediate_slot_sends_no_queue_noise(monkeypatch):
     monkeypatch.setattr(mod, "_notify", lambda target, message: notices.append(message))
 
     handle = mod.acquire_resource(
-        target="telegram:123",
-        source="telegram-chat",
+        target="discord:456",
+        source="discord-chat",
         queue_message="WAIT",
         start_message="START",
     )
@@ -114,7 +146,7 @@ def test_notification_failure_does_not_abort_queued_job(monkeypatch):
     monkeypatch.setattr(
         mod,
         "_notify",
-        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("telegram down")),
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("discord down")),
     )
     monkeypatch.setattr(
         mod,
@@ -126,8 +158,8 @@ def test_notification_failure_does_not_abort_queued_job(monkeypatch):
     monkeypatch.setattr(mod.ResourceLease, "start_heartbeat", lambda self: None)
 
     handle = mod.acquire_resource(
-        target="telegram:123",
-        source="telegram-chat",
+        target="discord:456",
+        source="discord-chat",
         queue_message="WAIT",
         start_message="START",
     )
@@ -135,23 +167,8 @@ def test_notification_failure_does_not_abort_queued_job(monkeypatch):
     handle.release()
 
 
-def test_non_telegram_target_never_notifies(monkeypatch):
-    monkeypatch.setattr(
-        mod,
-        "_json",
-        lambda *args, **kwargs: {
-            "lease_id": "lease-C",
-            "job_id": 9,
-            "state": "active",
-            "released": True,
-        },
-    )
-    monkeypatch.setattr(mod.ResourceLease, "start_heartbeat", lambda self: None)
-    monkeypatch.setattr(
-        mod,
-        "_notify",
-        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("notify")),
-    )
-
-    handle = mod.acquire_resource(target=None, source="ventilation")
-    handle.release()
+def test_unsupported_target_never_notifies(monkeypatch):
+    calls = []
+    monkeypatch.setattr(mod, "_hermes_bin", lambda: calls.append("bin") or "/fake/hermes")
+    mod._notify("slack:C01", "WAIT")
+    assert calls == []
