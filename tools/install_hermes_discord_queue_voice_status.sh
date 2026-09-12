@@ -28,6 +28,7 @@ backup_file(){
         sudo cp -a "$src" "$BACKUP/$name"
     else
         sudo touch "$BACKUP/$name.absent"
+        sudo chown harrypotter:harrypotter "$BACKUP/$name.absent"
     fi
 }
 
@@ -104,7 +105,7 @@ PY
 
 echo
 echo "===== BACKUP ====="
-sudo install -d -m 0700 "$BACKUP"
+sudo install -d -o harrypotter -g harrypotter -m 0700 "$BACKUP"
 backup_file "$HERMES_TURN" hermes-turn_api_request.py
 backup_file "$HERMES_RUNNER" hermes-run_turn_runner.py
 backup_file "$HELPER" hermes_resource_queue.py
