@@ -518,7 +518,344 @@ Niniejsze ustalenia rozwijają kierunek zapisany wcześniej m.in. w:
 
 Po audycie trzeba rozstrzygnąć, czy obecne pojęcie `AI Bridge` pozostaje nazwą centralnego rdzenia/platformy, czy stanie się jedną z usług wewnątrz szerszej `AI Platform`.
 
-## 21. Zasady nadrzędne — skrót
+## 21. GUI / AI Control Center — kierunek pre-audit
+
+GUI należy od początku projektować jako **jeden panel całej platformy**, a nie jako osobne, wzajemnie niezależne GUI dla Hermesa, WVC, CRT i EcuRepairService.
+
+Robocza nazwa koncepcji: **AI Control Center**.
+
+### 21.1. API-first i pełna wymienialność GUI
+
+Frontend nie może być bezpośrednio związany z konkretnym agentem, modelem, runtime ani backendem wiedzy.
+
+Niedopuszczalny kierunek:
+
+```text
+Web GUI
+  ↓
+Hermes
+  ↓
+Ollama / Qdrant / inne backendy
+```
+
+Docelowy kierunek:
+
+```text
+                    Web GUI
+                       │
+                 Platform API
+                       │
+        ┌──────────────┼──────────────┐
+        ↓              ↓              ↓
+   AI Service    Knowledge API      Job API
+        │              │              │
+     adapter         adapter       scheduler
+        │              │
+  agent/runtime    RAG / SQL / ...
+```
+
+GUI powinno znać stabilne kontrakty platformowe, np.:
+
+```text
+/api/v1/chat
+/api/v1/jobs
+/api/v1/knowledge/search
+/api/v1/models
+/api/v1/systems
+/api/v1/health
+```
+
+Są to przykłady logicznych kontraktów, nie zatwierdzona dziś specyfikacja endpointów.
+
+Zmiana Hermesa, Ollamy, Qwena, Qdranta lub innego backendu nie może wymagać przebudowy interfejsu użytkownika, jeśli kontrakt Platform API pozostaje zgodny.
+
+Frontend również ma być wymienialnym klientem platformy. W przyszłości obok WebGUI mogą istnieć inne klienty bez zmiany rdzenia systemu.
+
+### 21.2. Jeden shell, wiele workspace'ów domenowych
+
+GUI powinno posiadać jeden wspólny shell aplikacji i osobne moduły/workspace'y dla domen oraz usług wspólnych.
+
+Przykładowy układ:
+
+```text
+AI CONTROL CENTER
+├── Overview
+├── AI / Assistant
+├── Knowledge
+├── Jobs
+├── Systems
+│   ├── EcuRepairService
+│   ├── WVC
+│   └── CRT
+├── Models / Compute
+├── Storage
+├── Logs / Observability
+└── Settings
+```
+
+Każdy system zachowuje własny workspace i logikę domenową, ale korzysta ze wspólnych elementów nawigacji, autoryzacji, obserwowalności i komunikacji z Platform API.
+
+### 21.3. EcuRepairService workspace
+
+Przykładowe przyszłe sekcje:
+
+```text
+EcuRepairService
+├── Cases
+├── New repair
+├── ECU database
+├── Knowledge
+├── Binary files
+├── PCB photos
+├── Measurements
+└── AI diagnosis
+```
+
+Widok pojedynczej sprawy powinien umożliwiać połączenie w jednym miejscu:
+
+- danych identyfikacyjnych ECU,
+- zdjęć PCB,
+- pomiarów,
+- DTC,
+- historii działań,
+- dokumentacji i podobnych przypadków,
+- wyników analizy plików,
+- rekomendacji / analizy AI,
+- pełnego timeline naprawy.
+
+### 21.4. WVC workspace
+
+Przykładowe sekcje:
+
+```text
+WVC
+├── Live
+├── Temperatures
+├── Fans
+├── Air quality
+├── Alerts
+├── History
+├── Automation
+└── AI analysis
+```
+
+WVC będzie wymagał szczególnie dobrej obsługi danych live, wykresów, trendów, alarmów i zakresów czasowych.
+
+GUI nie zmienia istniejącej granicy bezpieczeństwa: AI pozostaje warstwą analityczną/doradczą zgodnie z decyzjami domeny WVC; interfejs nie może przypadkowo rozszerzyć uprawnień AI do sterowania.
+
+### 21.5. CRT workspace
+
+Przykładowe sekcje:
+
+```text
+CRT
+├── CAN Live
+├── Sessions
+├── Frames
+├── Signals
+├── UDS
+├── J1939
+├── Captures
+└── AI analysis
+```
+
+Workspace CRT powinien móc korzystać ze wspólnych usług wiedzy i AI, pozostawiając logikę interpretacji danych CAN/UDS/J1939 po stronie domeny CRT.
+
+### 21.6. Globalny asystent kontekstowy
+
+Asystent AI powinien być dostępny globalnie, a nie wyłącznie jako osobna strona „Chat”.
+
+Kierunek UX: boczny panel lub równoważny mechanizm dostępny z aktualnego workspace'u.
+
+GUI powinno przekazywać agentowi kontrolowany kontekst bieżącego widoku, np.:
+
+```text
+domain = ecu-repair
+case = ECU-00184
+current_view = measurements
+```
+
+lub:
+
+```text
+domain = wvc
+current_view = live
+time_range = last_6h
+```
+
+Dzięki temu pytanie typu „co o tym myślisz?” może być interpretowane w kontekście aktualnie otwartej sprawy lub widoku bez ponownego ręcznego podawania całego kontekstu.
+
+Kontekst musi być jawnie budowany przez platformę/GUI; agent nie powinien zgadywać niejawnego stanu aplikacji.
+
+### 21.7. Knowledge jako pełnoprawny moduł GUI
+
+Warstwa wiedzy powinna być użyteczna także bez rozmowy z AI.
+
+Przewidywany ekran wyszukiwania powinien obsługiwać m.in.:
+
+- wyszukiwanie semantyczne,
+- wyszukiwanie dokładne / keyword,
+- filtry domenowe,
+- typ źródła,
+- podobne przypadki,
+- datasheety,
+- dokumentację,
+- notatki,
+- źródła repozytoryjne,
+- metadane i jakość dopasowania.
+
+Przykładowe filtry:
+
+```text
+Domain:
+[x] ECU Repair
+[ ] WVC
+[ ] CRT
+[ ] Shared
+
+Type:
+[x] Repair cases
+[x] Datasheets
+[x] Documentation
+[x] Notes
+[x] GitHub
+```
+
+Oznacza to, że `knowledge-service` ma być projektowany jako normalna usługa platformowa, a nie wyłącznie mechanizm do automatycznego zasilania promptu LLM.
+
+### 21.8. Jobs / scheduler jako widoczna część systemu
+
+GUI powinno pokazywać użytkownikowi stan centralnej kolejki i aktywnych zadań.
+
+Przykładowo:
+
+```text
+JOBS
+
+ACTIVE
+HIGH    ECU-00184   AI diagnosis
+
+QUEUED
+NORMAL  interactive chat
+LOW     Knowledge reindex
+
+COMPLETED
+WVC     analysis
+```
+
+Użytkownik powinien móc zrozumieć, dlaczego zadanie czeka, jaki ma priorytet i jakie zasoby są aktualnie zajęte — w granicach bezpieczeństwa i bez ujawniania treści cudzych promptów lub danych wrażliwych.
+
+### 21.9. Models / Compute / platform health
+
+GUI powinno prezentować logiczny stan zasobów, a nie zakładać jednego komputera.
+
+Przykładowy kierunek:
+
+```text
+AI COMPUTE
+
+ai-node-01
+CPU / RAM / storage / status
+
+MODELS / CAPABILITIES
+reasoning-main   READY
+embedding-main   READY
+vision-main      OFFLINE
+```
+
+W przyszłości ten sam ekran ma obsługiwać wiele node'ów CPU/GPU bez zmiany koncepcji GUI.
+
+Widok powinien opierać się na capability/model registry, a nie na założeniu, że jedynym runtime jest Ollama na Minisforum.
+
+### 21.10. Konfigurowalny dashboard
+
+Strona główna powinna w przyszłości umożliwiać konfigurowalne widgety, np.:
+
+```text
+AI Server health
+WVC status
+aktywne przypadki ECU
+job queue
+storage
+alerts
+ostatnie analizy
+```
+
+Pozwoli to zachować jeden interfejs nawet przy dalszym wzroście liczby domen.
+
+### 21.11. Modułowość frontendu
+
+Na pierwszym etapie preferowany jest jeden frontend z modułami domenowymi zamiast niezależnych microfrontendów.
+
+Kierunkowa struktura może wyglądać np.:
+
+```text
+modules/
+├── ecu-repair/
+├── wvc/
+├── crt/
+├── knowledge/
+├── ai/
+└── platform/
+```
+
+Moduły mogą w przyszłości rejestrować m.in.:
+
+- routes,
+- menu,
+- permissions,
+- widgets,
+- wymagane capabilities,
+- kontrakty API.
+
+Nowa domena, np. `PV_home`, powinna być możliwa do dołączenia jako kolejny moduł bez przebudowy całego GUI.
+
+Microfrontendy nie są wykluczone w przyszłości, ale nie należy wprowadzać ich bez rzeczywistej potrzeby organizacyjnej lub technicznej.
+
+### 21.12. WebGUI jako podstawowy klient
+
+Kierunkiem jest WebGUI dostępne co najmniej z:
+
+- komputera,
+- laptopa,
+- tabletu,
+- telefonu,
+- dużych ekranów / urządzeń typu Flip.
+
+Responsywność powinna być założeniem od początku.
+
+Nie zakładamy dziś natywnej aplikacji Windows jako głównego GUI. Jeżeli w przyszłości potrzebna będzie głęboka integracja z lokalnym systemem plików, USB lub sprzętem stanowiska, możliwa jest aplikacja desktopowa korzystająca z tego samego Platform API lub opakowanie części WebGUI.
+
+### 21.13. Kandydaci technologiczni GUI — nie są jeszcze decyzją
+
+Do oceny po audycie i przed implementacją GUI:
+
+- React,
+- Next.js,
+- TypeScript,
+- shadcn/ui lub równoważny zestaw komponentów,
+- Tailwind CSS lub równoważna warstwa stylowania,
+- REST dla operacji request/response,
+- SSE i/lub WebSocket dla danych live, streamingu i kolejki.
+
+Framework frontendu nie powinien zostać zatwierdzony wyłącznie na podstawie obecnej popularności. Ważniejsze są:
+
+- długoterminowa utrzymywalność,
+- możliwość migracji,
+- dostępność komponentów,
+- wydajność,
+- bezpieczeństwo,
+- responsywność,
+- wsparcie dla danych live,
+- prostota integracji z Platform API.
+
+### 21.14. Zasada nadrzędna GUI
+
+**Nie integrujemy GUI z produktem. Integrujemy GUI ze stabilnym Platform API.**
+
+GUI jest klientem platformy, a nie jej rdzeniem.
+
+## 22. Zasady nadrzędne — skrót
 
 1. **Platforma jest wielodomenowa.** `EcuRepairService`, WVC, CRT i przyszłe aplikacje są klientami wspólnej infrastruktury.
 2. **Każdy istotny komponent jest wymienialny.** Hermes, Ollama, Qwen i inne produkty są implementacjami za adapterami.
@@ -530,8 +867,10 @@ Po audycie trzeba rozstrzygnąć, czy obecne pojęcie `AI Bridge` pozostaje nazw
 8. **LLM nie wykonuje pracy deterministycznej bez potrzeby.**
 9. **Zwykłe zapytania mają pozostać szybkie; wieloetapowa diagnostyka może być wolniejsza.**
 10. **Centralny scheduler kontroluje dostęp do wspólnych zasobów AI.**
-11. **Najpierw audyt read-only, potem decyzje migracyjne.**
-12. **GitHub ma być docelowym source of truth.**
+11. **GUI jest jednym modułowym klientem całej platformy i komunikuje się przez stabilne Platform API.**
+12. **GUI, podobnie jak backendy AI, ma pozostać wymienialne i niezależne od Hermesa, Ollamy, Qwena i innych produktów.**
+13. **Najpierw audyt read-only, potem decyzje migracyjne.**
+14. **GitHub ma być docelowym source of truth.**
 
 ---
 
