@@ -1,7 +1,7 @@
 # AI Server — Architecture & Runtime Audit v1
 
 **Data rozpoczęcia:** 2026-09-19  
-**Status:** IN PROGRESS — repo audit wykonany, runtime audit oczekuje na wynik kolektora read-only  
+**Status:** COMPLETE v1.1 — repo audit + runtime audit + supplemental runtime audit wykonane; firewall pozostaje niezweryfikowany z powodu braku nieinteraktywnego sudo  
 **Branch audytu:** `audit/ai-server-architecture-runtime-20260919`  
 **Audytowany baseline main:** `824037b0e472da56babc6bf7b7e3a2c862ee18da`
 
@@ -582,7 +582,121 @@ Tailscale działa i obecny serwer oraz laptop są online. Jest to dobry kandydat
 
 ---
 
-# 6. Finalna klasyfikacja v1
+
+## 5.17. Supplemental audit v1.1 — ComfyUI i Ollama preload
+
+ComfyUI jest aktywną usługą systemową i uruchamia się z parametrem:
+
+`--listen 0.0.0.0 --port 8188`.
+
+Jest więc świadomie wystawione na wszystkie interfejsy hosta. Nie jest to tylko przypadkowy efekt konfiguracji aplikacji.
+
+`ollama-preload.service` jest również aktywne/enabled i uruchamia lokalny helper `/usr/local/sbin/ollama-preload-qwen36`. Unit/preload helper nie ma odpowiednika w aktualnym `main` repozytorium AI-server.
+
+**Klasyfikacja:**
+
+- ComfyUI: KEEP jako bieżący backend media, MIGRATE do wymiennego worker/provider adaptera; exposure P1,
+- Ollama preload/residency: REVIEW/MIGRATE do model registry/resource policy; desired-state definition musi trafić do repo.
+
+## 5.18. Firewall — UNKNOWN
+
+Kolektor nie mógł odczytać reguł UFW/nftables bez interaktywnego sudo.
+
+To oznacza, że sam fakt nasłuchu `0.0.0.0/*` nie wystarcza do stwierdzenia realnej dostępności spoza hosta, ale jest wystarczający do oznaczenia polityki sieciowej jako P1 do weryfikacji.
+
+**Klasyfikacja:** SECURITY ACTION REQUIRED.
+
+## 5.19. Storage usage — modele są głównym konsumentem
+
+Rozmiary w chwili audytu:
+
+- `/srv/ai-data`: ~5.6 GB,
+- Hermes: ~5.4 GB,
+- ComfyUI output: ~108 MB,
+- AI Bridge DB/data dir: minimalny filesystem footprint poza PostgreSQL,
+- `/opt/ai-bridge`: ~114 MB,
+- `/opt/ai-gateway`: ~85 MB,
+- każdy stary `/opt/ai-gateway.pre-stage*`: ~85 MB,
+- Ollama model store: ~58 GB.
+
+Wniosek: obecny problem storage nie jest pojemnościowy. Ważniejsza jest klasyfikacja danych i reprodukowalność. Modele Ollamy są regenerowalne i powinny być traktowane inaczej niż dane użytkowe/telemetria.
+
+## 5.20. PostgreSQL — rozbieżność z ADR-004
+
+Baza `ai_bridge`:
+
+- PostgreSQL 18.6,
+- rozmiar ~318 MB,
+- ok. 104 rekordów `ventilation_analysis_runs`,
+- statystyki `ventilation_ingest_batches` i `ventilation_telemetry_raw` wskazują ~0 live rows.
+
+ADR-004 zakłada pełną szczegółową centralną historię przez minimum 12 miesięcy.
+
+Na tym etapie **nie stwierdzamy utraty danych**, ponieważ `pg_stat_user_tables.n_live_tup` jest statystyką przybliżoną i audyt nie wykonał `COUNT(*)`. Jednak jest to istotna rozbieżność wymagająca wyjaśnienia przed migracją.
+
+**Klasyfikacja:** INVESTIGATE — PRIORITY P1.
+
+Do sprawdzenia read-only:
+
+- dokładne `COUNT(*)`,
+- najstarszy/najnowszy timestamp,
+- czy dane są agregowane/usuwane,
+- czy WVC nadal wysyła telemetry batches,
+- czy istnieje alternatywny magazyn danych.
+
+## 5.21. Hermes drift — skala potwierdzona
+
+Dirty checkout Hermesa zawiera 245 dodatkowych linii w 3 plikach produkcyjnych.
+
+Dodatkowo lokalny Hermes ma jeden commit nieobecny w `origin/main`, a `origin/main` ma jeden commit nieobecny lokalnie.
+
+To oznacza równocześnie:
+
+- branch divergence,
+- local source patching,
+- ryzyko utraty integracji przy zwykłym pull/reset/upgrade.
+
+**Klasyfikacja:** MIGRATE — PRIORITY P1.
+
+Przed zmianą Hermesa należy zapisać pełny patch/diff poza publicznym repo lub w kontrolowanym prywatnym artefakcie i odtworzyć funkcjonalność jako adapter/integrację bez patch-in-place.
+
+## 5.22. Produkcyjne helpery media — wersjonowanie historyczne w runtime
+
+`/usr/local/libexec/ai-server` zawiera równolegle pliki bazowe i stage26/stage29/stage30, m.in.:
+
+- prompt compiler bazowy + stage30,
+- generator bazowy + stage29 + aktywny generator,
+- dispatcher bazowy + stage26 + stage30 + aktywny dispatcher,
+- global resource queue helper.
+
+To potwierdza, że aktywna produkcja jest złożeniem wielu etapów, a nie jednym release artifact.
+
+**Klasyfikacja:** MIGRATE; po nowym release packaging stare wersje DELETE/ARCHIVE zgodnie z Development Hygiene Policy.
+
+## 5.23. Deployed hashes — AI Gateway zgodny z lokalnym working tree, AI Bridge nie
+
+Dla kluczowych plików Gatewaya hash `/opt/ai-gateway` jest zgodny z lokalnym checkoutem `~/AI-server`.
+
+Natomiast `/opt/ai-bridge` ma inne hash'e `pyproject.toml` i `settings.py` niż lokalny checkout.
+
+Wniosek: AI Gateway da się obecnie lepiej przypisać do stanu źródła niż AI Bridge. AI Bridge jest starszym deploymentem i wymaga jednoznacznego release/build stamp.
+
+**Klasyfikacja:** MIGRATE — PRIORITY P1.
+
+## 5.24. Uprawnienia plików konfiguracyjnych
+
+Pozytywne:
+
+- główne sekrety AI Bridge i Hermes mają restrykcyjne uprawnienia.
+
+Do poprawy:
+
+- `/etc/ai-gateway/ai-gateway.env` ma mode 644. Obecnie plik nie musi zawierać sekretów, ale docelowa polityka config/secrets nie powinna opierać bezpieczeństwa na tym założeniu.
+
+**Klasyfikacja:** HARDEN/MIGRATE.
+
+
+# 6. Finalna klasyfikacja v1.1
 
 | Obszar | Decyzja | Priorytet |
 |---|---|---|
@@ -613,6 +727,10 @@ Tailscale działa i obecny serwer oraz laptop są online. Jest to dobry kandydat
 | stage-oriented CI | REFACTOR | P2 |
 | security architecture | CREATE | P1 |
 | backup/restore/DR | CREATE | P1 |
+| central telemetry archive zgodnie z ADR-004 | INVESTIGATE / FIX | P1 |
+| firewall / exposure policy | VERIFY / CREATE | P1 |
+| Ollama preload unit/helper | MIGRATE do desired-state/model policy | P2 |
+| production helper packaging | MIGRATE do release artifact | P1 |
 | desired-state deployment | CREATE | P1 |
 | model/provider registry | CREATE | P1 |
 | knowledge-service | CREATE później | P2 |
@@ -651,18 +769,14 @@ Nie zmieniamy jednocześnie modelu, agenta, bazy, schedulera i deploymentu. Migr
 
 ---
 
-# 8. Brakujące informacje — mały supplementary audit
+# 8. Pozostałe punkty weryfikacyjne po audycie
 
-Do finalnego planu migracji warto jeszcze zebrać read-only:
+Supplemental audit v1.1 zebrał wymagane metadane. Pozostały dwa punkty, które nie blokują zamknięcia audytu architektonicznego, ale muszą zostać rozwiązane przed migracją produkcji:
 
-- `systemctl show` dla `comfyui.service` i `ollama-preload.service`,
-- bezpieczny opis Ollama drop-ins bez sekretów,
-- rozmiary głównych katalogów persistent/cache/job,
-- wersję/schemat PostgreSQL AI Bridge i rozmiar bazy,
-- diff trzech zmodyfikowanych plików Hermesa,
-- listę artefaktów produkcyjnych w `/usr/local/libexec/ai-server` i `/usr/local/bin`.
+1. firewall/UFW/nftables — wymaga odczytu z sudo,
+2. dokładna weryfikacja centralnej telemetrii PostgreSQL — `COUNT(*)` i zakres timestampów.
 
-To będzie Audit v1.1 i nie wymaga zmian systemu.
+Pełny diff Hermesa również należy przechwycić przed jego aktualizacją lub resetem, ale nie musi być publikowany w publicznym repo.
 
 ---
 
@@ -698,5 +812,5 @@ Obecny Serwer AI jest funkcjonalny i nie ma failed units, ale jego produkcyjny s
 
 To są dokładnie problemy, które nowa architektura ma rozwiązać.
 
-**Decyzja:** można przejść do Audit v1.1, a następnie do finalizacji dokumentu pre-audit i projektowania Target Architecture. Nie rozpoczynać jeszcze szerokiej przebudowy produkcji.
+**Decyzja:** Audit v1.1 jest zamknięty na poziomie architektury/runtime inventory. Można przejść do finalizacji dokumentu pre-audit i projektowania Target Architecture. Nie rozpoczynać jeszcze szerokiej przebudowy produkcji przed rozwiązaniem punktów P1 i przygotowaniem planu migracji.
 
