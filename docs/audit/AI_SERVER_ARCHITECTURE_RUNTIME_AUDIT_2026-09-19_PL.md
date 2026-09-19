@@ -621,7 +621,7 @@ Rozmiary w chwili audytu:
 
 Wniosek: obecny problem storage nie jest pojemnościowy. Ważniejsza jest klasyfikacja danych i reprodukowalność. Modele Ollamy są regenerowalne i powinny być traktowane inaczej niż dane użytkowe/telemetria.
 
-## 5.20. PostgreSQL — rozbieżność z ADR-004
+## 5.20. PostgreSQL / WVC — brak bieżącej telemetrii jest obecnie oczekiwany
 
 Baza `ai_bridge`:
 
@@ -630,19 +630,19 @@ Baza `ai_bridge`:
 - ok. 104 rekordów `ventilation_analysis_runs`,
 - statystyki `ventilation_ingest_batches` i `ventilation_telemetry_raw` wskazują ~0 live rows.
 
-ADR-004 zakłada pełną szczegółową centralną historię przez minimum 12 miesięcy.
+**Kontekst operacyjny:** WVC jest obecnie odłączony, więc brak nowych danych telemetrycznych jest stanem oczekiwanym i nie oznacza sam w sobie awarii ingestu.
 
-Na tym etapie **nie stwierdzamy utraty danych**, ponieważ `pg_stat_user_tables.n_live_tup` jest statystyką przybliżoną i audyt nie wykonał `COUNT(*)`. Jednak jest to istotna rozbieżność wymagająca wyjaśnienia przed migracją.
+ADR-004 nadal zakłada pełną szczegółową centralną historię przez minimum 12 miesięcy po uruchomieniu normalnej pracy systemu. Dlatego przed migracją warto zweryfikować stan historycznych danych, ale nie traktujemy obecnego braku przyrostu jako problemu P1.
 
-**Klasyfikacja:** INVESTIGATE — PRIORITY P1.
+**Klasyfikacja:** VERIFY / P2.
 
-Do sprawdzenia read-only:
+Do sprawdzenia read-only przy okazji v1.2:
 
 - dokładne `COUNT(*)`,
-- najstarszy/najnowszy timestamp,
-- czy dane są agregowane/usuwane,
-- czy WVC nadal wysyła telemetry batches,
-- czy istnieje alternatywny magazyn danych.
+- najstarszy/najnowszy timestamp danych historycznych,
+- czy wcześniejsze dane zostały zachowane zgodnie z ADR-004.
+
+Brak bieżącego ingestu podczas odłączenia WVC jest prawidłowy.
 
 ## 5.21. Hermes drift — skala potwierdzona
 
@@ -727,7 +727,7 @@ Do poprawy:
 | stage-oriented CI | REFACTOR | P2 |
 | security architecture | CREATE | P1 |
 | backup/restore/DR | CREATE | P1 |
-| central telemetry archive zgodnie z ADR-004 | INVESTIGATE / FIX | P1 |
+| central telemetry archive zgodnie z ADR-004 | VERIFY history; WVC obecnie odłączony | P2 |
 | firewall / exposure policy | VERIFY / CREATE | P1 |
 | Ollama preload unit/helper | MIGRATE do desired-state/model policy | P2 |
 | production helper packaging | MIGRATE do release artifact | P1 |
