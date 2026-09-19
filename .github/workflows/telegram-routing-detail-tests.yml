@@ -1,0 +1,20 @@
+name: Telegram routing detail tests
+on:
+  push:
+    branches: [fix/telegram-multiuser-routing]
+  pull_request:
+    paths:
+      - tools/audit_hermes_telegram_routing_detail.py
+      - tests/test_telegram_routing_detail.py
+      - .github/workflows/telegram-routing-detail-tests.yml
+permissions:
+  contents: read
+jobs:
+  routing-detail:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -B -m unittest discover -s tests -p 'test_telegram_routing_detail.py' -v
