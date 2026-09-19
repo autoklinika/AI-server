@@ -303,54 +303,400 @@ Brakuje spójnej warstwy platformowej:
 
 ---
 
-# 5. Runtime audit — dane wymagane przed decyzjami
+# 5. Runtime audit — wynik z 2026-09-19
 
-Kolektor ma potwierdzić:
+Kolektor read-only zakończył się poprawnie. Nie wykonał żadnych zmian na hoście.
 
-- rzeczywisty OS/kernel/hardware,
-- aktualny RAM/UMA/GPU,
-- dyski i mounty,
-- faktyczne usługi systemd i user-systemd,
-- timery/cron,
-- otwarte porty,
-- Docker/containers,
-- wersje Ollama/models,
-- realne deploymenty `/opt`,
-- repo/branch/dirty state,
-- Hermes commit/branch/runtime,
-- katalogi stateful,
-- nazwy aktywnych zmiennych konfiguracyjnych bez wartości,
-- worktree/test directories,
-- stare backupy i stage artifacts,
-- failed units.
+## 5.1. Host i compute — KEEP
 
-Dopiero wtedy można sklasyfikować każdy element jako:
+Stan hosta:
 
-`KEEP / MIGRATE / DEPRECATE / DELETE`.
+- Ubuntu 26.04 LTS,
+- kernel 7.0.0-31-generic,
+- AMD Ryzen AI 9 HX 470, 12C/24T,
+- Radeon 890M / RADV,
+- 128 GB fizycznej pamięci z ok. 30 GiB widocznymi dla CPU/OS przy obecnym dużym UMA,
+- ok. 21 GiB pamięci systemowej dostępnej w chwili audytu.
+
+**Klasyfikacja:** KEEP jako obecny node, ale host nie może być częścią kontraktu platformy.
+
+## 5.2. Storage — dobry kierunek, ale wymagany nowy podział danych
+
+Runtime ma dwa dyski 4 TB:
+
+- system/root na SPCC 4 TB,
+- dedykowany Lexar NM790 4 TB zamontowany jako `/srv/ai-data`.
+
+`/srv/ai-data` używa ok. 5.6 GB, podczas gdy root używa ok. 168 GB. Modele Ollamy znajdują się poza wydzielonym data volume i stanowią znaczną część root.
+
+**Klasyfikacja:** KEEP hardware/mount, MIGRATE data layout.
+
+Docelowo trzeba jawnie zdefiniować klasy danych:
+
+- persistent/backup-critical,
+- regenerowalne modele/cache,
+- job artifacts z TTL,
+- logi,
+- temporary/workspaces.
+
+## 5.3. Network exposure — P1 do uporządkowania
+
+W chwili audytu nasłuchują m.in.:
+
+- `0.0.0.0:22` — SSH,
+- `*:9090` — Cockpit,
+- `0.0.0.0:8080` — AI Bridge,
+- `0.0.0.0:8188` — ComfyUI,
+- `*:11434` — Ollama,
+- `127.0.0.1:11435` — AI Gateway,
+- `127.0.0.1:8642` — Hermes.
+
+Najważniejsza niezgodność: Ollama jest osiągalna poza localhost, podczas gdy Gateway jest lokalnym admission/resource managerem. Klient sieciowy może potencjalnie ominąć Gateway i jego kolejkę.
+
+**Klasyfikacja:** MIGRATE — PRIORITY P1.
+
+Po zaprojektowaniu polityki sieciowej należy ograniczyć bezpośredni dostęp do backendów inference. ComfyUI również powinno zostać ocenione pod kątem konieczności nasłuchu na wszystkich interfejsach. AI Bridge może wymagać LAN dla WVC, ale docelowo potrzebuje jawnej polityki auth/firewall.
+
+## 5.4. Runtime services — część nie jest reprezentowana w repo
+
+Aktywne/enable:
+
+- Ollama,
+- PostgreSQL,
+- Docker,
+- Tailscale,
+- Cockpit,
+- AI Bridge,
+- AI Gateway,
+- AI Bridge analysis timer,
+- Hermes user service,
+- ComfyUI,
+- `ollama-preload.service`.
+
+Runtime ma także custom:
+
+- Ollama service i trzy drop-iny,
+- `comfyui.service`,
+- `ollama-preload.service`,
+- AI Bridge production-source drop-ins,
+- historyczny `ai-gateway.service.pre-stage2`.
+
+Nie wszystkie te elementy mają odpowiadające desired-state definitions w `main`.
+
+**Klasyfikacja:** MIGRATE.
+
+Przed przebudową wszystkie wymagane custom units/drop-ins muszą zostać opisane w repo lub zastąpione docelowym deploymentem.
+
+## 5.5. Brak failed systemd units — KEEP
+
+W chwili audytu systemd nie raportuje failed units. Główne usługi AI są aktywne, a cykliczna analiza wentylacji zakończyła ostatni run kodem 0.
+
+To potwierdza, że przebudowa powinna być migracją kontrolowaną z rollbackiem, a nie naprawą awaryjną.
+
+## 5.6. Docker — aktywny, ale obecnie bez workloadów
+
+Docker daemon jest aktywny, ale:
+
+- brak działających kontenerów,
+- brak custom volumes,
+- tylko standardowe networks.
+
+**Klasyfikacja:** REVIEW.
+
+Docker może być wykorzystany w przyszłym desired-state deployment, ale obecnie nie jest wymagany przez aktywny runtime pokazany w audycie.
+
+## 5.7. Ollama i modele — KEEP backend tymczasowo, MIGRATE kontrakt
+
+Ollama 0.32.14 jest aktywna.
+
+Zainstalowane są m.in.:
+
+- qwen3.6 35B w kilku profilach,
+- qwen3.8 27B,
+- stary `muse-glimmer`,
+- mały `qwen:latest`.
+
+Aktywny stale w pamięci jest:
+
+`qwen3.6:35b-hermes64k-gpu`, 23 GB, 100% GPU, context 65536, `Forever`.
+
+**Klasyfikacja:**
+
+- Ollama runtime: KEEP teraz / adapter później,
+- Qwen: KEEP jako bieżący model, nie jako kontrakt,
+- stare/duplikowane modele: REVIEW po migracji,
+- preload/residency: REVIEW pod kątem przyszłego model registry i schedulera.
+
+## 5.8. GitHub source of truth — P1
+
+Produkcyjny katalog `~/AI-server`:
+
+- local HEAD: `20d62498b9528dfdeae80adf6db6cc10e382343f`,
+- branch: `main`,
+- local status względem lokalnego `origin/main`: clean.
+
+Zewnętrzny GitHub `main` podczas audytu:
+
+`824037b0e472da56babc6bf7b7e3a2c862ee18da`.
+
+Commit lokalnego hosta istnieje w repo, ale jest przodkiem aktualnego GitHub main; GitHub main jest 26 commitów dalej. Lokalny tracking ref był więc nieodświeżony po fetchu konkretnej gałęzi audit.
+
+**Klasyfikacja:** MIGRATE — PRIORITY P1.
+
+Po zamknięciu audytu i przed przebudową trzeba:
+
+1. odświeżyć remote refs,
+2. potwierdzić, że main hosta można bezpiecznie fast-forwardować,
+3. oddzielić runtime deployment od working checkout,
+4. wprowadzić deployment stamp zawierający dokładny commit/build version.
+
+## 5.9. Produkcyjny deployment nie jest identyfikowalny jednym SHA
+
+`/opt/ai-bridge` i `/opt/ai-gateway` nie są repozytoriami Git.
+
+Widać też różne momenty/wersje plików oraz późniejsze patchowanie produkcji przez instalatory. Nie ma jednego trwałego manifestu mówiącego:
+
+> dokładnie ten commit + te adaptery + te patch'e = aktualna produkcja.
+
+**Klasyfikacja:** MIGRATE — PRIORITY P1.
+
+Docelowy deployment musi być reprodukowalny i wersjonowany.
+
+## 5.10. Hermes — największy przykład patch-in-place
+
+Hermes działa z:
+
+- repo `/srv/ai-data/hermes/hermes-agent`,
+- HEAD `79445a496c86a19332ad786494b8384d2167e2d0`,
+- branch `main`,
+- stan `ahead 1, behind 1`,
+- trzy zmodyfikowane pliki robocze:
+  - `agent/turn_api_request.py`,
+  - `gateway/run_inbound.py`,
+  - `gateway/run_turn_runner.py`.
+
+Oznacza to, że produkcja zależy od kodu, którego stan nie jest czystym checkoutem jednego upstream commit.
+
+**Klasyfikacja:** MIGRATE — PRIORITY P1.
+
+Przed jakimkolwiek resetem/upgrade Hermesa należy zachować i opisać diff. Docelowo integracja platformy nie może wymagać ręcznego patchowania kodu Hermesa; Hermes powinien być wymiennym `AgentProvider`.
+
+## 5.11. Worktree clutter — potwierdzony dług technologiczny
+
+Repo ma co najmniej 11 dodatkowych worktree związanych z dawnymi testami/stage:
+
+- alert-v2,
+- discord queue,
+- foto stage28,
+- local video stage23,
+- LTX stage24/25/26/27,
+- queue-final-test,
+- storage-stage4,
+- video-stage29.
+
+Dodatkowo w HOME istnieją katalogi:
+
+- `AI-server-local-artifacts-...`,
+- `AI-server-local-leftovers-...`.
+
+**Klasyfikacja:** DELETE po kontroli referencji i backupów.
+
+To jest bezpośredni przykład, dlaczego globalna Development Hygiene Policy jest obowiązkowa.
+
+## 5.12. Backup/stage clutter w /opt i Hermes
+
+Istnieją:
+
+- `/opt/ai-gateway.pre-stage2`,
+- `/opt/ai-gateway.pre-stage3`,
+- liczne `config.yaml.pre-*`,
+- backupy stage23–stage30,
+- kilka generacji Discord voice/queue backup,
+- migration archives/old trees.
+
+Część była kiedyś ważnym rollbackiem. Obecnie tworzą trudny do interpretacji stan.
+
+**Klasyfikacja:** REVIEW -> ARCHIVE/DELETE.
+
+Nie kasować przed:
+- zachowaniem diffów aktywnej produkcji,
+- utworzeniem nowego verified backupu,
+- potwierdzeniem docelowego deploymentu.
+
+## 5.13. Job/output retention — brak polityki
+
+`/srv/ai-data` zawiera:
+
+- wiele historycznych `hermes-video-jobs`,
+- wiele `hermes-foto-jobs`,
+- ComfyUI output,
+- cache i media.
+
+Łączny data volume nie jest jeszcze duży, ale nie ma widocznej wspólnej polityki TTL/retention.
+
+**Klasyfikacja:** MIGRATE.
+
+Docelowy Job Service/Object Storage powinien mieć jawne klasy retention i cleanup.
+
+## 5.14. Configuration sprawl
+
+Konfiguracja występuje równolegle w:
+
+- `/etc/ai-bridge`,
+- `/etc/ai-gateway`,
+- `/opt/ai-bridge/.env`,
+- `/srv/ai-data/hermes/.env`,
+- wielu YAML/JSON cache/state files,
+- historycznych backupach konfiguracji.
+
+**Klasyfikacja:** MIGRATE.
+
+Trzeba oddzielić:
+
+- desired config,
+- secrets,
+- runtime state,
+- cache,
+- backup.
+
+## 5.15. Permissions
+
+Pozytywnie:
+
+- Hermes root ma mode 700,
+- `/etc/ai-bridge` ma 750,
+- `/var/lib/ai-bridge` ma 750.
+
+Do przeglądu:
+
+- `/opt/ai-bridge` i `/opt/ai-gateway` są 775,
+- `/etc/ai-gateway` jest 755.
+
+**Klasyfikacja:** REVIEW / HARDEN.
+
+## 5.16. Tailscale — KEEP jako warstwa administracyjna
+
+Tailscale działa i obecny serwer oraz laptop są online. Jest to dobry kandydat dla administracyjnego plane, niezależny od publicznego/LAN API aplikacji.
+
+**Klasyfikacja:** KEEP, ale polityka dostępu powinna trafić do security architecture.
 
 ---
 
-# 6. Zakaz cleanupu przed zakończeniem audytu
+# 6. Finalna klasyfikacja v1
 
-Globalna zasada cleanupu po testach nadal obowiązuje, ale audyt istniejącego środowiska jest wyjątkiem proceduralnym:
-
-- nie kasujemy artefaktu tylko dlatego, że wygląda na stary,
-- najpierw ustalamy, czy jest częścią aktywnego runtime lub wymaganym rollbackiem,
-- po sklasyfikowaniu i po migracji zbędne artefakty usuwamy natychmiast.
+| Obszar | Decyzja | Priorytet |
+|---|---|---|
+| Host Minisforum | KEEP jako obecny node | P3 |
+| /srv/ai-data na osobnym NVMe | KEEP / uporządkować layout | P2 |
+| AI Bridge domain logic | KEEP / REFACTOR | P2 |
+| PostgreSQL + Alembic | KEEP | P2 |
+| AI Gateway scheduler/resource leases | KEEP / EVOLVE | P1 |
+| Ollama | KEEP jako provider v1 | P2 |
+| Qwen | KEEP jako model v1 | P3 |
+| Hermes | KEEP tymczasowo / MIGRATE do AgentProvider | P1 |
+| ComfyUI | KEEP tymczasowo / adapter worker | P2 |
+| Git working checkout jako element deploymentu | DEPRECATE | P1 |
+| patch-in-place Hermes | DEPRECATE | P1 |
+| hardcoded user/paths/host | MIGRATE | P1 |
+| bezpośredni Ollama dostęp sieciowy | MIGRATE / ograniczyć | P1 |
+| ComfyUI 0.0.0.0 exposure | REVIEW / ograniczyć jeśli zbędne | P1 |
+| AI Bridge LAN exposure | REVIEW + auth/firewall | P1 |
+| stage worktrees | DELETE po kontroli | P2 |
+| stare /opt pre-stage backups | ARCHIVE/DELETE po nowym backupie | P2 |
+| stare Hermes stage backups | ARCHIVE/DELETE po nowym backupie | P2 |
+| historyczne job dirs | RETENTION/CLEANUP | P2 |
+| duplicate/old Ollama models | REVIEW/CLEANUP | P3 |
+| Docker daemon bez workloads | REVIEW | P3 |
+| README current-state drift | UPDATE | P2 |
+| duplicate ADR numbering | FIX | P2 |
+| branch-pinned installers | DEPRECATE/MIGRATE | P1 |
+| stage-oriented CI | REFACTOR | P2 |
+| security architecture | CREATE | P1 |
+| backup/restore/DR | CREATE | P1 |
+| desired-state deployment | CREATE | P1 |
+| model/provider registry | CREATE | P1 |
+| knowledge-service | CREATE później | P2 |
+| platform observability | CREATE/EXTEND | P2 |
+| AI Control Center | CREATE później | P3 |
 
 ---
 
-# 7. Następny krok
+# 7. Docelowa strategia przebudowy
 
-Uruchomić na produkcyjnym Serwerze AI kolektor:
+Audyt nie wskazuje na potrzebę „formatowania serwera i zaczynania od zera”.
 
-```bash
-cd ~/AI-server
-git fetch origin audit/ai-server-architecture-runtime-20260919
-git show origin/audit/ai-server-architecture-runtime-20260919:tools/audit_ai_server_runtime_v1.sh \
-  | bash > ~/ai-server-runtime-audit-2026-09-19.txt
+Rekomendowany kierunek:
+
+```text
+STABILIZUJ SOURCE OF TRUTH
+        ↓
+ZAPROJEKTUJ KONTRAKTY
+        ↓
+WYDZIEL PLATFORM CORE
+        ↓
+OWIŃ OBECNE BACKENDY ADAPTERAMI
+        ↓
+WPROWADŹ DESIRED-STATE DEPLOYMENT
+        ↓
+PRZENIEŚ WVC / HERMES / MEDIA
+        ↓
+DODAJ KNOWLEDGE SERVICE
+        ↓
+DODAJ KOLEJNE DOMENY
+        ↓
+GUI
 ```
 
-Następnie przekazać plik `~/ai-server-runtime-audit-2026-09-19.txt` do analizy.
+Nie zmieniamy jednocześnie modelu, agenta, bazy, schedulera i deploymentu. Migracja ma być etapowa i odwracalna.
 
-**Nie commitować surowego outputu runtime do publicznego repo.** Może zawierać prywatne adresy IP, hostnames, nazwy usług i strukturę infrastruktury. Do repo trafi wyłącznie zredagowany raport końcowy.
+---
+
+# 8. Brakujące informacje — mały supplementary audit
+
+Do finalnego planu migracji warto jeszcze zebrać read-only:
+
+- `systemctl show` dla `comfyui.service` i `ollama-preload.service`,
+- bezpieczny opis Ollama drop-ins bez sekretów,
+- rozmiary głównych katalogów persistent/cache/job,
+- wersję/schemat PostgreSQL AI Bridge i rozmiar bazy,
+- diff trzech zmodyfikowanych plików Hermesa,
+- listę artefaktów produkcyjnych w `/usr/local/libexec/ai-server` i `/usr/local/bin`.
+
+To będzie Audit v1.1 i nie wymaga zmian systemu.
+
+---
+
+# 9. Zasada cleanupu po audycie
+
+Po ustaleniu aktywnych zależności wykonamy osobny cleanup plan.
+
+Kolejność:
+
+1. snapshot / verified backup,
+2. capture aktywnych diffów,
+3. klasyfikacja artefaktu,
+4. usunięcie worktree/test dirs,
+5. usunięcie obsolete stage backups,
+6. polityka TTL dla jobs/output,
+7. kontrola `git worktree list`, `git status`, systemd i storage.
+
+Cleanup będzie częścią Definition of Done migracji.
+
+---
+
+# 10. Wniosek audytu v1
+
+Obecny Serwer AI jest funkcjonalny i nie ma failed units, ale jego produkcyjny stan powstał etapowo przez wiele bezpiecznych eksperymentów. Główne ryzyka nie dotyczą dziś działania modeli, lecz **reprodukowalności i utrzymywalności platformy**:
+
+1. runtime nie jest jednoznacznie odwzorowany przez GitHub main,
+2. Hermes jest patchowany w miejscu i ma dirty checkout,
+3. część backendów jest bezpośrednio dostępna w sieci i może omijać centralny Resource Manager,
+4. istnieje dużo historycznych worktree/backup/stage artifacts,
+5. deployment jest imperatywny i nie posiada jednego desired-state manifestu,
+6. konfiguracja/state/cache są rozproszone,
+7. brakuje platformowych kontraktów providerów, DR, security i observability.
+
+To są dokładnie problemy, które nowa architektura ma rozwiązać.
+
+**Decyzja:** można przejść do Audit v1.1, a następnie do finalizacji dokumentu pre-audit i projektowania Target Architecture. Nie rozpoczynać jeszcze szerokiej przebudowy produkcji.
+
