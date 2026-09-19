@@ -8,6 +8,7 @@ done
 sudo systemctl daemon-reload
 sudo systemctl restart ai-gateway.service
 sudo systemctl restart ai-bridge.service
+sudo systemctl start ai-bridge-analysis.timer
 
 echo "===== ROLLBACK PATHS ====="
 systemctl show ai-gateway.service -p WorkingDirectory --value

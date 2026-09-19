@@ -20,6 +20,9 @@ if systemctl is-active --quiet ai-bridge-analysis.service; then
   exit 1
 fi
 
+sudo systemctl stop ai-bridge-analysis.timer
+trap 'echo "CUTOVER ERROR"; "'"$ROOT"'/deploy/stage-a/rollback_to_legacy.sh"' ERR
+
 echo "===== ACTIVATE $RELEASE_ID ====="
 
 sudo ln -sfn "$RELEASE" /opt/ai-platform/current
@@ -49,5 +52,8 @@ echo
 
 echo "===== CURRENT ====="
 readlink -f /opt/ai-platform/current
+
+sudo systemctl start ai-bridge-analysis.timer
+trap - ERR
 
 echo "CUTOVER: PASS"
