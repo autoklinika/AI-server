@@ -17,7 +17,7 @@ systemctl show ai-bridge.service -p WorkingDirectory --value
 echo "===== HEALTH ====="
 curl -fsS http://127.0.0.1:11435/health
 echo
-curl -fsS http://127.0.0.1:8080/health
+curl -fsS http://192.168.1.55:8080/health
 echo
 
 echo "ROLLBACK TO LEGACY: PASS"
