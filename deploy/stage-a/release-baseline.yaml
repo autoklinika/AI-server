@@ -1,0 +1,34 @@
+release:
+  id: stage-a-baseline-20260919-r1
+  source_git_sha: 0e53bbc6f2fad703c46e00526d1bbecedb378438
+  config_schema_version: 1
+  migration_version: legacy-pre-platform-v1
+  provider_model_config_version: qwen36-hermes64k-gpu-20260919-v1
+  behavior_change: false
+
+ai_gateway:
+  source_git_sha: 0e53bbc6f2fad703c46e00526d1bbecedb378438
+
+ai_bridge:
+  base_git_sha: f993794a653981d7736484490e96f703c380aeb7
+  overlays:
+    - path: src/ai_bridge/adapters/ventilation/analysis_v12_2.py
+      git_sha: 2d308a22a2a8a84ef178de0e269521ae36e30c61
+    - path: src/ai_bridge/adapters/ventilation/schemas.py
+      git_sha: f3f62ba7d748ea6fa19de01c5267ed19d2318d27
+    - path: src/ai_bridge/analysis/operator_view.py
+      git_sha: 18436f68ccd3add8b0d5ccf3d1c3435689694186
+    - path: src/ai_bridge/analysis/schemas.py
+      git_sha: 14256dd6799eef69ad8fb9f54100bb69ed1977c9
+    - path: src/ai_bridge/analysis/service_v12_2.py
+      git_sha: d56ef725cbaa1baf1503add4c036c6d0b98d1536
+
+hermes:
+  git_sha: 79445a496c86a19332ad786494b8384d2167e2d0
+  dirty_patch_sha256: f324a544ff7c72e64a835bfe964e7064421da125da705480d1bdaf9b1aeab284
+  repo_bundle_sha256: 6b0bfa7139f8bc4b7b32d9e440b438440d8ee03043684437b99926f475b049ad
+
+llm:
+  provider: ollama
+  model: qwen3.6:35b-hermes64k-gpu
+  model_id: 6e4dd2034bc4
