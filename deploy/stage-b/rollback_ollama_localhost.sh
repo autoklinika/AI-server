@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+sudo rm -f /etc/systemd/system/ollama.service.d/zz-localhost-only.conf
 sudo rm -f /etc/systemd/system/ollama.service.d/95-localhost-only.conf
 sudo systemctl daemon-reload
 sudo systemctl restart ollama.service
