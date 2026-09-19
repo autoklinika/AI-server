@@ -1,7 +1,7 @@
 # AI Server — Architecture & Runtime Audit v1
 
 **Data rozpoczęcia:** 2026-09-19  
-**Status:** COMPLETE v1.1 — repo audit + runtime audit + supplemental runtime audit wykonane; firewall pozostaje niezweryfikowany z powodu braku nieinteraktywnego sudo  
+**Status:** COMPLETE v1.2 — repo audit + runtime audit + supplemental privileged checks wykonane  
 **Branch audytu:** `audit/ai-server-architecture-runtime-20260919`  
 **Audytowany baseline main:** `824037b0e472da56babc6bf7b7e3a2c862ee18da`
 
@@ -696,7 +696,68 @@ Do poprawy:
 **Klasyfikacja:** HARDEN/MIGRATE.
 
 
-# 6. Finalna klasyfikacja v1.1
+## 5.25. Audit v1.2 — firewall potwierdzony jako otwarty
+
+UFW ma status `inactive`.
+
+W aktywnym nftables/iptables-nft:
+
+- IPv4 `INPUT` ma `policy accept`,
+- IPv6 `INPUT` ma `policy accept`,
+- Tailscale dodaje własne chainy, ale nie stanowią ogólnej zapory dla LAN,
+- Docker nie publikuje obecnie kontenerów.
+
+W połączeniu z runtime listeners oznacza to, że usługi związane na `0.0.0.0` / `*` są dostępne przynajmniej z sieci lokalnej, jeśli nie blokuje ich zewnętrzna infrastruktura:
+
+- SSH 22,
+- Cockpit 9090,
+- AI Bridge 8080,
+- ComfyUI 8188,
+- Ollama 11434.
+
+Nie oznacza to automatycznie ekspozycji do Internetu — to zależy od routera/NAT/forwardingu — ale host sam ich nie filtruje.
+
+**Klasyfikacja:** MIGRATE / HARDEN — PRIORITY P1.
+
+Docelowo:
+- backendy wewnętrzne (Ollama, ComfyUI) powinny być localhost/private service network,
+- AI Bridge/Platform API powinno mieć jawnie zdefiniowaną ekspozycję i auth,
+- administracja preferencyjnie przez Tailscale/SSH,
+- host firewall ma mieć policy deny-by-default z jawnie dozwolonymi usługami.
+
+## 5.26. Audit v1.2 — centralna telemetria WVC jest zachowana
+
+Dokładne `COUNT(*)`:
+
+- `ventilation_ingest_batches`: 38 232,
+- `ventilation_telemetry_raw`: 73 068,
+- `ventilation_analysis_runs`: 2 366.
+
+Zakres centralnej telemetrii:
+
+- pierwsze batch/telemetry receive: 2026-08-10,
+- ostatnie batch/telemetry receive: 2026-08-27.
+
+To jest spójne z informacją operacyjną, że WVC jest obecnie odłączony.
+
+**Wniosek:** wcześniejszy odczyt `n_live_tup ≈ 0` z `pg_stat_user_tables` był tylko nieaktualną/przybliżoną statystyką i nie wskazywał utraty danych.
+
+**Klasyfikacja:** KEEP / VERIFIED.
+
+ADR-004 nie jest obecnie naruszony przez brak historii; dane istnieją w centralnej bazie. Po ponownym podłączeniu WVC trzeba tylko potwierdzić wznowienie ingestu i dalszą retencję.
+
+## 5.27. Timer analiz działa nadal po odłączeniu WVC
+
+`ventilation_analysis_runs` ma wpisy do 2026-09-19, podczas gdy nowe dane telemetryczne kończą się 2026-08-27.
+
+Oznacza to, że scheduler/timer analizy pozostaje aktywny podczas odłączenia WVC i zapisuje kolejne runy. Z samego audytu nie wynika, czy są to poprawne rekordy typu `no_data/skipped`, czy analiza korzysta z nieaktualnego okna.
+
+**Klasyfikacja:** VERIFY — PRIORITY P2.
+
+Przed migracją lub ponownym uruchomieniem WVC należy sprawdzić statusy ostatnich analysis runs. Docelowy scheduler powinien deterministycznie pomijać analizę, gdy brak świeżych danych, i raportować to jako `skipped/no_fresh_data` zamiast wykonywać kosztowną inferencję.
+
+
+# 6. Finalna klasyfikacja v1.2
 
 | Obszar | Decyzja | Priorytet |
 |---|---|---|
@@ -727,8 +788,8 @@ Do poprawy:
 | stage-oriented CI | REFACTOR | P2 |
 | security architecture | CREATE | P1 |
 | backup/restore/DR | CREATE | P1 |
-| central telemetry archive zgodnie z ADR-004 | VERIFY history; WVC obecnie odłączony | P2 |
-| firewall / exposure policy | VERIFY / CREATE | P1 |
+| central telemetry archive zgodnie z ADR-004 | KEEP / VERIFIED (73,068 raw rows) | P3 |
+| firewall / exposure policy | HARDEN / CREATE; host INPUT currently accept | P1 |
 | Ollama preload unit/helper | MIGRATE do desired-state/model policy | P2 |
 | production helper packaging | MIGRATE do release artifact | P1 |
 | desired-state deployment | CREATE | P1 |
@@ -773,10 +834,12 @@ Nie zmieniamy jednocześnie modelu, agenta, bazy, schedulera i deploymentu. Migr
 
 Supplemental audit v1.1 zebrał wymagane metadane. Pozostały dwa punkty, które nie blokują zamknięcia audytu architektonicznego, ale muszą zostać rozwiązane przed migracją produkcji:
 
-1. firewall/UFW/nftables — wymaga odczytu z sudo,
-2. dokładna weryfikacja centralnej telemetrii PostgreSQL — `COUNT(*)` i zakres timestampów.
+Audit v1.2 rozstrzygnął firewall oraz dokładny stan centralnej telemetrii.
 
-Pełny diff Hermesa również należy przechwycić przed jego aktualizacją lub resetem, ale nie musi być publikowany w publicznym repo.
+Pozostałe działania nie są brakami audytu, lecz zadaniami przed migracją:
+1. przechwycić pełny diff Hermesa przed jego aktualizacją/resetem,
+2. sprawdzić statusy analysis runs po odłączeniu WVC,
+3. przygotować security hardening i docelową policy ekspozycji.
 
 ---
 
@@ -812,5 +875,5 @@ Obecny Serwer AI jest funkcjonalny i nie ma failed units, ale jego produkcyjny s
 
 To są dokładnie problemy, które nowa architektura ma rozwiązać.
 
-**Decyzja:** Audit v1.1 jest zamknięty na poziomie architektury/runtime inventory. Można przejść do finalizacji dokumentu pre-audit i projektowania Target Architecture. Nie rozpoczynać jeszcze szerokiej przebudowy produkcji przed rozwiązaniem punktów P1 i przygotowaniem planu migracji.
+**Decyzja:** Audit v1.2 jest zamknięty. Można przejść do finalizacji dokumentu pre-audit i projektowania Target Architecture. Nie rozpoczynać jeszcze szerokiej przebudowy produkcji przed przygotowaniem planu migracji, rollbacków i security hardening dla punktów P1.
 
