@@ -47,7 +47,7 @@ systemctl show ai-bridge.service -p WorkingDirectory --value
 echo "===== HEALTH ====="
 curl -fsS http://127.0.0.1:11435/health || fail_rollback
 echo
-curl -fsS http://127.0.0.1:8080/health || fail_rollback
+curl -fsS http://192.168.1.55:8080/health || fail_rollback
 echo
 
 echo "===== CURRENT ====="
