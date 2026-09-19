@@ -46,6 +46,15 @@ RDP/xrdp nie są częścią docelowej konfiguracji hosta.
 
 ## Dokumentacja
 
+### Architektura docelowa po audycie 2026-09-19
+
+- [AI Platform — Architecture Index](docs/architecture/README.md)
+- [AI Platform — Target Architecture v1](docs/architecture/AI_PLATFORM_TARGET_ARCHITECTURE_V1_PL.md)
+- [AI Platform — Component Contracts v1](docs/architecture/AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md)
+- [AI Platform — Migration Plan v1](docs/architecture/AI_PLATFORM_MIGRATION_PLAN_V1_PL.md)
+- [AI Server Architecture & Runtime Audit v1.2](docs/audit/AI_SERVER_ARCHITECTURE_RUNTIME_AUDIT_2026-09-19_PL.md)
+
+
 - [Hermes: Discord voice — konfiguracja, diagnoza i odtworzenie 12.09.2026](docs/HERMES_DISCORD_VOICE_2026-09-12_PL.md)
 
 ### Architektura
@@ -66,11 +75,15 @@ RDP/xrdp nie są częścią docelowej konfiguracji hosta.
 
 ## Aktualny kierunek prac
 
-Kolejnym etapem jest implementacja warstwy aplikacyjnej **AI Bridge** z modularnym rdzeniem oraz adapterem `ventilation`.
+Audyt architektury i runtime v1.2 został zakończony 19.09.2026. Obecny system pozostaje produkcyjnie działający, ale dalszy rozwój jest prowadzony według **AI Platform Target Architecture v1**.
 
-Kontrakt komunikacyjny CM5 ↔ AI Bridge dla telemetrii wentylacji jest zapisany w dokumentach `VENTILATION_TELEMETRY_API_V1_PL.md` oraz `VENTILATION_TELEMETRY_DATA_MODEL_V1_PL.md` i stanowi punkt odniesienia dla dalszej implementacji obu stron.
+Pierwszym etapem migracji jest:
 
-Na obecnym etapie nie rozdzielamy jeszcze osobnych profili kontekstu Ollamy dla wentylacji i CRT i nie ustawiamy globalnego `OLLAMA_CONTEXT_LENGTH`.
+**Stage A — Recovery Baseline + Reproducible Release Foundation**
+
+Celem Stage A nie jest zmiana modelu ani zachowania użytkowego. Etap ma wprowadzić zweryfikowany recovery point, release/build stamp, wersjonowany deployment i rollback, aby kolejne zmiany architektoniczne były odwracalne.
+
+AI Bridge pozostaje aktywnym elementem obecnego runtime, ale nie jest już docelową nazwą całej platformy. Docelowa AI Platform ma obsługiwać wiele domen przez stabilne kontrakty i wymienne adaptery providerów.
 
 ## Bezpieczeństwo
 
