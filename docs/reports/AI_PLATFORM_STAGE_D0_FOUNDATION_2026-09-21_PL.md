@@ -47,7 +47,7 @@ Commit zmian D.0 nie zmienia aktywnego runtime. Produkcja pozostaje na zwalidowa
 - wszystkie testy automatyczne PASS;
 - Stage D release build PASS;
 - production cutover + health PASS;
-- WVC regression PASS;
+- WVC platform-path regression PASS; jeśli CM5/WVC jest fizycznie odłączony, brak świeżej telemetrii jest oczekiwany, a walidacja obejmuje kontrakt ingestu oraz realny request `ventilation` przez Gateway/Qwen;
 - Telegram/media regression PASS;
 - rollback PASS;
 - issue #37 i dokumentacja zamknięte po realnej walidacji.
