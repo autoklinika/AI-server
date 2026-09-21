@@ -21,10 +21,12 @@ from ai_bridge.adapters.ventilation.analysis_profile import (
 )
 from ai_bridge.analysis.schemas import VentilationAnalysisResult
 from ai_bridge.analysis.service import VentilationAnalysisService, aligned_window
-from ai_bridge.ollama.client import (
-    OllamaChatResult,
-    OllamaClient,
-    compact_schema_for_ollama,
+from ai_bridge.ollama.client import OllamaClient, compact_schema_for_ollama
+from ai_bridge.providers.contracts import (
+    LLMExecution,
+    LLMRequest,
+    LLMResponse,
+    LLMUsage,
 )
 from ai_bridge.settings import Settings
 from ai_bridge.storage.models import TelemetrySampleRecord
@@ -341,31 +343,34 @@ class FakeRepository:
         return None
 
 
-class ForbiddenOllama:
-    def chat_structured(self, **_kwargs):
-        raise AssertionError("Ollama must not be called")
+class ForbiddenLLM:
+    def generate(self, _request: LLMRequest) -> LLMResponse:
+        raise AssertionError("LLM provider must not be called")
 
 
-class CapturingOllama:
+class CapturingLLM:
     def __init__(self) -> None:
-        self.kwargs: dict[str, Any] | None = None
+        self.request: LLMRequest | None = None
 
-    def chat_structured(self, **kwargs):
-        self.kwargs = kwargs
-        return OllamaChatResult(
+    def generate(self, request: LLMRequest) -> LLMResponse:
+        self.request = request
+        return LLMResponse(
+            request_id=request.request_id,
             content=_report_result().model_dump_json(),
-            model="qwen3.6:35b",
-            prompt_eval_count=123,
-            eval_count=45,
-            total_duration_ns=999,
+            usage=LLMUsage(input_tokens=123, output_tokens=45),
+            execution=LLMExecution(
+                provider="test-llm",
+                model="qwen3.6:35b",
+                duration_ns=999,
+            ),
         )
 
 
-def test_service_skips_ollama_when_sample_count_is_below_gate() -> None:
+def test_service_skips_llm_when_sample_count_is_below_gate() -> None:
     repository = FakeRepository([_sample(minute=0, supply=0.0, extract=0.0)])
     service = VentilationAnalysisService(
         repository=repository,  # type: ignore[arg-type]
-        ollama=ForbiddenOllama(),  # type: ignore[arg-type]
+        llm=ForbiddenLLM(),  # type: ignore[arg-type]
         model="qwen3.6:35b",
         think=ANALYSIS_THINK,
         temperature=0.0,
@@ -387,10 +392,10 @@ def test_service_skips_ollama_when_sample_count_is_below_gate() -> None:
 
 def test_service_uses_structured_schema_without_thinking() -> None:
     repository = FakeRepository([_sample(minute=0, supply=0.0, extract=0.0)])
-    ollama = CapturingOllama()
+    llm = CapturingLLM()
     service = VentilationAnalysisService(
         repository=repository,  # type: ignore[arg-type]
-        ollama=ollama,  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
         model="qwen3.6:35b",
         think=ANALYSIS_THINK,
         temperature=0.0,
@@ -404,12 +409,13 @@ def test_service_uses_structured_schema_without_thinking() -> None:
     )
 
     assert result.result.status == "no_anomaly_detected"
-    assert ollama.kwargs is not None
-    assert ollama.kwargs["think"] is False
-    assert ollama.kwargs["response_schema"]["properties"]["analysis_pl"]["type"] == "string"
+    assert llm.request is not None
+    assert llm.request.reasoning_enabled is False
+    assert llm.request.response_schema is not None
+    assert llm.request.response_schema["properties"]["analysis_pl"]["type"] == "string"
 
 
-def test_service_reuses_existing_analysis_without_calling_ollama() -> None:
+def test_service_reuses_existing_analysis_without_calling_llm() -> None:
     stored_result = _report_result("Zapisany wynik istniejącej analizy.")
     existing = SimpleNamespace(
         analysis_id="existing-analysis-id",
@@ -419,7 +425,7 @@ def test_service_reuses_existing_analysis_without_calling_ollama() -> None:
     repository = FakeRepository([], existing=existing)
     service = VentilationAnalysisService(
         repository=repository,  # type: ignore[arg-type]
-        ollama=ForbiddenOllama(),  # type: ignore[arg-type]
+        llm=ForbiddenLLM(),  # type: ignore[arg-type]
         model="qwen3.6:35b",
         think=ANALYSIS_THINK,
         temperature=0.0,
