@@ -9,7 +9,7 @@ STATE_DIR="/var/lib/ai-platform/stage-d"
 STATE_FILE="$STATE_DIR/previous-release"
 TIMER="ai-bridge-analysis.timer"
 BRIDGE_HEALTH_URL="${AI_BRIDGE_HEALTH_URL:-http://127.0.0.1:8080/health}"
-GATEWAY_HEALTH_URL="${AI_GATEWAY_HEALTH_URL:-$GATEWAY_HEALTH_URL}"
+GATEWAY_HEALTH_URL="${AI_GATEWAY_HEALTH_URL:-http://127.0.0.1:11435/health}"
 SUCCESS=0
 SWITCHED=0
 TIMER_WAS_ACTIVE=0
@@ -115,14 +115,14 @@ sudo systemctl restart ai-gateway.service
 sudo systemctl restart ai-bridge.service
 
 for _ in $(seq 1 30); do
-  if curl -fsS --max-time 2 $GATEWAY_HEALTH_URL >/dev/null 2>&1      && curl -fsS --max-time 2 $BRIDGE_HEALTH_URL >/dev/null 2>&1; then
+  if curl -fsS --max-time 2 "$GATEWAY_HEALTH_URL" >/dev/null 2>&1      && curl -fsS --max-time 2 "$BRIDGE_HEALTH_URL" >/dev/null 2>&1; then
     break
   fi
   sleep 1
 done
 
-curl -fsS $GATEWAY_HEALTH_URL >/dev/null || fail "AI Gateway health failed"
-curl -fsS $BRIDGE_HEALTH_URL >/dev/null || fail "AI Bridge health failed"
+curl -fsS "$GATEWAY_HEALTH_URL" >/dev/null || fail "AI Gateway health failed"
+curl -fsS "$BRIDGE_HEALTH_URL" >/dev/null || fail "AI Bridge health failed"
 
 [[ "$(readlink -f "$CURRENT")" == "$TARGET" ]] || fail "current symlink does not point at target"
 [[ "$(systemctl is-active ai-gateway.service)" == "active" ]] || fail "AI Gateway not active"
