@@ -6,11 +6,16 @@ import importlib.util
 import json
 import os
 import random
-import shutil
 import sys
 import time
-import uuid
 from pathlib import Path
+
+from ai_bridge.providers.comfyui import (
+    ComfyUIAdapter,
+    ComfyUIWorkflowPlan,
+    MediaProviderError,
+)
+from ai_bridge.providers.contracts import MediaGenerationRequest
 
 try:
     import generate_ltx23_stage29 as stage29
@@ -72,22 +77,20 @@ def default_first_strength(*, upscale_2x: bool) -> float:
     )
 
 
-def preflight(
-    comfy_url: str,
+def preflight_from_info(
+    info: dict,
     *,
     require_upscale: bool = False,
     require_i2v: bool = False,
 ) -> dict:
-    out = stage29.preflight(
-        comfy_url,
+    out = stage29.preflight_from_info(
+        info,
         require_upscale=require_upscale,
         require_i2v=require_i2v,
     )
     missing_nodes = set(out.get("missing_nodes") or [])
-    if require_i2v:
-        info = stage29.base.req_json(comfy_url, "/object_info", timeout=60)
-        if I2V_RESIZE_NODE not in info:
-            missing_nodes.add(I2V_RESIZE_NODE)
+    if require_i2v and I2V_RESIZE_NODE not in info:
+        missing_nodes.add(I2V_RESIZE_NODE)
 
     out = dict(out)
     out["ok"] = not missing_nodes and not (out.get("missing_models") or [])
@@ -100,6 +103,20 @@ def preflight(
     out["i2v_hq_first_strength_default"] = I2V_DEFAULT_HQ_FIRST_STRENGTH
     out["i2v_hq_reinject_strength_default"] = I2V_DEFAULT_HQ_REINJECT_STRENGTH
     return out
+
+
+def preflight(
+    comfy_url: str,
+    *,
+    require_upscale: bool = False,
+    require_i2v: bool = False,
+) -> dict:
+    adapter = _media_adapter(comfy_url, str(COMFY_INPUT_DEFAULT))
+    return preflight_from_info(
+        adapter.object_info(),
+        require_upscale=require_upscale,
+        require_i2v=require_i2v,
+    )
 
 
 def _resize_node(image_ref: list, *, width: int, height: int) -> dict:
@@ -224,18 +241,75 @@ def build_prompt(
     return graph
 
 
-def _stage_input_image(raw: str, comfy_input_dir: Path) -> tuple[Path, str]:
+def _validate_input_image(raw: str) -> str:
     source = Path(raw).expanduser().resolve(strict=True)
     if not source.is_file():
         raise Stage30Error(f"input image is not a file: {source}")
     suffix = source.suffix.lower()
     if suffix not in SUPPORTED_IMAGE_EXTS:
         raise Stage30Error(f"unsupported input image extension: {suffix}")
-    comfy_input_dir.mkdir(parents=True, exist_ok=True)
-    staged_name = f"stage30_i2v_{uuid.uuid4().hex}{suffix}"
-    staged = comfy_input_dir / staged_name
-    shutil.copy2(source, staged)
-    return staged, staged_name
+    return str(source)
+
+
+def _workflow_plan(
+    request: MediaGenerationRequest,
+    staged_inputs: tuple[str, ...],
+) -> ComfyUIWorkflowPlan:
+    params = request.parameters
+    if len(staged_inputs) > 1:
+        raise Stage30Error("Stage30 accepts at most one input image")
+
+    width = int(params["width"])
+    height = int(params["height"])
+    frames = int(params["frames"])
+    fps = int(params["fps"])
+    seed = int(params["seed"])
+    negative = str(params["negative"])
+    upscale_2x = bool(params["upscale_2x"])
+    i2v_compression = int(params["i2v_compression"])
+    raw_strength = params.get("i2v_strength")
+    i2v_strength = None if raw_strength is None else float(raw_strength)
+    hq_reinject = float(params["i2v_hq_reinject_strength"])
+    staged_name = staged_inputs[0] if staged_inputs else None
+
+    graph = build_prompt(
+        request.prompt,
+        width=width,
+        height=height,
+        frames=frames,
+        fps=fps,
+        seed=seed,
+        negative=negative,
+        upscale_2x=upscale_2x,
+        staged_image_name=staged_name,
+        i2v_compression=i2v_compression,
+        i2v_strength=i2v_strength,
+        i2v_hq_reinject_strength=hq_reinject,
+    )
+    return ComfyUIWorkflowPlan(
+        graph=graph,
+        output_extensions=(".mp4", ".webm", ".mov", ".mkv"),
+        filename_tag="ltx23-2x" if upscale_2x else "ltx23",
+        media_type="video/mp4",
+        metadata={
+            "stage": STAGE,
+            "workflow": "ltx23-stage30",
+            "upscale_2x": upscale_2x,
+            "frames": frames,
+            "fps": fps,
+            "mode": "i2v" if staged_name else "t2v",
+        },
+    )
+
+
+def _media_adapter(comfy_url: str, comfy_input_dir: str) -> ComfyUIAdapter:
+    return ComfyUIAdapter(
+        base_url=comfy_url,
+        workflow_resolver=_workflow_plan,
+        profiles=("ltx23-stage30",),
+        capabilities=("video-generation",),
+        input_dir=comfy_input_dir,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -284,11 +358,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--json", action="store_true")
     args = p.parse_args(argv)
 
-    staged_path: Path | None = None
     try:
+        adapter = _media_adapter(args.comfy_url, args.comfy_input_dir)
         if args.preflight or args.i2v_preflight:
-            out = preflight(
-                args.comfy_url,
+            out = preflight_from_info(
+                adapter.object_info(),
                 require_upscale=args.upscale_2x,
                 require_i2v=args.i2v_preflight,
             )
@@ -318,55 +392,44 @@ def main(argv: list[str] | None = None) -> int:
             hq_reinject_strength=args.i2v_hq_reinject_strength,
         )
 
-        staged_name = None
+        input_artifacts: tuple[str, ...] = ()
         if args.input_image:
-            staged_path, staged_name = _stage_input_image(
-                args.input_image,
-                Path(args.comfy_input_dir),
-            )
+            input_artifacts = (_validate_input_image(args.input_image),)
 
         seed = (
             args.seed
             if args.seed is not None
             else random.randrange(0, 2**63 - 1)
         )
-        graph = build_prompt(
-            args.prompt,
-            width=args.width,
-            height=args.height,
-            frames=frames,
-            fps=args.fps,
-            seed=seed,
-            negative=args.negative,
-            upscale_2x=args.upscale_2x,
-            staged_image_name=staged_name,
-            i2v_compression=args.i2v_compression,
-            i2v_strength=args.i2v_strength,
-            i2v_hq_reinject_strength=args.i2v_hq_reinject_strength,
-        )
-        submitted = stage29.base.req_json(
-            args.comfy_url,
-            "/prompt",
-            method="POST",
-            payload={"prompt": graph, "client_id": uuid.uuid4().hex},
-            timeout=60,
-        )
-        pid = str(submitted.get("prompt_id") or "")
-        if not pid:
-            raise Stage30Error(
-                "ComfyUI rejected prompt: "
-                + json.dumps(submitted, ensure_ascii=False)
+        media_result = adapter.generate(
+            MediaGenerationRequest(
+                request_id=f"stage30-{int(time.time() * 1000)}-{seed}",
+                capability="video-generation",
+                profile="ltx23-stage30",
+                prompt=args.prompt,
+                output_dir=args.output_dir,
+                timeout_seconds=float(args.timeout),
+                input_artifacts=input_artifacts,
+                parameters={
+                    "width": args.width,
+                    "height": args.height,
+                    "frames": frames,
+                    "fps": args.fps,
+                    "seed": seed,
+                    "negative": args.negative,
+                    "upscale_2x": args.upscale_2x,
+                    "i2v_compression": args.i2v_compression,
+                    "i2v_strength": args.i2v_strength,
+                    "i2v_hq_reinject_strength": args.i2v_hq_reinject_strength,
+                },
+                context={"domain": "shared", "source": "hermes-video-stage30"},
             )
-
-        rec = stage29.base.wait_result(args.comfy_url, pid, args.timeout)
-        dst = stage29.base.download_output(
-            args.comfy_url,
-            rec,
-            Path(args.output_dir),
-            pid,
-            upscale_2x=args.upscale_2x,
         )
-        stage29.base.free_memory(args.comfy_url)
+        if len(media_result.artifacts) != 1:
+            raise Stage30Error(
+                f"expected one generated video artifact, got {len(media_result.artifacts)}"
+            )
+        dst = Path(media_result.artifacts[0].uri)
 
         payload = {
             "ok": True,
@@ -400,7 +463,7 @@ def main(argv: list[str] | None = None) -> int:
             else dst
         )
         return 0
-    except (stage29.base.LTXError, ValueError, OSError) as exc:
+    except (stage29.base.LTXError, MediaProviderError, ValueError, OSError) as exc:
         print(
             json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
             if args.json
@@ -408,12 +471,6 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
-    finally:
-        if staged_path is not None:
-            try:
-                staged_path.unlink(missing_ok=True)
-            except Exception:
-                pass
 
 
 if __name__ == "__main__":
