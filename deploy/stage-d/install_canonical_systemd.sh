@@ -5,6 +5,11 @@ ROOT="$(git rev-parse --show-toplevel)"
 STATE_DIR="/var/lib/ai-platform/stage-d/systemd-baseline"
 MARKER="$STATE_DIR/captured"
 LEGACY_DROPIN="95-ai-platform-release.conf"
+OBSOLETE_DROPINS=(
+  "ai-bridge.service.d/90-production-source.conf"
+  "ai-bridge-analysis.service.d/10-ai-gateway.conf"
+  "ai-bridge-analysis.service.d/90-production-source.conf"
+)
 UNITS=("ai-bridge.service" "ai-gateway.service" "ai-bridge-analysis.service")
 
 say(){ printf '%s\n' "$*"; }
@@ -30,6 +35,15 @@ if ! sudo test -f "$MARKER"; then
       sudo touch "$STATE_DIR/$unit.$LEGACY_DROPIN.absent"
     fi
   done
+  for rel in "${OBSOLETE_DROPINS[@]}"; do
+    src="/etc/systemd/system/$rel"
+    safe_name="${rel//\//__}"
+    if sudo test -f "$src"; then
+      sudo cp -a "$src" "$STATE_DIR/$safe_name"
+    else
+      sudo touch "$STATE_DIR/$safe_name.absent"
+    fi
+  done
   printf 'captured_at=%s\n' "$(date -Iseconds)" | sudo tee "$MARKER" >/dev/null
   sudo chmod 0644 "$MARKER"
 fi
@@ -42,12 +56,29 @@ for unit in "${UNITS[@]}"; do
   fi
 done
 
+for rel in "${OBSOLETE_DROPINS[@]}"; do
+  path="/etc/systemd/system/$rel"
+  if sudo test -f "$path"; then
+    sudo rm -f "$path"
+  fi
+done
+
 sudo systemctl daemon-reload
 for unit in "${UNITS[@]}"; do
   wd="$(systemctl show "$unit" -p WorkingDirectory --value)"
   [[ "$wd" == /opt/ai-platform/current/services/* ]] || fail "$unit WorkingDirectory is not release-managed: $wd"
   if systemctl cat "$unit" | grep -q "$LEGACY_DROPIN"; then
     fail "$unit still includes legacy Stage A release-path drop-in"
+  fi
+done
+
+for stale in \
+  '/opt/ai-bridge/src' \
+  '/opt/ai-bridge/.venv/bin/ai-bridge-analyze-ventilation' \
+  'AI_BRIDGE_OLLAMA_URL=http://127.0.0.1:11435/clients/ventilation'
+do
+  if systemctl cat ai-bridge.service ai-bridge-analysis.service | grep -Fq "$stale"; then
+    fail "obsolete systemd override still effective: $stale"
   fi
 done
 
