@@ -56,6 +56,7 @@ def _adapter(*, input_dir: str | None = None) -> ComfyUIAdapter:
         workflow_resolver=_resolver,
         profiles=("ltx23-stage30",),
         capabilities=("video-generation",),
+        node_id="test-node",
         poll_seconds=0.0,
         input_dir=input_dir,
     )
@@ -335,7 +336,7 @@ def test_comfyui_adapter_health_and_descriptor(monkeypatch) -> None:
     descriptor = adapter.describe()
     assert descriptor.provider_id == "comfyui-local"
     assert descriptor.provider_type == "media-generation"
-    assert descriptor.node_id == "ai-node-01"
+    assert descriptor.node_id == "test-node"
     assert descriptor.capabilities == ("video-generation",)
     assert descriptor.models == ("ltx23-stage30",)
     assert descriptor.metadata["transport"] == "http"
