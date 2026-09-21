@@ -12,10 +12,12 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from ai_bridge.settings import Settings, get_settings
 from ai_bridge.providers.registry import local_descriptor_registry
 
+from .admission import WorkloadBinding, DIRECT_READS, external_workload, http_workload
 from .priority import PriorityClass, priority_for_class
 from .jobs import JobLifecycle, JobMetadata
 from .resource_leases import (
     ResourceLeaseNotActive,
+    ResourceLeaseNotAllowed,
     ResourceLeaseNotFound,
     ResourceLeaseRegistry,
 )
@@ -219,6 +221,8 @@ def create_gateway_app(
         )
 
     async def proxy_direct(request: Request, upstream_path: str) -> Response:
+        if (request.method, upstream_path) not in DIRECT_READS:
+            raise HTTPException(status_code=400, detail="admission required")
         client: httpx.AsyncClient = request.app.state.upstream
         try:
             upstream = await client.request(
@@ -241,7 +245,7 @@ def create_gateway_app(
         )
 
     async def leased_ticket(
-        request: Request,
+        request: Request, workload: WorkloadBinding,
     ) -> tuple[str | None, SchedulerTicket | None, bool, Response | None]:
         """Resolve an already-admitted external lease for this upstream request.
 
@@ -256,7 +260,7 @@ def create_gateway_app(
 
         release_after = _truthy_header(request, _RESOURCE_LEASE_RELEASE_HEADER)
         try:
-            ticket = await resource_leases.begin_use(lease_id)
+            ticket = await resource_leases.begin_use(lease_id, workload=workload)
         except ResourceLeaseNotFound:
             return (
                 lease_id,
@@ -267,7 +271,7 @@ def create_gateway_app(
                     content={"error": "resource_lease_not_found"},
                 ),
             )
-        except ResourceLeaseNotActive:
+        except (ResourceLeaseNotActive, ResourceLeaseNotAllowed):
             return (
                 lease_id,
                 None,
@@ -290,18 +294,15 @@ def create_gateway_app(
         body, class_priority, semantic = _consume_priority_class(body, default_priority)
         priority = _parse_priority(request, class_priority)
         source = _parse_source(request, default_source)
-        # Fixed compatibility-route metadata; never infer identity from prompts,
-        # model names, arbitrary source headers or request fields.
+        workload = http_workload(registry, upstream_path, ventilation=default_source == "ventilation")
         metadata = JobMetadata(
             domain="wvc" if default_source == "ventilation" else "shared",
-            capability=("embeddings" if upstream_path in {
-                "/api/embed", "/api/embeddings", "/v1/embeddings"
-            } else "reasoning" if default_source == "ventilation" else
-                "text-generation" if upstream_path == "/api/generate" else "chat"),
+            capability=workload.capability,
             priority_class=semantic,
+            workload=(workload,),
         )
         client: httpx.AsyncClient = request.app.state.upstream
-        lease_id, ticket, release_after, lease_error = await leased_ticket(request)
+        lease_id, ticket, release_after, lease_error = await leased_ticket(request, workload)
         if lease_error is not None:
             return lease_error
         if ticket is None:
@@ -445,16 +446,47 @@ def create_gateway_app(
             )
 
         try:
+            workload = external_workload(registry, body.get("workload", "external"))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="invalid workload") from exc
+        try:
             payload = await resource_leases.create(
                 priority=priority,
                 source=source,
-                metadata=JobMetadata(capability="external-reservation", priority_class=(
+                metadata=JobMetadata(capability="external-reservation", workload=workload, priority_class=(
                     PriorityClass("infrastructure" if body["priority_class"] == "critical" else body["priority_class"])
                     if "priority_class" in body else None)),
             )
         except SchedulerQueueFull:
             return await queue_full_response()
         return JSONResponse(status_code=201, content=payload)
+
+    @app.post("/resource/leases/{lease_id}/uses")
+    async def begin_external_use(lease_id: str, request: Request) -> Response:
+        try:
+            body = await request.json()
+            if not isinstance(body, dict) or set(body) != {"provider", "capability"}:
+                raise ValueError()
+            # Only the existing external media executor is supported. Embedding
+            # execution still enters through scheduled HTTP.
+            if body["provider"] != "comfyui-local":
+                raise ValueError()
+            provider = registry.provider(body["provider"])
+            workload = WorkloadBinding(provider.provider_id, provider.node_id, body["capability"])
+            workload.validate(registry)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="invalid external workload")
+        try:
+            use_id = await resource_leases.begin_external_use(lease_id, workload)
+        except ResourceLeaseNotFound:
+            return JSONResponse(status_code=404, content={"error": "resource_lease_not_found"})
+        except (ResourceLeaseNotActive, ResourceLeaseNotAllowed):
+            return JSONResponse(status_code=409, content={"error": "resource_lease_not_available"})
+        return JSONResponse(status_code=201, content={"use_id": use_id})
+
+    @app.delete("/resource/leases/{lease_id}/uses/{use_id}")
+    async def end_external_use(lease_id: str, use_id: str) -> dict[str, bool]:
+        return {"released": await resource_leases.end_external_use(lease_id, use_id)}
 
     @app.get("/resource/leases/{lease_id}")
     async def resource_lease_status(lease_id: str) -> dict[str, object]:

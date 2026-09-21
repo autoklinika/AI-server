@@ -11,6 +11,8 @@ from uuid import uuid4
 
 import httpx
 
+from ai_bridge.providers.media_admission import MediaAdmissionError, media_admission
+
 from ai_bridge.providers.contracts import (
     MediaArtifact,
     MediaGenerationProvider,
@@ -129,6 +131,13 @@ class ComfyUIAdapter:
 
     def generate(self, request: MediaGenerationRequest) -> MediaGenerationResult:
         self._validate_request(request)
+        try:
+            with media_admission(request.capability):
+                return self._generate_admitted(request)
+        except MediaAdmissionError as exc:
+            raise MediaProviderError(str(exc)) from None
+
+    def _generate_admitted(self, request: MediaGenerationRequest) -> MediaGenerationResult:
         started = time.monotonic()
         staged_paths: list[Path] = []
         try:

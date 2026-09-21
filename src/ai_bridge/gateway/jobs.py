@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from uuid import uuid4
 
+from .admission import WorkloadBinding
 from .priority import PRIORITY_CLASS_DEFAULTS, PriorityClass
 
 
@@ -39,6 +40,7 @@ class JobMetadata:
     domain: str = "shared"
     capability: str = "unknown"
     priority_class: PriorityClass | None = None
+    workload: tuple[WorkloadBinding, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +58,7 @@ class JobState:
     admitted_at: datetime | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    workload: tuple[WorkloadBinding, ...] = ()
 
     @classmethod
     def create(cls, metadata: JobMetadata, priority: int) -> "JobState":
@@ -64,7 +67,7 @@ class JobState:
             semantic = next((key for key, value in PRIORITY_CLASS_DEFAULTS.items()
                              if value == priority), None)
         return cls(f"job_{uuid4().hex}", metadata.request_id, metadata.domain,
-                   metadata.capability, semantic)
+                   metadata.capability, semantic, workload=metadata.workload)
 
     def transition(self, state: JobLifecycle) -> "JobState":
         if state not in _TRANSITIONS.get(self.state, set()):

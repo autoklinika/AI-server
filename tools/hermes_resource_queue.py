@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from contextlib import contextmanager
 import json
 import os
 import shutil
@@ -219,6 +220,7 @@ def acquire_resource(
     target: str | None,
     source: str,
     priority: int = 50,
+    workload: str | None = None,
     queue_message: str | None = None,
     start_message: str | None = None,
     status_callback: Callable[[str], None] | None = None,
@@ -226,7 +228,7 @@ def acquire_resource(
     created = _json(
         "POST",
         "/resource/leases",
-        {"source": source, "priority": int(priority)},
+        {"source": source, "priority": int(priority), **({"workload": workload} if workload is not None else {})},
         timeout=5,
     )
     lease_id = str(created.get("lease_id") or "")
@@ -300,3 +302,24 @@ def lease_headers_from_env(*, release_after: bool = False) -> dict[str, str]:
     if release_after:
         headers["X-AI-Resource-Lease-Release"] = "1"
     return headers
+
+
+@contextmanager
+def media_admission(capability: str):
+    """Guard legacy image execution using the same D.4 lease-use API."""
+    lease_id = os.environ.get("HERMES_RESOURCE_LEASE_ID", "")
+    import re
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", lease_id):
+        raise ResourceQueueError("active resource lease required")
+    path = f"/resource/leases/{lease_id}/uses"
+    created = _json("POST", path, {"provider": "comfyui-local", "capability": capability})
+    use_id = created.get("use_id")
+    if not isinstance(use_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", use_id):
+        raise ResourceQueueError("invalid resource use response")
+    try:
+        yield
+    finally:
+        try:
+            _json("DELETE", f"{path}/{use_id}")
+        except Exception:
+            pass  # Lease release/TTL retains crash-safe ownership cleanup.

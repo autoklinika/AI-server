@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,11 @@ from ai_bridge.providers.contracts import (
     MediaGenerationProvider,
     MediaGenerationRequest,
 )
+
+
+@pytest.fixture(autouse=True)
+def isolated_admission(monkeypatch):
+    monkeypatch.setattr("ai_bridge.providers.comfyui.media_admission", lambda capability: nullcontext())
 
 
 def _request(tmp_path: Path) -> MediaGenerationRequest:

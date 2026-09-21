@@ -373,6 +373,85 @@ Compatibility:
 
 Raport: [Stage D.2](../reports/AI_PLATFORM_STAGE_D2_JOB_MODEL_2026-09-22_PL.md).
 
+### 7.3. Unified admission — Stage D.4
+
+**READY FOR SUPERVISOR VALIDATION**, bez walidacji produkcji. Ten paragraf
+rozszerza historyczne kontrakty D.2/D.3; nie zmienia lifecycle rezerwacji.
+
+`JobMetadata` i `JobState` dodają `workload`: niemutowalną tuple (JSON array)
+`{provider, node, capability}`. Każdy binding musi przejść walidację registry
+D.3 przed enqueue. To deklaracja dopuszczonej pracy, nie assignment, health ani
+potwierdzenie wykonania. Dane pochodzą ze stałych tras/profili, nigdy z promptu,
+modelu lub dowolnego source. Terminal history zachowuje workload. Legacy low-level
+scheduler bez metadata nadal dopuszcza pustą tuple; publiczne supported ścieżki
+Gateway zawsze budują jawny plan. Assignment HTTP musi należeć do planu.
+
+Scheduled HTTP: wszystkie dziewięć istniejących tras nadal używa tego samego
+`PriorityScheduler`. Chat/generate/WVC/embedding mają pojedynczy binding
+`ollama-local` + lokalny node + dotychczasową capability. Streaming utrzymuje slot
+do finalizacji. Direct proxy helper dopuszcza tylko GET `/api/tags` i `/v1/models`;
+nieznana expensive trasa nie ma catch-all passthrough ani domyślnego mapowania.
+
+`POST /resource/leases` przyjmuje opcjonalne `workload`:
+
+| Profil | Dopuszczone wykonanie |
+|---|---|
+| `external` (brak pola) | legacy Qwen + embeddings + image/edit/video |
+| `llm` | Qwen chat/reasoning/text-generation/structured-generation |
+| `embeddings` | istniejące scheduled Ollama embeddings |
+| `media-image` | Qwen jak w llm + ComfyUI image-generation/image-edit |
+| `media-video` | Qwen jak w llm + ComfyUI video-generation |
+
+Nieznany profil/null/inny typ daje generyczne 400 `invalid workload` przed
+admission, bez echo wartości. Explicit numeric priority, semantic precedence,
+WVC=10, FIFO, queue limit i brak preemption pozostają D.1. Legacy request bez
+pola zachowuje możliwość współdzielenia lease Qwen/ComfyUI/embedding.
+
+Leased HTTP waliduje binding przed upstream i nie rezerwuje drugiego slotu.
+Jeden lease pozwala na jedno wykonanie naraz: drugi równoległy HTTP albo HTTP
+podczas external use dostaje 409. Missing lease daje 404, queued/niezgodny plan
+409. `begin/end_use`, streaming/error/cancellation i deferred release nadal
+chronią slot HTTP; nie zmieniają reservation JobState na running/failed.
+
+Media external use (localhost-only, istniejąca granica zaufania Resource API):
+
+- POST `/resource/leases/{lease_id}/uses`, dokładny JSON
+  `{"provider":"comfyui-local","capability":"video-generation"}` (lub image/edit),
+  waliduje descriptor i plan aktywnego lease, zwraca 201 `{"use_id":"..."}`;
+- invalid body/provider/capability daje 400, missing lease 404, queued/busy lub
+  capability poza planem 409; brak backend call przy odmowie;
+- DELETE `/resource/leases/{lease_id}/uses/{use_id}` kończy tylko wskazaną fazę,
+  zwraca `released`; stary use_id nie kończy nowej fazy. Nie zwalnia całego lease;
+- `/status.resource_leases.leases` dodaje ten sam `job`, `external_in_use` i
+  `external_workload` (binding aktualnej fazy lub null), bez use_id i payloadów;
+- external phase nie jest HTTP `in_use` pin: heartbeat właściciela podtrzymuje
+  lease, a utrata heartbeat nadal pozwala TTL/reaper zwolnić slot po crashu.
+  To zachowanie cleanup rezerwacji, nie cancel API produktu ComfyUI;
+- explicit release i idle TTL zachowują D.2 completed/expired; completed nadal
+  nie potwierdza sukcesu renderu. Assignment i started_at rezerwacji pozostają null.
+
+Supported media executors: `ComfyUIAdapter.generate()` wymaga aktywnego lokalnego
+lease z `HERMES_RESOURCE_LEASE_ID` i uzyskuje external use przed przygotowaniem
+workflow/files/backend call; oddaje fazę w finally. Worker pozostaje właścicielem
+heartbeat i całej rezerwacji. Brak lease/unavailable RM/odmowa blokuje wykonanie,
+bez fallback do direct ComfyUI. Health/describe/preflight pozostają read-only.
+Global `/foto` wrapper deklaruje media-image i obejmuje guardem wyłącznie generator
+(po Qwen); `/wideo` deklaruje media-video, a guard znajduje się w adapterze.
+Zmiany są w repo helperach/wrapperach, bez nowego patcha produktu Hermes.
+Historyczne recovery generatory i jawny direct-Ollama recovery mode pozostają;
+nie są nową publiczną ścieżką admission ani gwarancją izolacji od operatora hosta.
+
+Future EmbeddingProvider musi zbudować descriptor-validated binding `embeddings`
+i uzyskać ten sam slot przed `embed()` lub użyć istniejących scheduled HTTP tras.
+Nie wolno dispatchować nowego adaptera tylko dlatego, że istnieje descriptor.
+Konkretny adapter/model, registry provider type migration, Knowledge Service,
+indexing i multi-node wymagają późniejszych decyzji. D.4 ich nie implementuje.
+
+Operacyjnie Gateway, packaged adapter i zmienione repo helpery/wrappery wymagają
+spójnej wersji przy przyszłym wdrożeniu; nowy guard ze starym Gateway odmawia
+wykonania. Deploy/rollback nie został wykonany. Szczegóły i ograniczenia:
+[raport D.4](../reports/AI_PLATFORM_STAGE_D4_UNIFIED_ADMISSION_2026-09-22_PL.md).
+
 ---
 
 ## 8. Model / Worker Registry

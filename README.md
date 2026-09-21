@@ -93,11 +93,14 @@ Aktualny etap:
 
 Poprzedni krok **D.2 — Job model** przeszedł niezależny
 [supervisor dev gate](docs/reports/AUTONOMOUS_D2_DEV_GATE_2026-09-22.md).
-Aktualny krok implementacyjny: **D.3 — Capability/provider/node descriptors**,
-**READY FOR SUPERVISOR VALIDATION**. Dodaje statyczny registry obecnych
-Ollama/ComfyUI/Hermes i walidowany assignment JobState;
-[raport D.3](docs/reports/AI_PLATFORM_STAGE_D3_DESCRIPTORS_2026-09-22_PL.md).
-To gotowość implementacji, bez nowej walidacji produkcyjnej ani unified admission.
+D.3 descriptors przeszedł [supervisor dev gate](docs/reports/AUTONOMOUS_D3_DEV_GATE_2026-09-22.md).
+Aktualny krok implementacyjny: **D.4 — Unified admission**, **READY FOR SUPERVISOR VALIDATION**.
+LLM HTTP, media external leases i istniejące trasy embeddings używają wspólnego
+schedulera oraz walidowanych workload bindings w JobState. Guard media wymaga
+aktywnego lease; D.1 priority i D.2 reservation lifecycle pozostają zachowane.
+[Raport D.4](docs/reports/AI_PLATFORM_STAGE_D4_UNIFIED_ADMISSION_2026-09-22_PL.md).
+To gotowość implementacji, bez production validation/cutover. D.5 migration
+endpointów oraz D.6 pozostają poza zakresem.
 
 Nie zmieniamy na D.0 modelu Qwen, GPU, backendu wiedzy ani implementacji schedulera od zera. Stage C r3 pozostaje zweryfikowanym rollback pointem.
 

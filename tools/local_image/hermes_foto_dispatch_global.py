@@ -19,6 +19,14 @@ def _helper_path():
     if HELPER_PROD.is_file():return HELPER_PROD
     raise RuntimeError("Brak klienta globalnej kolejki.")
 base=_load("hermes_foto_dispatch_base_runtime",_base_path());resource=_load("hermes_resource_queue_runtime",_helper_path())
+def _run_generator_admitted(request, log):
+    capability = "image-edit" if request.get("input_image") else "image-generation"
+    with resource.media_admission(capability):
+        return _original_generator(request, log)
+
+_original_generator = base._run_generator
+base._run_generator = _run_generator_admitted
+
 class _LeaseHeaders:
     def __enter__(self):
         self.original=urllib.request.Request;lease_headers=resource.lease_headers_from_env()
@@ -30,7 +38,7 @@ class _LeaseHeaders:
     def __exit__(self,*exc):urllib.request.Request=self.original
 def worker(job_dir:Path)->int:
     request=base.json.loads((job_dir/"request.json").read_text(encoding="utf-8"));target=str(request.get("target") or "")
-    lease=resource.acquire_resource(target=target,source="telegram-foto" if target.startswith("telegram:") else "foto",priority=int(os.environ.get("HERMES_MEDIA_RESOURCE_PRIORITY","50")),queue_message="⏳ Obraz czeka w kolejce. Powiadomię Cię, gdy rozpocznie się generowanie.",start_message="▶️ Zwolniły się zasoby. Rozpoczynam generowanie obrazu.")
+    lease=resource.acquire_resource(target=target,workload="media-image",source="telegram-foto" if target.startswith("telegram:") else "foto",priority=int(os.environ.get("HERMES_MEDIA_RESOURCE_PRIORITY","50")),queue_message="⏳ Obraz czeka w kolejce. Powiadomię Cię, gdy rozpocznie się generowanie.",start_message="▶️ Zwolniły się zasoby. Rozpoczynam generowanie obrazu.")
     old=os.environ.get("HERMES_RESOURCE_LEASE_ID");os.environ["HERMES_RESOURCE_LEASE_ID"]=lease.lease_id
     try:
         with _LeaseHeaders():return base.worker(job_dir)

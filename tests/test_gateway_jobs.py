@@ -50,7 +50,7 @@ def test_model_has_only_explicit_metadata_and_monotonic_wall_timestamps(monkeypa
     assert {f.name for f in fields(job)} == {
         "job_id", "request_id", "domain", "capability", "priority_class", "state",
         "assigned_provider", "assigned_node", "created_at", "queued_at", "admitted_at",
-        "started_at", "finished_at",
+        "started_at", "finished_at", "workload",
     }
     monkeypatch.setattr("ai_bridge.gateway.jobs.utc_now", lambda: datetime(2000, 1, 1, tzinfo=job.created_at.tzinfo))
     for state in [State.QUEUED, State.ADMITTED, State.RUNNING, State.COMPLETED]:

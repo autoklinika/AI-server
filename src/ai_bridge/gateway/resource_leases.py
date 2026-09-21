@@ -1,13 +1,15 @@
 from __future__ import annotations
 import asyncio, secrets
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, replace
 from time import monotonic
+from .admission import WorkloadBinding, external_workload
 from .jobs import JobLifecycle, JobMetadata
 from .scheduler import PriorityScheduler, SchedulerTicket
 
 class ResourceLeaseError(RuntimeError): pass
 class ResourceLeaseNotFound(ResourceLeaseError): pass
 class ResourceLeaseNotActive(ResourceLeaseError): pass
+class ResourceLeaseNotAllowed(ResourceLeaseError): pass
 
 @dataclass
 class _Lease:
@@ -19,6 +21,8 @@ class _Lease:
     last_heartbeat:float
     in_use:int=0
     release_when_idle:bool=False
+    external_use_id: str | None = None
+    external_workload: WorkloadBinding | None = None
 
 class ResourceLeaseRegistry:
     def __init__(self,scheduler:PriorityScheduler,*,ttl_seconds:float=45.0)->None:
@@ -27,13 +31,22 @@ class ResourceLeaseRegistry:
         self._lock=asyncio.Lock(); self._leases={}
 
     async def create(self,*,priority:int,source:str,metadata:JobMetadata|None=None)->dict[str,object]:
-        reservation=await self.scheduler.reserve(priority=priority,source=source,metadata=metadata or JobMetadata(capability="external-reservation"))
-        now=monotonic(); lease_id=secrets.token_urlsafe(24)
-        rec=_Lease(lease_id,reservation.job_id,reservation.priority,reservation.source,now,now)
-        async with self._lock: self._leases[lease_id]=rec
-        status=await self.scheduler.job_status(rec.job_id)
-        assert status is not None
-        return {"lease_id":lease_id,**status}
+        metadata = metadata or JobMetadata(capability="external-reservation")
+        if not metadata.workload:
+            metadata = replace(metadata, workload=external_workload(self.scheduler.registry))
+        # Acquire the registry lock first: cancellation waiting for it must not
+        # leave a scheduler reservation without a lease/reaper owner.
+        async with self._lock:
+            reservation = await self.scheduler.reserve(priority=priority, source=source, metadata=metadata)
+            now = monotonic()
+            lease_id = secrets.token_urlsafe(24)
+            rec = _Lease(lease_id, reservation.job_id, reservation.priority, reservation.source, now, now)
+            self._leases[lease_id] = rec
+        try:
+            return await self.describe(lease_id)
+        except BaseException:
+            await asyncio.shield(self.release(lease_id))
+            raise
 
     async def describe(self,lease_id:str)->dict[str,object]:
         rec=await self._record(lease_id); status=await self.scheduler.job_status(rec.job_id)
@@ -49,48 +62,87 @@ class ResourceLeaseRegistry:
             rec.last_heartbeat=monotonic()
         return await self.describe(lease_id)
 
-    async def begin_use(self,lease_id:str)->SchedulerTicket:
-        rec=await self._record(lease_id); ticket=await self.scheduler.active_ticket(rec.job_id)
-        if ticket is None: raise ResourceLeaseNotActive("resource lease is not active")
+    async def begin_use(self, lease_id: str, *, workload: WorkloadBinding | None = None) -> SchedulerTicket:
         async with self._lock:
-            rec=self._leases.get(lease_id)
-            if rec is None: raise ResourceLeaseNotFound("resource lease not found")
-            rec.in_use+=1; rec.last_heartbeat=monotonic()
-        return ticket
+            rec = self._leases.get(lease_id)
+            if rec is None:
+                raise ResourceLeaseNotFound("resource lease not found")
+            ticket = await self.scheduler.active_ticket(rec.job_id)
+            if ticket is None or rec.in_use or rec.external_use_id or rec.release_when_idle:
+                raise ResourceLeaseNotActive("resource lease is not available")
+            if workload is not None:
+                workload.validate(self.scheduler.registry)
+                status = await self.scheduler.job_status(rec.job_id)
+                allowed = status["job"]["workload"]
+                if {"provider": workload.provider, "node": workload.node, "capability": workload.capability} not in allowed:
+                    raise ResourceLeaseNotAllowed("workload outside resource lease")
+            rec.in_use = 1
+            rec.last_heartbeat = monotonic()
+            return ticket
+
+    async def begin_external_use(self, lease_id: str, workload: WorkloadBinding) -> str:
+        # The same admission check as leased HTTP. Convert the temporary HTTP
+        # pin to a heartbeat-owned external use atomically (no await between).
+        await self.begin_use(lease_id, workload=workload)
+        rec = self._leases[lease_id]
+        rec.in_use = 0
+        rec.external_use_id = secrets.token_urlsafe(24)
+        rec.external_workload = workload
+        return rec.external_use_id
+
+    async def end_external_use(self, lease_id: str, use_id: str) -> bool:
+        async with self._lock:
+            rec = self._leases.get(lease_id)
+            if rec is None or rec.external_use_id != use_id:
+                return False
+            rec.external_use_id = None
+            rec.external_workload = None
+            rec.last_heartbeat = monotonic()
+            return True
 
     async def end_use(self,lease_id:str,*,release:bool=False)->None:
-        job_id=None
         async with self._lock:
             rec=self._leases.get(lease_id)
             if rec is None: return
             rec.in_use=max(0,rec.in_use-1); rec.last_heartbeat=monotonic()
             if release: rec.release_when_idle=True
             if rec.in_use==0 and rec.release_when_idle:
-                job_id=rec.job_id; self._leases.pop(lease_id,None)
-        if job_id is not None: await self.scheduler.release_job(job_id)
+                await self.scheduler.release_job(rec.job_id)
+                self._leases.pop(lease_id,None)
 
     async def release(self,lease_id:str)->bool:
-        job_id=None
         async with self._lock:
             rec=self._leases.get(lease_id)
             if rec is None: return False
             if rec.in_use:
                 rec.release_when_idle=True; return True
-            job_id=rec.job_id; self._leases.pop(lease_id,None)
-        await self.scheduler.release_job(job_id); return True
+            await self.scheduler.release_job(rec.job_id)
+            self._leases.pop(lease_id,None)
+            return True
 
     async def reap_expired(self)->int:
         now=monotonic()
         async with self._lock:
             expired=[lid for lid,r in self._leases.items() if r.in_use==0 and now-r.last_heartbeat>self.ttl_seconds]
             for lid in expired:
-                rec=self._leases.pop(lid)
+                rec=self._leases[lid]
                 await self.scheduler.release_job(rec.job_id, state=JobLifecycle.EXPIRED)
+                self._leases.pop(lid)
         return len(expired)
 
     async def snapshot(self)->dict[str,object]:
         async with self._lock:
-            return {"lease_count":len(self._leases),"leases":[{"job_id":r.job_id,"priority":r.priority,"source":r.source,"in_use":r.in_use,"release_when_idle":r.release_when_idle} for r in sorted(self._leases.values(),key=lambda x:x.job_id)]}
+            leases = []
+            for rec in sorted(self._leases.values(), key=lambda item: item.job_id):
+                status = await self.scheduler.job_status(rec.job_id)
+                leases.append({"job_id": rec.job_id, "priority": rec.priority,
+                               "source": rec.source, "in_use": rec.in_use,
+                               "release_when_idle": rec.release_when_idle,
+                               "external_in_use": rec.external_use_id is not None,
+                               "external_workload": asdict(rec.external_workload) if rec.external_workload else None,
+                               "job": status["job"] if status else None})
+            return {"lease_count": len(leases), "leases": leases}
+
 
     async def _record(self,lease_id:str)->_Lease:
         async with self._lock:
