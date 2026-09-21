@@ -109,6 +109,7 @@ def test_gateway_policy_migration_is_reversible_and_non_restarting() -> None:
     )
     assert "AI_BRIDGE_ANALYSIS_USE_GATEWAY=true" in apply
     assert "gateway-policy-baseline" in apply
+    assert 'install -d -m 0700 "$STATE_DIR"' in apply
     assert "cp -a" in apply
     assert "systemctl restart" not in apply
     assert "gateway-policy-baseline" in restore
