@@ -21,7 +21,7 @@ from ai_bridge.analysis.operator_view import (
     render_operator_view,
 )
 from ai_bridge.analysis.schemas import VentilationAnalysisResult
-from ai_bridge.ollama.client import OllamaClient, compact_schema_for_ollama
+from ai_bridge.providers.contracts import LLMProvider, LLMRequest
 from ai_bridge.storage.analysis_repository import VentilationAnalysisRepository
 
 
@@ -55,14 +55,14 @@ class VentilationAnalysisServiceV122:
         self,
         *,
         repository: VentilationAnalysisRepository,
-        ollama: OllamaClient,
+        llm: LLMProvider,
         model: str,
         think: bool,
         temperature: float,
         min_samples: int,
     ) -> None:
         self.repository = repository
-        self.ollama = ollama
+        self.llm = llm
         self.model = model
         self.think = think
         self.temperature = temperature
@@ -138,15 +138,16 @@ class VentilationAnalysisServiceV122:
             # alert lifecycle state is intentionally removed from advisory input
             # and from the deterministic advisory decision/rendering path.
             compact = strip_alert_context(build_compact_analysis_packet(summary))
-            sampling_schema = compact_schema_for_ollama(
-                EnvironmentalDecisionV122.model_json_schema()
-            )
-            chat = self.ollama.chat_structured(
-                model=self.model,
-                messages=build_environment_prompt_from_compact(compact),
-                response_schema=sampling_schema,
-                think=self.think,
-                temperature=self.temperature,
+            chat = self.llm.generate(
+                LLMRequest(
+                    request_id=str(uuid4()),
+                    capability="structured-generation",
+                    messages=build_environment_prompt_from_compact(compact),
+                    response_schema=EnvironmentalDecisionV122.model_json_schema(),
+                    temperature=self.temperature,
+                    reasoning_enabled=self.think,
+                    context={"domain": "wvc", "source_id": source_id},
+                )
             )
             environmental = EnvironmentalDecisionV122.model_validate_json(chat.content)
             decision = resolve_final_decision(compact, environmental)
@@ -174,9 +175,9 @@ class VentilationAnalysisServiceV122:
             # For v12.2 raw_response is intentionally the small environmental
             # decision JSON, not operator-facing prose.
             raw_response=None if chat is None else chat.content,
-            prompt_eval_count=None if chat is None else chat.prompt_eval_count,
-            eval_count=None if chat is None else chat.eval_count,
-            total_duration_ns=None if chat is None else chat.total_duration_ns,
+            prompt_eval_count=None if chat is None else chat.usage.input_tokens,
+            eval_count=None if chat is None else chat.usage.output_tokens,
+            total_duration_ns=None if chat is None else chat.execution.duration_ns,
         )
         LOGGER.info(
             "Ventilation v12.2 analysis stored analysis_id=%s source_id=%s samples=%d window=%s..%s status=%s",
