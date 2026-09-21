@@ -108,6 +108,52 @@ def _wait_scheduler_idle(timeout_seconds: float = 20.0) -> dict:
     return last
 
 
+def _enabled_api_toolsets(api_key: str) -> list[dict]:
+    response = httpx.get(
+        f"{HERMES_URL}/v1/toolsets",
+        headers={"Authorization": f"Bearer {api_key}"},
+        timeout=10.0,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, dict) or payload.get("platform") != "api_server":
+        raise SmokeError("Hermes /v1/toolsets returned an unexpected payload")
+    rows = payload.get("data")
+    if not isinstance(rows, list):
+        raise SmokeError("Hermes /v1/toolsets data is not a list")
+    enabled: list[dict] = []
+    for row in rows:
+        if not isinstance(row, dict) or row.get("enabled") is not True:
+            continue
+        tools = row.get("tools")
+        concrete = [str(tool) for tool in tools] if isinstance(tools, list) else []
+        enabled.append(
+            {
+                "name": str(row.get("name") or ""),
+                "tools": concrete,
+            }
+        )
+    return enabled
+
+
+def _assert_real_turn_safe(api_key: str) -> None:
+    enabled = _enabled_api_toolsets(api_key)
+    toolsets_with_tools = [row for row in enabled if row["tools"]]
+    if not toolsets_with_tools:
+        print("PASS: api_server exposes no enabled concrete tools for this smoke")
+        return
+
+    print("SAFE STOP: real agent turn was NOT executed.")
+    print("Enabled api_server toolsets:")
+    for row in toolsets_with_tools:
+        print(f"  - {row['name']}: {', '.join(row['tools'])}")
+    raise SmokeError(
+        "Real Hermes smoke refused because request-scoped tool disabling is not "
+        "available on this API boundary. Use an isolated no-tools Hermes profile "
+        "for the E2E turn."
+    )
+
+
 def _assert_hermes_runtime_ready() -> None:
     if not _service_active("--user", "is-active", "hermes-gateway.service"):
         raise SmokeError("hermes-gateway.service is not active")
@@ -171,6 +217,8 @@ def main() -> int:
     print("PASS: Hermes + AI Gateway ready; scheduler idle")
 
     api_key = _read_private_env_value(HERMES_ENV, "API_SERVER_KEY")
+    _assert_real_turn_safe(api_key)
+
     adapter = HermesAdapter(
         base_url=HERMES_URL,
         api_key=api_key,
