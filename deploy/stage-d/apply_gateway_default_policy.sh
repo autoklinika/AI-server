@@ -10,7 +10,7 @@ say(){ printf '%s\n' "$*"; }
 fail(){ say "FAIL: $*" >&2; exit 1; }
 
 sudo test -f "$ENV_FILE" || fail "AI Bridge env file missing: $ENV_FILE"
-sudo install -d -m 0755 "$STATE_DIR"
+sudo install -d -m 0700 "$STATE_DIR"
 
 if ! sudo test -f "$MARKER"; then
   sudo cp -a "$ENV_FILE" "$BACKUP"
