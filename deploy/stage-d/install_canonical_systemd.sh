@@ -35,18 +35,25 @@ if ! sudo test -f "$MARKER"; then
       sudo touch "$STATE_DIR/$unit.$LEGACY_DROPIN.absent"
     fi
   done
-  for rel in "${OBSOLETE_DROPINS[@]}"; do
-    src="/etc/systemd/system/$rel"
-    safe_name="${rel//\//__}"
+  printf 'captured_at=%s\n' "$(date -Iseconds)" | sudo tee "$MARKER" >/dev/null
+  sudo chmod 0644 "$MARKER"
+fi
+
+# D.0 may discover additional historical drop-ins after the original baseline
+# was captured. Capture each one exactly once before removal so cleanup remains
+# reversible even when STATE_DIR/captured already exists.
+for rel in "${OBSOLETE_DROPINS[@]}"; do
+  src="/etc/systemd/system/$rel"
+  safe_name="${rel//\//__}"
+  if ! sudo test -e "$STATE_DIR/$safe_name" \
+      && ! sudo test -e "$STATE_DIR/$safe_name.absent"; then
     if sudo test -f "$src"; then
       sudo cp -a "$src" "$STATE_DIR/$safe_name"
     else
       sudo touch "$STATE_DIR/$safe_name.absent"
     fi
-  done
-  printf 'captured_at=%s\n' "$(date -Iseconds)" | sudo tee "$MARKER" >/dev/null
-  sudo chmod 0644 "$MARKER"
-fi
+  fi
+done
 
 for unit in "${UNITS[@]}"; do
   sudo install -m 0644 "$ROOT/deploy/systemd/$unit" "/etc/systemd/system/$unit"
