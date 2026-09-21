@@ -237,3 +237,52 @@ def test_active_stage30_has_no_direct_comfyui_transport_calls():
     assert "stage29.base.req_json" not in source
     assert "_stage_input_image" not in source
     assert "ComfyUIAdapter" in source
+
+
+
+def test_stage30_cli_preserves_bare_output_path_contract(monkeypatch, tmp_path, capsys):
+    output = tmp_path / "ltx23-20260921-test.mp4"
+    output.write_bytes(b"video")
+    captured = {}
+
+    class Artifact:
+        uri = str(output)
+
+    class Result:
+        artifacts = (Artifact(),)
+
+    class FakeAdapter:
+        def generate(self, request):
+            captured["request"] = request
+            return Result()
+
+    monkeypatch.setattr(
+        mod,
+        "_media_adapter",
+        lambda comfy_url, comfy_input_dir: FakeAdapter(),
+    )
+
+    rc = mod.main(
+        [
+            "--prompt",
+            "red robot waves",
+            "--duration-seconds",
+            "2",
+            "--seed",
+            "123",
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
+
+    assert rc == 0
+    assert capsys.readouterr().out.strip() == str(output)
+    request = captured["request"]
+    assert request.capability == "video-generation"
+    assert request.profile == "ltx23-stage30"
+    assert request.prompt == "red robot waves"
+    assert request.input_artifacts == ()
+    assert request.parameters["frames"] == 49
+    assert request.parameters["fps"] == 24
+    assert request.parameters["seed"] == 123
+    assert request.parameters["upscale_2x"] is False
