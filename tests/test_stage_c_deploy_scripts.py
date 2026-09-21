@@ -7,6 +7,8 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = [
     ROOT / "deploy/stage-c/build_release.sh",
+    ROOT / "deploy/stage-c/install_release.sh",
+    ROOT / "deploy/stage-c/validate_installed_release.sh",
     ROOT / "deploy/stage-c/activate_release.sh",
     ROOT / "deploy/stage-c/rollback_release.sh",
     ROOT / "deploy/stage-c/cutover_media_wrapper.sh",
@@ -62,3 +64,21 @@ def test_media_wrapper_cutover_is_separate_and_release_managed() -> None:
     assert "systemctl restart hermes" not in cutover.lower()
     assert "systemctl restart comfyui" not in cutover.lower()
     assert "generate-video-ltx23.pre-stage-c" in rollback
+
+
+
+def test_stage_c_install_is_non_activating() -> None:
+    install = (ROOT / "deploy/stage-c/install_release.sh").read_text(encoding="utf-8")
+    validate = (ROOT / "deploy/stage-c/validate_installed_release.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'TARGET="/opt/ai-platform/releases/$RELEASE_ID"' in install
+    assert 'CURRENT="/opt/ai-platform/current"' in install
+    assert "ln -sfn" not in install
+    assert "systemctl restart" not in install
+    assert "INSTALL STAGE C RELEASE: PASS" in install
+
+    assert "INSTALLED STAGE C RELEASE VALIDATION: PASS" in validate
+    assert "systemctl restart" not in validate
+    assert "generate_ltx23_stage30.py" in validate
