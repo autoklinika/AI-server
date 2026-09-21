@@ -10,8 +10,6 @@ from ai_bridge.providers.contracts import (
     ProviderDescriptor,
     ProviderHealth,
 )
-from ai_bridge.providers.ollama import OllamaAdapter
-
 __all__ = [
     "LLMChunk",
     "LLMExecution",
@@ -19,7 +17,6 @@ __all__ = [
     "LLMRequest",
     "LLMResponse",
     "LLMUsage",
-    "OllamaAdapter",
     "ProviderDescriptor",
     "ProviderHealth",
 ]
