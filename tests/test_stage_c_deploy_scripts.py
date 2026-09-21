@@ -77,8 +77,22 @@ def test_stage_c_install_is_non_activating() -> None:
     assert 'CURRENT="/opt/ai-platform/current"' in install
     assert "ln -sfn" not in install
     assert "systemctl restart" not in install
+    assert "python3.14 -m venv" in install
+    assert "--exclude='./services/ai-bridge/.venv'" in install
+    assert "--exclude='./services/ai-gateway/.venv'" in install
+    assert "final-path entrypoint shebangs" in install
     assert "INSTALL STAGE C RELEASE: PASS" in install
 
     assert "INSTALLED STAGE C RELEASE VALIDATION: PASS" in validate
     assert "systemctl restart" not in validate
     assert "generate_ltx23_stage30.py" in validate
+
+
+
+def test_stage_c_cutover_reloads_systemd_manager() -> None:
+    activate = (ROOT / "deploy/stage-c/activate_release.sh").read_text(encoding="utf-8")
+    rollback = (ROOT / "deploy/stage-c/rollback_release.sh").read_text(encoding="utf-8")
+
+    assert "systemctl daemon-reload" in activate
+    assert "NeedDaemonReload" in activate
+    assert "systemctl daemon-reload" in rollback
