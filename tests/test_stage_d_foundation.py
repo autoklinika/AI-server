@@ -18,6 +18,7 @@ STAGE_D_SCRIPTS = [
     ROOT / "deploy/stage-d/apply_gateway_default_policy.sh",
     ROOT / "deploy/stage-d/restore_gateway_policy.sh",
     ROOT / "deploy/stage-d/validate_wvc_gateway_runtime.sh",
+    ROOT / "deploy/stage-d/validate_media_runtime.sh",
 ]
 
 
@@ -138,6 +139,26 @@ def test_wvc_runtime_validation_is_safe_for_disconnected_cm5() -> None:
     assert "/telemetry/batches" in text
     assert "urllib.request.Request" in text
     assert "Live CM5 telemetry growth was intentionally not tested" in text
+
+
+def test_media_runtime_validation_uses_global_lease_and_real_render() -> None:
+    text = (ROOT / "deploy/stage-d/validate_media_runtime.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "acquire_resource" in text
+    assert 'source="d0-media-smoke"' in text
+    assert "priority=50" in text
+    assert "generate-video-ltx23" in text
+    assert "--duration-seconds" in text
+    assert '"1"' in text
+    assert "ffprobe" in text
+    assert "codec_name" in text
+    assert "640" in text
+    assert "384" in text
+    assert "frames != 25" in text
+    assert "Resource Manager and ComfyUI returned to idle" in text
+    assert "Hermes restarted during media smoke" in text
+    assert "ComfyUI restarted during media smoke" in text
 
 
 def test_canonical_systemd_install_and_restore_are_non_restarting() -> None:
