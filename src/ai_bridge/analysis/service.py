@@ -11,7 +11,7 @@ from ai_bridge.adapters.ventilation.analysis_profile import (
     build_ventilation_prompt,
 )
 from ai_bridge.analysis.schemas import VentilationAnalysisResult
-from ai_bridge.ollama.client import OllamaClient, compact_schema_for_ollama
+from ai_bridge.providers.contracts import LLMProvider, LLMRequest
 from ai_bridge.storage.analysis_repository import VentilationAnalysisRepository
 
 
@@ -48,14 +48,14 @@ class VentilationAnalysisService:
         self,
         *,
         repository: VentilationAnalysisRepository,
-        ollama: OllamaClient,
+        llm: LLMProvider,
         model: str,
         think: bool,
         temperature: float,
         min_samples: int,
     ) -> None:
         self.repository = repository
-        self.ollama = ollama
+        self.llm = llm
         self.model = model
         self.think = think
         self.temperature = temperature
@@ -124,14 +124,17 @@ class VentilationAnalysisService:
             chat = None
         else:
             validation_schema = VentilationAnalysisResult.model_json_schema()
-            sampling_schema = compact_schema_for_ollama(validation_schema)
             messages = build_ventilation_prompt(summary)
-            chat = self.ollama.chat_structured(
-                model=self.model,
-                messages=messages,
-                response_schema=sampling_schema,
-                think=self.think,
-                temperature=self.temperature,
+            chat = self.llm.generate(
+                LLMRequest(
+                    request_id=str(uuid4()),
+                    capability="structured-generation",
+                    messages=messages,
+                    response_schema=validation_schema,
+                    temperature=self.temperature,
+                    reasoning_enabled=self.think,
+                    context={"domain": "wvc", "source_id": source_id},
+                )
             )
             # Python validates only the structured response envelope. The model is
             # responsible for interpreting the deterministic statistics.
@@ -151,9 +154,9 @@ class VentilationAnalysisService:
             input_summary=summary,
             result=result.model_dump(mode="json"),
             raw_response=None if chat is None else chat.content,
-            prompt_eval_count=None if chat is None else chat.prompt_eval_count,
-            eval_count=None if chat is None else chat.eval_count,
-            total_duration_ns=None if chat is None else chat.total_duration_ns,
+            prompt_eval_count=None if chat is None else chat.usage.input_tokens,
+            eval_count=None if chat is None else chat.usage.output_tokens,
+            total_duration_ns=None if chat is None else chat.execution.duration_ns,
         )
         LOGGER.info(
             "Ventilation analysis stored analysis_id=%s source_id=%s samples=%d window=%s..%s status=%s",
