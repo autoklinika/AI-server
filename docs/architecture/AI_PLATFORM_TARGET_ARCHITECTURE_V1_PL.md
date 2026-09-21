@@ -2,7 +2,7 @@
 
 **Status:** ACTIVE / TARGET ARCHITECTURE v1 — obowiązujący desired state w `main`  
 **Data bazowa:** 2026-09-19  
-**Ostatnia aktualizacja:** 2026-09-21 (Stage D.0)  
+**Ostatnia aktualizacja:** 2026-09-21 (decyzja Stage D.1; runtime nadal D.0)
 **Repozytorium:** `autoklinika/AI-server`  
 **Branch:** `main`; zmiany Stage D rozwijane przez kontrolowane feature branche  
 **Podstawa:** PRE_AUDIT principles + AI Server Architecture & Runtime Audit v1.2
@@ -328,15 +328,28 @@ Nie kodujemy nazw domen w schedulerze jako architektonicznego kontraktu.
 Docelowe klasy semantyczne:
 
 ```text
-critical / infrastructure
-interactive-high
-interactive
-normal
-background
-maintenance
+infrastructure   = 10
+interactive-high = 25
+interactive      = 50
+normal           = 100
+background       = 200
+maintenance      = 300
 ```
 
-Domena mapuje własny request na klasę.
+Domena mapuje własny request na klasę. W D.1 `infrastructure` jest kanoniczną
+najwyższą klasą; historyczne `critical` jest wyłącznie aliasem tej klasy (10).
+Niższa liczba oznacza wyższy priorytet. Scheduler zachowuje FIFO dla równego
+efektywnego priorytetu, również przy mieszaniu klas i legacy liczb, bez preemption.
+
+D.1 przyjmuje opcjonalne pole JSON `priority_class` na istniejących scheduled
+endpointach Gateway i przy tworzeniu external lease. Nie dodaje nagłówka HTTP.
+Jawny `X-AI-Priority` zachowuje dokładną wartość i ma pierwszeństwo przed klasą;
+legacy lease `priority` ma analogiczne pierwszeństwo. Brak obu pól zachowuje
+konfigurowalne defaulty istniejących endpointów. Szczegóły walidacji i granicy
+providerów: [Component Contracts, §7.1](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#71-semantic-priority-contract--stage-d1).
+
+D.1 nie wdraża JobState (D.2), descriptors/routingu (D.3), unified admission
+(D.4), migracji klientów (D.5) ani walidacji produkcyjnej Stage D (D.6).
 
 WVC może nadal mapować cykliczną analizę na wysoki priorytet, ale Resource Manager nie musi znać słowa `ventilation`.
 

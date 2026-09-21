@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from ai_bridge.settings import Settings, get_settings
 
+from .priority import priority_for_class
 from .resource_leases import (
     ResourceLeaseNotActive,
     ResourceLeaseNotFound,
@@ -54,6 +55,28 @@ def _parse_source(request: Request, default: str) -> str:
     if not value:
         return default
     return value[:64]
+
+
+def _class_priority(payload: dict, default: int) -> int:
+    if "priority_class" not in payload:
+        return default
+    try:
+        return priority_for_class(payload["priority_class"])
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="invalid priority_class") from exc
+
+
+def _consume_priority_class(body: bytes, default: int) -> tuple[bytes, int]:
+    """Consume Gateway metadata while preserving legacy bodies byte-for-byte."""
+    try:
+        payload = json.loads(body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return body, default
+    if not isinstance(payload, dict) or "priority_class" not in payload:
+        return body, default
+    priority = _class_priority(payload, default)
+    del payload["priority_class"]
+    return json.dumps(payload).encode("utf-8"), priority
 
 
 def _requests_stream(body: bytes) -> bool:
@@ -254,7 +277,8 @@ def create_gateway_app(
         default_source: str,
     ) -> Response:
         body = await request.body()
-        priority = _parse_priority(request, default_priority)
+        body, class_priority = _consume_priority_class(body, default_priority)
+        priority = _parse_priority(request, class_priority)
         source = _parse_source(request, default_source)
         client: httpx.AsyncClient = request.app.state.upstream
 
@@ -418,8 +442,9 @@ def create_gateway_app(
             raise HTTPException(status_code=400, detail="JSON object required")
 
         source = str(body.get("source") or "external").strip()[:64] or "external"
+        class_priority = _class_priority(body, resolved.gateway_priority_interactive)
         try:
-            priority = int(body.get("priority", resolved.gateway_priority_interactive))
+            priority = int(body.get("priority", class_priority))
         except (TypeError, ValueError) as exc:
             raise HTTPException(status_code=400, detail="invalid priority") from exc
         if not -1000 <= priority <= 1000:

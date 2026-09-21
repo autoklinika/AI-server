@@ -48,8 +48,8 @@ class Settings(BaseSettings):
         le=600.0,
     )
 
-    # Lower numeric value means higher priority. These defaults leave wide gaps
-    # so future workloads can be inserted without renumbering existing classes.
+    # Legacy endpoint defaults; lower numeric value means higher priority.
+    # D.1 explicit semantic classes use the fixed mapping in gateway.priority.
     gateway_priority_ventilation: int = Field(default=10, ge=-1000, le=1000)
     gateway_priority_interactive: int = Field(default=50, ge=-1000, le=1000)
     gateway_priority_normal: int = Field(default=100, ge=-1000, le=1000)
