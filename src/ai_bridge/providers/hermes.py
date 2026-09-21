@@ -31,7 +31,7 @@ class HermesAdapter:
     timeout_seconds: float = 600.0
     health_timeout_seconds: float = 2.0
     provider_id: str = "hermes-local"
-    node_id: str = "ai-node-01"
+    node_id: str | None = None
 
     def __post_init__(self) -> None:
         if not self.base_url.strip():
@@ -146,7 +146,20 @@ class HermesAdapter:
                 json=self._payload(request, stream=True),
                 timeout=self.timeout_seconds,
             ) as response:
-                response.raise_for_status()
+                try:
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as exc:
+                    # Streaming responses are not body-consumed by httpx. Read
+                    # the error payload while the stream context is still open,
+                    # otherwise accessing response.text can raise ResponseNotRead.
+                    try:
+                        response.read()
+                    except httpx.HTTPError:
+                        pass
+                    detail = _response_detail(exc.response)
+                    raise RuntimeError(
+                        f"Hermes returned HTTP {exc.response.status_code}: {detail}"
+                    ) from exc
                 response_session = (
                     response.headers.get("X-Hermes-Session-Id") or request.session_id
                 )
@@ -216,11 +229,6 @@ class HermesAdapter:
                             type="completed",
                             data={"finish_reason": str(finish_reason)},
                         )
-        except httpx.HTTPStatusError as exc:
-            detail = exc.response.text[:2000]
-            raise RuntimeError(
-                f"Hermes returned HTTP {exc.response.status_code}: {detail}"
-            ) from exc
         except httpx.HTTPError as exc:
             raise RuntimeError(f"Hermes unavailable: {exc}") from exc
 
@@ -260,6 +268,13 @@ class HermesAdapter:
 
 def _optional_int(value: object) -> int | None:
     return value if isinstance(value, int) else None
+
+
+def _response_detail(response: httpx.Response) -> str:
+    try:
+        return response.text[:2000]
+    except httpx.ResponseNotRead:
+        return "<response body not available>"
 
 
 def _iter_sse_events(lines: Iterable[str]) -> Iterator[tuple[str | None, str]]:
