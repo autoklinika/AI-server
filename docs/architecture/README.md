@@ -97,7 +97,7 @@ Stage A, Stage B i Stage C są zakończone i zwalidowane.
 
 **Stage D.0 — Foundation cleanup** jest technicznie zakończony i zwalidowany na produkcji. Aktywny runtime to `stage-d0-foundation-20260921-r2`; rollback do Stage C r3 i ponowna aktywacja r2 zostały realnie sprawdzone.
 
-Przed merge D.0 pozostaje repo-governance gate: branch protection / required check `platform-ci` dla `main`.
+`main` jest chroniony rulesetem `main-protection`; PR musi mieć zielony `platform-ci` i być aktualny względem `main`.
 
 Po merge kolejnym krokiem Stage D jest **D.1 — semantic priority classes**.
 
