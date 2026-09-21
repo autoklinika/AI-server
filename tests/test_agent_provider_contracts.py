@@ -26,6 +26,7 @@ def _adapter() -> HermesAdapter:
         base_url="http://127.0.0.1:8642",
         api_key="test-secret",
         model_name="hermes-agent",
+        node_id="test-node",
     )
 
 
@@ -120,7 +121,7 @@ def test_hermes_adapter_health_and_descriptor_contract(monkeypatch) -> None:
     descriptor = adapter.describe()
     assert descriptor.provider_id == "hermes-local"
     assert descriptor.provider_type == "agent"
-    assert descriptor.node_id == "ai-node-01"
+    assert descriptor.node_id == "test-node"
     assert "reasoning" in descriptor.capabilities
     assert "tools" in descriptor.capabilities
     assert "streaming" in descriptor.capabilities
@@ -163,6 +164,33 @@ def test_sse_parser_skips_keepalive_and_preserves_custom_event() -> None:
         ),
         (None, "[DONE]"),
     ]
+
+
+def test_hermes_adapter_stream_http_error_reads_body_before_context_closes(monkeypatch) -> None:
+    response = httpx.Response(
+        503,
+        stream=httpx.ByteStream(b'{"error":"backend unavailable"}'),
+        request=httpx.Request(
+            "POST",
+            "http://127.0.0.1:8642/v1/chat/completions",
+        ),
+    )
+
+    class FakeStreamContext:
+        def __enter__(self):
+            return response
+
+        def __exit__(self, exc_type, exc, tb):
+            response.close()
+            return False
+
+    monkeypatch.setattr(httpx, "stream", lambda *args, **kwargs: FakeStreamContext())
+
+    with pytest.raises(
+        RuntimeError,
+        match='Hermes returned HTTP 503: .*backend unavailable',
+    ):
+        list(_adapter().stream_turn(_request()))
 
 
 def test_hermes_adapter_normalizes_stream_events(monkeypatch) -> None:
