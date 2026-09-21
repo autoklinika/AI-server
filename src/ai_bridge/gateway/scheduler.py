@@ -9,6 +9,8 @@ from time import monotonic
 from typing import AsyncIterator
 from collections import OrderedDict
 
+from ai_bridge.providers.registry import DescriptorRegistry, local_descriptor_registry
+
 from .jobs import JobLifecycle, JobMetadata, JobState, TERMINAL_STATES
 
 
@@ -63,7 +65,8 @@ class PriorityScheduler:
     those workers hold an HTTP request open while waiting.
     """
 
-    def __init__(self, *, max_concurrency: int = 1, max_queue_size: int = 128, history_limit: int = 128) -> None:
+    def __init__(self, *, max_concurrency: int = 1, max_queue_size: int = 128, history_limit: int = 128,
+                 registry: DescriptorRegistry | None = None) -> None:
         if max_concurrency < 1:
             raise ValueError("max_concurrency must be >= 1")
         if max_queue_size < 1:
@@ -71,6 +74,7 @@ class PriorityScheduler:
         if history_limit < 0:
             raise ValueError("history_limit must be >= 0")
         self.history_limit = history_limit
+        self.registry = registry or local_descriptor_registry()
         self._jobs: dict[int, JobState] = {}
         self._history: OrderedDict[int, JobState] = OrderedDict()
         self.max_concurrency = max_concurrency
@@ -82,6 +86,8 @@ class PriorityScheduler:
         self._active: dict[int, SchedulerTicket] = {}
 
     async def _enqueue(self, *, priority: int, source: str, metadata: JobMetadata | None = None) -> _PendingJob:
+        metadata = metadata or JobMetadata()
+        self.registry.capability(metadata.capability)
         source = source.strip() or "unknown"
         loop = asyncio.get_running_loop()
         sequence = next(self._sequence)
@@ -96,7 +102,7 @@ class PriorityScheduler:
 
         async with self._lock:
             self._purge_cancelled_locked()
-            self._jobs[pending.job_id] = JobState.create(metadata or JobMetadata(), priority)
+            self._jobs[pending.job_id] = JobState.create(metadata, priority)
             if len(self._pending) >= self.max_queue_size:
                 self._finish_locked(pending.job_id, JobLifecycle.FAILED)
                 raise SchedulerQueueFull(
@@ -316,6 +322,10 @@ class PriorityScheduler:
             job = self._jobs[job_id]
             if job.state != JobLifecycle.RUNNING:
                 job = job.transition(JobLifecycle.RUNNING)
+            if (provider is None) != (node is None):
+                raise ValueError("provider and node assignment must be supplied together")
+            if provider is not None:
+                self.registry.validate_assignment(provider, node, job.capability)
             self._jobs[job_id] = replace(job, assigned_provider=provider, assigned_node=node)
 
     def _finish_locked(self, job_id: int, state: JobLifecycle) -> None:

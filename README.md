@@ -91,10 +91,13 @@ Aktualny etap:
 
 `main` jest chroniony rulesetem `main-protection`; merge wymaga PR, zielonego `platform-ci` i aktualności gałęzi. Stage D.0 został zmergowany do `main` w PR #38. Poprzedni krok to **D.1 — semantic priority classes**. Implementacja D.1 ma status **READY FOR PRODUCTION VALIDATION**; [raport i ograniczenia lokalnej walidacji](docs/reports/AI_PLATFORM_STAGE_D1_SEMANTIC_PRIORITY_2026-09-21_PL.md).
 
-Aktualny krok implementacyjny: **D.2 — Job model**, **READY FOR SUPERVISOR
-VALIDATION**. Dodaje metadata-only lifecycle i korelację obok legacy status;
-[raport D.2](docs/reports/AI_PLATFORM_STAGE_D2_JOB_MODEL_2026-09-22_PL.md).
-To gotowość implementacji, bez nowej walidacji produkcyjnej.
+Poprzedni krok **D.2 — Job model** przeszedł niezależny
+[supervisor dev gate](docs/reports/AUTONOMOUS_D2_DEV_GATE_2026-09-22.md).
+Aktualny krok implementacyjny: **D.3 — Capability/provider/node descriptors**,
+**READY FOR SUPERVISOR VALIDATION**. Dodaje statyczny registry obecnych
+Ollama/ComfyUI/Hermes i walidowany assignment JobState;
+[raport D.3](docs/reports/AI_PLATFORM_STAGE_D3_DESCRIPTORS_2026-09-22_PL.md).
+To gotowość implementacji, bez nowej walidacji produkcyjnej ani unified admission.
 
 Nie zmieniamy na D.0 modelu Qwen, GPU, backendu wiedzy ani implementacji schedulera od zera. Stage C r3 pozostaje zweryfikowanym rollback pointem.
 

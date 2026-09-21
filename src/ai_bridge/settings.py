@@ -5,6 +5,8 @@ from functools import lru_cache
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from ai_bridge.providers.registry import DescriptorRegistry
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -38,6 +40,9 @@ class Settings(BaseSettings):
     gateway_connect_timeout_seconds: float = Field(default=5.0, gt=0.0)
     gateway_upstream_timeout_seconds: float = Field(default=600.0, gt=0.0)
     gateway_health_timeout_seconds: float = Field(default=2.0, gt=0.0)
+    # Optional JSON static inventory. None derives the D.3 baseline from node_id.
+    # Gateway validates existing single-node bindings before creating clients.
+    gateway_registry: DescriptorRegistry | None = None
 
     # External Resource Manager leases let FLUX/LTX and other non-HTTP workers
     # reserve the same admission slot as Ollama. Idle leases expire so a crashed

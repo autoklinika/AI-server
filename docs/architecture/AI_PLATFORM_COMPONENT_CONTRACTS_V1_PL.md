@@ -326,6 +326,7 @@ modelu, wyników, wyjątków ani dowolnego słownika metadata.
 - Assignment jest `null` w kolejce. HTTP po rozpoczęciu wykonania zapisuje
   istniejący stały upstream `ollama-local` i `Settings.node_id`.
   To opis aktualnego proxy, nie registry, discovery ani wybór providera.
+  D.3 zachowuje te wartości, pobierając je z walidowanego registry (§8.1).
 
 Jawne przejścia:
 
@@ -375,6 +376,70 @@ Raport: [Stage D.2](../reports/AI_PLATFORM_STAGE_D2_JOB_MODEL_2026-09-22_PL.md).
 ---
 
 ## 8. Model / Worker Registry
+
+### 8.1. Static descriptors — Stage D.3
+
+Status: **READY FOR SUPERVISOR VALIDATION**, bez nowej walidacji produkcji.
+`ai_bridge.providers.registry` dodaje kontrakt konfiguracji `schema_version=1`:
+
+- `NodeDescriptor`: `node_id`;
+- `CapabilityDescriptor`: `capability_id`, `provider_types`;
+- `LogicalProviderDescriptor`: `provider_id`, `provider_type`, `node_id`, `capabilities`;
+- `DescriptorRegistry`: `schema_version`, `nodes`, `capabilities`, `providers`.
+
+Wszystkie rekordy są niemutowalne; kolekcje wewnętrzne są tuples, JSON używa arrays.
+Identyfikatory są case-sensitive, 1–128 znaków: pierwszy alfanumeryczny ASCII,
+pozostałe ASCII alfanumeryczne, `_`, `-`, `.`. Nie normalizujemy whitespace.
+Nieznane pola, typy providera, wersje, duplikaty, puste kolekcje registry/provider
+capabilities, nieznane node/capability references i niezgodne typy capability
+są odrzucane. Lookup nieznanego ID i niezgodny assignment dają `ValueError`
+bez powtarzania wartości wejściowej. Błędy konfiguracji to Pydantic
+`ValidationError`; nie są wystawiane jako nowe publiczne HTTP API.
+
+Domyślne wpisy (`node_id` pochodzi z istniejącego `Settings.node_id`):
+
+| Provider ID | provider_type | Deklarowane interfejsy |
+|---|---|---|
+| ollama-local | llm | chat, reasoning, text-generation, structured-generation, embeddings, streaming |
+| comfyui-local | media-generation | image-generation, image-edit, video-generation |
+| hermes-local | agent | reasoning, tools, streaming |
+
+`unknown` i `external-reservation` są jawnymi D.2 metadata sentinels z pustym
+`provider_types`; nie mogą otrzymać assignment. Pozostałe capabilities wymieniają
+dozwolone typy providerów. Registry opisuje interfejsy dotychczasowych backendów:
+`embeddings` oznacza istniejące proxy routes, nie zainstalowany embedding model,
+nowy EmbeddingProvider ani uruchomienie Knowledge Service. Ollama streaming to
+możliwość istniejącego Gateway proxy; Stage C `OllamaAdapter.stream()` pozostaje
+niezaimplementowany. Hermes/ComfyUI entries nie potwierdzają dostępności API,
+skonfigurowanych toolsets, modeli ani workflows.
+
+`LogicalProviderDescriptor` jest statycznym kontraktem inventory, odrębnym od
+istniejącego Stage C `ProviderDescriptor` zwracanego przez adapter `describe()`.
+Ten drugi zachowuje models/status/metadata i dotychczasową semantykę health.
+D.3 nie wywołuje adapterów ani probe na potrzeby registry i nie oznacza wpisów
+jako ready. Brak pól URL, credentials, models, dowolnego metadata i prompt content.
+Docelowe model descriptors poniżej pozostają przyszłym kontraktem.
+
+Konfiguracja: brak/null `Settings.gateway_registry` wywołuje
+`local_descriptor_registry(Settings.node_id)` z kodu pakietu. Opcjonalne
+`AI_BRIDGE_GATEWAY_REGISTRY` jest pełnym JSON obiektem, nie ścieżką do pliku.
+Przykład: [gateway-registry.example.json](../../deploy/gateway-registry.example.json).
+Przy niestandardowym node_id wszystkie provider references muszą wskazywać ten
+sam node. Konfiguracja jest walidowana przy tworzeniu Gateway, przed klientem
+HTTP: D.3 wymaga jednego lokalnego node i dokładnie obecnych trzech bindings oraz
+capabilities (kolejność dowolna). Brak dynamic reload/discovery, wyboru modelu,
+fallback, dispatch do Hermesa/ComfyUI lub multi-node execution. Sam schemat
+registry potrafi reprezentować kilka node'ów; aktywny Gateway D.3 odrzuca je.
+
+`/status` dodaje `registry` z kopią konfiguracji. Legacy pola i `/health` zachowują
+semantykę; registry nie wpływa na health/admission. Wewnętrzny scheduler waliduje
+capability metadata przed enqueue, a parę provider/node i obsługę capability
+przed zapisaniem running/assignment. Odrzucenie jest atomowe, bez zmiany joba
+lub utraty slotu. Zwykłe HTTP przypisuje wpis `ollama-local` dopiero przy wykonaniu,
+zachowując assignment także w historii błędów/streamingu. Queued i external lease
+(także podczas leased HTTP) nadal mają assignment null. Source/route Hermes/media
+nie jest dowodem wykonania przez danego providera. Nie powstaje nowy request
+envelope ani D.4 unified admission.
 
 ### ProviderDescriptor
 

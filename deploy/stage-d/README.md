@@ -38,3 +38,15 @@ See the [D.1 report](../../docs/reports/AI_PLATFORM_STAGE_D1_SEMANTIC_PRIORITY_2
 for test evidence and remaining checks. The builder still requires clean committed
 source and carries D.0 phase metadata; verify release metadata before preparing a
 later D.1 production artifact. D.2–D.6 work is outside this implementation.
+
+## D.3 validation handoff
+
+D.3 adds static capability/provider/node inventory and validates known HTTP job
+assignment. It is **READY FOR SUPERVISOR VALIDATION**, with no production change.
+See the [D.3 report](../../docs/reports/AI_PLATFORM_STAGE_D3_DESCRIPTORS_2026-09-22_PL.md).
+Defaults are packaged in Python; optional `AI_BRIDGE_GATEWAY_REGISTRY` accepts a
+JSON object matching [the example](../gateway-registry.example.json), not a file
+path. Omit it to use the existing three providers on `AI_BRIDGE_NODE_ID`.
+The Gateway rejects topology changes and does not enable multi-node dispatch.
+The builder's existing D.0 phase metadata still needs release preparation by the
+supervisor before a production candidate; recovery/build guards are unchanged.
