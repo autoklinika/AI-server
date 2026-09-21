@@ -20,6 +20,7 @@ D.0 zamyka luki P1 wskazane w audycie po Stage C przed zmianami Resource Manager
 - `deploy/stage-d/` ma osobny builder/install/validate/activate/rollback;
 - Stage D builder dopuszcza zmiany Gateway/Resource Manager i zapisuje bogatszy manifest;
 - canonical systemd ma idempotent install/restore bez automatycznego restartu usług;
+- canonicalization usuwa również historyczne `90-production-source.conf` oraz `10-ai-gateway.conf`, które mogły nadpisywać release-managed `PYTHONPATH`/`ExecStart`; drop-iny są wcześniej zachowywane w baseline do jawnego restore;
 - produkcyjny `AI_BRIDGE_ANALYSIS_USE_GATEWAY=true` ma osobną migrację z zachowaniem baseline i skryptem restore;
 - Stage C tooling i historyczne drop-iny pozostają recovery evidence.
 
