@@ -23,8 +23,8 @@ echo "===== SOURCE ====="
 say "release_id=$RELEASE_ID"
 say "source_git_sha=$SOURCE_SHA"
 
-# Both services come from the same exact committed source. Gateway code is
-# byte-equivalent to the Stage A gateway source by the guard above.
+# Both services come from the same exact committed source. Stage D permits
+# Gateway / Resource Manager changes and records them in the release SHA.
 git -C "$ROOT" archive "$SOURCE_SHA" | tar -x -C "$DEST/services/ai-bridge"
 git -C "$ROOT" archive "$SOURCE_SHA" | tar -x -C "$DEST/services/ai-gateway"
 
