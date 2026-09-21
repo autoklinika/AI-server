@@ -16,7 +16,18 @@ POLICY="$(sudo sed -n 's/^AI_BRIDGE_ANALYSIS_USE_GATEWAY=//p' "$ENV_FILE" | tail
 [[ "$POLICY" == "true" ]] || fail "AI_BRIDGE_ANALYSIS_USE_GATEWAY is not true: $POLICY"
 
 MODEL="$(sudo sed -n 's/^AI_BRIDGE_OLLAMA_MODEL=//p' "$ENV_FILE" | tail -1)"
-[[ -n "$MODEL" ]] || fail "AI_BRIDGE_OLLAMA_MODEL missing"
+if [[ -z "$MODEL" ]]; then
+  ACTIVE_PYTHON="$CURRENT/services/ai-bridge/.venv/bin/python"
+  [[ -x "$ACTIVE_PYTHON" ]] || fail "active release Python missing: $ACTIVE_PYTHON"
+  MODEL="$(
+    PYTHONPATH="$CURRENT/services/ai-bridge/src" "$ACTIVE_PYTHON" - <<'PY'
+from ai_bridge.settings import Settings
+print(Settings.model_fields["ollama_model"].default)
+PY
+  )"
+  [[ -n "$MODEL" ]] || fail "could not resolve default Ollama model from active release"
+  say "AI_BRIDGE_OLLAMA_MODEL not set in env; using active release default: $MODEL"
+fi
 
 GATEWAY_URL="$(sudo sed -n 's/^AI_BRIDGE_GATEWAY_URL=//p' "$ENV_FILE" | tail -1)"
 [[ -n "$GATEWAY_URL" ]] || GATEWAY_URL="http://127.0.0.1:11435"
