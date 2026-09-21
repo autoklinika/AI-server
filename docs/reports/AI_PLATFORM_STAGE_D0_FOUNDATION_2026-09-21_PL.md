@@ -3,7 +3,7 @@
 **Data:** 2026-09-21  
 **Branch:** `feat/stage-d0-foundation`  
 **Issue:** #37  
-**Status:** implementation in progress; production cutover not performed
+**Status:** production r2 active; WVC/Gateway and media/Telegram regressions PASS; rollback validation pending
 
 ## 1. Cel
 
@@ -17,7 +17,7 @@ D.0 zamyka luki P1 wskazane w audycie po Stage C przed zmianami Resource Manager
 - direct Ollama pozostaje wyłącznie jawnym recovery/debug compatibility mode;
 - canonical systemd units wskazują `/opt/ai-platform/current/services/...`;
 - analysis unit wymaga `ai-gateway.service` i nie nadpisuje URL do Ollamy;
-- `deploy/stage-d/` ma osobny builder/install/validate/activate/rollback;
+- `deploy/stage-d/` ma osobny builder/install/validate/activate/rollback; rollback obsługuje jawny znany-dobry `RELEASE_ID`, aby test odtwarzania nie zależał od ostatniego pośredniego release;
 - Stage D builder dopuszcza zmiany Gateway/Resource Manager i zapisuje bogatszy manifest;
 - canonical systemd ma idempotent install/restore bez automatycznego restartu usług;
 - canonicalization usuwa również historyczne `90-production-source.conf` oraz `10-ai-gateway.conf`, które mogły nadpisywać release-managed `PYTHONPATH`/`ExecStart`; drop-iny są wcześniej zachowywane w baseline do jawnego restore;
