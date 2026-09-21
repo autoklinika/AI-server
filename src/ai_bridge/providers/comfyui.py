@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 import json
+import shutil
 import time
 from typing import Any, Callable
 from urllib.parse import urlencode
@@ -35,7 +36,7 @@ class ComfyUIWorkflowPlan:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
-WorkflowResolver = Callable[[MediaGenerationRequest], ComfyUIWorkflowPlan]
+WorkflowResolver = Callable[[MediaGenerationRequest, tuple[str, ...]], ComfyUIWorkflowPlan]
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,8 @@ class ComfyUIAdapter:
     health_timeout_seconds: float = 2.0
     poll_seconds: float = 3.0
     auto_free_memory: bool = True
+    input_dir: str | None = None
+    cleanup_staged_inputs: bool = True
 
     def __post_init__(self) -> None:
         if not self.base_url.strip():
@@ -127,50 +130,97 @@ class ComfyUIAdapter:
     def generate(self, request: MediaGenerationRequest) -> MediaGenerationResult:
         self._validate_request(request)
         started = time.monotonic()
-        plan = self.workflow_resolver(request)
-        self._validate_plan(plan)
+        staged_paths: list[Path] = []
+        try:
+            staged_names, staged_paths = self._stage_input_artifacts(
+                request.input_artifacts
+            )
+            plan = self.workflow_resolver(request, staged_names)
+            self._validate_plan(plan)
 
-        submitted = self._request_json(
-            "/prompt",
-            method="POST",
-            payload={"prompt": plan.graph, "client_id": uuid4().hex},
-            timeout=60.0,
-        )
-        prompt_id = str(submitted.get("prompt_id") or "")
-        if not prompt_id:
-            raise MediaProviderError(
-                "Media backend rejected workflow: "
-                + json.dumps(submitted, ensure_ascii=False)[:2000]
+            submitted = self._request_json(
+                "/prompt",
+                method="POST",
+                payload={"prompt": plan.graph, "client_id": uuid4().hex},
+                timeout=60.0,
+            )
+            prompt_id = str(submitted.get("prompt_id") or "")
+            if not prompt_id:
+                raise MediaProviderError(
+                    "Media backend rejected workflow: "
+                    + json.dumps(submitted, ensure_ascii=False)[:2000]
+                )
+
+            record = self._wait_for_output(
+                prompt_id,
+                extensions=plan.output_extensions,
+                timeout_seconds=request.timeout_seconds,
+            )
+            artifact = self._download_output(
+                record,
+                output_dir=Path(request.output_dir),
+                prompt_id=prompt_id,
+                filename_tag=plan.filename_tag,
+                media_type=plan.media_type,
             )
 
-        record = self._wait_for_output(
-            prompt_id,
-            extensions=plan.output_extensions,
-            timeout_seconds=request.timeout_seconds,
-        )
-        artifact = self._download_output(
-            record,
-            output_dir=Path(request.output_dir),
-            prompt_id=prompt_id,
-            filename_tag=plan.filename_tag,
-            media_type=plan.media_type,
-        )
+            if self.auto_free_memory:
+                self.free_memory()
 
-        if self.auto_free_memory:
-            self.free_memory()
+            return MediaGenerationResult(
+                request_id=request.request_id,
+                capability=request.capability,
+                profile=request.profile,
+                artifacts=(artifact,),
+                provider=self.provider_id,
+                duration_ms=(time.monotonic() - started) * 1000.0,
+                provider_metadata={
+                    "prompt_id": prompt_id,
+                    **plan.metadata,
+                },
+            )
+        finally:
+            if self.cleanup_staged_inputs:
+                for staged in staged_paths:
+                    try:
+                        staged.unlink(missing_ok=True)
+                    except OSError:
+                        pass
 
-        return MediaGenerationResult(
-            request_id=request.request_id,
-            capability=request.capability,
-            profile=request.profile,
-            artifacts=(artifact,),
-            provider=self.provider_id,
-            duration_ms=(time.monotonic() - started) * 1000.0,
-            provider_metadata={
-                "prompt_id": prompt_id,
-                **plan.metadata,
-            },
-        )
+    def _stage_input_artifacts(
+        self,
+        artifacts: tuple[str, ...],
+    ) -> tuple[tuple[str, ...], list[Path]]:
+        if not artifacts:
+            return (), []
+        if not self.input_dir:
+            raise ValueError(
+                "Media input artifacts require a provider input_dir"
+            )
+
+        root = Path(self.input_dir)
+        root.mkdir(parents=True, exist_ok=True)
+        names: list[str] = []
+        paths: list[Path] = []
+        try:
+            for raw in artifacts:
+                source = Path(raw).expanduser().resolve(strict=True)
+                if not source.is_file():
+                    raise ValueError(f"Media input artifact is not a file: {source}")
+                suffix = source.suffix.lower()
+                name = f"stage_c_media_{uuid4().hex}{suffix}"
+                target = root / name
+                shutil.copy2(source, target)
+                names.append(name)
+                paths.append(target)
+            return tuple(names), paths
+        except Exception:
+            for target in paths:
+                try:
+                    target.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            raise
 
     def free_memory(self) -> None:
         try:
