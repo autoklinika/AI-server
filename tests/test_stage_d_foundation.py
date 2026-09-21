@@ -17,6 +17,7 @@ STAGE_D_SCRIPTS = [
     ROOT / "deploy/stage-d/restore_systemd_compat.sh",
     ROOT / "deploy/stage-d/apply_gateway_default_policy.sh",
     ROOT / "deploy/stage-d/restore_gateway_policy.sh",
+    ROOT / "deploy/stage-d/validate_wvc_gateway_runtime.sh",
 ]
 
 
@@ -119,6 +120,22 @@ def test_gateway_policy_migration_is_reversible_and_non_restarting() -> None:
     assert "gateway-policy-baseline" in restore
     assert "cp -a" in restore
     assert "systemctl restart" not in restore
+
+
+def test_wvc_runtime_validation_is_safe_for_disconnected_cm5() -> None:
+    text = (ROOT / "deploy/stage-d/validate_wvc_gateway_runtime.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "ventilation-d0-validation" in text
+    assert '"X-AI-Priority": "10"' in text
+    assert "/api/v1/ventilation/telemetry/batches" in text
+    assert "openapi.json" in text
+    assert "POST" in text
+    assert "ai-bridge-analysis.service" in text
+    assert "systemctl start ai-bridge-analysis.service" not in text
+    assert "/telemetry/batches" in text
+    assert "urllib.request.Request" in text
+    assert "Live CM5 telemetry growth was intentionally not tested" in text
 
 
 def test_canonical_systemd_install_and_restore_are_non_restarting() -> None:
