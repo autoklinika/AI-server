@@ -4,7 +4,7 @@
 **Branch:** `feat/stage-d0-foundation`  
 **Issue:** #37  
 **PR:** #38  
-**Status:** TECHNICAL VALIDATION PASS — produkcja na D.0 r2; wymagane jeszcze branch protection `main` + merge
+**Status:** READY TO MERGE — produkcja na D.0 r2; wszystkie exit criteria PASS
 
 ## 1. Cel
 
@@ -288,17 +288,15 @@ target=/opt/ai-platform/releases/stage-d0-foundation-20260921-r2
 | ComfyUI queue idle after tests | PASS |
 | rollback r2 -> Stage C r3 | PASS |
 | re-activation Stage C r3 -> r2 | PASS |
-| main required check / branch protection | **PENDING** |
+| main required check / branch protection | PASS — `main-protection`, `platform-ci`, strict up-to-date |
 | merge PR #38 | **PENDING** |
 
 ## 7. Pozostałe działania przed zamknięciem D.0
 
-1. Na `main` włączyć branch protection / ruleset.
-2. Wymagać checku `platform-ci`.
-3. Po zielonym finalnym CI oznaczyć PR #38 jako ready.
-4. Merge PR #38.
-5. Zamknąć issue #37.
-6. Dopiero po tym rozpocząć D.1 — semantic priority classes.
+1. Merge PR #38 do `main` po finalnym zielonym `platform-ci`.
+2. Potwierdzić push-to-main CI.
+3. Zamknąć issue #37, jeśli nie zamknie się automatycznie przez PR.
+4. Dopiero po tym rozpocząć D.1 — semantic priority classes.
 
 ## 8. Następny etap
 
