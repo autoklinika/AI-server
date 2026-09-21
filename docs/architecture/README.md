@@ -99,6 +99,6 @@ Stage A, Stage B i Stage C są zakończone i zwalidowane.
 
 `main` jest chroniony rulesetem `main-protection`; PR musi mieć zielony `platform-ci` i być aktualny względem `main`.
 
-Po merge kolejnym krokiem Stage D jest **D.1 — semantic priority classes**.
+Stage D.0 został zmergowany do `main` w PR #38. Aktualnym krokiem Stage D jest **D.1 — semantic priority classes**.
 
 Szczegółowy handoff: `../reports/AI_PLATFORM_STAGE_D0_FOUNDATION_2026-09-21_PL.md`.

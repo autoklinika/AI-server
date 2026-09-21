@@ -4,7 +4,7 @@
 **Branch:** `feat/stage-d0-foundation`  
 **Issue:** #37  
 **PR:** #38  
-**Status:** READY TO MERGE — produkcja na D.0 r2; wszystkie exit criteria PASS
+**Status:** COMPLETE — PR #38 merged to `main`; produkcja na D.0 r2; wszystkie exit criteria PASS
 
 ## 1. Cel
 
@@ -289,14 +289,18 @@ target=/opt/ai-platform/releases/stage-d0-foundation-20260921-r2
 | rollback r2 -> Stage C r3 | PASS |
 | re-activation Stage C r3 -> r2 | PASS |
 | main required check / branch protection | PASS — `main-protection`, `platform-ci`, strict up-to-date |
-| merge PR #38 | **PENDING** |
+| merge PR #38 | PASS — merge commit `1366b19c95702f3cf8412c66ca38a671c865d91c` |
 
-## 7. Pozostałe działania przed zamknięciem D.0
+## 7. Zamknięcie D.0
 
-1. Merge PR #38 do `main` po finalnym zielonym `platform-ci`.
-2. Potwierdzić push-to-main CI.
-3. Zamknąć issue #37, jeśli nie zamknie się automatycznie przez PR.
-4. Dopiero po tym rozpocząć D.1 — semantic priority classes.
+- PR #38 merged do `main`: PASS;
+- issue #37 closed jako completed: PASS;
+- push-to-main `AI Platform CI` run #434: PASS;
+- ruleset `main-protection`: active;
+- wymagany check `platform-ci`: active;
+- strict up-to-date policy: active.
+
+D.0 jest formalnie zamknięte. Następny etap: **D.1 — semantic priority classes**.
 
 ## 8. Następny etap
 
