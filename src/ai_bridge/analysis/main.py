@@ -83,6 +83,7 @@ def main() -> int:
             request_priority=(
                 settings.gateway_priority_ventilation if use_gateway else None
             ),
+            node_id=settings.node_id,
         )
         service = VentilationAnalysisServiceV122(
             repository=repository,
