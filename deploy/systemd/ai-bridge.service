@@ -7,9 +7,10 @@ Wants=network-online.target
 Type=simple
 User=harrypotter
 Group=harrypotter
-WorkingDirectory=/opt/ai-bridge
+WorkingDirectory=/opt/ai-platform/current/services/ai-bridge
 EnvironmentFile=/etc/ai-bridge/ai-bridge.env
-ExecStart=/opt/ai-bridge/.venv/bin/ai-bridge
+Environment="PYTHONPATH=/opt/ai-platform/current/services/ai-bridge/src"
+ExecStart=/opt/ai-platform/current/services/ai-bridge/.venv/bin/ai-bridge
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
