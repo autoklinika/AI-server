@@ -18,19 +18,25 @@
 
 ---
 
-## 2. Stan bieżący po Stage C
+## 2. Stan bieżący po walidacji D.0
 
 Stan zwalidowany 2026-09-21:
 
 - Stage A: recovery baseline i release model działają; produkcja używa `/opt/ai-platform/releases` + atomowego `/opt/ai-platform/current`;
 - Stage B: Ollama, ComfyUI i AI Gateway są localhost-only; host firewall działa deny-by-default;
 - Stage C: provider abstraction działa (`LLMProvider`, `AgentProvider`, `MediaGenerationProvider`, `EmbeddingProvider`, `KnowledgeBackend`);
-- aktywny zwalidowany runtime Stage C to `stage-c-provider-abstraction-20260921-r3`;
-- WVC ingest działa i podczas końcowej walidacji zwracał ciągłe HTTP 200; lokalny backlog CM5 był pusty;
-- media i Telegram `/wideo` przeszły real smoke/E2E;
+- D.0 Foundation Cleanup przeszedł pełny production cutover, real smoke/E2E oraz rollback validation;
+- aktywny runtime to `stage-d0-foundation-20260921-r2`, source `3496f21249474d16c09a791db39afd321beb935c`;
+- zweryfikowany rollback point to `stage-c-provider-abstraction-20260921-r3`;
+- canonical systemd używa `/opt/ai-platform/current/services/...`; historyczne production-source/analysis override’y zostały usunięte;
+- WVC analysis domyślnie używa AI Gateway; podczas walidacji CM5/WVC był fizycznie odłączony, więc brak świeżej telemetrii był stanem oczekiwanym;
+- realny request `ventilation` przez Resource Manager -> Qwen z priority 10: PASS;
+- realny Stage30 media render pod external lease priority 50: PASS;
+- Telegram `/wideo`: PASS;
+- pełny rollback D.0 r2 -> Stage C r3 -> D.0 r2: PASS;
 - Resource Manager v1 (`PriorityScheduler` + `ResourceLeaseRegistry`) pozostaje fundamentem Stage D;
 - znanym długiem pozostaje Hermes patch-in-place; Stage D nie może go powiększać;
-- przed produkcyjnym cutoverem Stage D trzeba zamknąć D.0: CI, canonical systemd, Gateway-default policy i Stage-D-compatible release tooling.
+- przed merge D.0 pozostaje włączenie branch protection / required check `platform-ci` na `main`.
 
 ---
 
@@ -489,14 +495,17 @@ Dopiero wtedy zaczynamy następny etap.
 
 ## 20. Aktualny realny task implementacyjny
 
-Stage A, B i C zostały zakończone i zwalidowane. Aktualnym etapem jest:
+Stage A, B i C zostały zakończone i zwalidowane.
 
-**Stage D — Resource Manager v2**, rozpoczynany od **D.0 — Foundation cleanup**.
+**Stage D.0 — Foundation cleanup** jest technicznie zwalidowany na produkcji:
 
-D.0 nie zmienia jeszcze semantyki schedulera. Najpierw zamyka luki desired state i deployment wykazane przez audyt po Stage C:
+- D.0 r2 aktywny,
+- canonical systemd PASS,
+- Gateway-default WVC policy PASS,
+- WVC/Gateway/Qwen PASS,
+- media + Telegram PASS,
+- rollback Stage C r3 i ponowna aktywacja D.0 r2 PASS.
 
-- CI chroniące `main`,
-- canonical release-managed systemd units,
-- Gateway jako domyślna ścieżka WVC analysis,
-- Stage-D-compatible release/deploy tooling,
-- aktualna dokumentacja source-of-truth.
+Przed merge pozostaje wyłącznie repo-governance gate: branch protection / required check `platform-ci` dla `main`.
+
+Po merge D.0 kolejnym etapem jest **D.1 — semantic priority classes**.
