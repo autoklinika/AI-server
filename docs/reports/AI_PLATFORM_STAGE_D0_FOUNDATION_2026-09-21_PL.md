@@ -20,6 +20,7 @@ D.0 zamyka luki P1 wskazane w audycie po Stage C przed zmianami Resource Manager
 - `deploy/stage-d/` ma osobny builder/install/validate/activate/rollback;
 - Stage D builder dopuszcza zmiany Gateway/Resource Manager i zapisuje bogatszy manifest;
 - canonical systemd ma idempotent install/restore bez automatycznego restartu usług;
+- produkcyjny `AI_BRIDGE_ANALYSIS_USE_GATEWAY=true` ma osobną migrację z zachowaniem baseline i skryptem restore;
 - Stage C tooling i historyczne drop-iny pozostają recovery evidence.
 
 ## 3. Granice D.0
@@ -35,9 +36,10 @@ Commit zmian D.0 nie zmienia aktywnego runtime. Produkcja pozostaje na zwalidowa
 1. zielonego CI branch/PR,
 2. zbudowania i instalacji D.0 release bez aktywacji,
 3. walidacji final-path release,
-4. instalacji canonical systemd,
-5. kontrolowanego cutoveru przy idle Resource Managerze,
-6. real smoke/E2E i sprawdzenia rollbacku.
+4. zastosowania odwracalnej migracji Gateway-default w `/etc/ai-bridge/ai-bridge.env`,
+5. instalacji canonical systemd,
+6. kontrolowanego cutoveru przy idle Resource Managerze,
+7. real smoke/E2E i sprawdzenia rollbacku.
 
 ## 5. Exit criteria
 
