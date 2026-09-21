@@ -2,7 +2,9 @@
 set -euo pipefail
 
 CURRENT="/opt/ai-platform/current"
+RELEASES="/opt/ai-platform/releases"
 STATE_FILE="/var/lib/ai-platform/stage-d/previous-release"
+EXPLICIT_RELEASE_ID="${1:-}"
 TIMER="ai-bridge-analysis.timer"
 BRIDGE_HEALTH_URL="${AI_BRIDGE_HEALTH_URL:-}"
 GATEWAY_HEALTH_URL="${AI_GATEWAY_HEALTH_URL:-http://127.0.0.1:11435/health}"
@@ -42,10 +44,78 @@ print("PASS: AI Gateway idle (0/0/0)")
 PY
 }
 
-[[ -r "$STATE_FILE" ]] || fail "rollback state missing: $STATE_FILE"
-PREVIOUS="$(sed -n 's/^previous=//p' "$STATE_FILE" | head -1)"
-TARGET="$(sed -n 's/^target=//p' "$STATE_FILE" | head -1)"
-[[ -n "$PREVIOUS" && -d "$PREVIOUS" ]] || fail "previous release is invalid: $PREVIOUS"
+TARGET=""
+if [[ -n "$EXPLICIT_RELEASE_ID" ]]; then
+  [[ "$EXPLICIT_RELEASE_ID" != */* ]] || fail "explicit release must be a release id, not a path"
+  PREVIOUS="$RELEASES/$EXPLICIT_RELEASE_ID"
+  TARGET="$(readlink -f "$CURRENT" 2>/dev/null || true)"
+  ROLLBACK_MODE="explicit"
+else
+  [[ -r "$STATE_FILE" ]] || fail "rollback state missing: $STATE_FILE"
+  PREVIOUS="$(sed -n 's/^previous=//p' "$STATE_FILE" | head -1)"
+  TARGET="$(sed -n 's/^target=//p' "$STATE_FILE" | head -1)"
+  ROLLBACK_MODE="previous"
+fi
+
+[[ -n "$PREVIOUS" && -d "$PREVIOUS" ]] || fail "rollback release is invalid: $PREVIOUS"
+[[ -f "$PREVIOUS/RELEASE" ]] || fail "rollback RELEASE stamp missing: $PREVIOUS/RELEASE"
+grep -Eq '^stage=(C|D)
+
+resolve_bridge_health_url
+
+if systemctl is-active --quiet ai-bridge-analysis.service; then
+  fail "analysis job is currently running"
+fi
+scheduler_idle
+
+if systemctl is-active --quiet "$TIMER"; then TIMER_WAS_ACTIVE=1; fi
+sudo systemctl stop "$TIMER"
+
+echo "===== ROLLBACK STAGE D RELEASE ====="
+say "mode=$ROLLBACK_MODE"
+say "from=$(readlink -f "$CURRENT" 2>/dev/null || true)"
+say "to=$PREVIOUS"
+sudo ln -sfn "$PREVIOUS" "$CURRENT"
+sudo systemctl daemon-reload
+sudo systemctl restart ai-gateway.service
+sudo systemctl restart ai-bridge.service
+
+for _ in $(seq 1 30); do
+  if curl -fsS --max-time 2 "$GATEWAY_HEALTH_URL" >/dev/null 2>&1      && curl -fsS --max-time 2 "$BRIDGE_HEALTH_URL" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+curl -fsS "$GATEWAY_HEALTH_URL" >/dev/null || fail "AI Gateway health failed after rollback"
+curl -fsS "$BRIDGE_HEALTH_URL" >/dev/null || fail "AI Bridge health failed after rollback"
+[[ "$(readlink -f "$CURRENT")" == "$PREVIOUS" ]] || fail "rollback symlink verification failed"
+
+scheduler_idle
+
+if [[ "$TIMER_WAS_ACTIVE" -eq 1 ]]; then
+  sudo systemctl start "$TIMER"
+fi
+
+echo "ROLLBACK STAGE D RELEASE: PASS"
+say "restored=$PREVIOUS"
+[[ -n "$TARGET" ]] && say "rolled_back_from=$TARGET"
+[[ "$ROLLBACK_MODE" == "explicit" ]] && say "explicit_release_id=$EXPLICIT_RELEASE_ID"
+ "$PREVIOUS/RELEASE" || fail "rollback release is not Stage C/D"
+[[ -x "$PREVIOUS/services/ai-bridge/.venv/bin/ai-bridge" ]] || fail "rollback AI Bridge executable missing"
+[[ -x "$PREVIOUS/services/ai-gateway/.venv/bin/python" ]] || fail "rollback AI Gateway Python missing"
+
+CURRENT_RESOLVED="$(readlink -f "$CURRENT" 2>/dev/null || true)"
+[[ -n "$CURRENT_RESOLVED" && -d "$CURRENT_RESOLVED" ]] || fail "current release symlink is invalid"
+[[ "$CURRENT_RESOLVED" != "$PREVIOUS" ]] || fail "rollback target is already active"
+
+if [[ -f "$PREVIOUS/metadata/SHA256SUMS" ]]; then
+  (
+    cd "$PREVIOUS"
+    sha256sum -c metadata/SHA256SUMS >/dev/null
+  ) || fail "rollback release checksum validation failed"
+  say "PASS: rollback release checksums"
+fi
 
 resolve_bridge_health_url
 
