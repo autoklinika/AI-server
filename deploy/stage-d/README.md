@@ -25,6 +25,6 @@ Stage D evolves AI Gateway into Resource Manager v2. These scripts are intention
 7. Activate Stage D release.
 8. Run `validate_wvc_gateway_runtime.sh`; when CM5 is disconnected this validates the ingest contract and a real ventilation-priority Gateway/Qwen request without requiring live telemetry.
 9. Run `validate_media_runtime.sh` for a real Stage30 render under a Resource Manager external lease, then verify the actual Telegram `/wideo` user path.
-10. Run rollback validation before closing D.0.
+10. Run rollback validation before closing D.0. For the D.0 production gate use an explicit known-good target, e.g. `rollback_release.sh stage-c-provider-abstraction-20260921-r3`; the no-argument form remains an immediate-previous emergency rollback.
 
 Production cutover is not performed by committing these scripts.
