@@ -91,10 +91,14 @@ W przypadku sprzeczności historyczny stage report nie może nadpisywać nowszej
 
 ---
 
-## Następny etap
+## Aktualny etap
 
-Po zatwierdzeniu pakietu architektury pierwszym etapem implementacyjnym jest:
+Stage A, Stage B i Stage C są zakończone i zwalidowane.
 
-**Stage A — Recovery Baseline + Reproducible Release Foundation**
+**Stage D.0 — Foundation cleanup** jest technicznie zakończony i zwalidowany na produkcji. Aktywny runtime to `stage-d0-foundation-20260921-r2`; rollback do Stage C r3 i ponowna aktywacja r2 zostały realnie sprawdzone.
 
-zgodnie z `AI_PLATFORM_MIGRATION_PLAN_V1_PL.md`.
+`main` jest chroniony rulesetem `main-protection`; PR musi mieć zielony `platform-ci` i być aktualny względem `main`.
+
+Po merge kolejnym krokiem Stage D jest **D.1 — semantic priority classes**.
+
+Szczegółowy handoff: `../reports/AI_PLATFORM_STAGE_D0_FOUNDATION_2026-09-21_PL.md`.

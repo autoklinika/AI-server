@@ -55,9 +55,9 @@ class Settings(BaseSettings):
     gateway_priority_normal: int = Field(default=100, ge=-1000, le=1000)
     gateway_priority_background: int = Field(default=200, ge=-1000, le=1000)
 
-    # Safe rollout switch: production analysis continues to talk directly to
-    # Ollama until the local gateway has been deployed and validated.
-    analysis_use_gateway: bool = False
+    # Gateway is the production-default admission path. Setting this to false
+    # is an explicit recovery/debug compatibility mode that bypasses scheduling.
+    analysis_use_gateway: bool = True
 
     analysis_window_minutes: int = Field(default=15, ge=1, le=60)
     analysis_min_samples: int = Field(default=120, ge=1)

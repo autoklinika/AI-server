@@ -75,15 +75,26 @@ RDP/xrdp nie są częścią docelowej konfiguracji hosta.
 
 ## Aktualny kierunek prac
 
-Audyt architektury i runtime v1.2 został zakończony 19.09.2026. Obecny system pozostaje produkcyjnie działający, ale dalszy rozwój jest prowadzony według **AI Platform Target Architecture v1**.
+Audyt po Stage C z 21.09.2026 potwierdził produkcję jako **GREEN** i gotowość do rozpoczęcia Stage D development.
 
-Pierwszym etapem migracji jest:
+Zakończone etapy migracji:
 
-**Stage A — Recovery Baseline + Reproducible Release Foundation**
+- **Stage A** — recovery baseline + reproducible release foundation;
+- **Stage B** — security hardening i localhost-only backendy;
+- **Stage C** — provider abstraction bez wymiany modeli/backendów.
 
-Celem Stage A nie jest zmiana modelu ani zachowania użytkowego. Etap ma wprowadzić zweryfikowany recovery point, release/build stamp, wersjonowany deployment i rollback, aby kolejne zmiany architektoniczne były odwracalne.
+Aktualny etap:
 
-AI Bridge pozostaje aktywnym elementem obecnego runtime, ale nie jest już docelową nazwą całej platformy. Docelowa AI Platform ma obsługiwać wiele domen przez stabilne kontrakty i wymienne adaptery providerów.
+**Stage D — Resource Manager v2**.
+
+**D.0 — Foundation cleanup** przeszedł pełną walidację produkcyjną. Aktywny runtime to `stage-d0-foundation-20260921-r2`; realne WVC/Gateway/Qwen, media i Telegram smoke są PASS, a rollback D.0 r2 -> Stage C r3 -> D.0 r2 został zweryfikowany.
+
+`main` jest chroniony rulesetem `main-protection`; merge wymaga PR, zielonego `platform-ci` i aktualności gałęzi. Po merge następnym krokiem jest **D.1 — semantic priority classes**.
+
+Nie zmieniamy na D.0 modelu Qwen, GPU, backendu wiedzy ani implementacji schedulera od zera. Stage C r3 pozostaje zweryfikowanym rollback pointem.
+
+AI Bridge pozostaje aktywnym elementem obecnego runtime, ale nie jest docelową nazwą całej platformy. Docelowa AI Platform obsługuje wiele domen przez stabilne kontrakty i wymienne adaptery providerów.
+
 
 ## Bezpieczeństwo
 

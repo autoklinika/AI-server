@@ -18,21 +18,25 @@
 
 ---
 
-## 2. Stan startowy z audytu
+## 2. Stan bieżący po walidacji D.0
 
-Najważniejsze fakty wpływające na migrację:
+Stan zwalidowany 2026-09-21:
 
-- produkcja jest funkcjonalna,
-- brak failed systemd units,
-- AI Gateway działa i jest dobrym fundamentem Resource Managera,
-- PostgreSQL ma zachowaną telemetrię WVC,
-- Hermes ma dirty checkout i branch divergence,
-- AI Bridge i AI Gateway nie mają jednolitego release/build modelu,
-- backendy Ollama/ComfyUI są dostępne w LAN,
-- host firewall ma INPUT accept,
-- istnieje dużo historycznych worktree/stage/backup artifacts,
-- WVC jest obecnie odłączony,
-- timer analiz WVC nadal działa i wymaga weryfikacji `no_fresh_data`.
+- Stage A: recovery baseline i release model działają; produkcja używa `/opt/ai-platform/releases` + atomowego `/opt/ai-platform/current`;
+- Stage B: Ollama, ComfyUI i AI Gateway są localhost-only; host firewall działa deny-by-default;
+- Stage C: provider abstraction działa (`LLMProvider`, `AgentProvider`, `MediaGenerationProvider`, `EmbeddingProvider`, `KnowledgeBackend`);
+- D.0 Foundation Cleanup przeszedł pełny production cutover, real smoke/E2E oraz rollback validation;
+- aktywny runtime to `stage-d0-foundation-20260921-r2`, source `3496f21249474d16c09a791db39afd321beb935c`;
+- zweryfikowany rollback point to `stage-c-provider-abstraction-20260921-r3`;
+- canonical systemd używa `/opt/ai-platform/current/services/...`; historyczne production-source/analysis override’y zostały usunięte;
+- WVC analysis domyślnie używa AI Gateway; podczas walidacji CM5/WVC był fizycznie odłączony, więc brak świeżej telemetrii był stanem oczekiwanym;
+- realny request `ventilation` przez Resource Manager -> Qwen z priority 10: PASS;
+- realny Stage30 media render pod external lease priority 50: PASS;
+- Telegram `/wideo`: PASS;
+- pełny rollback D.0 r2 -> Stage C r3 -> D.0 r2: PASS;
+- Resource Manager v1 (`PriorityScheduler` + `ResourceLeaseRegistry`) pozostaje fundamentem Stage D;
+- znanym długiem pozostaje Hermes patch-in-place; Stage D nie może go powiększać;
+- `main` jest chroniony aktywnym rulesetem `main-protection`; wymagany jest `platform-ci` i aktualność gałęzi przed merge.
 
 ---
 
@@ -489,21 +493,19 @@ Dopiero wtedy zaczynamy następny etap.
 
 ---
 
-## 20. Pierwszy realny task implementacyjny
+## 20. Aktualny realny task implementacyjny
 
-Pierwszym taskiem po zatwierdzeniu architektury powinno być:
+Stage A, B i C zostały zakończone i zwalidowane.
 
-**Stage A — Recovery Baseline + Reproducible Release Foundation**
+**Stage D.0 — Foundation cleanup** jest technicznie zwalidowany na produkcji:
 
-Nie zmienia zachowania AI. Tworzy fundament, na którym bezpiecznie wykonamy wszystkie kolejne migracje.
+- D.0 r2 aktywny,
+- canonical systemd PASS,
+- Gateway-default WVC policy PASS,
+- WVC/Gateway/Qwen PASS,
+- media + Telegram PASS,
+- rollback Stage C r3 i ponowna aktywacja D.0 r2 PASS.
 
-Zakres Stage A:
+Repo-governance gate jest zamknięty: `main-protection` wymaga PR, `platform-ci` i aktualności gałęzi przed merge.
 
-- snapshot/backup,
-- capture Hermes diff,
-- release manifest,
-- build stamp,
-- wersjonowany deployment,
-- deployment validation,
-- rollback,
-- cleanup po testach.
+Po merge D.0 kolejnym etapem jest **D.1 — semantic priority classes**.
