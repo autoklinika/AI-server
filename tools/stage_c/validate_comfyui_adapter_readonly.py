@@ -17,7 +17,10 @@ REQUIRED_RUNTIME_NODES = {
 }
 
 
-def _unused_resolver(_request: MediaGenerationRequest) -> ComfyUIWorkflowPlan:
+def _unused_resolver(
+    _request: MediaGenerationRequest,
+    _staged_inputs: tuple[str, ...],
+) -> ComfyUIWorkflowPlan:
     raise AssertionError("read-only validation must never resolve or submit a workflow")
 
 
