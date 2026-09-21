@@ -9,7 +9,12 @@ from ai_bridge.adapters.ventilation.analysis_v12_2 import (
     EnvironmentalDecisionV122,
 )
 from ai_bridge.analysis.service_v12_2 import VentilationAnalysisServiceV122
-from ai_bridge.ollama.client import OllamaChatResult
+from ai_bridge.providers.contracts import (
+    LLMExecution,
+    LLMRequest,
+    LLMResponse,
+    LLMUsage,
+)
 from ai_bridge.storage.models import TelemetrySampleRecord
 
 
@@ -71,34 +76,37 @@ class FakeRepository:
         return None
 
 
-class ForbiddenOllama:
-    def chat_structured(self, **_kwargs):
-        raise AssertionError("Ollama must not be called")
+class ForbiddenLLM:
+    def generate(self, _request: LLMRequest) -> LLMResponse:
+        raise AssertionError("LLM provider must not be called")
 
 
-class EnvironmentalOllama:
+class EnvironmentalLLM:
     def __init__(self) -> None:
-        self.kwargs: dict[str, Any] | None = None
+        self.request: LLMRequest | None = None
 
-    def chat_structured(self, **kwargs):
-        self.kwargs = kwargs
+    def generate(self, request: LLMRequest) -> LLMResponse:
+        self.request = request
         content = EnvironmentalDecisionV122(
             environmental_attention=False,
             selected_fact_ids=[],
         ).model_dump_json()
-        return OllamaChatResult(
+        return LLMResponse(
+            request_id=request.request_id,
             content=content,
-            model="qwen3.6:35b",
-            prompt_eval_count=100,
-            eval_count=20,
-            total_duration_ns=123456,
+            usage=LLMUsage(input_tokens=100, output_tokens=20),
+            execution=LLMExecution(
+                provider="test-llm",
+                model="qwen3.6:35b",
+                duration_ns=123456,
+            ),
         )
 
 
-def _service(repository, ollama, *, min_samples: int) -> VentilationAnalysisServiceV122:
+def _service(repository, llm, *, min_samples: int) -> VentilationAnalysisServiceV122:
     return VentilationAnalysisServiceV122(
         repository=repository,  # type: ignore[arg-type]
-        ollama=ollama,  # type: ignore[arg-type]
+        llm=llm,  # type: ignore[arg-type]
         model="qwen3.6:35b",
         think=ANALYSIS_THINK,
         temperature=0.0,
@@ -108,8 +116,8 @@ def _service(repository, ollama, *, min_samples: int) -> VentilationAnalysisServ
 
 def test_v12_2_service_uses_environmental_decision_schema_and_python_renderer() -> None:
     repository = FakeRepository([_sample()])
-    ollama = EnvironmentalOllama()
-    service = _service(repository, ollama, min_samples=1)
+    llm = EnvironmentalLLM()
+    service = _service(repository, llm, min_samples=1)
 
     result = service.analyze_window(
         source_id="workshop-ventilation-cm5-01",
@@ -125,13 +133,14 @@ def test_v12_2_service_uses_environmental_decision_schema_and_python_renderer() 
     assert result.result.operator_view is not None
     assert result.result.operator_view.status_label_pl == "BRAK ANOMALII"
     assert result.result.operator_view.headline_pl == "Brak zmian wymagających uwagi"
-    assert ollama.kwargs is not None
-    assert ollama.kwargs["think"] is False
+    assert llm.request is not None
+    assert llm.request.reasoning_enabled is False
+    assert llm.request.response_schema is not None
     assert (
-        ollama.kwargs["response_schema"]["properties"]["environmental_attention"]["type"]
+        llm.request.response_schema["properties"]["environmental_attention"]["type"]
         == "boolean"
     )
-    assert "analysis_pl" not in ollama.kwargs["response_schema"]["properties"]
+    assert "analysis_pl" not in llm.request.response_schema["properties"]
     assert repository.saved is not None
     assert repository.saved["prompt_version"] == PROMPT_VERSION
     assert repository.saved["result"]["status"] == "no_anomaly_detected"
@@ -141,8 +150,8 @@ def test_v12_2_service_uses_environmental_decision_schema_and_python_renderer() 
 
 def test_v12_2_service_does_not_prioritize_or_render_active_alerts() -> None:
     repository = FakeRepository([_sample(active_alarm=True)])
-    ollama = EnvironmentalOllama()
-    service = _service(repository, ollama, min_samples=1)
+    llm = EnvironmentalLLM()
+    service = _service(repository, llm, min_samples=1)
 
     result = service.analyze_window(
         source_id="workshop-ventilation-cm5-01",
@@ -163,16 +172,16 @@ def test_v12_2_service_does_not_prioritize_or_render_active_alerts() -> None:
     assert "AERO_BUS_UNAVAILABLE" not in serialized_result
     assert "Aktywny alarm" not in serialized_result
     assert "alarmów CM5" not in serialized_result
-    assert ollama.kwargs is not None
-    serialized_messages = str(ollama.kwargs["messages"])
+    assert llm.request is not None
+    serialized_messages = str(llm.request.messages)
     assert "AERO_BUS_UNAVAILABLE" not in serialized_messages
     assert "active_alarm_codes" not in serialized_messages
     assert "active_alarm_sample_count" not in serialized_messages
 
 
-def test_v12_2_service_keeps_sample_gate_without_ollama_call() -> None:
+def test_v12_2_service_keeps_sample_gate_without_llm_call() -> None:
     repository = FakeRepository([_sample()])
-    service = _service(repository, ForbiddenOllama(), min_samples=120)
+    service = _service(repository, ForbiddenLLM(), min_samples=120)
 
     result = service.analyze_window(
         source_id="workshop-ventilation-cm5-01",
