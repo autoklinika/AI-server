@@ -56,7 +56,7 @@ class ComfyUIAdapter:
         "video-generation",
     )
     provider_id: str = "comfyui-local"
-    node_id: str = "ai-node-01"
+    node_id: str | None = None
     health_timeout_seconds: float = 2.0
     poll_seconds: float = 3.0
     auto_free_memory: bool = True
