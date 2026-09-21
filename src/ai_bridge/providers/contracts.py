@@ -94,6 +94,52 @@ class LLMProvider(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class EmbeddingRequest:
+    request_id: str
+    inputs: tuple[str, ...]
+    capability: Literal["embeddings"] = "embeddings"
+    model_hint: str | None = None
+    dimensions_hint: int | None = None
+    context: dict[str, Any] = field(default_factory=dict)
+    provider_hint: str | None = None
+
+
+@dataclass(frozen=True)
+class EmbeddingVector:
+    index: int
+    values: tuple[float, ...]
+
+
+@dataclass(frozen=True)
+class EmbeddingUsage:
+    input_tokens: int | None = None
+
+
+@dataclass(frozen=True)
+class EmbeddingResult:
+    request_id: str
+    vectors: tuple[EmbeddingVector, ...]
+    provider: str
+    model: str
+    dimensions: int
+    usage: EmbeddingUsage = field(default_factory=EmbeddingUsage)
+    duration_ms: float | None = None
+    provider_metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@runtime_checkable
+class EmbeddingProvider(Protocol):
+    def embed(self, request: EmbeddingRequest) -> EmbeddingResult:
+        ...
+
+    def health(self) -> ProviderHealth:
+        ...
+
+    def describe(self) -> ProviderDescriptor:
+        ...
+
+
 AgentEventType = Literal[
     "queued",
     "started",
@@ -200,6 +246,66 @@ class MediaGenerationResult:
 @runtime_checkable
 class MediaGenerationProvider(Protocol):
     def generate(self, request: MediaGenerationRequest) -> MediaGenerationResult:
+        ...
+
+    def health(self) -> ProviderHealth:
+        ...
+
+    def describe(self) -> ProviderDescriptor:
+        ...
+
+
+KnowledgeQueryMode = Literal[
+    "exact",
+    "keyword",
+    "semantic",
+    "hybrid",
+    "auto",
+]
+
+
+@dataclass(frozen=True)
+class KnowledgeSource:
+    type: str
+    uri: str
+    title: str | None = None
+
+
+@dataclass(frozen=True)
+class KnowledgeQuery:
+    request_id: str
+    domain: str
+    query: str
+    mode: KnowledgeQueryMode = "auto"
+    namespaces: tuple[str, ...] = ()
+    source_types: tuple[str, ...] = ()
+    filters: dict[str, Any] = field(default_factory=dict)
+    limit: int = 10
+    query_embedding: tuple[float, ...] | None = None
+    context: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class KnowledgeResult:
+    result_id: str
+    text: str
+    source: KnowledgeSource
+    score: float
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class KnowledgeSearchResult:
+    request_id: str
+    results: tuple[KnowledgeResult, ...]
+    backend: str
+    duration_ms: float | None = None
+    backend_metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@runtime_checkable
+class KnowledgeBackend(Protocol):
+    def search(self, query: KnowledgeQuery) -> KnowledgeSearchResult:
         ...
 
     def health(self) -> ProviderHealth:
