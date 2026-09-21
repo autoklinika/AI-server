@@ -15,6 +15,8 @@ STAGE_D_SCRIPTS = [
     ROOT / "deploy/stage-d/rollback_release.sh",
     ROOT / "deploy/stage-d/install_canonical_systemd.sh",
     ROOT / "deploy/stage-d/restore_systemd_compat.sh",
+    ROOT / "deploy/stage-d/apply_gateway_default_policy.sh",
+    ROOT / "deploy/stage-d/restore_gateway_policy.sh",
 ]
 
 
@@ -96,6 +98,22 @@ def test_stage_d_activation_preserves_idle_gate_and_previous_release_rollback() 
     assert "95-ai-platform-release.conf" in activate
     assert "http://192.168.1.55" not in activate
     assert "http://192.168.1.55" not in rollback
+
+
+def test_gateway_policy_migration_is_reversible_and_non_restarting() -> None:
+    apply = (ROOT / "deploy/stage-d/apply_gateway_default_policy.sh").read_text(
+        encoding="utf-8"
+    )
+    restore = (ROOT / "deploy/stage-d/restore_gateway_policy.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "AI_BRIDGE_ANALYSIS_USE_GATEWAY=true" in apply
+    assert "gateway-policy-baseline" in apply
+    assert "cp -a" in apply
+    assert "systemctl restart" not in apply
+    assert "gateway-policy-baseline" in restore
+    assert "cp -a" in restore
+    assert "systemctl restart" not in restore
 
 
 def test_canonical_systemd_install_and_restore_are_non_restarting() -> None:
