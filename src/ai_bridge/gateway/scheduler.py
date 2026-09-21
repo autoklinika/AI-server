@@ -88,6 +88,8 @@ class PriorityScheduler:
     async def _enqueue(self, *, priority: int, source: str, metadata: JobMetadata | None = None) -> _PendingJob:
         metadata = metadata or JobMetadata()
         self.registry.capability(metadata.capability)
+        for workload in metadata.workload:
+            workload.validate(self.registry)
         source = source.strip() or "unknown"
         loop = asyncio.get_running_loop()
         sequence = next(self._sequence)
@@ -326,6 +328,11 @@ class PriorityScheduler:
                 raise ValueError("provider and node assignment must be supplied together")
             if provider is not None:
                 self.registry.validate_assignment(provider, node, job.capability)
+                if job.workload and not any(
+                    item.provider == provider and item.node == node and item.capability == job.capability
+                    for item in job.workload
+                ):
+                    raise ValueError("execution outside admitted workload")
             self._jobs[job_id] = replace(job, assigned_provider=provider, assigned_node=node)
 
     def _finish_locked(self, job_id: int, state: JobLifecycle) -> None:

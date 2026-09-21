@@ -2,7 +2,7 @@
 
 **Status:** ACTIVE / TARGET ARCHITECTURE v1 — obowiązujący desired state w `main`  
 **Data bazowa:** 2026-09-19  
-**Ostatnia aktualizacja:** 2026-09-22 (implementacja D.3 do walidacji supervisora; brak nowej walidacji runtime)
+**Ostatnia aktualizacja:** 2026-09-22 (implementacja D.4 do walidacji supervisora; brak nowej walidacji runtime)
 **Repozytorium:** `autoklinika/AI-server`  
 **Branch:** `main`; zmiany Stage D rozwijane przez kontrolowane feature branche  
 **Podstawa:** PRE_AUDIT principles + AI Server Architecture & Runtime Audit v1.2
@@ -360,7 +360,7 @@ bez request content: stabilne UUID request/job, domain/capability/class, lifecyc
 UTC timestamps i assignment istniejącego upstreamu. Terminalna historia jest
 ograniczona do 128 rekordów w RAM. Rezerwacja external lease nie udaje joba
 wykonania providera. Szczegóły i przejścia: [Component Contracts §7.2](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#72-job-model--stage-d2).
-D.3 dodaje registry opisany poniżej; D.4 unified admission pozostaje poza implementacją.
+D.3 dodaje registry opisany poniżej; D.4 rozszerzenie admission opisuje §8.6.
 
 ### 8.5. Descriptors D.3 — implementacja do walidacji supervisora
 
@@ -376,7 +376,25 @@ external lease nadal ma assignment null. Szczegóły:
 [Component Contracts §8.1](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#81-static-descriptors--stage-d3).
 
 
+### 8.6. Unified admission D.4 — do walidacji supervisora
+
+LLM scheduled HTTP, media external leases i istniejące embeddings routes używają
+jednego schedulera oraz descriptor-validated workload bindings w JobState.
+Reservation lifecycle, semantic priority, FIFO/limits, cancellation i TTL pozostają
+zachowane. Deklaracja workload nie oznacza provider readiness ani sukcesu media.
+Leased HTTP i external-use guard nie pozwalają równolegle wykonywać dwóch faz
+pod jednym ticketem; wspólny lease nadal obejmuje Qwen, a następnie ComfyUI.
+Supported media adapter/wrapper odmawia expensive execution bez aktywnego lease.
+Future EmbeddingProvider ma obowiązek użyć tej samej granicy admission; brak
+konkretnego adaptera/modelu, Knowledge Service i multi-node execution w D.4.
+
+Nie wykonano production validation/cutover. Compatibility endpointy pozostają;
+D.5 migracja i D.6 walidacja są osobnymi krokami. Kontrakt operacyjny i ograniczenia
+cleanup: [Component Contracts §7.3](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#73-unified-admission--stage-d4).
+[Raport D.4](../reports/AI_PLATFORM_STAGE_D4_UNIFIED_ADMISSION_2026-09-22_PL.md).
+
 ---
+
 
 ## 9. Agent Service
 

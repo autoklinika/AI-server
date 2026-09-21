@@ -29,7 +29,7 @@ def queue_job(parts:list[str])->str:
     return f"🎬 Przyjęto zlecenie filmu: {quality}, {parsed['duration_seconds']} s{source}. Gotowy film wyślę tutaj."
 def run_worker(request_path:Path)->int:
     request=stage30.json.loads(request_path.read_text(encoding="utf-8"));target=str(request.get("target") or "")
-    lease=resource.acquire_resource(target=target,source="telegram-wideo" if target.startswith("telegram:") else "wideo",priority=int(os.environ.get("HERMES_MEDIA_RESOURCE_PRIORITY","50")),queue_message="⏳ Film czeka w kolejce. Powiadomię Cię, gdy rozpocznie się generowanie.",start_message="▶️ Zwolniły się zasoby. Rozpoczynam generowanie filmu.")
+    lease=resource.acquire_resource(target=target,workload="media-video",source="telegram-wideo" if target.startswith("telegram:") else "wideo",priority=int(os.environ.get("HERMES_MEDIA_RESOURCE_PRIORITY","50")),queue_message="⏳ Film czeka w kolejce. Powiadomię Cię, gdy rozpocznie się generowanie.",start_message="▶️ Zwolniły się zasoby. Rozpoczynam generowanie filmu.")
     old=os.environ.get("HERMES_RESOURCE_LEASE_ID");os.environ["HERMES_RESOURCE_LEASE_ID"]=lease.lease_id
     try:
         with _LeaseHeaders():return stage30.run_worker(request_path)

@@ -508,7 +508,7 @@ Stage A, B i C zostały zakończone i zwalidowane.
 
 Repo-governance gate jest zamknięty: `main-protection` wymaga PR, `platform-ci` i aktualności gałęzi przed merge.
 
-Stage D.0 został zmergowany do `main` w PR #38. Decyzje D.1/D.2 i aktualny D.3 opisano poniżej.
+Stage D.0 został zmergowany do `main` w PR #38. Decyzje D.1–D.4 opisano poniżej.
 
 
 ### Decyzja implementacyjna D.1 — 2026-09-21
@@ -537,8 +537,8 @@ Historyczne informacje o walidacji D.0/D.1 powyżej pozostają dowodem etapów.
 
 ### Decyzja implementacyjna D.3 — 2026-09-22
 
-Aktualny krok: **D.3 — Capability/provider/node descriptors**, **READY FOR
-SUPERVISOR VALIDATION**. Statyczny, walidowany registry opisuje dotychczasowe trzy
+Poprzedni krok: **D.3 — Capability/provider/node descriptors**, **DEV GATE PASS**
+([supervisor gate](../reports/AUTONOMOUS_D3_DEV_GATE_2026-09-22.md)). Statyczny, walidowany registry opisuje dotychczasowe trzy
 providery i lokalny node; assignment HTTP korzysta z jego identyfikatorów.
 Registry nie jest health probe ani nową warstwą admission/routing. Lease opisuje
 rezerwację z assignment null. Schemat dopuszcza przyszłe node'y, ale aktywny
@@ -546,3 +546,18 @@ Gateway odrzuca konfiguracje zmieniające single-node topology. Modele i produkt
 pozostają bez zmian. D.4–D.6 nie są realizowane w tym kroku.
 [Kontrakt §8.1](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#81-static-descriptors--stage-d3)
 i [raport D.3](../reports/AI_PLATFORM_STAGE_D3_DESCRIPTORS_2026-09-22_PL.md).
+
+### Decyzja implementacyjna D.4 — 2026-09-22
+
+Aktualny krok: **D.4 — Unified admission**, **READY FOR SUPERVISOR VALIDATION**.
+Wspólny scheduler i D.3 workload bindings obejmują LLM HTTP, media external
+reservations oraz istniejące embeddings proxy. JobState dodaje metadata-only
+workload; D.2 lifecycle rezerwacji pozostaje bez zmian. External-use guard blokuje
+kosztowne media bez aktywnego lease; publiczne ścieżki nie mają silent fallback.
+Queue/priority/FIFO, HTTP cancellation i heartbeat/TTL zachowane. Nie dodano
+EmbeddingProvider/modelu ani Knowledge Service. Endpointy compatibility zostają
+na D.5, produkcyjne smoke/rollback na D.6. Nowy guard wymaga zgodnej wersji Gateway
+oraz repo helperów przy przyszłym wdrożeniu; bieżące D.0 tooling/recovery guardy
+pozostają zachowane.
+[Kontrakt §7.3](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#73-unified-admission--stage-d4)
+i [raport D.4](../reports/AI_PLATFORM_STAGE_D4_UNIFIED_ADMISSION_2026-09-22_PL.md).
