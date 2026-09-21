@@ -23,6 +23,7 @@ Stage D evolves AI Gateway into Resource Manager v2. These scripts are intention
 5. Install canonical systemd units.
 6. Confirm manager configuration and idle gate.
 7. Activate Stage D release.
-8. Run real smoke/E2E and rollback validation before closing D.0.
+8. Run `validate_wvc_gateway_runtime.sh`; when CM5 is disconnected this validates the ingest contract and a real ventilation-priority Gateway/Qwen request without requiring live telemetry.
+9. Run media/Telegram smoke and rollback validation before closing D.0.
 
 Production cutover is not performed by committing these scripts.
