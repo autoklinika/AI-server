@@ -28,3 +28,13 @@ Stage D evolves AI Gateway into Resource Manager v2. These scripts are intention
 10. Run rollback validation before closing D.0. For the D.0 production gate use an explicit known-good target, e.g. `rollback_release.sh stage-c-provider-abstraction-20260921-r3`; the no-argument form remains an immediate-previous emergency rollback.
 
 Production cutover is not performed by committing these scripts.
+
+
+## D.1 validation handoff
+
+D.1 adds semantic `priority_class` admission while preserving legacy numeric
+priorities and FIFO. It is **READY FOR PRODUCTION VALIDATION**, not deployed.
+See the [D.1 report](../../docs/reports/AI_PLATFORM_STAGE_D1_SEMANTIC_PRIORITY_2026-09-21_PL.md)
+for test evidence and remaining checks. The builder still requires clean committed
+source and carries D.0 phase metadata; verify release metadata before preparing a
+later D.1 production artifact. D.2–D.6 work is outside this implementation.

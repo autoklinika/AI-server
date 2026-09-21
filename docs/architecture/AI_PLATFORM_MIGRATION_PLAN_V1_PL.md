@@ -509,3 +509,17 @@ Stage A, B i C zostały zakończone i zwalidowane.
 Repo-governance gate jest zamknięty: `main-protection` wymaga PR, `platform-ci` i aktualności gałęzi przed merge.
 
 Stage D.0 został zmergowany do `main` w PR #38. Aktualnym etapem jest **D.1 — semantic priority classes**.
+
+
+### Decyzja implementacyjna D.1 — 2026-09-21
+
+D.1 wprowadza tylko semantic priority contract i mapowanie do dotychczasowego
+schedulera: infrastructure=10, interactive-high=25, interactive=50, normal=100,
+background=200, maintenance=300. `critical` to alias infrastructure.
+`priority_class` jest opcjonalnym polem JSON; jawne legacy liczby mają
+pierwszeństwo, a brak pola zachowuje defaulty i WVC. Ordering/FIFO bez zmian.
+
+Status implementacji: **READY FOR PRODUCTION VALIDATION**; nie oznacza zamknięcia
+etapu ani wdrożenia. Raport: [Stage D.1](../reports/AI_PLATFORM_STAGE_D1_SEMANTIC_PRIORITY_2026-09-21_PL.md).
+D.2–D.6 pozostają poza zakresem: Job model, descriptors/routing, unified admission,
+compatibility migration oraz pełna walidacja produkcyjna.

@@ -191,6 +191,61 @@ Telegram, Discord i GUI mogą dzięki temu prezentować kolejkę niezależnie od
 
 ## 7. Resource Manager
 
+### 7.1. Semantic priority contract — Stage D.1
+
+Opcjonalne top-level pole JSON `priority_class` jest obsługiwane przez wszystkie
+istniejące scheduled POST endpointy Gateway: `/api/chat`, `/api/generate`,
+`/api/embed`, `/api/embeddings`, `/v1/chat/completions`, `/v1/embeddings` oraz ich
+istniejące warianty `/clients/ventilation/...` i `/clients/hermes/...`.
+Obsługuje je także `POST /resource/leases`. Nie powstaje nowy publiczny nagłówek.
+
+| Klasa kanoniczna | Wewnętrzny priorytet D.1 |
+|---|---:|
+| `infrastructure` | 10 |
+| `interactive-high` | 25 |
+| `interactive` | 50 |
+| `normal` | 100 |
+| `background` | 200 |
+| `maintenance` | 300 |
+
+`critical` jest wyłącznie compatibility alias dla `infrastructure`, bez osobnego
+poziomu. Nazwy są case-sensitive i bez normalizacji whitespace. Nieznana nazwa,
+pusta nazwa, `null` lub typ inny niż string daje HTTP 400
+`{"detail":"invalid priority_class"}` przed admission/upstream, także gdy podano
+legacy numeric override. Błąd nie powtarza wartości wejściowej.
+
+Precedence po walidacji klasy:
+
+1. Scheduled HTTP: jawny `X-AI-Priority`, następnie klasa, następnie dotychczasowy
+   default endpointu z Settings.
+2. Tworzenie lease: jawne legacy JSON `priority`, następnie klasa, następnie
+   dotychczasowy `gateway_priority_interactive`. Nagłówek `X-AI-Priority` nie
+   sterował tworzeniem lease i nadal nim nie steruje.
+3. Użycie aktywnego lease: ticket lease zachowuje swój priorytet; priority requestu
+   nie zmienia ani nie rezerwuje ponownie slotu. Walidacja requestu nadal obowiązuje.
+
+Legacy liczby zachowują dotychczasowe parsowanie i zakres -1000..1000, bez
+zaokrąglania do klasy. `infrastructure` jest najwyższą **klasą**, ale legacy
+liczby poniżej 10 nadal mają wyższy efektywny priorytet. Wartości 10/50/100/200
+nie zmieniają zachowania. Klasy mapują się na stałe liczby z tabeli; istniejące
+Settings/env priority nadal konfigurują legacy defaulty endpointów, nie tabelę
+klas. WVC pozostaje na istniejącej trasie z defaultem 10 i zachowuje override'y.
+
+Gateway usuwa `priority_class` przed wysłaniem JSON do providera (również dla
+streamingu i użycia lease). Request bez tego pola jest przesyłany byte-for-byte
+jak wcześniej; malformed/non-object JSON pozostaje obsługiwany jak dotychczas.
+Status i nagłówki diagnostyczne nadal pokazują efektywną liczbę; D.1 nie dodaje
+prompt content ani nowego JobState. Niższa liczba wygrywa, FIFO obowiązuje przy
+równych liczbach, także pomiędzy klasą i legacy requestem. Brak preemption.
+
+Przykładowe body dla `/api/chat`:
+
+```json
+{"model":"qwen3.6:35b","messages":[],"stream":false,"priority_class":"interactive"}
+```
+
+Poniższe JobRequest/JobState pozostają kontraktem docelowym D.2+, nie nowym API D.1.
+
 ### JobRequest
 
 ```json
