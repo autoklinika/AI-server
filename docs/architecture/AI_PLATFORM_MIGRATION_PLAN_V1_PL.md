@@ -36,7 +36,7 @@ Stan zwalidowany 2026-09-21:
 - pełny rollback D.0 r2 -> Stage C r3 -> D.0 r2: PASS;
 - Resource Manager v1 (`PriorityScheduler` + `ResourceLeaseRegistry`) pozostaje fundamentem Stage D;
 - znanym długiem pozostaje Hermes patch-in-place; Stage D nie może go powiększać;
-- przed merge D.0 pozostaje włączenie branch protection / required check `platform-ci` na `main`.
+- `main` jest chroniony aktywnym rulesetem `main-protection`; wymagany jest `platform-ci` i aktualność gałęzi przed merge.
 
 ---
 
@@ -506,6 +506,6 @@ Stage A, B i C zostały zakończone i zwalidowane.
 - media + Telegram PASS,
 - rollback Stage C r3 i ponowna aktywacja D.0 r2 PASS.
 
-Przed merge pozostaje wyłącznie repo-governance gate: branch protection / required check `platform-ci` dla `main`.
+Repo-governance gate jest zamknięty: `main-protection` wymaga PR, `platform-ci` i aktualności gałęzi przed merge.
 
 Po merge D.0 kolejnym etapem jest **D.1 — semantic priority classes**.
