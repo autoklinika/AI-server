@@ -33,6 +33,7 @@ restore_previous() {
   [[ -n "$PREVIOUS" && -d "$PREVIOUS" ]] || return 0
   say "Restoring previous release: $PREVIOUS"
   sudo ln -sfn "$PREVIOUS" "$CURRENT"
+  sudo systemctl daemon-reload || true
   sudo systemctl restart ai-gateway.service || true
   sudo systemctl restart ai-bridge.service || true
 }
@@ -84,6 +85,14 @@ if systemctl is-active --quiet "$TIMER"; then
   TIMER_WAS_ACTIVE=1
 fi
 sudo systemctl stop "$TIMER"
+
+# Stage A/B may have changed unit/drop-in files since the last manager reload.
+# Reload before any restart so systemd executes the current release-managed units.
+sudo systemctl daemon-reload
+for unit in ai-bridge.service ai-gateway.service ai-bridge-analysis.timer; do
+  [[ "$(systemctl show "$unit" -p NeedDaemonReload --value)" == "no" ]]     || fail "$unit still requires daemon-reload"
+done
+say "PASS: systemd manager configuration reloaded"
 
 sudo install -d -m 0755 "$STATE_DIR"
 {
