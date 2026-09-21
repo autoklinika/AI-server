@@ -124,6 +124,8 @@ class VentilationMetrics(StrictModel):
     tacho: dict[str, Any] | None = None
     zigbee: dict[str, Any] | None = None
     schedule: dict[str, Any] | None = None
+    calendar: dict[str, Any] | None = None
+    power_scheduler: dict[str, Any] | None = None
     shadow_automation: dict[str, Any] | None = None
     alert_v2: dict[str, Any] | None = None
 
