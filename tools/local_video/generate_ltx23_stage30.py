@@ -16,6 +16,7 @@ from ai_bridge.providers.comfyui import (
     MediaProviderError,
 )
 from ai_bridge.providers.contracts import MediaGenerationRequest
+from ai_bridge.settings import get_settings
 
 try:
     import generate_ltx23_stage29 as stage29
@@ -308,6 +309,7 @@ def _media_adapter(comfy_url: str, comfy_input_dir: str) -> ComfyUIAdapter:
         workflow_resolver=_workflow_plan,
         profiles=("ltx23-stage30",),
         capabilities=("video-generation",),
+        node_id=get_settings().node_id,
         input_dir=comfy_input_dir,
     )
 
