@@ -70,6 +70,12 @@ def main() -> int:
         repository = VentilationAnalysisRepository(database)
         use_gateway = settings.analysis_use_gateway
         inference_url = settings.gateway_url if use_gateway else settings.ollama_url
+        if use_gateway:
+            # Use the existing WVC contract so v2 records reasoning/wvc rather
+            # than generic chat/shared. Accept an already namespaced legacy URL.
+            inference_url = inference_url.rstrip("/")
+            if not inference_url.endswith("/clients/ventilation"):
+                inference_url += "/clients/ventilation"
         logging.info(
             "Ventilation inference route=%s url=%s",
             "ai-gateway" if use_gateway else "direct-ollama",

@@ -225,6 +225,11 @@ def acquire_resource(
     start_message: str | None = None,
     status_callback: Callable[[str], None] | None = None,
 ) -> ResourceLease:
+    # Existing Hermes v4 callers cannot supply D.4 workload metadata. Adapt the
+    # two known chat call sites here, without another product patch. Unknown
+    # legacy workers retain the broad external profile; explicit plans win.
+    if workload is None and source in {"telegram-chat", "discord-chat"}:
+        workload = "llm"
     created = _json(
         "POST",
         "/resource/leases",
