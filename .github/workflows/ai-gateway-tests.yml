@@ -1,75 +1,12 @@
-name: AI Gateway tests
+name: AI Platform CI
 
 on:
   push:
     branches:
-      - feat/ai-gateway-scheduler
-      - feat/hermes-local-video-stage23
-      - feat/hermes-ltx23-stage24
-      - feat/hermes-ltx23-telegram-stage25
-      - feat/hermes-ltx23-direct-stage26
-      - feat/hermes-ltx23-prompt-compiler-stage27
-      - feat/hermes-foto-modern-stage28
-      - feat/hermes-video-duration-i2v-stage29
-      - feat/telegram-global-queue-status
+      - main
   pull_request:
-    paths:
-      - "src/ai_bridge/gateway/**"
-      - "src/ai_bridge/ollama/client.py"
-      - "src/ai_bridge/analysis/main.py"
-      - "src/ai_bridge/settings.py"
-      - "tests/test_gateway_*.py"
-      - "tests/test_ollama_gateway_headers.py"
-      - "tests/test_local_video_generator.py"
-      - "tests/test_ltx23_generator.py"
-      - "tests/test_ltx23_telegram_wrapper.py"
-      - "tests/test_ltx23_stage29.py"
-      - "tests/test_hermes_*.py"
-      - "tests/test_qwen_prompt_compiler_stage27.py"
-      - "tests/test_qwen_prompt_compiler_stage29.py"
-      - "tools/local_video/**"
-      - "tools/local_image/**"
-      - "tools/hermes_resource_queue.py"
-      - "tools/patch_hermes_global_resource_queue.py"
-      - "tools/install_global_resource_queue_v1.sh"
-      - "tools/rollback_global_resource_queue_v1.sh"
-      - "tools/install_hermes_local_video_stage23.sh"
-      - "tools/rollback_hermes_local_video_stage23.sh"
-      - "tools/install_ltx23_stage24.sh"
-      - "tools/rollback_ltx23_stage24.sh"
-      - "tools/apply_ltx23_standard_vae_compat_stage24.sh"
-      - "tools/cutover_hermes_ltx23_stage25.sh"
-      - "tools/rollback_hermes_ltx23_stage25.sh"
-      - "tools/cutover_hermes_ltx23_direct_stage26.sh"
-      - "tools/rollback_hermes_ltx23_direct_stage26.sh"
-      - "tools/patch_hermes_quick_command_args_stage26.py"
-      - "tools/cutover_hermes_ltx23_prompt_stage27.sh"
-      - "tools/rollback_hermes_ltx23_prompt_stage27.sh"
-      - "tools/cutover_hermes_foto_modern_stage28.sh"
-      - "tools/rollback_hermes_foto_modern_stage28.sh"
-      - "tools/patch_hermes_foto_quick_media_stage28.py"
-      - "tools/cutover_hermes_video_duration_i2v_stage29.sh"
-      - "tools/rollback_hermes_video_duration_i2v_stage29.sh"
-      - "tools/patch_hermes_wideo_quick_media_stage29.py"
-      - "tools/validate_ai_gateway_real_server.sh"
-      - "tools/install_ai_gateway_stage1.sh"
-      - "tools/cutover_ventilation_to_ai_gateway_stage2.sh"
-      - "tools/rollback_ventilation_ai_gateway_stage2.sh"
-      - "tools/audit_hermes_runtime_stage3.sh"
-      - "tools/cutover_hermes_to_ai_gateway_stage3.sh"
-      - "tools/rollback_hermes_ai_gateway_stage3.sh"
-      - "tools/validate_ai_gateway_priority_stage4.sh"
-      - "tools/configure_hermes_reasoning_none.sh"
-      - "tools/rollback_hermes_reasoning_none_stage9.sh"
-      - "tools/cutover_hermes_telegram_static_profile_stage22.sh"
-      - "tools/rollback_hermes_telegram_static_profile_stage22.sh"
-      - "deploy/ai-gateway.env.example"
-      - "deploy/systemd/ai-gateway.service"
-      - "docs/ADR-005_AI_GATEWAY_SCHEDULER_PL.md"
-      - "docs/AI_GATEWAY_PRODUCTION_PL.md"
-      - "docs/HERMES_LOCAL_VIDEO_STAGE23_PL.md"
-      - "pyproject.toml"
-      - ".github/workflows/ai-gateway-tests.yml"
+    branches:
+      - main
 
 jobs:
   test:
@@ -78,57 +15,25 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.14"
       - name: Install
         run: python -m pip install -e '.[dev]'
-      - name: Validate production scripts syntax
+      - name: Validate active deployment scripts
         run: |
-          bash -n tools/validate_ai_gateway_real_server.sh
-          bash -n tools/install_ai_gateway_stage1.sh
-          bash -n tools/cutover_ventilation_to_ai_gateway_stage2.sh
-          bash -n tools/rollback_ventilation_ai_gateway_stage2.sh
-          bash -n tools/audit_hermes_runtime_stage3.sh
-          bash -n tools/cutover_hermes_to_ai_gateway_stage3.sh
-          bash -n tools/rollback_hermes_ai_gateway_stage3.sh
-          bash -n tools/validate_ai_gateway_priority_stage4.sh
-          bash -n tools/configure_hermes_reasoning_none.sh
-          bash -n tools/rollback_hermes_reasoning_none_stage9.sh
-          bash -n tools/cutover_hermes_telegram_static_profile_stage22.sh
-          bash -n tools/rollback_hermes_telegram_static_profile_stage22.sh
-          bash -n tools/install_hermes_local_video_stage23.sh
-          bash -n tools/rollback_hermes_local_video_stage23.sh
-          bash -n tools/install_ltx23_stage24.sh
-          bash -n tools/rollback_ltx23_stage24.sh
-          bash -n tools/apply_ltx23_standard_vae_compat_stage24.sh
-          bash -n tools/cutover_hermes_ltx23_stage25.sh
-          bash -n tools/rollback_hermes_ltx23_stage25.sh
-          bash -n tools/cutover_hermes_ltx23_direct_stage26.sh
-          bash -n tools/rollback_hermes_ltx23_direct_stage26.sh
-          bash -n tools/cutover_hermes_ltx23_prompt_stage27.sh
-          bash -n tools/rollback_hermes_ltx23_prompt_stage27.sh
-          bash -n tools/cutover_hermes_foto_modern_stage28.sh
-          bash -n tools/rollback_hermes_foto_modern_stage28.sh
-          bash -n tools/cutover_hermes_video_duration_i2v_stage29.sh
-          bash -n tools/rollback_hermes_video_duration_i2v_stage29.sh
-          bash -n tools/install_global_resource_queue_v1.sh
-          bash -n tools/rollback_global_resource_queue_v1.sh
+          find deploy/stage-a deploy/stage-b deploy/stage-c deploy/stage-d -type f -name '*.sh' -print0 | sort -z | xargs -0 -n1 bash -n
           bash -n tools/local_video/generate-video-telegram
           bash -n tools/local_video/hermes-video-dispatch
-          python -m py_compile tools/local_video/generate_video.py
-          python -m py_compile tools/local_video/generate_ltx23.py
-          python -m py_compile tools/local_video/generate_ltx23_stage29.py
-          python -m py_compile tools/local_video/hermes_video_dispatch.py
-          python -m py_compile tools/local_video/hermes_video_dispatch_stage27.py
-          python -m py_compile tools/local_video/hermes_video_dispatch_stage29.py
-          python -m py_compile tools/local_video/hermes_video_dispatch_global.py
-          python -m py_compile tools/local_video/qwen_prompt_compiler.py
-          python -m py_compile tools/local_image/hermes_foto_dispatch.py
-          python -m py_compile tools/local_image/hermes_foto_dispatch_global.py
-          python -m py_compile tools/local_image/hermes_foto_prompt_compiler.py
-          python -m py_compile tools/hermes_resource_queue.py
-          python -m py_compile tools/patch_hermes_global_resource_queue.py
-          python -m py_compile tools/patch_hermes_quick_command_args_stage26.py
-          python -m py_compile tools/patch_hermes_foto_quick_media_stage28.py
-          python -m py_compile tools/patch_hermes_wideo_quick_media_stage29.py
-      - name: Test
+      - name: Compile Python sources
+        run: python -m compileall -q src tools/local_image tools/local_video
+      - name: Provider and contract tests
+        run: |
+          pytest tests/test_provider_contracts.py tests/test_agent_provider_contracts.py tests/test_media_provider_contracts.py tests/test_embedding_knowledge_contracts.py
+      - name: Stage D foundation tests
+        run: pytest tests/test_stage_d_foundation.py
+      - name: Full test suite
         run: pytest
+      - name: Validate Stage D release build
+        env:
+          PYTHON_BIN: python
+        run: |
+          bash deploy/stage-d/build_release.sh "$RUNNER_TEMP/stage-d-ci-release" "ci-${GITHUB_SHA::12}"
