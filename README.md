@@ -89,7 +89,7 @@ Aktualny etap:
 
 **D.0 — Foundation cleanup** przeszedł pełną walidację produkcyjną. Aktywny runtime to `stage-d0-foundation-20260921-r2`; realne WVC/Gateway/Qwen, media i Telegram smoke są PASS, a rollback D.0 r2 -> Stage C r3 -> D.0 r2 został zweryfikowany.
 
-`main` jest chroniony rulesetem `main-protection`; merge wymaga PR, zielonego `platform-ci` i aktualności gałęzi. Po merge następnym krokiem jest **D.1 — semantic priority classes**.
+`main` jest chroniony rulesetem `main-protection`; merge wymaga PR, zielonego `platform-ci` i aktualności gałęzi. Stage D.0 został zmergowany do `main` w PR #38. Aktualnym krokiem jest **D.1 — semantic priority classes**.
 
 Nie zmieniamy na D.0 modelu Qwen, GPU, backendu wiedzy ani implementacji schedulera od zera. Stage C r3 pozostaje zweryfikowanym rollback pointem.
 
