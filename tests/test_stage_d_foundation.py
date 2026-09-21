@@ -96,6 +96,10 @@ def test_stage_d_activation_preserves_idle_gate_and_previous_release_rollback() 
     assert "previous-release" in activate
     assert "previous-release" in rollback
     assert "95-ai-platform-release.conf" in activate
+    assert "resolve_bridge_health_url" in activate
+    assert "resolve_bridge_health_url" in rollback
+    assert "systemctl show ai-bridge.service -p Environment --value" in activate
+    assert "systemctl show ai-bridge.service -p Environment --value" in rollback
     assert "http://192.168.1.55" not in activate
     assert "http://192.168.1.55" not in rollback
 
