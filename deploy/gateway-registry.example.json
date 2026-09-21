@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "nodes": [
+    {
+      "node_id": "ai-node-01"
+    }
+  ],
+  "capabilities": [
+    {
+      "capability_id": "chat",
+      "provider_types": [
+        "llm"
+      ]
+    },
+    {
+      "capability_id": "reasoning",
+      "provider_types": [
+        "llm",
+        "agent"
+      ]
+    },
+    {
+      "capability_id": "text-generation",
+      "provider_types": [
+        "llm"
+      ]
+    },
+    {
+      "capability_id": "structured-generation",
+      "provider_types": [
+        "llm"
+      ]
+    },
+    {
+      "capability_id": "embeddings",
+      "provider_types": [
+        "llm"
+      ]
+    },
+    {
+      "capability_id": "image-generation",
+      "provider_types": [
+        "media-generation"
+      ]
+    },
+    {
+      "capability_id": "image-edit",
+      "provider_types": [
+        "media-generation"
+      ]
+    },
+    {
+      "capability_id": "video-generation",
+      "provider_types": [
+        "media-generation"
+      ]
+    },
+    {
+      "capability_id": "tools",
+      "provider_types": [
+        "agent"
+      ]
+    },
+    {
+      "capability_id": "streaming",
+      "provider_types": [
+        "llm",
+        "agent"
+      ]
+    },
+    {
+      "capability_id": "external-reservation",
+      "provider_types": []
+    },
+    {
+      "capability_id": "unknown",
+      "provider_types": []
+    }
+  ],
+  "providers": [
+    {
+      "provider_id": "ollama-local",
+      "provider_type": "llm",
+      "node_id": "ai-node-01",
+      "capabilities": [
+        "chat",
+        "reasoning",
+        "text-generation",
+        "structured-generation",
+        "embeddings",
+        "streaming"
+      ]
+    },
+    {
+      "provider_id": "comfyui-local",
+      "provider_type": "media-generation",
+      "node_id": "ai-node-01",
+      "capabilities": [
+        "image-generation",
+        "image-edit",
+        "video-generation"
+      ]
+    },
+    {
+      "provider_id": "hermes-local",
+      "provider_type": "agent",
+      "node_id": "ai-node-01",
+      "capabilities": [
+        "reasoning",
+        "tools",
+        "streaming"
+      ]
+    }
+  ]
+}

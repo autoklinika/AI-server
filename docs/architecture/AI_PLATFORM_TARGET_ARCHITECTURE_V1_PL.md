@@ -2,7 +2,7 @@
 
 **Status:** ACTIVE / TARGET ARCHITECTURE v1 — obowiązujący desired state w `main`  
 **Data bazowa:** 2026-09-19  
-**Ostatnia aktualizacja:** 2026-09-22 (implementacja D.2 do walidacji supervisora; brak nowej walidacji runtime)
+**Ostatnia aktualizacja:** 2026-09-22 (implementacja D.3 do walidacji supervisora; brak nowej walidacji runtime)
 **Repozytorium:** `autoklinika/AI-server`  
 **Branch:** `main`; zmiany Stage D rozwijane przez kontrolowane feature branche  
 **Podstawa:** PRE_AUDIT principles + AI Server Architecture & Runtime Audit v1.2
@@ -360,7 +360,20 @@ bez request content: stabilne UUID request/job, domain/capability/class, lifecyc
 UTC timestamps i assignment istniejącego upstreamu. Terminalna historia jest
 ograniczona do 128 rekordów w RAM. Rezerwacja external lease nie udaje joba
 wykonania providera. Szczegóły i przejścia: [Component Contracts §7.2](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#72-job-model--stage-d2).
-D.3 registry/routing i D.4 unified admission pozostają poza implementacją.
+D.3 dodaje registry opisany poniżej; D.4 unified admission pozostaje poza implementacją.
+
+### 8.5. Descriptors D.3 — implementacja do walidacji supervisora
+
+Niemutowalny `DescriptorRegistry` zawiera wersjonowane statyczne descriptors
+capability/provider/node. Pierwsze wpisy to `ollama-local`, `comfyui-local`,
+`hermes-local` na jednym `Settings.node_id`. `/status.registry` publikuje wyłącznie
+configured inventory, bez twierdzeń o live readiness. Domyślna konfiguracja jest
+w pakiecie; opcjonalne JSON `AI_BRIDGE_GATEWAY_REGISTRY` musi zachować bieżące
+single-node bindings. Kontrakt danych pozwala opisać kilka node'ów, ale Gateway D.3
+odrzuca taką konfigurację. Nie ma discovery, failover, routingu ani zmian modeli.
+Assignment zwykłego HTTP jest walidowany względem registry przy `running`;
+external lease nadal ma assignment null. Szczegóły:
+[Component Contracts §8.1](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#81-static-descriptors--stage-d3).
 
 
 ---

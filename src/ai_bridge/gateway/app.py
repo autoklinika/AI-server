@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from ai_bridge.settings import Settings, get_settings
+from ai_bridge.providers.registry import local_descriptor_registry
 
 from .priority import PriorityClass, priority_for_class
 from .jobs import JobLifecycle, JobMetadata
@@ -132,9 +133,13 @@ def create_gateway_app(
     upstream_transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
     resolved = settings or get_settings()
+    registry = resolved.gateway_registry or local_descriptor_registry(resolved.node_id)
+    registry.validate_local_gateway(resolved.node_id)
+    upstream_provider = registry.provider("ollama-local")
     scheduler = PriorityScheduler(
         max_concurrency=resolved.gateway_max_concurrency,
         max_queue_size=resolved.gateway_max_queue_size,
+        registry=registry,
     )
     resource_leases = ResourceLeaseRegistry(
         scheduler,
@@ -158,6 +163,7 @@ def create_gateway_app(
             app.state.upstream = client
             app.state.scheduler = scheduler
             app.state.resource_leases = resource_leases
+            app.state.descriptor_registry = registry
 
             # External media workers heartbeat their reservation. Reap only idle
             # leases whose worker disappeared so a crash cannot wedge the single
@@ -320,7 +326,8 @@ def create_gateway_app(
         if not _requests_stream(body):
             try:
                 if not lease_id:
-                    await scheduler.mark_running(ticket.job_id, provider="ollama-local", node=resolved.node_id)
+                    await scheduler.mark_running(ticket.job_id, provider=upstream_provider.provider_id,
+                                                 node=upstream_provider.node_id)
                 upstream = await client.request(
                     request.method, upstream_path, content=body,
                     headers=_forward_request_headers(request),
@@ -348,7 +355,8 @@ def create_gateway_app(
         )
         try:
             if not lease_id:
-                await scheduler.mark_running(ticket.job_id, provider="ollama-local", node=resolved.node_id)
+                await scheduler.mark_running(ticket.job_id, provider=upstream_provider.provider_id,
+                                             node=upstream_provider.node_id)
             upstream = await stream_context.__aenter__()
         except asyncio.CancelledError:
             await finish(JobLifecycle.CANCELLED)
@@ -410,6 +418,7 @@ def create_gateway_app(
     async def status() -> dict[str, object]:
         snapshot = await scheduler.snapshot()
         snapshot["resource_leases"] = await resource_leases.snapshot()
+        snapshot["registry"] = registry.snapshot()
         return snapshot
 
     # External Resource Manager API. It is intentionally served by the existing
