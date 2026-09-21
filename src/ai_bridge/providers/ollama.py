@@ -26,7 +26,7 @@ class OllamaAdapter:
     client: OllamaClient
     default_model: str
     provider_id: str = "ollama-local"
-    node_id: str = "ai-node-01"
+    node_id: str | None = None
 
     @classmethod
     def from_endpoint(
@@ -39,7 +39,7 @@ class OllamaAdapter:
         request_source: str | None = None,
         request_priority: int | None = None,
         provider_id: str = "ollama-local",
-        node_id: str = "ai-node-01",
+        node_id: str | None = None,
     ) -> "OllamaAdapter":
         return cls(
             client=OllamaClient(
