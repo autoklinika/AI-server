@@ -18,21 +18,19 @@
 
 ---
 
-## 2. Stan startowy z audytu
+## 2. Stan bieżący po Stage C
 
-Najważniejsze fakty wpływające na migrację:
+Stan zwalidowany 2026-09-21:
 
-- produkcja jest funkcjonalna,
-- brak failed systemd units,
-- AI Gateway działa i jest dobrym fundamentem Resource Managera,
-- PostgreSQL ma zachowaną telemetrię WVC,
-- Hermes ma dirty checkout i branch divergence,
-- AI Bridge i AI Gateway nie mają jednolitego release/build modelu,
-- backendy Ollama/ComfyUI są dostępne w LAN,
-- host firewall ma INPUT accept,
-- istnieje dużo historycznych worktree/stage/backup artifacts,
-- WVC jest obecnie odłączony,
-- timer analiz WVC nadal działa i wymaga weryfikacji `no_fresh_data`.
+- Stage A: recovery baseline i release model działają; produkcja używa `/opt/ai-platform/releases` + atomowego `/opt/ai-platform/current`;
+- Stage B: Ollama, ComfyUI i AI Gateway są localhost-only; host firewall działa deny-by-default;
+- Stage C: provider abstraction działa (`LLMProvider`, `AgentProvider`, `MediaGenerationProvider`, `EmbeddingProvider`, `KnowledgeBackend`);
+- aktywny zwalidowany runtime Stage C to `stage-c-provider-abstraction-20260921-r3`;
+- WVC ingest działa i podczas końcowej walidacji zwracał ciągłe HTTP 200; lokalny backlog CM5 był pusty;
+- media i Telegram `/wideo` przeszły real smoke/E2E;
+- Resource Manager v1 (`PriorityScheduler` + `ResourceLeaseRegistry`) pozostaje fundamentem Stage D;
+- znanym długiem pozostaje Hermes patch-in-place; Stage D nie może go powiększać;
+- przed produkcyjnym cutoverem Stage D trzeba zamknąć D.0: CI, canonical systemd, Gateway-default policy i Stage-D-compatible release tooling.
 
 ---
 
@@ -489,21 +487,16 @@ Dopiero wtedy zaczynamy następny etap.
 
 ---
 
-## 20. Pierwszy realny task implementacyjny
+## 20. Aktualny realny task implementacyjny
 
-Pierwszym taskiem po zatwierdzeniu architektury powinno być:
+Stage A, B i C zostały zakończone i zwalidowane. Aktualnym etapem jest:
 
-**Stage A — Recovery Baseline + Reproducible Release Foundation**
+**Stage D — Resource Manager v2**, rozpoczynany od **D.0 — Foundation cleanup**.
 
-Nie zmienia zachowania AI. Tworzy fundament, na którym bezpiecznie wykonamy wszystkie kolejne migracje.
+D.0 nie zmienia jeszcze semantyki schedulera. Najpierw zamyka luki desired state i deployment wykazane przez audyt po Stage C:
 
-Zakres Stage A:
-
-- snapshot/backup,
-- capture Hermes diff,
-- release manifest,
-- build stamp,
-- wersjonowany deployment,
-- deployment validation,
-- rollback,
-- cleanup po testach.
+- CI chroniące `main`,
+- canonical release-managed systemd units,
+- Gateway jako domyślna ścieżka WVC analysis,
+- Stage-D-compatible release/deploy tooling,
+- aktualna dokumentacja source-of-truth.
