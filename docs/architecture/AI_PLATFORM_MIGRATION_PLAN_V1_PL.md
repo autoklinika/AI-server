@@ -508,7 +508,7 @@ Stage A, B i C zostały zakończone i zwalidowane.
 
 Repo-governance gate jest zamknięty: `main-protection` wymaga PR, `platform-ci` i aktualności gałęzi przed merge.
 
-Stage D.0 został zmergowany do `main` w PR #38. Aktualnym etapem jest **D.1 — semantic priority classes**.
+Stage D.0 został zmergowany do `main` w PR #38. Poprzedni krok implementacyjny: **D.1 — semantic priority classes**; aktualny D.2 opisano poniżej.
 
 
 ### Decyzja implementacyjna D.1 — 2026-09-21
@@ -523,3 +523,14 @@ Status implementacji: **READY FOR PRODUCTION VALIDATION**; nie oznacza zamknięc
 etapu ani wdrożenia. Raport: [Stage D.1](../reports/AI_PLATFORM_STAGE_D1_SEMANTIC_PRIORITY_2026-09-21_PL.md).
 D.2–D.6 pozostają poza zakresem: Job model, descriptors/routing, unified admission,
 compatibility migration oraz pełna walidacja produkcyjna.
+
+
+### Decyzja implementacyjna D.2 — 2026-09-22
+
+Aktualny krok implementacyjny: **D.2 — Job model**. Status: **READY FOR SUPERVISOR
+VALIDATION**, nie COMPLETE ani potwierdzenie produkcji. Metadata-only JobState
+rozszerza istniejący scheduler i status addytywnie, zachowując D.1 oraz leases.
+Nie dodaje registry/routing (D.3), unified admission (D.4) ani Platform API.
+[Kontrakt §7.2](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#72-job-model--stage-d2)
+i [raport D.2](../reports/AI_PLATFORM_STAGE_D2_JOB_MODEL_2026-09-22_PL.md).
+Historyczne informacje o walidacji D.0/D.1 powyżej pozostają dowodem etapów.

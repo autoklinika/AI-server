@@ -11,7 +11,8 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from ai_bridge.settings import Settings, get_settings
 
-from .priority import priority_for_class
+from .priority import PriorityClass, priority_for_class
+from .jobs import JobLifecycle, JobMetadata
 from .resource_leases import (
     ResourceLeaseNotActive,
     ResourceLeaseNotFound,
@@ -66,17 +67,18 @@ def _class_priority(payload: dict, default: int) -> int:
         raise HTTPException(status_code=400, detail="invalid priority_class") from exc
 
 
-def _consume_priority_class(body: bytes, default: int) -> tuple[bytes, int]:
+def _consume_priority_class(body: bytes, default: int) -> tuple[bytes, int, PriorityClass | None]:
     """Consume Gateway metadata while preserving legacy bodies byte-for-byte."""
     try:
         payload = json.loads(body)
     except (json.JSONDecodeError, UnicodeDecodeError):
-        return body, default
+        return body, default, None
     if not isinstance(payload, dict) or "priority_class" not in payload:
-        return body, default
+        return body, default, None
     priority = _class_priority(payload, default)
+    semantic = PriorityClass("infrastructure" if payload["priority_class"] == "critical" else payload["priority_class"])
     del payload["priority_class"]
-    return json.dumps(payload).encode("utf-8"), priority
+    return json.dumps(payload).encode("utf-8"), priority, semantic
 
 
 def _requests_stream(body: bytes) -> bool:
@@ -107,6 +109,8 @@ def _forward_response_headers(response: httpx.Response) -> dict[str, str]:
 
 def _diagnostic_headers(ticket: SchedulerTicket) -> dict[str, str]:
     return {
+        "X-AI-Request-Id": ticket.request_id,
+        "X-AI-Job-Id": ticket.platform_job_id,
         "X-AI-Gateway-Job-Id": str(ticket.job_id),
         "X-AI-Gateway-Priority": str(ticket.priority),
         "X-AI-Gateway-Wait-Ms": f"{ticket.wait_ms:.3f}",
@@ -221,7 +225,7 @@ def create_gateway_app(
             LOGGER.warning(
                 "AI Gateway upstream unavailable path=%s error=%s",
                 upstream_path,
-                exc,
+                type(exc).__name__,
             )
             return JSONResponse(status_code=502, content={"error": "ollama_unavailable"})
         return Response(
@@ -277,134 +281,112 @@ def create_gateway_app(
         default_source: str,
     ) -> Response:
         body = await request.body()
-        body, class_priority = _consume_priority_class(body, default_priority)
+        body, class_priority, semantic = _consume_priority_class(body, default_priority)
         priority = _parse_priority(request, class_priority)
         source = _parse_source(request, default_source)
+        # Fixed compatibility-route metadata; never infer identity from prompts,
+        # model names, arbitrary source headers or request fields.
+        metadata = JobMetadata(
+            domain="wvc" if default_source == "ventilation" else "shared",
+            capability=("embeddings" if upstream_path in {
+                "/api/embed", "/api/embeddings", "/v1/embeddings"
+            } else "reasoning" if default_source == "ventilation" else
+                "text-generation" if upstream_path == "/api/generate" else "chat"),
+            priority_class=semantic,
+        )
         client: httpx.AsyncClient = request.app.state.upstream
-
         lease_id, ticket, release_after, lease_error = await leased_ticket(request)
         if lease_error is not None:
             return lease_error
-
-        if _requests_stream(body):
-            if ticket is None:
-                try:
-                    ticket = await scheduler.acquire(priority=priority, source=source)
-                except SchedulerQueueFull:
-                    return await queue_full_response()
-
-            stream_context = client.stream(
-                request.method,
-                upstream_path,
-                content=body,
-                headers=_forward_request_headers(request),
-            )
+        if ticket is None:
             try:
-                upstream = await stream_context.__aenter__()
-            except httpx.RequestError as exc:
-                if lease_id:
-                    await resource_leases.end_use(
-                        lease_id,
-                        release=release_after,
-                    )
-                else:
-                    await scheduler.release(ticket)
-                LOGGER.warning(
-                    "AI Gateway upstream unavailable path=%s error=%s",
-                    upstream_path,
-                    exc,
-                )
-                return JSONResponse(
-                    status_code=502,
-                    content={"error": "ollama_unavailable"},
-                )
-            except BaseException:
-                if lease_id:
-                    await resource_leases.end_use(
-                        lease_id,
-                        release=release_after,
-                    )
-                else:
-                    await scheduler.release(ticket)
-                raise
-
-            async def iterator():
-                try:
-                    async for chunk in upstream.aiter_raw():
-                        yield chunk
-                finally:
-                    await stream_context.__aexit__(None, None, None)
-                    if lease_id:
-                        await resource_leases.end_use(
-                            lease_id,
-                            release=release_after,
-                        )
-                    else:
-                        await scheduler.release(ticket)
-
-            headers = _forward_response_headers(upstream)
-            headers.update(_diagnostic_headers(ticket))
-            return StreamingResponse(
-                iterator(),
-                status_code=upstream.status_code,
-                headers=headers,
-            )
-
-        if ticket is not None:
-            # The external worker owns the scheduler slot. It may keep the lease
-            # after this Qwen call (media) or request automatic release (normal
-            # Telegram conversation) through the control header.
-            try:
-                upstream = await client.request(
-                    request.method,
-                    upstream_path,
-                    content=body,
-                    headers=_forward_request_headers(request),
-                )
-            except httpx.RequestError as exc:
-                LOGGER.warning(
-                    "AI Gateway upstream unavailable path=%s error=%s",
-                    upstream_path,
-                    exc,
-                )
-                return JSONResponse(
-                    status_code=502,
-                    content={"error": "ollama_unavailable"},
-                )
-            finally:
-                await resource_leases.end_use(
-                    lease_id,
-                    release=release_after,
-                )
-        else:
-            try:
-                async with scheduler.slot(priority=priority, source=source) as ticket:
-                    upstream = await client.request(
-                        request.method,
-                        upstream_path,
-                        content=body,
-                        headers=_forward_request_headers(request),
-                    )
+                ticket = await scheduler.acquire(priority=priority, source=source, metadata=metadata)
             except SchedulerQueueFull:
                 return await queue_full_response()
-            except httpx.RequestError as exc:
-                LOGGER.warning(
-                    "AI Gateway upstream unavailable path=%s error=%s",
-                    upstream_path,
-                    exc,
+
+        async def finish(state: JobLifecycle) -> None:
+            if lease_id:
+                # The lease describes the reservation, not each provider call.
+                await resource_leases.end_use(lease_id, release=release_after)
+            else:
+                await scheduler.release(ticket, state=state)
+
+        def unavailable() -> Response:
+            LOGGER.warning("AI Gateway upstream unavailable path=%s", upstream_path)
+            return JSONResponse(status_code=502, content={"error": "ollama_unavailable"},
+                                headers=_diagnostic_headers(ticket))
+
+        state = JobLifecycle.COMPLETED
+        if not _requests_stream(body):
+            try:
+                if not lease_id:
+                    await scheduler.mark_running(ticket.job_id, provider="ollama-local", node=resolved.node_id)
+                upstream = await client.request(
+                    request.method, upstream_path, content=body,
+                    headers=_forward_request_headers(request),
                 )
-                return JSONResponse(
-                    status_code=502,
-                    content={"error": "ollama_unavailable"},
-                )
+                if upstream.is_error:
+                    state = JobLifecycle.FAILED
+            except asyncio.CancelledError:
+                state = JobLifecycle.CANCELLED
+                raise
+            except httpx.RequestError:
+                state = JobLifecycle.FAILED
+                return unavailable()
+            except BaseException:
+                state = JobLifecycle.FAILED
+                raise
+            finally:
+                await finish(state)
+            headers = _forward_response_headers(upstream)
+            headers.update(_diagnostic_headers(ticket))
+            return Response(content=upstream.content, status_code=upstream.status_code, headers=headers)
+
+        stream_context = client.stream(
+            request.method, upstream_path, content=body,
+            headers=_forward_request_headers(request),
+        )
+        try:
+            if not lease_id:
+                await scheduler.mark_running(ticket.job_id, provider="ollama-local", node=resolved.node_id)
+            upstream = await stream_context.__aenter__()
+        except asyncio.CancelledError:
+            await finish(JobLifecycle.CANCELLED)
+            raise
+        except httpx.RequestError:
+            await finish(JobLifecycle.FAILED)
+            return unavailable()
+        except BaseException:
+            await finish(JobLifecycle.FAILED)
+            raise
+
+        async def iterator():
+            outcome = JobLifecycle.FAILED if upstream.is_error else JobLifecycle.COMPLETED
+            try:
+                async for chunk in upstream.aiter_raw():
+                    yield chunk
+            except (asyncio.CancelledError, GeneratorExit):
+                outcome = JobLifecycle.CANCELLED
+                raise
+            except BaseException:
+                outcome = JobLifecycle.FAILED
+                raise
+            finally:
+                try:
+                    await stream_context.__aexit__(None, None, None)
+                except asyncio.CancelledError:
+                    outcome = JobLifecycle.CANCELLED
+                    raise
+                except BaseException:
+                    if outcome == JobLifecycle.COMPLETED:
+                        outcome = JobLifecycle.FAILED
+                    raise
+                finally:
+                    await finish(outcome)
 
         headers = _forward_response_headers(upstream)
         headers.update(_diagnostic_headers(ticket))
-        return Response(
-            content=upstream.content,
-            status_code=upstream.status_code,
-            headers=headers,
-        )
+        return StreamingResponse(iterator(), status_code=upstream.status_code, headers=headers)
 
     @app.get("/health")
     async def health(request: Request) -> dict[str, object]:
@@ -457,6 +439,9 @@ def create_gateway_app(
             payload = await resource_leases.create(
                 priority=priority,
                 source=source,
+                metadata=JobMetadata(capability="external-reservation", priority_class=(
+                    PriorityClass("infrastructure" if body["priority_class"] == "critical" else body["priority_class"])
+                    if "priority_class" in body else None)),
             )
         except SchedulerQueueFull:
             return await queue_full_response()
