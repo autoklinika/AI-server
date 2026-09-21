@@ -95,12 +95,10 @@ W przypadku sprzeczności historyczny stage report nie może nadpisywać nowszej
 
 Stage A, Stage B i Stage C są zakończone i zwalidowane.
 
-Obecny etap to **Stage D — Resource Manager v2**, rozpoczynany przez **D.0 — Foundation cleanup**:
+**Stage D.0 — Foundation cleanup** jest technicznie zakończony i zwalidowany na produkcji. Aktywny runtime to `stage-d0-foundation-20260921-r2`; rollback do Stage C r3 i ponowna aktywacja r2 zostały realnie sprawdzone.
 
-- CI na PR/push do `main`,
-- canonical release-managed systemd,
-- Gateway jako domyślna ścieżka inference dla WVC,
-- nowe `deploy/stage-d/`,
-- synchronizacja current desired-state docs.
+Przed merge D.0 pozostaje repo-governance gate: branch protection / required check `platform-ci` dla `main`.
 
-Zakres i ryzyka D.0 są śledzone w issue #37 oraz w audycie po Stage C.
+Po merge kolejnym krokiem Stage D jest **D.1 — semantic priority classes**.
+
+Szczegółowy handoff: `../reports/AI_PLATFORM_STAGE_D0_FOUNDATION_2026-09-21_PL.md`.
