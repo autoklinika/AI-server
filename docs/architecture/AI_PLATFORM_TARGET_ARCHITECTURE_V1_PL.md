@@ -1,9 +1,10 @@
 # AI Platform — Target Architecture v1
 
-**Status:** POST-AUDIT / TARGET ARCHITECTURE v1 — kandydat do włączenia do `main`  
-**Data:** 2026-09-19  
+**Status:** ACTIVE / TARGET ARCHITECTURE v1 — obowiązujący desired state w `main`  
+**Data bazowa:** 2026-09-19  
+**Ostatnia aktualizacja:** 2026-09-21 (Stage D.0)  
 **Repozytorium:** `autoklinika/AI-server`  
-**Branch roboczy:** `architecture/ai-platform-target-v1-20260919`  
+**Branch:** `main`; zmiany Stage D rozwijane przez kontrolowane feature branche  
 **Podstawa:** PRE_AUDIT principles + AI Server Architecture & Runtime Audit v1.2
 
 > Ten dokument zastępuje rolę dokumentu `PRE_AUDIT_AI_PLATFORM_ARCHITECTURE_PRINCIPLES_2026-09-16_PL.md`.  
@@ -579,7 +580,7 @@ Konteneryzacja jest dopuszczalna i prawdopodobnie użyteczna dla nowych stateles
 
 ## 14. Security architecture
 
-Audyt wykazał obecnie UFW inactive i host INPUT policy accept.
+Stan po Stage B, potwierdzony po Stage C: Ollama, ComfyUI i AI Gateway są localhost-only, AI Bridge pozostaje wymaganym API LAN, a host firewall działa deny-by-default.
 
 Docelowe zasady:
 
