@@ -1,5 +1,5 @@
 [Unit]
-Description=AI Gateway priority scheduler for local inference
+Description=AI Gateway / Resource Manager admission service
 After=network-online.target ollama.service
 Wants=network-online.target
 Requires=ollama.service
@@ -8,9 +8,10 @@ Requires=ollama.service
 Type=simple
 User=harrypotter
 Group=harrypotter
-WorkingDirectory=/opt/ai-gateway
+WorkingDirectory=/opt/ai-platform/current/services/ai-gateway
 EnvironmentFile=/etc/ai-gateway/ai-gateway.env
-ExecStart=/opt/ai-gateway/.venv/bin/python -m ai_bridge.gateway.main
+Environment="PYTHONPATH=/opt/ai-platform/current/services/ai-gateway/src"
+ExecStart=/opt/ai-platform/current/services/ai-gateway/.venv/bin/python -m ai_bridge.gateway.main
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
