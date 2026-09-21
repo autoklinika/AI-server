@@ -508,4 +508,4 @@ Stage A, B i C zostały zakończone i zwalidowane.
 
 Repo-governance gate jest zamknięty: `main-protection` wymaga PR, `platform-ci` i aktualności gałęzi przed merge.
 
-Po merge D.0 kolejnym etapem jest **D.1 — semantic priority classes**.
+Stage D.0 został zmergowany do `main` w PR #38. Aktualnym etapem jest **D.1 — semantic priority classes**.
