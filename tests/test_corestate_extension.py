@@ -139,6 +139,28 @@ def integrated_sample():
                 "timezone": "Europe/Warsaw",
                 "zones": [],
             },
+            "calendar": {
+                "available": True,
+                "current_period_end": None,
+                "current_period_start": None,
+                "effective_mode": "STANDBY",
+                "effective_profile": "DEFAULT_STANDBY",
+                "evaluated_at_utc": "2026-08-27T10:50:58.491385+00:00",
+                "last_error": "",
+                "local_time": "2026-08-27T12:50:58.491385+02:00",
+                "next_active_period": None,
+                "next_transition": None,
+                "next_transition_reason": None,
+                "next_wake": None,
+                "phase": "INACTIVE",
+                "rule_id": "DEFAULT_STANDBY",
+                "rule_source": "DEFAULT",
+                "timezone": "Europe/Warsaw",
+            },
+            "power_scheduler": {
+                "available": True,
+                "control_policy_applied": False,
+            },
             "shadow_automation": {
                 "enabled": True,
                 "actuation_supported": False,
@@ -206,6 +228,10 @@ def test_integrated_corestate_extensions_survive_schema_serialization():
     assert metrics["tacho"]["chip_path"] == "/dev/gpiochip0"
     assert metrics["zigbee"]["sensor_list"][0]["friendly_name"] == "temp_zew"
     assert metrics["schedule"]["available"] is True
+    assert metrics["calendar"]["effective_profile"] == "DEFAULT_STANDBY"
+    assert metrics["calendar"]["phase"] == "INACTIVE"
+    assert metrics["power_scheduler"]["available"] is True
+    assert metrics["power_scheduler"]["control_policy_applied"] is False
     assert metrics["shadow_automation"]["actuation_supported"] is False
     assert metrics["alert_v2"]["runtime_mode"] == "read_only_mapping"
     assert metrics["alert_v2"]["control_policy_applied"] is False
