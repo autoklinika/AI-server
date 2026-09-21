@@ -75,7 +75,6 @@ else
 fi
 
 TMP="$(mktemp)"
-trap 'rm -f "$TMP"' RETURN
 cat > "$TMP" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
