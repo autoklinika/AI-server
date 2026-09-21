@@ -85,11 +85,13 @@ Zakończone etapy migracji:
 
 Aktualny etap:
 
-**Stage D — Resource Manager v2**, zaczynając od **D.0 — Foundation cleanup**.
+**Stage D — Resource Manager v2**.
 
-D.0 zamyka cztery blokery przed produkcyjnym cutoverem Resource Manager v2: CI chroniące `main`, canonical release-managed systemd units, Gateway jako domyślną ścieżkę WVC analysis oraz nowe `deploy/stage-d/` release tooling.
+**D.0 — Foundation cleanup** przeszedł pełną walidację produkcyjną. Aktywny runtime to `stage-d0-foundation-20260921-r2`; realne WVC/Gateway/Qwen, media i Telegram smoke są PASS, a rollback D.0 r2 -> Stage C r3 -> D.0 r2 został zweryfikowany.
 
-Nie zmieniamy na tym etapie modelu Qwen, GPU, backendu wiedzy ani implementacji schedulera od zera. Aktywny Stage C pozostaje rollback pointem do czasu pełnej walidacji Stage D.
+Przed merge D.0 pozostaje włączenie branch protection / required check `platform-ci` dla `main`. Po merge następnym krokiem jest **D.1 — semantic priority classes**.
+
+Nie zmieniamy na D.0 modelu Qwen, GPU, backendu wiedzy ani implementacji schedulera od zera. Stage C r3 pozostaje zweryfikowanym rollback pointem.
 
 AI Bridge pozostaje aktywnym elementem obecnego runtime, ale nie jest docelową nazwą całej platformy. Docelowa AI Platform obsługuje wiele domen przez stabilne kontrakty i wymienne adaptery providerów.
 
