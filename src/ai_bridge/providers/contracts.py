@@ -156,3 +156,54 @@ class AgentProvider(Protocol):
 
     def describe(self) -> ProviderDescriptor:
         ...
+
+
+MediaCapability = Literal[
+    "image-generation",
+    "image-edit",
+    "video-generation",
+]
+
+
+@dataclass(frozen=True)
+class MediaGenerationRequest:
+    request_id: str
+    capability: MediaCapability
+    profile: str
+    prompt: str
+    output_dir: str
+    timeout_seconds: float = 3600.0
+    input_artifacts: tuple[str, ...] = ()
+    parameters: dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class MediaArtifact:
+    uri: str
+    media_type: str
+    size_bytes: int | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class MediaGenerationResult:
+    request_id: str
+    capability: MediaCapability
+    profile: str
+    artifacts: tuple[MediaArtifact, ...]
+    provider: str
+    duration_ms: float | None = None
+    provider_metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@runtime_checkable
+class MediaGenerationProvider(Protocol):
+    def generate(self, request: MediaGenerationRequest) -> MediaGenerationResult:
+        ...
+
+    def health(self) -> ProviderHealth:
+        ...
+
+    def describe(self) -> ProviderDescriptor:
+        ...
