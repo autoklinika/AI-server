@@ -97,6 +97,10 @@ def test_stage_d_activation_preserves_idle_gate_and_previous_release_rollback() 
     assert "AI Gateway idle (0/0/0)" in rollback
     assert "previous-release" in activate
     assert "previous-release" in rollback
+    assert 'EXPLICIT_RELEASE_ID="${1:-}"' in rollback
+    assert 'PREVIOUS="$RELEASES/$EXPLICIT_RELEASE_ID"' in rollback
+    assert "rollback release checksum validation failed" in rollback
+    assert "rollback target is already active" in rollback
     assert "95-ai-platform-release.conf" in activate
     assert "resolve_bridge_health_url" in activate
     assert "resolve_bridge_health_url" in rollback
