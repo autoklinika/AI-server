@@ -128,6 +128,8 @@ def test_wvc_runtime_validation_is_safe_for_disconnected_cm5() -> None:
     )
     assert "ventilation-d0-validation" in text
     assert '"X-AI-Priority": "10"' in text
+    assert 'Settings.model_fields["ollama_model"].default' in text
+    assert "AI_BRIDGE_OLLAMA_MODEL missing" not in text
     assert "/api/v1/ventilation/telemetry/batches" in text
     assert "openapi.json" in text
     assert "POST" in text
