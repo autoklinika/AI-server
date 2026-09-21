@@ -131,6 +131,12 @@ def test_canonical_systemd_install_and_restore_are_non_restarting() -> None:
     assert "systemctl restart" not in install
     assert "systemctl restart" not in restore
     assert "95-ai-platform-release.conf" in install
+    assert "90-production-source.conf" in install
+    assert "10-ai-gateway.conf" in install
+    assert "/opt/ai-bridge/src" in install
+    assert "/opt/ai-bridge/.venv/bin/ai-bridge-analyze-ventilation" in install
+    assert "90-production-source.conf" in restore
+    assert "10-ai-gateway.conf" in restore
     assert "95-ai-platform-release.conf" in restore
     assert "systemctl daemon-reload" in install
     assert "systemctl daemon-reload" in restore
