@@ -62,14 +62,18 @@ def validate_frames(frames: int) -> None:
         raise ValueError("LTX frame count must follow 8*n+1")
 
 
-def preflight(comfy_url: str, *, require_upscale: bool = False, require_i2v: bool = False) -> dict:
+def preflight_from_info(
+    info: dict,
+    *,
+    require_upscale: bool = False,
+    require_i2v: bool = False,
+) -> dict:
     # Stage29 deliberately uses ComfyUI core VAEDecodeTiled for both standard and HQ output.
     # This is the official LTX-2.3 blueprint decoder and avoids decoding the entire temporal
     # latent in one VAE pass on the 128 GiB UMA host.
-    out = base.preflight(comfy_url, require_upscale=False)
+    out = base.preflight_from_info(info, require_upscale=False)
     missing_nodes = set(out.get("missing_nodes") or [])
     missing_models = set(out.get("missing_models") or [])
-    info = base.req_json(comfy_url, "/object_info", timeout=60)
 
     if TILED_VAE_NODE not in info:
         missing_nodes.add(TILED_VAE_NODE)
@@ -92,6 +96,20 @@ def preflight(comfy_url: str, *, require_upscale: bool = False, require_i2v: boo
         "vae_tile_size": TILED_VAE_TILE_SIZE,
         "vae_temporal_size": TILED_VAE_TEMPORAL_SIZE,
     }
+
+
+def preflight(
+    comfy_url: str,
+    *,
+    require_upscale: bool = False,
+    require_i2v: bool = False,
+) -> dict:
+    info = base.req_json(comfy_url, "/object_info", timeout=60)
+    return preflight_from_info(
+        info,
+        require_upscale=require_upscale,
+        require_i2v=require_i2v,
+    )
 
 
 def _apply_tiled_vae_decode(graph: dict, *, upscale_2x: bool) -> None:
