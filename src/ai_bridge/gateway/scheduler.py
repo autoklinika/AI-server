@@ -3,10 +3,13 @@ from __future__ import annotations
 import asyncio
 import heapq
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import count
 from time import monotonic
 from typing import AsyncIterator
+from collections import OrderedDict
+
+from .jobs import JobLifecycle, JobMetadata, JobState, TERMINAL_STATES
 
 
 class SchedulerQueueFull(RuntimeError):
@@ -20,6 +23,8 @@ class SchedulerTicket:
     source: str
     queued_at_monotonic: float
     started_at_monotonic: float
+    request_id: str
+    platform_job_id: str
 
     @property
     def wait_ms(self) -> float:
@@ -58,11 +63,16 @@ class PriorityScheduler:
     those workers hold an HTTP request open while waiting.
     """
 
-    def __init__(self, *, max_concurrency: int = 1, max_queue_size: int = 128) -> None:
+    def __init__(self, *, max_concurrency: int = 1, max_queue_size: int = 128, history_limit: int = 128) -> None:
         if max_concurrency < 1:
             raise ValueError("max_concurrency must be >= 1")
         if max_queue_size < 1:
             raise ValueError("max_queue_size must be >= 1")
+        if history_limit < 0:
+            raise ValueError("history_limit must be >= 0")
+        self.history_limit = history_limit
+        self._jobs: dict[int, JobState] = {}
+        self._history: OrderedDict[int, JobState] = OrderedDict()
         self.max_concurrency = max_concurrency
         self.max_queue_size = max_queue_size
         self._lock = asyncio.Lock()
@@ -71,7 +81,7 @@ class PriorityScheduler:
         self._pending: dict[int, _PendingJob] = {}
         self._active: dict[int, SchedulerTicket] = {}
 
-    async def _enqueue(self, *, priority: int, source: str) -> _PendingJob:
+    async def _enqueue(self, *, priority: int, source: str, metadata: JobMetadata | None = None) -> _PendingJob:
         source = source.strip() or "unknown"
         loop = asyncio.get_running_loop()
         sequence = next(self._sequence)
@@ -86,10 +96,13 @@ class PriorityScheduler:
 
         async with self._lock:
             self._purge_cancelled_locked()
+            self._jobs[pending.job_id] = JobState.create(metadata or JobMetadata(), priority)
             if len(self._pending) >= self.max_queue_size:
+                self._finish_locked(pending.job_id, JobLifecycle.FAILED)
                 raise SchedulerQueueFull(
                     f"scheduler queue is full ({self.max_queue_size} waiting jobs)"
                 )
+            self._jobs[pending.job_id] = self._jobs[pending.job_id].transition(JobLifecycle.QUEUED)
             self._pending[pending.job_id] = pending
             heapq.heappush(
                 self._heap,
@@ -98,7 +111,7 @@ class PriorityScheduler:
             self._dispatch_locked()
         return pending
 
-    async def reserve(self, *, priority: int, source: str) -> SchedulerReservation:
+    async def reserve(self, *, priority: int, source: str, metadata: JobMetadata | None = None) -> SchedulerReservation:
         """Register an external job in the same queue and return immediately.
 
         The caller polls :meth:`job_status` until the reservation is active and
@@ -106,7 +119,7 @@ class PriorityScheduler:
         the Resource Lease API.
         """
 
-        pending = await self._enqueue(priority=priority, source=source)
+        pending = await self._enqueue(priority=priority, source=source, metadata=metadata)
         return SchedulerReservation(
             job_id=pending.job_id,
             priority=pending.priority,
@@ -114,8 +127,8 @@ class PriorityScheduler:
             queued_at_monotonic=pending.queued_at_monotonic,
         )
 
-    async def acquire(self, *, priority: int, source: str) -> SchedulerTicket:
-        pending = await self._enqueue(priority=priority, source=source)
+    async def acquire(self, *, priority: int, source: str, metadata: JobMetadata | None = None) -> SchedulerTicket:
+        pending = await self._enqueue(priority=priority, source=source, metadata=metadata)
         try:
             return await pending.future
         except asyncio.CancelledError:
@@ -126,18 +139,28 @@ class PriorityScheduler:
             async with self._lock:
                 self._pending.pop(pending.job_id, None)
                 self._active.pop(pending.job_id, None)
+                self._finish_locked(pending.job_id, JobLifecycle.CANCELLED)
                 self._dispatch_locked()
             raise
 
-    async def release(self, ticket: SchedulerTicket) -> None:
-        await self.release_job(ticket.job_id)
+    async def release(self, ticket: SchedulerTicket, *, state: JobLifecycle | None = None) -> None:
+        await self.release_job(ticket.job_id, state=state)
 
-    async def release_job(self, job_id: int) -> bool:
+    async def release_job(self, job_id: int, *, state: JobLifecycle | None = None) -> bool:
         """Release either a queued reservation or an active execution slot."""
 
+        if state is not None and state not in TERMINAL_STATES:
+            raise ValueError("release requires terminal state")
         removed = False
         async with self._lock:
-            pending = self._pending.pop(int(job_id), None)
+            job_id = int(job_id)
+            pending = self._pending.get(job_id)
+            outcome = state or (JobLifecycle.CANCELLED if pending else JobLifecycle.COMPLETED)
+            # Validate before removing ownership; invalid caller transitions must
+            # not orphan a reservation or execution slot.
+            if job_id in self._jobs:
+                self._jobs[job_id].transition(outcome)
+            pending = self._pending.pop(job_id, None)
             if pending is not None:
                 removed = True
                 if not pending.future.done():
@@ -147,6 +170,7 @@ class PriorityScheduler:
                 removed = True
 
             if removed:
+                self._finish_locked(job_id, outcome)
                 self._dispatch_locked()
         return removed
 
@@ -166,6 +190,7 @@ class PriorityScheduler:
             active = self._active.get(job_id)
             if active is not None:
                 return {
+                    "job": self._jobs[job_id].snapshot(),
                     "job_id": active.job_id,
                     "state": "active",
                     "priority": active.priority,
@@ -191,6 +216,7 @@ class PriorityScheduler:
                 None,
             )
             return {
+                "job": self._jobs[job_id].snapshot(),
                 "job_id": pending.job_id,
                 "state": "queued",
                 "priority": pending.priority,
@@ -203,12 +229,20 @@ class PriorityScheduler:
             }
 
     @asynccontextmanager
-    async def slot(self, *, priority: int, source: str) -> AsyncIterator[SchedulerTicket]:
-        ticket = await self.acquire(priority=priority, source=source)
+    async def slot(self, *, priority: int, source: str, metadata: JobMetadata | None = None) -> AsyncIterator[SchedulerTicket]:
+        ticket = await self.acquire(priority=priority, source=source, metadata=metadata)
+        state = JobLifecycle.COMPLETED
         try:
+            await self.mark_running(ticket.job_id)
             yield ticket
+        except asyncio.CancelledError:
+            state = JobLifecycle.CANCELLED
+            raise
+        except BaseException:
+            state = JobLifecycle.FAILED
+            raise
         finally:
-            await self.release(ticket)
+            await self.release(ticket, state=state)
 
     async def snapshot(self) -> dict[str, object]:
         async with self._lock:
@@ -219,12 +253,14 @@ class PriorityScheduler:
             )
             active = sorted(self._active.values(), key=lambda ticket: ticket.job_id)
             return {
+                "recent_jobs": [job.snapshot() for job in self._history.values()],
                 "max_concurrency": self.max_concurrency,
                 "max_queue_size": self.max_queue_size,
                 "active_count": len(active),
                 "queued_count": len(queued),
                 "active": [
                     {
+                        "job": self._jobs[item.job_id].snapshot(),
                         "job_id": item.job_id,
                         "priority": item.priority,
                         "source": item.source,
@@ -234,6 +270,7 @@ class PriorityScheduler:
                 ],
                 "queued": [
                     {
+                        "job": self._jobs[item.job_id].snapshot(),
                         "job_id": item.job_id,
                         "priority": item.priority,
                         "source": item.source,
@@ -250,6 +287,7 @@ class PriorityScheduler:
         ]
         for job_id in cancelled:
             self._pending.pop(job_id, None)
+            self._finish_locked(job_id, JobLifecycle.CANCELLED)
 
     def _dispatch_locked(self) -> None:
         self._purge_cancelled_locked()
@@ -264,7 +302,28 @@ class PriorityScheduler:
                 source=pending.source,
                 queued_at_monotonic=pending.queued_at_monotonic,
                 started_at_monotonic=monotonic(),
+                request_id=self._jobs[job_id].request_id,
+                platform_job_id=self._jobs[job_id].job_id,
             )
+            self._jobs[job_id] = self._jobs[job_id].transition(JobLifecycle.ADMITTED)
             self._active[job_id] = ticket
             if not pending.future.done():
                 pending.future.set_result(ticket)
+
+    async def mark_running(self, job_id: int, *, provider: str | None = None,
+                           node: str | None = None) -> None:
+        async with self._lock:
+            job = self._jobs[job_id]
+            if job.state != JobLifecycle.RUNNING:
+                job = job.transition(JobLifecycle.RUNNING)
+            self._jobs[job_id] = replace(job, assigned_provider=provider, assigned_node=node)
+
+    def _finish_locked(self, job_id: int, state: JobLifecycle) -> None:
+        job = self._jobs.get(job_id)
+        if job is None:
+            return
+        finished = job.transition(state)
+        self._jobs.pop(job_id)
+        self._history[job_id] = finished
+        while len(self._history) > self.history_limit:
+            self._history.popitem(last=False)

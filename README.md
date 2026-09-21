@@ -89,7 +89,12 @@ Aktualny etap:
 
 **D.0 — Foundation cleanup** przeszedł pełną walidację produkcyjną. Aktywny runtime to `stage-d0-foundation-20260921-r2`; realne WVC/Gateway/Qwen, media i Telegram smoke są PASS, a rollback D.0 r2 -> Stage C r3 -> D.0 r2 został zweryfikowany.
 
-`main` jest chroniony rulesetem `main-protection`; merge wymaga PR, zielonego `platform-ci` i aktualności gałęzi. Stage D.0 został zmergowany do `main` w PR #38. Aktualnym krokiem jest **D.1 — semantic priority classes**. Implementacja D.1 ma status **READY FOR PRODUCTION VALIDATION**; [raport i ograniczenia lokalnej walidacji](docs/reports/AI_PLATFORM_STAGE_D1_SEMANTIC_PRIORITY_2026-09-21_PL.md).
+`main` jest chroniony rulesetem `main-protection`; merge wymaga PR, zielonego `platform-ci` i aktualności gałęzi. Stage D.0 został zmergowany do `main` w PR #38. Poprzedni krok to **D.1 — semantic priority classes**. Implementacja D.1 ma status **READY FOR PRODUCTION VALIDATION**; [raport i ograniczenia lokalnej walidacji](docs/reports/AI_PLATFORM_STAGE_D1_SEMANTIC_PRIORITY_2026-09-21_PL.md).
+
+Aktualny krok implementacyjny: **D.2 — Job model**, **READY FOR SUPERVISOR
+VALIDATION**. Dodaje metadata-only lifecycle i korelację obok legacy status;
+[raport D.2](docs/reports/AI_PLATFORM_STAGE_D2_JOB_MODEL_2026-09-22_PL.md).
+To gotowość implementacji, bez nowej walidacji produkcyjnej.
 
 Nie zmieniamy na D.0 modelu Qwen, GPU, backendu wiedzy ani implementacji schedulera od zera. Stage C r3 pozostaje zweryfikowanym rollback pointem.
 

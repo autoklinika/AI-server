@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio, secrets
 from dataclasses import dataclass
 from time import monotonic
+from .jobs import JobLifecycle, JobMetadata
 from .scheduler import PriorityScheduler, SchedulerTicket
 
 class ResourceLeaseError(RuntimeError): pass
@@ -25,8 +26,8 @@ class ResourceLeaseRegistry:
         self.scheduler=scheduler; self.ttl_seconds=float(ttl_seconds)
         self._lock=asyncio.Lock(); self._leases={}
 
-    async def create(self,*,priority:int,source:str)->dict[str,object]:
-        reservation=await self.scheduler.reserve(priority=priority,source=source)
+    async def create(self,*,priority:int,source:str,metadata:JobMetadata|None=None)->dict[str,object]:
+        reservation=await self.scheduler.reserve(priority=priority,source=source,metadata=metadata or JobMetadata(capability="external-reservation"))
         now=monotonic(); lease_id=secrets.token_urlsafe(24)
         rec=_Lease(lease_id,reservation.job_id,reservation.priority,reservation.source,now,now)
         async with self._lock: self._leases[lease_id]=rec
@@ -82,10 +83,10 @@ class ResourceLeaseRegistry:
         now=monotonic()
         async with self._lock:
             expired=[lid for lid,r in self._leases.items() if r.in_use==0 and now-r.last_heartbeat>self.ttl_seconds]
-        removed=0
-        for lid in expired:
-            if await self.release(lid): removed+=1
-        return removed
+            for lid in expired:
+                rec=self._leases.pop(lid)
+                await self.scheduler.release_job(rec.job_id, state=JobLifecycle.EXPIRED)
+        return len(expired)
 
     async def snapshot(self)->dict[str,object]:
         async with self._lock:

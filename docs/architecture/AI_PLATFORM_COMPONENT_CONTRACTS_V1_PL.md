@@ -244,7 +244,8 @@ Przykładowe body dla `/api/chat`:
 {"model":"qwen3.6:35b","messages":[],"stream":false,"priority_class":"interactive"}
 ```
 
-Poniższe JobRequest/JobState pozostają kontraktem docelowym D.2+, nie nowym API D.1.
+JobRequest pozostaje kontraktem docelowego admission API. D.2 implementuje
+metadata-only JobState opisany w §7.2, bez nowego Platform API.
 
 ### JobRequest
 
@@ -297,6 +298,79 @@ expired
 ```
 
 Resource Manager nie musi znać treści promptu.
+
+### 7.2. Job model — Stage D.2
+
+Status: **READY FOR SUPERVISOR VALIDATION** — implementacja lokalna, bez walidacji
+produkcyjnej. JobState jest niemutowalnym rekordem metadanych. Zawiera wyłącznie:
+`job_id`, `request_id`, `domain`, `capability`, `priority_class`, `state`,
+`assigned_provider`, `assigned_node`, `created_at`, `queued_at`, `admitted_at`,
+`started_at`, `finished_at`. Nie przechowuje source, body, promptów, messages,
+modelu, wyników, wyjątków ani dowolnego słownika metadata.
+
+- `job_id=job_<UUID4 hex>` jest unikalny niezależnie od restartu/procesu;
+  `request_id=req_<UUID4 hex>` jest generowany na granicy schedulera/adaptera.
+  Zaufany wewnętrzny `JobMetadata` pozwala późniejszemu Platform API przekazać
+  wspólny request_id do kilku jobów. To korelacja, nie idempotency key.
+- D.2 nie interpretuje klientowskich pól `request_id`, `domain`, `capability`
+  ani nagłówków korelacyjnych jako nowego envelope. Legacy body pozostaje
+  niezmienione poza już konsumowanym D.1 `priority_class`.
+- Domain: `wvc` dla compatibility route ventilation, `shared` dla pozostałych.
+  Capability pochodzi z trasy: `reasoning` (WVC), `chat`, `text-generation`
+  (`/api/generate`), `embeddings` (istniejące trasy embedding).
+  Scheduler bez metadanych używa `shared` / `unknown`.
+- `priority_class` zachowuje jawną kanoniczną klasę D.1, nawet przy numeric
+  override. Gdy jej brak, dokładne dopasowanie liczby do tabeli D.1 daje klasę;
+  pozostałe legacy liczby dają `null` (bez zgadywania/zaokrąglania).
+  Efektywne `priority` pozostaje w legacy status i steruje ordering/FIFO.
+- Assignment jest `null` w kolejce. HTTP po rozpoczęciu wykonania zapisuje
+  istniejący stały upstream `ollama-local` i `Settings.node_id`.
+  To opis aktualnego proxy, nie registry, discovery ani wybór providera.
+
+Jawne przejścia:
+
+| Stan | Dozwolone następne stany |
+|---|---|
+| submitted | queued, failed, cancelled |
+| queued | admitted, cancelled, expired |
+| admitted | running, completed, failed, cancelled, expired |
+| running | completed, failed, cancelled, expired |
+| completed / failed / cancelled / expired | brak |
+
+`submitted` i `queued` mogą być krótkotrwałe przy wolnym slocie. `admitted`
+oznacza przydział slotu; `running` rozpoczęcie lokalnego wykonania HTTP.
+Sukces HTTP kończy się `completed`, HTTP 4xx/5xx i wyjątki `failed`, przerwanie
+requestu `cancelled`. Queue full zapisuje `submitted -> failed`; odrzucone
+przed admission niepoprawne requesty nie tworzą joba. Streaming utrzymuje slot
+oraz stan running do zakończenia/awarii streamu, również błędu close.
+
+External lease opisuje **rezerwację**, capability `external-reservation`.
+Pozostaje `admitted` podczas użycia przez worker, z assignment i started_at
+równymi null: Gateway nie zna wykonania zewnętrznego ComfyUI. Zwolnienie aktywnej
+rezerwacji oznacza `completed`, zwolnienie queued `cancelled`, idle TTL `expired`.
+`completed` nie potwierdza sukcesu pracy zewnętrznego providera. Współdzielone
+HTTP pod lease zachowuje ID/klasę rezerwacji, nie tworzy drugiego joba ani nie
+zmienia jej stanu na podstawie wyniku Qwen. `in_use`, heartbeat i release-after-use
+zachowują semantykę. Unified execution/admission pozostaje D.4.
+
+Czasy to UTC ISO-8601 z offsetem, null przed osiągnięciem etapu. Nie cofają się
+przy korekcie zegara; wait_ms/TTL nadal używają monotonic. Każdy terminalny stan
+ma finished_at. Timestamps nie służą do priority ordering.
+
+Compatibility:
+
+- legacy numeryczny `job_id`, state `active`/`queued`, source, priority,
+  queue_position, wait_ms, liczniki i nagłówki `X-AI-Gateway-*` pozostają;
+- `/status` i `/health` scheduler dodają `job` do active/queued oraz
+  `recent_jobs` (ostatnie 128 terminalnych rekordów, kolejność zakończenia);
+- status/create/heartbeat lease również dodają zagnieżdżony `job`;
+- scheduled HTTP z ticketem dodaje `X-AI-Request-Id` i `X-AI-Job-Id`, także
+  dla transportowego 502. Legacy upstream `X-Request-Id` pozostaje odrębny;
+- historia jest wyłącznie RAM, ograniczona, bez persistence/resume/recovery
+  aktywnych zadań po restarcie. Wewnętrzny history_limit może wynosić 0;
+- legacy job_status po release nadal zwraca None; D.2 nie dodaje `/api/v1/jobs`.
+
+Raport: [Stage D.2](../reports/AI_PLATFORM_STAGE_D2_JOB_MODEL_2026-09-22_PL.md).
 
 ---
 

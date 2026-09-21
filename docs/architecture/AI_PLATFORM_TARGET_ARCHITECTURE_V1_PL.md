@@ -2,7 +2,7 @@
 
 **Status:** ACTIVE / TARGET ARCHITECTURE v1 — obowiązujący desired state w `main`  
 **Data bazowa:** 2026-09-19  
-**Ostatnia aktualizacja:** 2026-09-21 (decyzja Stage D.1; runtime nadal D.0)
+**Ostatnia aktualizacja:** 2026-09-22 (implementacja D.2 do walidacji supervisora; brak nowej walidacji runtime)
 **Repozytorium:** `autoklinika/AI-server`  
 **Branch:** `main`; zmiany Stage D rozwijane przez kontrolowane feature branche  
 **Podstawa:** PRE_AUDIT principles + AI Server Architecture & Runtime Audit v1.2
@@ -352,6 +352,16 @@ D.1 nie wdraża JobState (D.2), descriptors/routingu (D.3), unified admission
 (D.4), migracji klientów (D.5) ani walidacji produkcyjnej Stage D (D.6).
 
 WVC może nadal mapować cykliczną analizę na wysoki priorytet, ale Resource Manager nie musi znać słowa `ventilation`.
+
+### 8.4. Job model D.2 — implementacja do walidacji supervisora
+
+Scheduler zachowuje ordering i leases, a obok legacy status publikuje JobState
+bez request content: stabilne UUID request/job, domain/capability/class, lifecycle,
+UTC timestamps i assignment istniejącego upstreamu. Terminalna historia jest
+ograniczona do 128 rekordów w RAM. Rezerwacja external lease nie udaje joba
+wykonania providera. Szczegóły i przejścia: [Component Contracts §7.2](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#72-job-model--stage-d2).
+D.3 registry/routing i D.4 unified admission pozostają poza implementacją.
+
 
 ---
 
