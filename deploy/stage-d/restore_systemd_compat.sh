@@ -4,6 +4,11 @@ set -euo pipefail
 STATE_DIR="/var/lib/ai-platform/stage-d/systemd-baseline"
 MARKER="$STATE_DIR/captured"
 LEGACY_DROPIN="95-ai-platform-release.conf"
+OBSOLETE_DROPINS=(
+  "ai-bridge.service.d/90-production-source.conf"
+  "ai-bridge-analysis.service.d/10-ai-gateway.conf"
+  "ai-bridge-analysis.service.d/90-production-source.conf"
+)
 UNITS=("ai-bridge.service" "ai-gateway.service" "ai-bridge-analysis.service")
 
 say(){ printf '%s\n' "$*"; }
@@ -26,6 +31,17 @@ for unit in "${UNITS[@]}"; do
   else
     sudo install -d -m 0755 "$dropin_dir"
     sudo install -m 0644 "$STATE_DIR/$unit.$LEGACY_DROPIN" "$dropin_path"
+  fi
+done
+
+for rel in "${OBSOLETE_DROPINS[@]}"; do
+  dst="/etc/systemd/system/$rel"
+  safe_name="${rel//\//__}"
+  if sudo test -f "$STATE_DIR/$safe_name.absent"; then
+    sudo rm -f "$dst"
+  else
+    sudo install -d -m 0755 "$(dirname "$dst")"
+    sudo install -m 0644 "$STATE_DIR/$safe_name" "$dst"
   fi
 done
 
