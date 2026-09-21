@@ -92,3 +92,67 @@ class LLMProvider(Protocol):
 
     def describe(self) -> ProviderDescriptor:
         ...
+
+
+AgentEventType = Literal[
+    "queued",
+    "started",
+    "token/chunk",
+    "tool_started",
+    "tool_finished",
+    "artifact_created",
+    "completed",
+    "failed",
+    "cancelled",
+]
+
+
+@dataclass(frozen=True)
+class AgentTurnRequest:
+    request_id: str
+    session_id: str
+    message: str
+    context: dict[str, Any] = field(default_factory=dict)
+    allowed_toolsets: tuple[str, ...] = ()
+    capability: str = "reasoning"
+
+
+@dataclass(frozen=True)
+class AgentUsage:
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+
+
+@dataclass(frozen=True)
+class AgentTurnResult:
+    request_id: str
+    session_id: str
+    content: str
+    finish_reason: str = "stop"
+    usage: AgentUsage = field(default_factory=AgentUsage)
+    provider: str = "unknown"
+    model: str | None = None
+    provider_metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class AgentEvent:
+    request_id: str
+    session_id: str
+    type: AgentEventType
+    data: dict[str, Any] = field(default_factory=dict)
+
+
+@runtime_checkable
+class AgentProvider(Protocol):
+    def run_turn(self, request: AgentTurnRequest) -> AgentTurnResult:
+        ...
+
+    def stream_turn(self, request: AgentTurnRequest) -> Iterator[AgentEvent]:
+        ...
+
+    def health(self) -> ProviderHealth:
+        ...
+
+    def describe(self) -> ProviderDescriptor:
+        ...
