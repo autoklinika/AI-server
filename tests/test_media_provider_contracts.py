@@ -30,8 +30,12 @@ def _request(tmp_path: Path) -> MediaGenerationRequest:
     )
 
 
-def _resolver(request: MediaGenerationRequest) -> ComfyUIWorkflowPlan:
+def _resolver(
+    request: MediaGenerationRequest,
+    staged_inputs: tuple[str, ...],
+) -> ComfyUIWorkflowPlan:
     assert request.profile == "ltx23-stage30"
+    assert len(staged_inputs) <= 1
     return ComfyUIWorkflowPlan(
         graph={
             "1": {
@@ -46,13 +50,14 @@ def _resolver(request: MediaGenerationRequest) -> ComfyUIWorkflowPlan:
     )
 
 
-def _adapter() -> ComfyUIAdapter:
+def _adapter(*, input_dir: str | None = None) -> ComfyUIAdapter:
     return ComfyUIAdapter(
         base_url="http://127.0.0.1:8188",
         workflow_resolver=_resolver,
         profiles=("ltx23-stage30",),
         capabilities=("video-generation",),
         poll_seconds=0.0,
+        input_dir=input_dir,
     )
 
 
@@ -141,7 +146,7 @@ def test_comfyui_adapter_maps_logical_request_to_backend_and_artifact(
 
     prompt_call = next(call for call in calls if call[1].endswith("/prompt"))
     assert prompt_call[0] == "POST"
-    assert prompt_call[2]["prompt"] == _resolver(_request(tmp_path)).graph
+    assert prompt_call[2]["prompt"] == _resolver(_request(tmp_path), ()).graph
     assert isinstance(prompt_call[2]["client_id"], str)
     assert prompt_call[2]["client_id"]
 
@@ -158,6 +163,117 @@ def test_comfyui_adapter_maps_logical_request_to_backend_and_artifact(
     free_call = next(call for call in calls if call[1].endswith("/free"))
     assert free_call[0] == "POST"
     assert free_call[2] == {"unload_models": True, "free_memory": True}
+
+
+
+
+
+def test_comfyui_adapter_stages_and_cleans_input_artifact(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    source = tmp_path / "input.png"
+    source.write_bytes(b"png-bytes")
+    provider_input = tmp_path / "provider-input"
+    output_dir = tmp_path / "out"
+
+    captured_staged: list[str] = []
+
+    def resolver(
+        request: MediaGenerationRequest,
+        staged_inputs: tuple[str, ...],
+    ) -> ComfyUIWorkflowPlan:
+        assert request.input_artifacts == (str(source),)
+        assert len(staged_inputs) == 1
+        captured_staged.extend(staged_inputs)
+        staged = provider_input / staged_inputs[0]
+        assert staged.exists()
+        assert staged.read_bytes() == b"png-bytes"
+        return ComfyUIWorkflowPlan(
+            graph={
+                "1": {
+                    "class_type": "LoadImage",
+                    "inputs": {"image": staged_inputs[0]},
+                },
+                "2": {
+                    "class_type": "SaveVideo",
+                    "inputs": {"filename_prefix": "hermes-video/LTX23"},
+                },
+            },
+            output_extensions=(".mp4",),
+            filename_tag="ltx23",
+            media_type="video/mp4",
+        )
+
+    def fake_request(
+        method: str,
+        url: str,
+        *,
+        json: dict | None,
+        timeout: float,
+    ) -> httpx.Response:
+        req = httpx.Request(method, url)
+        if url.endswith("/prompt"):
+            assert json is not None
+            assert json["prompt"]["1"]["inputs"]["image"] == captured_staged[0]
+            return httpx.Response(200, json={"prompt_id": "prompt-i2v"}, request=req)
+        if url.endswith("/history/prompt-i2v"):
+            return httpx.Response(
+                200,
+                json={
+                    "prompt-i2v": {
+                        "outputs": {
+                            "2": {
+                                "videos": [
+                                    {
+                                        "filename": "i2v.mp4",
+                                        "subfolder": "",
+                                        "type": "output",
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                request=req,
+            )
+        if url.endswith("/free"):
+            return httpx.Response(200, json={}, request=req)
+        raise AssertionError(url)
+
+    monkeypatch.setattr(httpx, "request", fake_request)
+    monkeypatch.setattr(
+        httpx,
+        "get",
+        lambda url, *, timeout: httpx.Response(
+            200,
+            content=b"video",
+            request=httpx.Request("GET", url),
+        ),
+    )
+
+    adapter = ComfyUIAdapter(
+        base_url="http://127.0.0.1:8188",
+        workflow_resolver=resolver,
+        profiles=("ltx23-stage30",),
+        capabilities=("video-generation",),
+        poll_seconds=0.0,
+        input_dir=str(provider_input),
+    )
+    request = MediaGenerationRequest(
+        request_id="req-i2v",
+        capability="video-generation",
+        profile="ltx23-stage30",
+        prompt="animate",
+        output_dir=str(output_dir),
+        input_artifacts=(str(source),),
+    )
+
+    result = adapter.generate(request)
+
+    assert len(result.artifacts) == 1
+    assert captured_staged
+    assert not (provider_input / captured_staged[0]).exists()
 
 
 def test_comfyui_adapter_normalizes_execution_error(monkeypatch, tmp_path) -> None:
