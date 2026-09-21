@@ -27,6 +27,21 @@ say "PASS: installed release checksums"
 
 PYTHON="$TARGET/services/ai-bridge/.venv/bin/python"
 GENERATOR="$TARGET/services/ai-bridge/tools/local_video/generate_ltx23_stage30.py"
+BRIDGE_ENTRY="$TARGET/services/ai-bridge/.venv/bin/ai-bridge"
+ANALYSIS_ENTRY="$TARGET/services/ai-bridge/.venv/bin/ai-bridge-analyze-ventilation"
+
+echo "===== FINAL-PATH ENTRYPOINTS ====="
+[[ -x "$BRIDGE_ENTRY" ]] || fail "installed AI Bridge entrypoint missing"
+[[ -x "$ANALYSIS_ENTRY" ]] || fail "installed analysis entrypoint missing"
+BRIDGE_SHEBANG="$(head -1 "$BRIDGE_ENTRY")"
+ANALYSIS_SHEBANG="$(head -1 "$ANALYSIS_ENTRY")"
+echo "ai-bridge: $BRIDGE_SHEBANG"
+echo "analysis:  $ANALYSIS_SHEBANG"
+[[ "$BRIDGE_SHEBANG" == "#!$TARGET/services/ai-bridge/.venv/bin/python"* ]]   || fail "AI Bridge entrypoint is not bound to installed release"
+[[ "$ANALYSIS_SHEBANG" == "#!$TARGET/services/ai-bridge/.venv/bin/python"* ]]   || fail "analysis entrypoint is not bound to installed release"
+[[ "$BRIDGE_SHEBANG" != *"/tmp/"* ]] || fail "AI Bridge entrypoint references /tmp"
+[[ "$ANALYSIS_SHEBANG" != *"/tmp/"* ]] || fail "analysis entrypoint references /tmp"
+say "PASS: installed entrypoints use final release path"
 
 echo "===== INSTALLED PROVIDER IMPORTS ====="
 "$PYTHON" - <<'PY'
