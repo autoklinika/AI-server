@@ -91,10 +91,16 @@ W przypadku sprzeczności historyczny stage report nie może nadpisywać nowszej
 
 ---
 
-## Następny etap
+## Aktualny etap
 
-Po zatwierdzeniu pakietu architektury pierwszym etapem implementacyjnym jest:
+Stage A, Stage B i Stage C są zakończone i zwalidowane.
 
-**Stage A — Recovery Baseline + Reproducible Release Foundation**
+Obecny etap to **Stage D — Resource Manager v2**, rozpoczynany przez **D.0 — Foundation cleanup**:
 
-zgodnie z `AI_PLATFORM_MIGRATION_PLAN_V1_PL.md`.
+- CI na PR/push do `main`,
+- canonical release-managed systemd,
+- Gateway jako domyślna ścieżka inference dla WVC,
+- nowe `deploy/stage-d/`,
+- synchronizacja current desired-state docs.
+
+Zakres i ryzyka D.0 są śledzone w issue #37 oraz w audycie po Stage C.
