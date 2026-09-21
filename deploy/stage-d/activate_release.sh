@@ -8,7 +8,7 @@ CURRENT="/opt/ai-platform/current"
 STATE_DIR="/var/lib/ai-platform/stage-d"
 STATE_FILE="$STATE_DIR/previous-release"
 TIMER="ai-bridge-analysis.timer"
-BRIDGE_HEALTH_URL="${AI_BRIDGE_HEALTH_URL:-http://127.0.0.1:8080/health}"
+BRIDGE_HEALTH_URL="${AI_BRIDGE_HEALTH_URL:-}"
 GATEWAY_HEALTH_URL="${AI_GATEWAY_HEALTH_URL:-http://127.0.0.1:11435/health}"
 SUCCESS=0
 SWITCHED=0
@@ -17,6 +17,24 @@ PREVIOUS=""
 
 say(){ printf '%s\n' "$*"; }
 fail(){ say "FAIL: $*" >&2; exit 1; }
+
+resolve_bridge_health_url() {
+  if [[ -n "$BRIDGE_HEALTH_URL" ]]; then
+    return 0
+  fi
+  local bind_host
+  bind_host="$(
+    systemctl show ai-bridge.service -p Environment --value \
+      | tr ' ' '\n' \
+      | sed -n 's/^AI_BRIDGE_HOST=//p' \
+      | tail -1
+  )"
+  case "$bind_host" in
+    ""|"0.0.0.0"|"::"|"[::]") bind_host="127.0.0.1" ;;
+  esac
+  BRIDGE_HEALTH_URL="http://${bind_host}:8080/health"
+  say "AI Bridge health URL resolved to $BRIDGE_HEALTH_URL"
+}
 
 scheduler_idle() {
   python3 - <<'PY'
@@ -79,6 +97,8 @@ for unit in ai-bridge.service ai-gateway.service ai-bridge-analysis.service; do
     fail "$unit still uses the Stage A release-path compatibility drop-in"
   fi
 done
+
+resolve_bridge_health_url
 
 if systemctl is-active --quiet ai-bridge-analysis.service; then
   fail "analysis job is currently running"
