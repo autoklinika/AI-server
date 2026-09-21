@@ -75,15 +75,24 @@ RDP/xrdp nie są częścią docelowej konfiguracji hosta.
 
 ## Aktualny kierunek prac
 
-Audyt architektury i runtime v1.2 został zakończony 19.09.2026. Obecny system pozostaje produkcyjnie działający, ale dalszy rozwój jest prowadzony według **AI Platform Target Architecture v1**.
+Audyt po Stage C z 21.09.2026 potwierdził produkcję jako **GREEN** i gotowość do rozpoczęcia Stage D development.
 
-Pierwszym etapem migracji jest:
+Zakończone etapy migracji:
 
-**Stage A — Recovery Baseline + Reproducible Release Foundation**
+- **Stage A** — recovery baseline + reproducible release foundation;
+- **Stage B** — security hardening i localhost-only backendy;
+- **Stage C** — provider abstraction bez wymiany modeli/backendów.
 
-Celem Stage A nie jest zmiana modelu ani zachowania użytkowego. Etap ma wprowadzić zweryfikowany recovery point, release/build stamp, wersjonowany deployment i rollback, aby kolejne zmiany architektoniczne były odwracalne.
+Aktualny etap:
 
-AI Bridge pozostaje aktywnym elementem obecnego runtime, ale nie jest już docelową nazwą całej platformy. Docelowa AI Platform ma obsługiwać wiele domen przez stabilne kontrakty i wymienne adaptery providerów.
+**Stage D — Resource Manager v2**, zaczynając od **D.0 — Foundation cleanup**.
+
+D.0 zamyka cztery blokery przed produkcyjnym cutoverem Resource Manager v2: CI chroniące `main`, canonical release-managed systemd units, Gateway jako domyślną ścieżkę WVC analysis oraz nowe `deploy/stage-d/` release tooling.
+
+Nie zmieniamy na tym etapie modelu Qwen, GPU, backendu wiedzy ani implementacji schedulera od zera. Aktywny Stage C pozostaje rollback pointem do czasu pełnej walidacji Stage D.
+
+AI Bridge pozostaje aktywnym elementem obecnego runtime, ale nie jest docelową nazwą całej platformy. Docelowa AI Platform obsługuje wiele domen przez stabilne kontrakty i wymienne adaptery providerów.
+
 
 ## Bezpieczeństwo
 
