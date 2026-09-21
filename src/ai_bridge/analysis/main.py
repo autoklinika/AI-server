@@ -8,7 +8,7 @@ import logging
 from ai_bridge.adapters.ventilation.analysis_v12_2 import ANALYSIS_THINK
 from ai_bridge.analysis.service import aligned_window
 from ai_bridge.analysis.service_v12_2 import VentilationAnalysisServiceV122
-from ai_bridge.ollama.client import OllamaClient
+from ai_bridge.providers.ollama import OllamaAdapter
 from ai_bridge.settings import get_settings
 from ai_bridge.storage.analysis_repository import VentilationAnalysisRepository
 from ai_bridge.storage.database import Database
@@ -75,17 +75,19 @@ def main() -> int:
             "ai-gateway" if use_gateway else "direct-ollama",
             inference_url,
         )
-        ollama = OllamaClient(
+        llm = OllamaAdapter.from_endpoint(
             base_url=inference_url,
+            default_model=settings.ollama_model,
             timeout_seconds=settings.ollama_analysis_timeout_seconds,
             request_source="ventilation" if use_gateway else None,
             request_priority=(
                 settings.gateway_priority_ventilation if use_gateway else None
             ),
+            node_id=settings.node_id,
         )
         service = VentilationAnalysisServiceV122(
             repository=repository,
-            ollama=ollama,
+            llm=llm,
             model=settings.ollama_model,
             # Thinking mode is versioned together with the active analysis profile
             # so idempotent results remain reproducible.

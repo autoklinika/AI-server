@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = Field(default=8080, ge=1, le=65535)
     log_level: str = "INFO"
+    node_id: str = Field(default="ai-node-01", min_length=1, max_length=128)
 
     # SQLite is a development-safe default. Production targets PostgreSQL
     # through AI_BRIDGE_DATABASE_URL without changing application code.

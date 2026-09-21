@@ -14,7 +14,8 @@ from ai_bridge.adapters.ventilation.analysis_v12_2 import (
     strip_alert_context,
 )
 from ai_bridge.analysis.service_v12_2 import VentilationAnalysisServiceV122
-from ai_bridge.ollama.client import OllamaClient
+from ai_bridge.providers.contracts import LLMRequest, LLMResponse
+from ai_bridge.providers.ollama import OllamaAdapter
 from ai_bridge.settings import get_settings
 from ai_bridge.storage.models import TelemetrySampleRecord
 
@@ -82,14 +83,14 @@ class MemoryRepository:
         self.saved = kwargs
 
 
-class RecordingOllama:
-    def __init__(self, inner: OllamaClient) -> None:
+class RecordingLLM:
+    def __init__(self, inner: OllamaAdapter) -> None:
         self.inner = inner
-        self.kwargs: dict[str, Any] | None = None
+        self.request: LLMRequest | None = None
 
-    def chat_structured(self, **kwargs):
-        self.kwargs = kwargs
-        return self.inner.chat_structured(**kwargs)
+    def generate(self, request: LLMRequest) -> LLMResponse:
+        self.request = request
+        return self.inner.generate(request)
 
 
 def stable_json(value: Any) -> str:
@@ -102,11 +103,12 @@ def prompt_hash(messages: list[dict[str, str]]) -> str:
 
 def main() -> int:
     settings = get_settings()
-    real_ollama = OllamaClient(
+    ollama_adapter = OllamaAdapter.from_endpoint(
         base_url=settings.ollama_url,
+        default_model=settings.ollama_model,
         timeout_seconds=settings.ollama_analysis_timeout_seconds,
     )
-    if not real_ollama.is_available():
+    if ollama_adapter.health().status != "ready":
         raise RuntimeError(f"Ollama is not available at {settings.ollama_url}")
 
     alert_sample = make_sample(active_alarm=True)
@@ -122,10 +124,10 @@ def main() -> int:
     baseline_messages = build_environment_prompt_from_compact(baseline_compact)
 
     repository = MemoryRepository([alert_sample])
-    recording_ollama = RecordingOllama(real_ollama)
+    recording_llm = RecordingLLM(ollama_adapter)
     service = VentilationAnalysisServiceV122(
         repository=repository,  # type: ignore[arg-type]
-        ollama=recording_ollama,  # type: ignore[arg-type]
+        llm=recording_llm,  # type: ignore[arg-type]
         model=settings.ollama_model,
         think=ANALYSIS_THINK,
         temperature=settings.analysis_temperature,
@@ -140,7 +142,7 @@ def main() -> int:
 
     if repository.saved is None:
         raise AssertionError("analysis result was not captured")
-    if recording_ollama.kwargs is None:
+    if recording_llm.request is None:
         raise AssertionError("real Ollama call was not captured")
 
     audit_system = repository.saved["input_summary"]["system"]
@@ -149,7 +151,7 @@ def main() -> int:
     if audit_system["active_alarm_codes"] != [ALERT_CODE]:
         raise AssertionError(f"audit lost active alarm code: {audit_system}")
 
-    recorded_messages = recording_ollama.kwargs["messages"]
+    recorded_messages = recording_llm.request.messages
     if recorded_messages != baseline_messages:
         raise AssertionError(
             "alert-bearing sample changed the model prompt compared with the identical no-alert baseline"

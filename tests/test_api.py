@@ -187,6 +187,28 @@ def test_extra_unknown_metrics_field_is_rejected(client):
     assert response.status_code == 422
 
 
+def test_calendar_and_power_scheduler_extensions_are_accepted(client):
+    payload = batch("batch-calendar-power", [sample("sample-calendar-power", 1)])
+    metrics = payload["samples"][0]["metrics"]
+    metrics["calendar"] = {
+        "available": True,
+        "effective_mode": "STANDBY",
+        "effective_profile": "DEFAULT_STANDBY",
+        "phase": "INACTIVE",
+        "timezone": "Europe/Warsaw",
+    }
+    metrics["power_scheduler"] = {
+        "available": True,
+        "control_policy_applied": False,
+    }
+
+    response = client.post("/api/v1/ventilation/telemetry/batches", json=payload)
+
+    assert response.status_code == 200, response.text
+    assert response.json()["stored"] == 1
+    assert response.json()["rejected"] == 0
+
+
 def test_openapi_exposes_no_control_endpoint(client):
     paths = client.get("/openapi.json").json()["paths"]
     assert "/api/v1/ventilation/telemetry/batches" in paths

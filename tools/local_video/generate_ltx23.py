@@ -75,8 +75,7 @@ def _options(info: dict, node: str, input_name: str) -> set[str]:
     return set()
 
 
-def preflight(base: str, *, require_upscale: bool = False) -> dict:
-    info = req_json(base, "/object_info", timeout=60)
+def preflight_from_info(info: dict, *, require_upscale: bool = False) -> dict:
     required = set(REQUIRED_NODES)
     if require_upscale:
         required |= UPSCALE_NODES
@@ -94,7 +93,16 @@ def preflight(base: str, *, require_upscale: bool = False) -> dict:
         opts = _options(info, "LatentUpscaleModelLoader", "model_name")
         if opts and UPSCALER not in opts:
             missing_models.append(UPSCALER)
-    return {"ok": not missing_nodes and not missing_models, "missing_nodes": missing_nodes, "missing_models": missing_models}
+    return {
+        "ok": not missing_nodes and not missing_models,
+        "missing_nodes": missing_nodes,
+        "missing_models": missing_models,
+    }
+
+
+def preflight(base: str, *, require_upscale: bool = False) -> dict:
+    info = req_json(base, "/object_info", timeout=60)
+    return preflight_from_info(info, require_upscale=require_upscale)
 
 
 def _validate(width: int, height: int, frames: int) -> None:
