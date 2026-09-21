@@ -94,13 +94,14 @@ Aktualny etap:
 Poprzedni krok **D.2 — Job model** przeszedł niezależny
 [supervisor dev gate](docs/reports/AUTONOMOUS_D2_DEV_GATE_2026-09-22.md).
 D.3 descriptors przeszedł [supervisor dev gate](docs/reports/AUTONOMOUS_D3_DEV_GATE_2026-09-22.md).
-Aktualny krok implementacyjny: **D.4 — Unified admission**, **READY FOR SUPERVISOR VALIDATION**.
-LLM HTTP, media external leases i istniejące trasy embeddings używają wspólnego
-schedulera oraz walidowanych workload bindings w JobState. Guard media wymaga
-aktywnego lease; D.1 priority i D.2 reservation lifecycle pozostają zachowane.
-[Raport D.4](docs/reports/AI_PLATFORM_STAGE_D4_UNIFIED_ADMISSION_2026-09-22_PL.md).
-To gotowość implementacji, bez production validation/cutover. D.5 migration
-endpointów oraz D.6 pozostają poza zakresem.
+D.4 unified admission przeszedł [supervisor dev gate](docs/reports/AUTONOMOUS_D4_DEV_GATE_2026-09-22.md).
+Aktualny krok implementacyjny: **D.5 — Compatibility migration**, **READY FOR SUPERVISOR VALIDATION**.
+WVC używa istniejącej trasy ventilation z metadanymi wvc/reasoning; helper
+Telegram/Discord deklaruje workload llm dla znanych chat callerów. Media prompt
+compilers wymagają lokalnego Gateway :11435. Legacy endpointy, numeric priorities,
+WAIT/START i jawne recovery paths pozostają zachowane.
+[Raport D.5](docs/reports/AI_PLATFORM_STAGE_D5_COMPATIBILITY_MIGRATION_2026-09-22_PL.md).
+To gotowość implementacji, bez production validation/cutover. D.6 nie rozpoczęto.
 
 Nie zmieniamy na D.0 modelu Qwen, GPU, backendu wiedzy ani implementacji schedulera od zera. Stage C r3 pozostaje zweryfikowanym rollback pointem.
 

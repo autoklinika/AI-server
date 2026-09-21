@@ -2,7 +2,7 @@
 
 **Status:** ACTIVE / TARGET ARCHITECTURE v1 — obowiązujący desired state w `main`  
 **Data bazowa:** 2026-09-19  
-**Ostatnia aktualizacja:** 2026-09-22 (implementacja D.4 do walidacji supervisora; brak nowej walidacji runtime)
+**Ostatnia aktualizacja:** 2026-09-22 (implementacja D.5 do walidacji supervisora; brak nowej walidacji runtime)
 **Repozytorium:** `autoklinika/AI-server`  
 **Branch:** `main`; zmiany Stage D rozwijane przez kontrolowane feature branche  
 **Podstawa:** PRE_AUDIT principles + AI Server Architecture & Runtime Audit v1.2
@@ -389,9 +389,24 @@ Future EmbeddingProvider ma obowiązek użyć tej samej granicy admission; brak
 konkretnego adaptera/modelu, Knowledge Service i multi-node execution w D.4.
 
 Nie wykonano production validation/cutover. Compatibility endpointy pozostają;
-D.5 migracja i D.6 walidacja są osobnymi krokami. Kontrakt operacyjny i ograniczenia
+Migrację D.5 opisuje §8.7; D.6 walidacja pozostaje osobnym krokiem. Kontrakt operacyjny i ograniczenia
 cleanup: [Component Contracts §7.3](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#73-unified-admission--stage-d4).
 [Raport D.4](../reports/AI_PLATFORM_STAGE_D4_UNIFIED_ADMISSION_2026-09-22_PL.md).
+
+### 8.7. Compatibility migration D.5 — do walidacji supervisora
+
+Istniejące endpointy Gateway pozostają granicą klientów podczas migracji.
+WVC przechodzi z generic chat na istniejący namespace ventilation, zachowując
+numeric priority override, model, schema i jawny direct-Ollama recovery mode.
+Repo helper adaptuje znane callery telegram-chat/discord-chat do workload llm,
+bez nowego patcha Hermesa. Nieznany legacy caller nadal używa external, jawny
+workload ma pierwszeństwo. Kolejka, identyfikacja rozmów i WAIT/START bez zmian.
+Media prompt compilers odrzucają direct backend URL: wymagany loopback :11435.
+D.4 media guards i wspólny lease Qwen -> ComfyUI pozostają.
+
+Nie wykonano cutover ani D.6. Kontrakt i recovery inventory:
+[Component Contracts §7.4](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#74-compatibility-migration--stage-d5).
+[Raport D.5](../reports/AI_PLATFORM_STAGE_D5_COMPATIBILITY_MIGRATION_2026-09-22_PL.md).
 
 ---
 

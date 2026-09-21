@@ -549,7 +549,8 @@ i [raport D.3](../reports/AI_PLATFORM_STAGE_D3_DESCRIPTORS_2026-09-22_PL.md).
 
 ### Decyzja implementacyjna D.4 — 2026-09-22
 
-Aktualny krok: **D.4 — Unified admission**, **READY FOR SUPERVISOR VALIDATION**.
+Poprzedni krok: **D.4 — Unified admission**, **DEV GATE PASS**
+([supervisor gate](../reports/AUTONOMOUS_D4_DEV_GATE_2026-09-22.md)).
 Wspólny scheduler i D.3 workload bindings obejmują LLM HTTP, media external
 reservations oraz istniejące embeddings proxy. JobState dodaje metadata-only
 workload; D.2 lifecycle rezerwacji pozostaje bez zmian. External-use guard blokuje
@@ -561,3 +562,15 @@ oraz repo helperów przy przyszłym wdrożeniu; bieżące D.0 tooling/recovery g
 pozostają zachowane.
 [Kontrakt §7.3](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#73-unified-admission--stage-d4)
 i [raport D.4](../reports/AI_PLATFORM_STAGE_D4_UNIFIED_ADMISSION_2026-09-22_PL.md).
+
+### Decyzja implementacyjna D.5 — 2026-09-22
+
+Aktualny krok: **D.5 — Compatibility migration**, **READY FOR SUPERVISOR VALIDATION**.
+Migracja używa istniejących endpointów i D.1–D.4 kontraktów; nie dodaje Platform API.
+WVC wybiera namespace ventilation; helper adaptuje znane Telegram/Discord chat
+callery do llm bez patchowania produktu. Media compilers wymagają Gateway :11435,
+usuwając możliwość przypadkowego direct inference przez loopback :11434.
+Legacy API, WAIT/START, explicit numeric priorities i recovery paths pozostają.
+D.6 production validation nie rozpoczęto. Lokalna walidacja nie jest production gate.
+[Kontrakt §7.4](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#74-compatibility-migration--stage-d5)
+i [raport D.5](../reports/AI_PLATFORM_STAGE_D5_COMPATIBILITY_MIGRATION_2026-09-22_PL.md).

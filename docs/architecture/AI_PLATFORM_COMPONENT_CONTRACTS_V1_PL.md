@@ -452,6 +452,50 @@ spójnej wersji przy przyszłym wdrożeniu; nowy guard ze starym Gateway odmawia
 wykonania. Deploy/rollback nie został wykonany. Szczegóły i ograniczenia:
 [raport D.4](../reports/AI_PLATFORM_STAGE_D4_UNIFIED_ADMISSION_2026-09-22_PL.md).
 
+### 7.4. Compatibility migration — Stage D.5
+
+**READY FOR SUPERVISOR VALIDATION**, bez production validation/cutover.
+D.5 adaptuje istniejące repo callery do D.1–D.4, bez nowego request envelope,
+Platform API, auth protocol, model routing ani patcha produktu Hermes.
+
+| Caller / entry point | Kontrakt i zgodność |
+|---|---|
+| WVC analysis main | Gateway root -> `/clients/ventilation`; już namespaced URL nie jest dublowany. Chat i tags pozostają istniejącymi trasami. JobState: wvc/reasoning. Numeric `gateway_priority_ventilation` nadal ma pierwszeństwo, brak zmiany modelu/schema/output. |
+| Hermes Telegram/Discord chat v4 | Repo `acquire_resource` mapuje dokładne source `telegram-chat` i `discord-chat` na workload llm, tylko gdy workload jest None. Numeric priority=50 i legacy lease API bez zmian. |
+| Pozostali legacy lease callerzy | Brak workload nadal oznacza external. Jawny workload zawsze wygrywa, również dla chat source. Gateway nie wyprowadza workload z dowolnego publicznego source. |
+| `/foto`, `/wideo` | D.4 media-image/media-video i jeden lease przez Qwen -> ComfyUI. Prompt compilers dopuszczają HTTP(S) loopback wyłącznie port 11435, zamiast dowolnego loopback portu. Stage30 I2V korzysta z tej samej walidacji co T2V. |
+| Legacy HTTP | Wszystkie dotychczasowe scheduled i read-only trasy pozostają; wire body, streaming, upstream errors, numeric priority/lease headers i addytywne JobState zachowane. |
+
+WAIT/START pozostają zależne od rzeczywistej kolejki, z dotychczasowym progiem,
+tekstem, target chat/thread i best-effort delivery. Immediate admission nie wysyła
+statusów. Telegram userzy i Discord używają oddzielnych lease; Discord voice
+callback zachowuje queued/active. `X-AI-Resource-Lease-Release` kończy rezerwację
+chat po HTTP, media trzyma lease do końca workera. Nie zmieniono first-call-only
+notices ani patcha Hermes v4. Jego istniejący fallback po awarii UX/helpera prowadzi
+do scheduled Gateway HTTP, nie do bezpośredniego backendu.
+
+Jawne compatibility/recovery paths zachowane:
+
+- `analysis_use_gateway=false`: direct Ollama tylko jako istniejący opt-in
+  recovery/debug; brak automatycznego direct fallback po błędzie Gateway;
+- legacy Gateway endpointy, numeric priorities i profil external pozostają;
+- media compiler failure nadal zwraca istniejący failure/fallback contract:
+  film wymaga dotychczasowego jawnego powiadomienia przed original-prompt fallback,
+  foto zachowuje istniejącą politykę błędu; nie wykonuje direct Qwen fallback;
+- read-only models/tags/health nie wymagają admission;
+- historyczne low-level generatory, release/rollback scripts i recovery artefakty
+  pozostają; nie są nowymi supported bypassami. Admission nie izoluje operatora
+  posiadającego dostęp do localhost backendów.
+
+Przy przyszłym wdrożeniu trzeba uwzględnić spójny zestaw Gateway, packaged adaptera,
+repo helpera, media wrapperów oraz obu prompt compilerów (w tym bazowego kompilatora
+używanego przez Stage30). Sam build pakietu nie aktualizuje libexec. Nie wykonano
+instalacji ani rollbacku; dotychczasowy D.0 builder/guard metadata wymaga osobnego
+przygotowania kandydata przez supervisora. Recovery evidence pozostaje nietknięte.
+
+Raport i granice lokalnych testów:
+[Stage D.5](../reports/AI_PLATFORM_STAGE_D5_COMPATIBILITY_MIGRATION_2026-09-22_PL.md).
+
 ---
 
 ## 8. Model / Worker Registry

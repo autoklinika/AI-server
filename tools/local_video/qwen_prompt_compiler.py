@@ -37,7 +37,11 @@ def _gateway_url() -> str:
     url = os.environ.get("HERMES_VIDEO_QWEN_URL", QWEN_GATEWAY_URL_DEFAULT).strip()
     parsed = urllib.parse.urlparse(url)
     host = (parsed.hostname or "").casefold()
-    if parsed.scheme not in {"http", "https"} or host not in {"127.0.0.1", "localhost", "::1"}:
+    if (
+        parsed.scheme not in {"http", "https"}
+        or host not in {"127.0.0.1", "localhost", "::1"}
+        or parsed.port != 11435
+    ):
         raise RuntimeError("Qwen prompt-compiler może używać wyłącznie lokalnego AI Gateway (loopback).")
     return url
 
