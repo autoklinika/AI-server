@@ -48,6 +48,7 @@ Commit zmian D.0 nie zmienia aktywnego runtime. Produkcja pozostaje na zwalidowa
 - Stage D release build PASS;
 - production cutover + health PASS;
 - WVC platform-path regression PASS; jeśli CM5/WVC jest fizycznie odłączony, brak świeżej telemetrii jest oczekiwany, a walidacja obejmuje kontrakt ingestu oraz realny request `ventilation` przez Gateway/Qwen;
-- Telegram/media regression PASS;
+- real media regression PASS: external Resource Manager lease held across Stage30 render, H.264 640x384/24 fps/25 frames, queues return idle, no service restarts;
+- Telegram `/wideo` real user-path regression PASS;
 - rollback PASS;
 - issue #37 i dokumentacja zamknięte po realnej walidacji.
