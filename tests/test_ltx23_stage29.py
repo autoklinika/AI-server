@@ -118,8 +118,8 @@ def test_hq_i2v_reinjects_first_frame_after_latent_upscale_and_tiles_decode():
 def test_preflight_requires_core_tiled_decode(monkeypatch):
     monkeypatch.setattr(
         mod.base,
-        "preflight",
-        lambda url, require_upscale=False: {"ok": True, "missing_nodes": [], "missing_models": []},
+        "preflight_from_info",
+        lambda info, require_upscale=False: {"ok": True, "missing_nodes": [], "missing_models": []},
     )
     monkeypatch.setattr(
         mod.base,
@@ -144,8 +144,8 @@ def test_preflight_requires_core_tiled_decode(monkeypatch):
 def test_preflight_fails_without_core_tiled_decode(monkeypatch):
     monkeypatch.setattr(
         mod.base,
-        "preflight",
-        lambda url, require_upscale=False: {"ok": True, "missing_nodes": [], "missing_models": []},
+        "preflight_from_info",
+        lambda info, require_upscale=False: {"ok": True, "missing_nodes": [], "missing_models": []},
     )
     monkeypatch.setattr(mod.base, "req_json", lambda *args, **kwargs: {})
     out = mod.preflight("http://127.0.0.1:8188")
