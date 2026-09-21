@@ -58,6 +58,7 @@ def test_ollama_adapter_satisfies_llm_provider_runtime_contract() -> None:
     adapter = OllamaAdapter(
         client=FakeOllamaClient(),  # type: ignore[arg-type]
         default_model="qwen3.6:35b",
+        node_id="test-node",
     )
     assert isinstance(adapter, LLMProvider)
 
@@ -67,6 +68,7 @@ def test_ollama_adapter_maps_generic_request_and_response_without_domain_leakage
     adapter = OllamaAdapter(
         client=client,  # type: ignore[arg-type]
         default_model="qwen3.6:35b",
+        node_id="test-node",
     )
 
     response = adapter.generate(_request())
@@ -85,7 +87,7 @@ def test_ollama_adapter_maps_generic_request_and_response_without_domain_leakage
     assert response.usage.output_tokens == 4
     assert response.execution.provider == "ollama-local"
     assert response.execution.model == "qwen3.6:35b"
-    assert response.execution.node == "ai-node-01"
+    assert response.execution.node == "test-node"
     assert response.execution.duration_ns == 2_500_000
     assert response.execution.duration_ms == 2.5
 
@@ -94,10 +96,12 @@ def test_ollama_adapter_health_and_descriptor_contract() -> None:
     ready = OllamaAdapter(
         client=FakeOllamaClient(available=True),  # type: ignore[arg-type]
         default_model="qwen3.6:35b",
+        node_id="test-node",
     )
     unavailable = OllamaAdapter(
         client=FakeOllamaClient(available=False),  # type: ignore[arg-type]
         default_model="qwen3.6:35b",
+        node_id="test-node",
     )
 
     assert ready.health().status == "ready"
@@ -106,7 +110,7 @@ def test_ollama_adapter_health_and_descriptor_contract() -> None:
     descriptor = ready.describe()
     assert descriptor.provider_id == "ollama-local"
     assert descriptor.provider_type == "llm"
-    assert descriptor.node_id == "ai-node-01"
+    assert descriptor.node_id == "test-node"
     assert "structured-generation" in descriptor.capabilities
     assert descriptor.models == ("qwen3.6:35b",)
     assert descriptor.metadata["structured_output"] is True
@@ -117,6 +121,7 @@ def test_ollama_adapter_declares_streaming_boundary_explicitly() -> None:
     adapter = OllamaAdapter(
         client=FakeOllamaClient(),  # type: ignore[arg-type]
         default_model="qwen3.6:35b",
+        node_id="test-node",
     )
     with pytest.raises(NotImplementedError):
         next(adapter.stream(_request()))
