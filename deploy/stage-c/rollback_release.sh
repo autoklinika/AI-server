@@ -39,6 +39,7 @@ echo "===== ROLLBACK STAGE C RELEASE ====="
 say "from=$(readlink -f "$CURRENT" 2>/dev/null || true)"
 say "to=$PREVIOUS"
 sudo ln -sfn "$PREVIOUS" "$CURRENT"
+sudo systemctl daemon-reload
 sudo systemctl restart ai-gateway.service
 sudo systemctl restart ai-bridge.service
 
