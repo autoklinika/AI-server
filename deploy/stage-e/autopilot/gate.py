@@ -249,6 +249,38 @@ def media_preflight():
     run([wrapper, '--preflight'], timeout=120)
 
 
+def require_empty_cgroup(root):
+    # Kernel cgroup v2 populated covers all descendants atomically, avoiding
+    # pathlib glob's suppression of directory inspection errors.
+    try:
+        events = (root / 'cgroup.events').read_text()
+    except FileNotFoundError:
+        try:
+            root.stat()
+        except FileNotFoundError:
+            return  # systemd already removed the empty cgroup
+        raise  # existing cgroup with unreadable/missing evidence fails closed
+    require(dict(line.split() for line in events.splitlines()).get('populated') == '0')
+
+
+def require_hermes_stopped():
+    # A stop can finish with ActiveState=failed if Hermes exits nonzero during
+    # shutdown. Prove absence of processes instead of treating that label as a
+    # running gateway; never accept a failed unit with a surviving process.
+    value = user_systemctl([
+        'show', 'hermes-gateway.service', '-p', 'ActiveState', '-p', 'MainPID',
+        '-p', 'ControlPID', '-p', 'ControlGroup',
+    ])
+    state = dict(line.split('=', 1) for line in value.splitlines())
+    require(state['ActiveState'] in ('inactive', 'failed'))
+    require(state['MainPID'] == '0' and state['ControlPID'] == '0')
+    group = state['ControlGroup']
+    if group:
+        require(group.startswith('/user.slice/') and '..' not in group.split('/'))
+        root = Path('/sys/fs/cgroup') / group.lstrip('/')
+        require_empty_cgroup(root)
+
+
 def hermes_oneshot_smoke():
     name, uid, home = hermes_account()
     cli = Path(home) / '.local/bin/hermes'
@@ -261,9 +293,7 @@ def hermes_oneshot_smoke():
     ]) == 'active')
     user_systemctl(['stop', 'hermes-gateway.service'])
     try:
-        require(user_systemctl([
-            'show', 'hermes-gateway.service', '-p', 'ActiveState', '--value'
-        ]) == 'inactive')
+        require_hermes_stopped()
         before = {
             job['job_id']
             for job in fetch(GATEWAY + '/status').get('recent_jobs', [])

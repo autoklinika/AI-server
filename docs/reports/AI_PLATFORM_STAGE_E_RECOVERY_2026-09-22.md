@@ -41,3 +41,19 @@ when restore succeeded. Repeated recovery smoke now writes separate immutable
 `recovery-smoke-<nonce>` records. It never overwrites a failed attempt or supplies
 missing planned-cycle evidence to finalization. Regression tests cover both a
 prior successful and prior failed planned rollback smoke.
+
+
+The first repaired candidate (`a1ece13`) passed CI/build/cutover, but live and
+recovery smoke failed at the new one-shot isolation assertion. D.6 restoration
+passed and Hermes reconnected. User-systemd records show Hermes exits with
+status 1 on shutdown, leaving `ActiveState=failed` after stop. Isolation now
+requires an inactive/failed state **and** zero main/control PIDs **and** no
+remaining cgroup processes, rather than interpreting `failed` as still running.
+The smoke still fails for a surviving process. No client code or service policy
+was changed. The failed candidate and its immutable evidence remain preserved.
+
+
+Process absence uses the kernel's recursive `cgroup.events` populated field;
+read errors fail closed, and a missing event file is accepted only when the
+cgroup directory is also gone. This avoids Python glob traversal suppressing
+inspection errors. Semantics: [Linux cgroup v2 documentation](https://docs.kernel.org/admin-guide/cgroup-v2.html#un-populated-notification).

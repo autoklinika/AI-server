@@ -499,3 +499,51 @@ def test_emergency_rollback_smoke_preserves_prior_evidence(monkeypatch, tmp_path
     assert len(set(calls)) == 2
     assert all((state / name).read_bytes() == data for name, data in original.items())
     assert (state / 'rollback-smoke.json').exists() == planned_passed
+
+
+@pytest.mark.parametrize('state,pid,control,passes', [
+    ('inactive', '0', '0', True), ('failed', '0', '0', True),
+    ('active', '0', '0', False), ('deactivating', '0', '0', False),
+    ('failed', '123', '0', False), ('failed', '0', '123', False),
+])
+def test_hermes_isolation_requires_stopped_processes(monkeypatch, state, pid, control, passes):
+    gate = module()
+    monkeypatch.setattr(gate, 'user_systemctl', lambda args:
+                        f'ActiveState={state}\nMainPID={pid}\nControlPID={control}\nControlGroup=')
+    if passes:
+        gate.require_hermes_stopped()
+    else:
+        with pytest.raises(RuntimeError):
+            gate.require_hermes_stopped()
+
+
+
+@pytest.mark.parametrize('events,passes', [
+    ('populated 0\nfrozen 0\n', True),
+    ('populated 1\nfrozen 0\n', False),  # includes a PID in any descendant
+    ('frozen 0\n', False),
+])
+def test_cgroup_population_is_required(tmp_path, events, passes):
+    gate = module()
+    (tmp_path / 'cgroup.events').write_text(events)
+    if passes:
+        gate.require_empty_cgroup(tmp_path)
+    else:
+        with pytest.raises(RuntimeError):
+            gate.require_empty_cgroup(tmp_path)
+
+
+def test_cgroup_inspection_errors_fail_closed(monkeypatch, tmp_path):
+    gate = module()
+    def inaccessible(*args, **kwargs):
+        raise PermissionError('unreadable')
+    monkeypatch.setattr(gate.Path, 'read_text', inaccessible)
+    with pytest.raises(PermissionError):
+        gate.require_empty_cgroup(tmp_path)
+
+
+def test_cgroup_absence_must_be_proven(tmp_path):
+    gate = module()
+    gate.require_empty_cgroup(tmp_path / 'removed')
+    with pytest.raises(FileNotFoundError):
+        gate.require_empty_cgroup(tmp_path)  # exists, but events file missing
