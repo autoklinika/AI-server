@@ -45,6 +45,9 @@ def verify_release(path):
 
 
 def preflight():
+    marker = STATE / 'gpu-blocked.json'
+    if marker.exists():
+        require(e.read(marker)['boot_id'] != Path('/proc/sys/kernel/random/boot_id').read_text().strip())
     require(e.CURRENT.resolve() == BASE)
     require(verify_release(BASE)['source_git_sha'] == BASE_SHA)
     e.runtime(BASE, e.config())
@@ -290,6 +293,11 @@ def recover_unmodified_baseline(sha):
     for relative, expected in ORIGINAL_PATCH_HASHES.items():
         require(e.digest(SOURCE / relative) == expected)
     e.comfy_idle()
+    recovered_before = any(STATE.glob('baseline-recovery-*/runtime-restored.json'))
+    kernel = run(['journalctl', '-k', '--since', '-5 minutes', '--no-pager', '-o', 'cat'])
+    gpu_stalled = recovered_before and 'MES ring buffer is full.' in kernel
+    if gpu_stalled:
+        require(e.fetch('http://127.0.0.1:11434/api/ps').get('models') == [])
     directory = STATE / ('baseline-recovery-' + uuid4().hex)
     directory.mkdir(mode=0o700)
     snapshot_hash = snapshot(directory)
@@ -301,6 +309,17 @@ def recover_unmodified_baseline(sha):
     # Admission jobs have no external media owner (Comfy queue was proven empty).
     # Stop Gateway before its backend, then start the same verified E processes.
     run(['systemctl', 'stop', 'ai-gateway.service'], timeout=180)
+    if gpu_stalled:
+        record = {'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+                  'release': BASE.name, 'snapshot': snapshot_hash, 'source_sha': sha,
+                  'status': 'BLOCKED_GPU', 'gateway': 'stopped', 'hermes': 'stopped',
+                  'analysis_timer': 'paused', 'bridge': 'preserved', 'comfy': 'preserved_idle',
+                  'reason': 'persistent AMD MES ring full after model service restart; no models loaded'}
+        e.write_once(directory / 'gpu-blocked.json', record)
+        if not (STATE / 'gpu-blocked.json').exists():
+            e.write_once(STATE / 'gpu-blocked.json', record)
+        print('BASELINE_RUNTIME=BLOCKED_GPU_INGRESS_PAUSED', flush=True)
+        raise RuntimeError('host GPU recovery required')
     run(['systemctl', 'restart', 'ollama.service'], timeout=180)
     run(['systemctl', 'start', 'ai-gateway.service'])
     for attempt in range(60):
