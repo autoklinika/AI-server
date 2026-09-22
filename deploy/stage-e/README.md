@@ -73,57 +73,40 @@ handles failed cutover/smoke; rollback also handles a stopped/failed candidate
 Gateway. Do not delete state to bypass failed gates; investigate first. Smoke
 retry fails closed rather than overwriting evidence. No GitHub command is used.
 
-### Site harness prerequisite (mandatory, not a mocked smoke)
+### Autonomous production quiesce and smoke
 
-The supervisor must provision a reviewed root-owned executable and this root-owned,
-non-group/world-writable file before preflight:
-`/etc/ai-platform/stage-e-autopilot.json`:
+Stage E does not require a new private site harness or any new Telegram/Discord
+credentials. Before each release switch the privileged executor closes the real
+ingress it controls: it stops the existing Hermes gateway and pauses the
+`ai-bridge-analysis.timer`, waits for Resource Manager and ComfyUI idle, then
+switches the release atomically. On a healthy candidate/rollback it restores the
+previous activation state and waits for Hermes to reconnect. The existing Hermes
+service owner is discovered from `/srv/ai-data/hermes`; user-systemd is invoked
+with `runuser` and the owner's `XDG_RUNTIME_DIR`, matching the D.6 production
+finding.
 
-```json
-{
-  "harness": "/usr/local/libexec/ai-platform/stage-e-site-e2e",
-  "harness_sha256": "<64 lowercase hex SHA256 of the reviewed executable>",
-  "bridge_health_url": "http://127.0.0.1:8080/health",
-  "api_token_file": null
-}
-```
+Fresh Stage E smoke is intentionally limited to evidence that can be generated
+autonomously without impersonating real Telegram/Discord users:
 
-Set the actual existing AI Bridge health address (loopback or 192.168 LAN).
-If token auth is enabled, `api_token_file` names a root-owned 0600 file containing
-only the token. No token is passed in argv or written to evidence. The integration
-harness keeps real Telegram/Discord test accounts, destinations and credentials
-in private site configuration. These cannot be safely inferred from repository
-fixtures. Missing harness/config blocks before any candidate install/cutover.
+- new-client Platform API inference plus jobs/models/systems/health,
+- real compatibility WVC -> Gateway -> Qwen inference,
+- Hermes gateway state with Telegram/API and configured Discord connected,
+- byte-identical D.6 matched clients,
+- release-managed media preflight,
+- service identity stability, health and idle recovery.
 
-The executor calls the pinned harness with:
-`ACTION --release RELEASE_ID --challenge RANDOM_NONCE`.
-Actions:
+The fresh D.6 production evidence for Telegram multiuser isolation, `/foto`,
+`/wideo`, Discord and real media remains the compatibility baseline because
+Stage E does not modify Hermes source, those five matched clients, models, GPU
+configuration or media workflows. Stage E does **not** relabel historical D.6
+evidence as a fresh user-path PASS. A later stage that changes Hermes or messaging
+must execute its own fresh user-path validation.
 
-- `quiesce`: close **all** ingress, pause analysis timer, drain messaging/media/
-  other callers; assert no workers can submit work until resume. Save activation
-  states durably/idempotently, without replacing the original baseline on retry.
-- `resume`: restore exactly those saved ingress/timer states, verify Telegram/API
-  connection after any intentional restart. Must recover a partially quiesced run.
-- `smoke`: execute fresh real Telegram multiuser + cross-user delivery isolation,
-  queued WAIT/START, Telegram foto/wideo, Discord and real decoded media validation.
-  Assert Hermes remains connected and stable across this smoke. A live harness
-  must send test requests and observe their matching replies/artifacts; service
-  status, historical attestations or caller-provided PASS booleans are insufficient.
-
-The JSON stdout contract is strict. Every action returns `schema_version:1`,
-`release_id` and the exact `challenge`. Quiesce/resume add only `verified:true`.
-Smoke adds only `checks`, whose exact keys are `telegram_multiuser`,
-`delivery_isolation`, `wait_start`, `telegram_foto`, `telegram_wideo`, `discord`,
-`real_media`, all boolean true **after** corresponding real assertions.
-The supervisor reviews/pins this site-specific program before executing; the
-repository cannot itself attest correctness of a supplied harness.
-No private stdout/stderr is forwarded or stored, including on failure.
-
-The repository smoke independently executes new-client Platform API inference,
+The production smoke independently executes new-client Platform API inference,
 correlated job lookup, models/systems/health, and real compatibility WVC inference.
-It validates service identity stability and post-smoke idle. The same real
-compatibility harness must pass on D.6 rollback and final Stage E reactivation,
-with fresh nonces. Physical WVC telemetry growth is not claimed when CM5 is offline.
-`90_finalize` requires all three immutable smoke records and the active healthy
-candidate, then writes `docs/reports/AI_PLATFORM_STAGE_E_PRODUCTION_GATE.md`.
+It validates Hermes connectivity, matched-client integrity, media preflight,
+service identity stability and post-smoke idle on candidate, D.6 rollback and
+final Stage E reactivation. Physical WVC telemetry growth is not claimed when
+CM5 is offline. `90_finalize` requires all three immutable smoke records and the
+active healthy candidate, then writes `docs/reports/AI_PLATFORM_STAGE_E_PRODUCTION_GATE.md`.
 No production report is fabricated during implementation.
