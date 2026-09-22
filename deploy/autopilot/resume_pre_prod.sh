@@ -26,10 +26,13 @@ status_file="$STAGE_STATE/status"
 [[ -f "$PRIVATE_ENV" ]] || { echo "FAIL: autopilot private env missing"; exit 4; }
 [[ -f "$status_file" ]] || { echo "FAIL: Stage $STAGE status missing"; exit 4; }
 state="$(awk '{print $1}' "$status_file")"
-[[ "$state" == "PRE_PROD_CI" ]] || {
-  echo "FAIL: safe resume requires PRE_PROD_CI, got: $state"
-  exit 5
-}
+case "$state" in
+  PRE_PROD_CI|PRODUCTION:00_preflight.sh) ;;
+  *)
+    echo "FAIL: safe resume requires PRE_PROD_CI or read-only 00_preflight failure, got: $state"
+    exit 5
+    ;;
+esac
 
 if tmux has-session -t "$SESSION" 2>/dev/null; then
   echo "FAIL: tmux session already exists: $SESSION"
@@ -55,8 +58,11 @@ install -m 700 "$REPO_ROOT/deploy/autopilot/run_stage.sh" "$CONTROL_DIR/run_stag
 install -m 700 "$REPO_ROOT/deploy/autopilot/stage_eh_master.sh" "$CONTROL_DIR/master.sh"
 install -m 600 "$REPO_ROOT"/deploy/autopilot/prompts/stage_*.md "$CONTROL_DIR/prompts/"
 
-# The prior BLOCKED marker belongs to the already diagnosed PRE_PROD_CI race.
-# Remove it only after all resume invariants above passed.
+# Normalize the legacy read-only preflight state back to the resumable boundary
+# only after all invariants above passed.
+printf 'PRE_PROD_CI %s\n' "$(date -Is)" > "$status_file"
+
+# The prior BLOCKED marker belongs to a diagnosed pre-production stop.
 rm -f "$STATE_DIR/master.status"
 
 launch="export PATH='$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin'; export AI_AUTOPILOT_ENV='$PRIVATE_ENV'; export AI_AUTOPILOT_CONTROL_DIR='$CONTROL_DIR'; export AI_AUTOPILOT_STATE_DIR='$STATE_DIR'; export AI_AUTOPILOT_WORKTREE='$WORKTREE'; export AI_AUTOPILOT_RESUME_STAGE='$STAGE'; exec '$CONTROL_DIR/master.sh' >> '$STATE_DIR/master-console.log' 2>&1"
