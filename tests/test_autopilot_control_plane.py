@@ -161,3 +161,21 @@ def test_privilege_installer_uses_root_owned_helper_and_sudoers():
     assert "visudo" in text
     assert 'branch_name' in text and '"main"' in text
     assert "main worktree must be clean" in text
+
+
+def test_master_self_retries_only_safe_preprod_failures():
+    text = (AUTO / "stage_eh_master.sh").read_text(encoding="utf-8")
+    assert "WAITING_SAFE_RETRY" in text
+    assert '[[ "$stage_state" == "PRE_PROD_CI" ]]' in text
+    assert '[[ "$rc" =~ ^(31|91|94)$ ]]' in text
+    assert 'sleep "$retry_delay"' in text
+    assert "retry_delay=300" in text
+    assert "Produkcja nie została zmieniona." in text
+
+
+def test_stale_preprod_is_auto_resumable_but_production_is_not():
+    text = (AUTO / "stage_eh_master.sh").read_text(encoding="utf-8")
+    assert 'PRE_PROD_CI)' in text
+    assert 'RESUME_STAGE="$stage"' in text
+    assert 'PRODUCTION_MUTATING|PRODUCTION:20_cutover.sh' in text
+    assert "recover_interrupted_production" in text
