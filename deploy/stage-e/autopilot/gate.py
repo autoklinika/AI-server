@@ -122,7 +122,7 @@ def idle():
     comfy_idle()
 
 
-def runtime(release, cfg, baseline=None):
+def runtime(release, cfg, baseline=None, require_idle=True):
     require(CURRENT.resolve(strict=True) == release)
     for service in ('ai-gateway', 'ai-bridge'):
         pid, _ = identity(service + '.service')
@@ -130,7 +130,8 @@ def runtime(release, cfg, baseline=None):
         require(run(['systemctl', 'show', service + '.service', '-p', 'WorkingDirectory', '--value']) == '/opt/ai-platform/current/services/' + service)
     require(fetch(GATEWAY + '/health')['status'] == 'ok')
     require(fetch(cfg['bridge_health_url'])['status'] == 'ok')
-    idle()
+    if require_idle:
+        idle()
     actual = clients()
     if baseline:
         require(actual == baseline['clients'])
@@ -217,17 +218,41 @@ def read(path):
     return json.loads(path.read_text())
 
 
+def preflight_step(name, function):
+    try:
+        return function()
+    except BaseException:
+        # The label is deliberately content-free and safe for operator logs.
+        print('PREFLIGHT_FAIL=' + name, file=sys.stderr)
+        raise
+
+
 def preflight(cfg):
-    require(CURRENT.resolve(strict=True) == D6)
-    stamp = verify_release(D6, 'd')
-    require(stamp['source_git_sha'] == D6_SHA)
-    runtime(D6, cfg)
+    preflight_step('active_release',
+        lambda: require(CURRENT.resolve(strict=True) == D6))
+    stamp = preflight_step('release_metadata', lambda: verify_release(D6, 'd'))
+    preflight_step('release_source',
+        lambda: require(stamp['source_git_sha'] == D6_SHA))
+    # Do not require a point-in-time idle state here. Background work may be
+    # legitimately active. The cutover path closes ingress and enforces idle in
+    # quiesce() immediately before any production mutation.
+    preflight_step('runtime_identity_health',
+        lambda: runtime(D6, cfg, require_idle=False))
     for unit in ('ai-gateway.service', 'ai-bridge.service', 'ai-bridge-analysis.service'):
-        require(run(['systemctl', 'show', unit, '-p', 'NeedDaemonReload', '--value']) == 'no')
-    require(Path('/srv/ai-data/platform/recovery/stage-d6-resource-manager-v2-20260922-r1-clients').is_dir())
-    require(user_systemctl(['show', 'hermes-gateway.service', '-p', 'ActiveState', '--value']) == 'active')
-    hermes_state()
-    media_preflight()
+        preflight_step('systemd_reload_' + unit.split('.')[0],
+            lambda unit=unit: require(run([
+                'systemctl', 'show', unit, '-p', 'NeedDaemonReload', '--value'
+            ]) == 'no'))
+    preflight_step('recovery_snapshot',
+        lambda: require(Path(
+            '/srv/ai-data/platform/recovery/stage-d6-resource-manager-v2-20260922-r1-clients'
+        ).is_dir()))
+    preflight_step('hermes_service',
+        lambda: require(user_systemctl([
+            'show', 'hermes-gateway.service', '-p', 'ActiveState', '--value'
+        ]) == 'active'))
+    preflight_step('hermes_connected', hermes_state)
+    preflight_step('media_preflight', media_preflight)
 
 
 def switch(target, entry, cfg, baseline):
