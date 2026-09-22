@@ -282,7 +282,13 @@ set_state PRE_PROD_CI
 candidate_sha="$(git -C "$WORKTREE" rev-parse HEAD)"
 wait_commit_ci "$candidate_sha" "pre-production CI"
 
-run_prod_step 00_preflight.sh
+if ! run_prod_step 00_preflight.sh; then
+  # 00_preflight is contractually read-only. Return to the resumable pre-prod
+  # state so a transient/diagnosed baseline failure never masquerades as a
+  # partial production mutation.
+  set_state PRE_PROD_CI
+  return 31
+fi
 run_prod_step 10_build_install.sh
 
 set_state PRODUCTION_MUTATING
