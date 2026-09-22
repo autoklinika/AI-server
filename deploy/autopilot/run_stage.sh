@@ -75,17 +75,16 @@ wait_commit_ci() {
   local snapshot=""
   local status=""
   local conclusion=""
+  local observed_sha=""
   local transient_errors=0
 
-  # Registration can lag behind the push/PR event. Treat CLI/API failures as
-  # transient and keep polling; only timeout or a terminal non-success result blocks.
   for _ in $(seq 1 180); do
     if row="$(gh run list --repo autoklinika/AI-server --workflow "AI Platform CI" \
       --limit 50 --json databaseId,headSha,status,conclusion,createdAt \
-      --jq ".[] | select(.headSha == \"$expected_sha\") | [.databaseId,.createdAt] | @tsv" \
+      --jq ".[] | select(.headSha == \"$expected_sha\") | [.databaseId,.createdAt] | join(\" \")" \
       2>/dev/null | head -n1)"; then
       if [[ -n "$row" ]]; then
-        run_id="$(printf '%s' "$row" | cut -f1)"
+        run_id="${row%% *}"
         break
       fi
     else
@@ -105,8 +104,36 @@ wait_commit_ci() {
   for _ in $(seq 1 240); do
     if snapshot="$(gh run view "$run_id" --repo autoklinika/AI-server \
       --json status,conclusion,headSha \
-      --jq '[.status,(.conclusion // ""),.headSha] | @tsv' 2>/dev/null)"; then
-      IFS=
+      --jq '[.status,(.conclusion // "-"),.headSha] | join(" ")' 2>/dev/null)"; then
+      read -r status conclusion observed_sha <<<"$snapshot"
+      [[ "$observed_sha" == "$expected_sha" ]] || {
+        echo "CI_GATE_SHA_MISMATCH expected=$expected_sha observed=$observed_sha" >&2
+        return 92
+      }
+      case "$status" in
+        completed)
+          if [[ "$conclusion" == "success" ]]; then
+            echo "CI_GATE_PASS label=$label run_id=$run_id"
+            return 0
+          fi
+          echo "CI_GATE_FAIL label=$label run_id=$run_id conclusion=${conclusion:-unknown}" >&2
+          return 93
+          ;;
+        queued|in_progress|requested|waiting|pending)
+          ;;
+        *)
+          ;;
+      esac
+    else
+      transient_errors=$((transient_errors + 1))
+    fi
+    sleep 5
+  done
+
+  printf 'CI_GATE_TIMEOUT label=%s run_id=%s transient_errors=%s\n' \
+    "$label" "$run_id" "$transient_errors" >&2
+  return 94
+}
 
 wait_main_ci() {
   local expected_sha="$1"
@@ -318,279 +345,6 @@ if ((preflight_ok == 0)); then
   exit 31
 fi
 rm -f "$STAGE_STATE/reason"
-run_prod_step 10_build_install.sh
-
-set_state PRODUCTION_MUTATING
-if ! run_prod_step 20_cutover.sh; then emergency_rollback "cutover"; fi
-if ! run_prod_step 30_smoke.sh; then emergency_rollback "live smoke/E2E"; fi
-
-if ! run_prod_step 40_rollback.sh; then
-  set_state BLOCKED_ROLLBACK_FAILED
-  notify BLOCKED "$STAGE" "KRYTYCZNE: planowany test rollbacku nie wykonał się poprawnie."
-  exit 10
-fi
-if ! run_prod_step 50_rollback_smoke.sh; then
-  set_state BLOCKED_ROLLBACK_SMOKE_FAILED
-  notify BLOCKED "$STAGE" "KRYTYCZNE: poprzedni release po rollbacku nie przeszedł smoke."
-  exit 11
-fi
-
-if ! run_prod_step 60_reactivate.sh; then emergency_rollback "reactivation"; fi
-if ! run_prod_step 70_reactivate_smoke.sh; then emergency_rollback "post-reactivation smoke"; fi
-run_prod_step 90_finalize.sh
-
-set_state FINAL_EVIDENCE
-git -C "$WORKTREE" diff --check
-git -C "$WORKTREE" add -A
-if ! git -C "$WORKTREE" diff --cached --quiet; then
-  git -C "$WORKTREE" commit -m "docs(stage-$stage_lc): record production validation"
-  git -C "$WORKTREE" push
-fi
-
-set_state FINAL_CI
-final_sha="$(git -C "$WORKTREE" rev-parse HEAD)"
-wait_commit_ci "$final_sha" "final PR CI"
-(cd "$WORKTREE" && gh pr ready "$pr_number" --repo autoklinika/AI-server)
-(cd "$WORKTREE" && gh pr merge "$pr_number" --repo autoklinika/AI-server --merge --delete-branch)
-
-set_state POST_MERGE_CI
-git -C "$WORKTREE" fetch origin main --prune
-main_sha="$(git -C "$WORKTREE" rev-parse origin/main)"
-wait_main_ci "$main_sha"
-
-git -C "$WORKTREE" checkout --detach origin/main
-set_state COMPLETE
-\t' read -r status conclusion observed_sha <<<"$snapshot"
-      [[ "$observed_sha" == "$expected_sha" ]] || {
-        echo "CI_GATE_SHA_MISMATCH expected=$expected_sha observed=$observed_sha" >&2
-        return 92
-      }
-      case "$status" in
-        completed)
-          if [[ "$conclusion" == "success" ]]; then
-            echo "CI_GATE_PASS label=$label run_id=$run_id"
-            return 0
-          fi
-          echo "CI_GATE_FAIL label=$label run_id=$run_id conclusion=${conclusion:-unknown}" >&2
-          return 93
-          ;;
-        queued|in_progress|requested|waiting|pending)
-          ;;
-        *)
-          # Unknown/nonterminal state: keep polling instead of converting it to
-          # a false production BLOCKED.
-          ;;
-      esac
-    else
-      transient_errors=$((transient_errors + 1))
-    fi
-    sleep 5
-  done
-
-  printf 'CI_GATE_TIMEOUT label=%s run_id=%s transient_errors=%s\n' \
-    "$label" "$run_id" "$transient_errors" >&2
-  return 94
-}
-
-wait_main_ci() {
-  local expected_sha="$1"
-  wait_commit_ci "$expected_sha" "post-merge CI"
-}
-
-if [[ "$MODE" == "--resume-pre-prod" ]]; then
-  previous_state="$(awk '{print $1}' "$STAGE_STATE/status" 2>/dev/null || true)"
-  [[ "$previous_state" == "PRE_PROD_CI" ]] || {
-    echo "FAIL: resume allowed only from PRE_PROD_CI, got: ${previous_state:-missing}"
-    exit 20
-  }
-  [[ -z "$(git -C "$WORKTREE" status --porcelain)" ]] || {
-    echo "FAIL: resume worktree is dirty"
-    exit 21
-  }
-
-  git -C "$WORKTREE" fetch origin main "$BRANCH" --prune
-  current_branch="$(git -C "$WORKTREE" branch --show-current)"
-  [[ "$current_branch" == "$BRANCH" ]] || {
-    echo "FAIL: resume requires branch $BRANCH, got: ${current_branch:-detached}"
-    exit 22
-  }
-
-  # Accept reviewed remote repairs only by fast-forward; never overwrite local history.
-  if [[ "$(git -C "$WORKTREE" rev-parse HEAD)" != "$(git -C "$WORKTREE" rev-parse "origin/$BRANCH")" ]]; then
-    git -C "$WORKTREE" merge --ff-only "origin/$BRANCH"
-  fi
-
-  # Branch protection requires the candidate to contain current main. Updating here
-  # is safe because production has not been touched yet; any conflict fails closed.
-  if ! git -C "$WORKTREE" merge-base --is-ancestor origin/main HEAD; then
-    git -C "$WORKTREE" merge --no-edit origin/main
-    git -C "$WORKTREE" push origin "$BRANCH"
-  fi
-
-  head_sha="$(git -C "$WORKTREE" rev-parse HEAD)"
-  remote_sha="$(git -C "$WORKTREE" rev-parse "origin/$BRANCH")"
-  [[ "$head_sha" == "$remote_sha" ]] || {
-    echo "FAIL: local/remote Stage $STAGE branch mismatch after update"
-    exit 23
-  }
-
-  pr_number="$(cd "$WORKTREE" && gh pr view "$BRANCH" --repo autoklinika/AI-server \
-    --json number,baseRefName,state \
-    --jq 'select(.baseRefName == "main" and .state == "OPEN") | .number')"
-  [[ -n "$pr_number" ]] || {
-    echo "FAIL: open PR to main not found for $BRANCH"
-    exit 24
-  }
-
-  set_state DEV_GATE
-  git -C "$WORKTREE" diff --check
-  find "$WORKTREE/deploy" -type f -name '*.sh' -print0 | sort -z | xargs -0 -n1 bash -n
-  production_scripts || { echo "FAIL: incomplete Stage $STAGE autopilot production contract"; exit 25; }
-  "$VENV/bin/python" -m pip install --disable-pip-version-check -q -e "$WORKTREE[dev]"
-  (
-    cd "$WORKTREE"
-    "$VENV/bin/python" -m compileall -q src deploy/autopilot
-    "$VENV/bin/python" -m pytest -q
-  ) 2>&1 | tee "$LOG_DIR/resume-dev-gate.log"
-
-  set_state REVIEW
-  (
-    cd "$WORKTREE"
-    codex --sandbox read-only --ask-for-approval never exec < "$STAGE_STATE/review.prompt"
-  ) 2>&1 | tee "$LOG_DIR/codex-review-resume.log"
-  grep -qx 'AUTOPILOT_REVIEW=PASS' "$LOG_DIR/codex-review-resume.log" || {
-    set_state BLOCKED_REVIEW
-    exit 26
-  }
-else
-set_state PREFLIGHT
-git -C "$WORKTREE" fetch origin main --prune
-if [[ -n "$(git -C "$WORKTREE" status --porcelain)" ]]; then
-  echo "FAIL: worktree dirty before Stage $STAGE" >&2
-  exit 4
-fi
-git -C "$WORKTREE" checkout --detach origin/main
-git -C "$WORKTREE" checkout -B "$BRANCH" origin/main
-
-cat > "$STAGE_STATE/implement.prompt" <<EOF
-You are the implementation agent for AI Platform Stage $STAGE.
-Work only inside the current repository/worktree. Do not commit, push, create/merge PRs,
-run gh, or change production. The supervisor owns all GitHub and production actions.
-
-Read and obey:
-- docs/architecture/AI_PLATFORM_MIGRATION_PLAN_V1_PL.md
-- docs/architecture/AI_PLATFORM_TARGET_ARCHITECTURE_V1_PL.md
-- docs/architecture/AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md
-- $SPEC
-
-Preserve all working Stage D behavior unless the Stage $STAGE specification explicitly
-moves it behind a new boundary. Keep changes small, reversible and covered by tests.
-
-MANDATORY AUTOPILOT CONTRACT:
-Create deploy/stage-$stage_lc/autopilot/ with executable-compatible bash scripts:
-00_preflight.sh       read-only production checks
-10_build_install.sh   build/install candidate without activating it
-20_cutover.sh         activate/mutate production
-30_smoke.sh           real Stage $STAGE smoke/E2E
-40_rollback.sh        restore the previous verified production state
-50_rollback_smoke.sh  verify the restored state
-60_reactivate.sh      re-activate the Stage $STAGE candidate
-70_reactivate_smoke.sh verify final candidate state
-90_finalize.sh        write/update the production gate report and repository evidence
-
-Every mutating script must be idempotent or fail closed. Never destroy the rollback point.
-Do not put secrets, prompts, tokens, chat IDs or private runtime content in reports/logs.
-Stage H must quarantine before deletion and must preserve D.0/D.6 and the most recent
-verified rollback releases required by the policy.
-
-Run appropriate tests locally. When implementation and DEV gate are genuinely ready,
-write exactly READY_FOR_REVIEW followed by a newline to:
-.agent-result-stage-$stage_lc
-Do not create that marker if anything remains knowingly broken.
-EOF
-cat "$SPEC" >> "$STAGE_STATE/implement.prompt"
-
-set_state IMPLEMENT
-(
-  cd "$WORKTREE"
-  codex --sandbox workspace-write --ask-for-approval never exec < "$STAGE_STATE/implement.prompt"
-) 2>&1 | tee "$LOG_DIR/codex-implement.log"
-
-marker="$WORKTREE/.agent-result-stage-$stage_lc"
-[[ -f "$marker" ]] || { echo "FAIL: Codex result marker missing"; exit 5; }
-[[ "$(tr -d '\r\n' < "$marker")" == "READY_FOR_REVIEW" ]] || { echo "FAIL: invalid Codex marker"; exit 5; }
-rm -f "$marker"
-
-set_state DEV_GATE
-git -C "$WORKTREE" diff --check
-find "$WORKTREE/deploy" -type f -name '*.sh' -print0 | sort -z | xargs -0 -n1 bash -n
-production_scripts || { echo "FAIL: incomplete Stage $STAGE autopilot production contract"; exit 6; }
-
-if [[ ! -x "$VENV/bin/python" ]]; then
-  python3 -m venv "$VENV"
-fi
-"$VENV/bin/python" -m pip install --disable-pip-version-check -q -e "$WORKTREE[dev]"
-(
-  cd "$WORKTREE"
-  "$VENV/bin/python" -m compileall -q src deploy/autopilot
-  "$VENV/bin/python" -m pytest -q
-) 2>&1 | tee "$LOG_DIR/dev-gate.log"
-
-cat > "$STAGE_STATE/review.prompt" <<EOF
-You are the independent production reviewer for AI Platform Stage $STAGE.
-You are read-only. Inspect the current worktree diff against origin/main, tests,
-Stage $STAGE production scripts and rollback design.
-
-Read:
-- docs/architecture/AI_PLATFORM_MIGRATION_PLAN_V1_PL.md
-- docs/architecture/AI_PLATFORM_TARGET_ARCHITECTURE_V1_PL.md
-- docs/architecture/AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md
-- $SPEC
-
-Reject if scope leaks into later stages, if rollback can lose the last verified state,
-if secrets may leak, if smoke tests can pass without exercising the intended boundary,
-or if a production mutation can occur before preflight/build have succeeded.
-
-Your final line MUST be exactly one of:
-AUTOPILOT_REVIEW=PASS
-AUTOPILOT_REVIEW=BLOCKED
-EOF
-cat "$SPEC" >> "$STAGE_STATE/review.prompt"
-
-set_state REVIEW
-(
-  cd "$WORKTREE"
-  codex --sandbox read-only --ask-for-approval never exec < "$STAGE_STATE/review.prompt"
-) 2>&1 | tee "$LOG_DIR/codex-review.log"
-
-grep -qx 'AUTOPILOT_REVIEW=PASS' "$LOG_DIR/codex-review.log" || {
-  set_state BLOCKED_REVIEW
-  exit 7
-}
-
-set_state DEV_COMMIT
-git -C "$WORKTREE" add -A
-git -C "$WORKTREE" diff --cached --quiet && { echo "FAIL: no Stage $STAGE changes"; exit 8; }
-git -C "$WORKTREE" commit -m "feat(stage-$stage_lc): implement autonomous Stage $STAGE candidate"
-git -C "$WORKTREE" push -u origin "$BRANCH"
-
-pr_url="$(cd "$WORKTREE" && gh pr create --repo autoklinika/AI-server --base main --head "$BRANCH"   --draft --title "Stage $STAGE: autonomous migration candidate"   --body "Autonomous Stage $STAGE candidate. Production gate is pending; do not merge until the supervisor records live smoke, rollback and reactivation evidence.")"
-pr_number="$(printf '%s' "$pr_url" | sed -nE 's#.*/pull/([0-9]+).*#\1#p')"
-[[ -n "$pr_number" ]] || { echo "FAIL: could not determine PR number"; exit 9; }
-
-fi
-
-set_state PRE_PROD_CI
-candidate_sha="$(git -C "$WORKTREE" rev-parse HEAD)"
-wait_commit_ci "$candidate_sha" "pre-production CI"
-
-if ! run_prod_step 00_preflight.sh; then
-  # 00_preflight is contractually read-only. Return to the resumable pre-prod
-  # state so a transient/diagnosed baseline failure never masquerades as a
-  # partial production mutation.
-  set_state PRE_PROD_CI
-  return 31
-fi
 run_prod_step 10_build_install.sh
 
 set_state PRODUCTION_MUTATING
