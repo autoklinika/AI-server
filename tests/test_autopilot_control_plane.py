@@ -35,3 +35,9 @@ def test_runner_requires_review_and_full_rollback_cycle():
     ):
         assert script in text
     assert "emergency_rollback" in text
+
+
+def test_chat_discovery_does_not_consume_updates():
+    text = (AUTO / "discover_telegram_chats.py").read_text(encoding="utf-8")
+    assert "getChat" in text
+    assert "getUpdates" not in text
