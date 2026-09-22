@@ -65,7 +65,7 @@ def test_runner_waits_for_registered_ci_by_sha():
 
 def test_pre_prod_resume_is_fail_closed():
     text = (AUTO / "resume_pre_prod.sh").read_text(encoding="utf-8")
-    assert 'state" == "PRE_PROD_CI"' in text
+    assert "PRE_PROD_CI|PRODUCTION:00_preflight.sh" in text
     assert "worktree is dirty; refusing resume" in text
     assert "AI_AUTOPILOT_RESUME_STAGE" in text
     assert "git reset" not in text
