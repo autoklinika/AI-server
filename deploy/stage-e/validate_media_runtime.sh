@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+EXPECTED_STAGE="${1:?usage: $0 <D|E>}"
+[[ "$EXPECTED_STAGE" == "D" || "$EXPECTED_STAGE" == "E" ]] || {
+  echo "FAIL: expected stage must be D or E" >&2
+  exit 2
+}
+
 CURRENT="/opt/ai-platform/current"
 WRAPPER="/usr/local/bin/generate-video-ltx23"
 OUTPUT_DIR="$(mktemp -d /tmp/stage-e-media-smoke.XXXXXX)"
@@ -8,7 +14,7 @@ OUTPUT_DIR="$(mktemp -d /tmp/stage-e-media-smoke.XXXXXX)"
 fail(){ printf 'FAIL: %s\n' "$*" >&2; exit 1; }
 
 [[ -f "$CURRENT/RELEASE" ]] || fail "active release stamp missing"
-grep -qx 'stage=E' "$CURRENT/RELEASE" || fail "active release is not Stage E"
+grep -qx "stage=$EXPECTED_STAGE" "$CURRENT/RELEASE" || fail "active release stage mismatch"
 [[ -x "$WRAPPER" ]] || fail "media wrapper missing"
 grep -Fq '/opt/ai-platform/current/services/ai-bridge' "$WRAPPER" \
   || fail "media wrapper is not release-managed"
