@@ -36,6 +36,16 @@ CONTROL_DIR="$HOME/agent-control/stage-eh-master"
 STATE_DIR="$HOME/agent-state/stage-eh"
 WORKTREE="$HOME/agent-worktrees/stage-eh"
 SESSION="stage-eh-master"
+LEGACY_UNIT="$HOME/.config/systemd/user/ai-stage-eh-agent.service"
+
+# Stage D proved that direct user-systemd execution is incompatible with the
+# local Codex/bubblewrap sandbox. Remove the legacy E-H launcher if an older
+# bootstrap installed it, so it cannot restart unexpectedly after login/reboot.
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl --user disable --now ai-stage-eh-agent.service >/dev/null 2>&1 || true
+  rm -f "$LEGACY_UNIT"
+  systemctl --user daemon-reload >/dev/null 2>&1 || true
+fi
 
 mkdir -p "$PRIVATE_DIR" "$CONTROL_DIR/prompts" "$STATE_DIR" "$HOME/agent-worktrees"
 chmod 700 "$PRIVATE_DIR" "$CONTROL_DIR" "$STATE_DIR"

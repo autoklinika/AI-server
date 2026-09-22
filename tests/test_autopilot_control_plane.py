@@ -48,3 +48,9 @@ def test_bootstrap_uses_tmux_not_systemd_for_codex_supervisor():
     assert "tmux new-session" in text
     assert "systemctl --user start ai-stage-eh-agent.service" not in text
     assert "codex" in text
+
+
+def test_bootstrap_disables_legacy_systemd_launcher():
+    text = (AUTO / "bootstrap_stage_eh.sh").read_text(encoding="utf-8")
+    assert "disable --now ai-stage-eh-agent.service" in text
+    assert "LEGACY_UNIT" in text
