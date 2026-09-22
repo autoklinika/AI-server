@@ -562,10 +562,26 @@ def main(step):
         baseline = read(state / 'baseline.json')
         require(baseline['source_sha'] == sha and baseline['rollback_sha'] == D6_SHA
                 and baseline['candidate'] == candidate.name and baseline['rollback'] == D6.name)
+        require(digest(D6 / 'metadata/SHA256SUMS') == baseline['rollback_checksums'])
+
+        if step == '40_rollback':
+            # Emergency recovery must depend only on the preserved verified D.6
+            # rollback point, never on candidate artifacts that may be missing
+            # or corrupted by the failed deployment.
+            switch(D6, candidate, cfg, baseline)
+            if not (state / 'rollback.json').exists():
+                write_once(state / 'rollback.json', {'release_id': D6.name})
+            return
+
+        if step == '50_rollback_smoke':
+            require((state / 'rollback.json').is_file())
+            smoke('rollback-smoke', D6, cfg, baseline, state)
+            return
+
         installed = read(state / 'installed.json')
         require(installed['source_sha'] == sha)
-        require(digest(D6 / 'metadata/SHA256SUMS') == baseline['rollback_checksums'])
         require(digest(candidate / 'metadata/SHA256SUMS') == installed['checksums'])
+
         if step in ('20_cutover', '60_reactivate'):
             if step == '60_reactivate':
                 require((state / 'rollback-smoke.json').is_file())
@@ -575,15 +591,9 @@ def main(step):
             switch(candidate, D6, cfg, baseline)
             if not (state / (step + '.json')).exists():
                 write_once(state / (step + '.json'), {'release_id': candidate.name})
-        elif step == '40_rollback':
-            # Can run after a partial cutover even without a cutover PASS marker.
-            switch(D6, candidate, cfg, baseline)
-            if not (state / 'rollback.json').exists():
-                write_once(state / 'rollback.json', {'release_id': D6.name})
-        elif step in ('30_smoke', '50_rollback_smoke', '70_reactivate_smoke'):
+        elif step in ('30_smoke', '70_reactivate_smoke'):
             phase, target, prior = {
                 '30_smoke': ('candidate-smoke', candidate, '20_cutover'),
-                '50_rollback_smoke': ('rollback-smoke', D6, 'rollback'),
                 '70_reactivate_smoke': ('final-smoke', candidate, '60_reactivate'),
             }[step]
             require((state / (prior + '.json')).is_file())
