@@ -136,6 +136,7 @@ def test_config_has_no_private_site_harness_dependency():
     assert gate.CHECKS == (
         'messaging_connectivity',
         'hermes_inference',
+        'messaging_boundary',
         'matched_clients_unchanged',
         'media_preflight',
         'real_media',
@@ -307,6 +308,10 @@ def test_stage_e_smoke_has_fresh_hermes_and_real_media_checks():
     assert 'def hermes_oneshot_smoke' in text
     assert "HERMES_HOME=/srv/ai-data/hermes" in text
     assert "job.get('capability') == 'chat'" in text
+    assert 'def messaging_boundary_smoke' in text
+    assert "telegram-synthetic-a" in text
+    assert "discord-synthetic" in text
+    assert "'send', '--to', platform, '--quiet'" in text
     assert 'def real_media_smoke' in text
     assert "deploy/stage-e/validate_media_runtime.sh" in text
     assert "require((platforms.get('discord') or {}).get('state') == 'connected')" in text
@@ -316,7 +321,38 @@ def test_stage_e_real_media_helper_is_parseable_and_stage_bound():
     path = ROOT / 'deploy/stage-e/validate_media_runtime.sh'
     subprocess.run(['bash', '-n', path], check=True)
     text = path.read_text()
-    assert "grep -qx 'stage=E'" in text
+    assert 'EXPECTED_STAGE="${1:?usage: $0 <D|E>}"' in text
+    assert 'grep -qx "stage=$EXPECTED_STAGE"' in text
     assert 'stage-e-media-smoke' in text
     assert '--duration-seconds", "1"' in text
     assert 'media-video' in text
+
+
+def test_rollback_to_d6_allows_unavailable_gateway_when_current_already_d6(monkeypatch, tmp_path):
+    gate = module()
+    d6, candidate = tmp_path / 'd6', tmp_path / 'candidate'
+    d6.mkdir(); candidate.mkdir()
+    current = tmp_path / 'current'
+    current.symlink_to(d6)
+    monkeypatch.setattr(gate, 'CURRENT', current)
+    monkeypatch.setattr(gate, 'D6', d6)
+    monkeypatch.setattr(gate, 'verify_release', lambda *a: {'source_git_sha': gate.D6_SHA})
+    monkeypatch.setattr(gate, 'clients', lambda: {})
+    monkeypatch.setattr(gate, 'comfy_idle', lambda: None)
+    actions = []
+    monkeypatch.setattr(gate, 'quiesce', lambda baseline, allow_gateway_unavailable=False: actions.append(allow_gateway_unavailable))
+    monkeypatch.setattr(gate, 'runtime', lambda *a: None)
+    monkeypatch.setattr(gate, 'resume_ingress', lambda baseline: actions.append('resume'))
+    monkeypatch.setattr(gate, 'run', lambda *a, **k: 'inactive' if 'show' in a[0] else '')
+    gate.switch(d6, candidate, {}, {'clients': {}})
+    assert current.resolve() == d6
+    assert actions == [True, 'resume']
+
+
+def test_real_media_smoke_selects_expected_stage(monkeypatch):
+    gate = module()
+    calls = []
+    monkeypatch.setattr(gate, 'run', lambda args, **kwargs: calls.append([str(x) for x in args]) or '')
+    monkeypatch.setattr(gate.Path, 'is_file', lambda self: True)
+    gate.real_media_smoke(gate.D6)
+    assert calls[-1][-1] == 'D'
