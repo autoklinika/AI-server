@@ -102,6 +102,9 @@ Builder opisuje kompletny Resource Manager v2: phase=D.6, config schema=3,
 migration_version=resource-manager-v2. Provider contracts i recovery D.0/C
 pozostają bez zmian. [Raport przygotowania D.6](docs/reports/AI_PLATFORM_STAGE_D6_PREPARATION_2026-09-22_PL.md)
 i [runbook walidacji](deploy/stage-d/D6_VALIDATION_RUNBOOK.md).
+Korekta production gate **D6GATEFIX** dodaje apply/restore pięciu klientów oraz
+celowy restart Hermesa; [raport do walidacji supervisora](docs/reports/AI_PLATFORM_STAGE_D6_GATE_FIX_2026-09-22_PL.md).
+Produkcja pozostaje poza zakresem tej implementacji.
 
 Nie zmieniamy na D.0 modelu Qwen, GPU, backendu wiedzy ani implementacji schedulera od zera. Stage C r3 pozostaje zweryfikowanym rollback pointem.
 
