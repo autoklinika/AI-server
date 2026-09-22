@@ -199,3 +199,11 @@ def test_stage_e_release_metadata_matches_actual_builder(tmp_path):
     )
     with pytest.raises(ValueError):
         metadata.validate(tmp_path)
+
+
+def test_preflight_is_non_idle_and_has_safe_diagnostic_labels():
+    text = (ROOT / 'deploy/stage-e/autopilot/gate.py').read_text()
+    assert "runtime(D6, cfg, require_idle=False)" in text
+    assert "PREFLIGHT_FAIL=" in text
+    assert "preflight_step('hermes_connected'" in text
+    assert "preflight_step('media_preflight'" in text
