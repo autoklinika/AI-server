@@ -47,6 +47,23 @@ def run(args, timeout=60, **kwargs):
                           text=True, timeout=timeout, **kwargs).stdout.strip()
 
 
+def worktree_account():
+    info = ROOT.stat()
+    require(info.st_uid != 0)
+    account = pwd.getpwuid(info.st_uid)
+    return account.pw_name, info.st_uid, account.pw_dir
+
+
+def git_run(args, timeout=60):
+    name, _uid, home = worktree_account()
+    return run([
+        'runuser', '-u', name, '--', 'env',
+        f'HOME={home}',
+        'PATH=/usr/local/bin:/usr/bin:/bin',
+        'git', '-C', ROOT, *args,
+    ], timeout=timeout)
+
+
 def digest(path):
     with Path(path).open('rb') as stream:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
@@ -142,13 +159,17 @@ def hermes_account():
     info = Path('/srv/ai-data/hermes').stat()
     require(info.st_uid != 0)
     account = pwd.getpwuid(info.st_uid)
-    return account.pw_name, info.st_uid
+    return account.pw_name, info.st_uid, account.pw_dir
 
 
 def user_systemctl(args):
-    name, uid = hermes_account()
-    return run(['runuser', '-u', name, '--', 'env', f'XDG_RUNTIME_DIR=/run/user/{uid}',
-                'systemctl', '--user', *args])
+    name, uid, home = hermes_account()
+    return run([
+        'runuser', '-u', name, '--', 'env',
+        f'HOME={home}',
+        f'XDG_RUNTIME_DIR=/run/user/{uid}',
+        'systemctl', '--user', *args,
+    ])
 
 
 def hermes_state():
@@ -351,7 +372,7 @@ def smoke(phase, target, cfg, baseline, state):
 
 def main(step):
     cfg = config()
-    sha = run(['git', '-C', ROOT, 'rev-parse', 'HEAD'])
+    sha = git_run(['rev-parse', 'HEAD'])
     require(re.fullmatch('[0-9a-f]{40}', sha) is not None)
     candidate = Path('/opt/ai-platform/releases') / ('stage-e-' + sha[:12])
     state = STATE / sha
@@ -365,7 +386,7 @@ def main(step):
         if step == '10_build_install':
             preflight(cfg)
             require(not state.exists() and not candidate.exists())
-            require(not run(['git', '-C', ROOT, 'status', '--porcelain']))
+            require(not git_run(['status', '--porcelain']))
             state.mkdir(mode=0o700)
             baseline = {'rollback': D6.name, 'rollback_sha': D6_SHA, 'candidate': candidate.name,
                         'source_sha': sha, 'clients': clients(), 'comfy': identity('comfyui.service'),
@@ -375,8 +396,12 @@ def main(step):
                                                       '-p', 'ActiveState', '--value']),
                         'rollback_checksums': digest(D6 / 'metadata/SHA256SUMS')}
             write_once(state / 'baseline.json', baseline)
-            run(['bash', ROOT / 'deploy/stage-e/build_release.sh', candidate, candidate.name],
-                timeout=1800, cwd=ROOT, env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'})
+            run(
+                ['bash', ROOT / 'deploy/stage-e/build_release.sh', candidate, candidate.name],
+                timeout=1800,
+                cwd=ROOT,
+                env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1', 'STAGE_E_SOURCE_SHA': sha},
+            )
             require(verify_release(candidate, 'e')['source_git_sha'] == sha)
             # Matched D.6 clients must remain byte-identical in the new package.
             for source in CLIENTS.values():
