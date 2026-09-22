@@ -59,7 +59,7 @@ def test_bootstrap_disables_legacy_systemd_launcher():
 def test_runner_waits_for_registered_ci_by_sha():
     text = (AUTO / "run_stage.sh").read_text(encoding="utf-8")
     assert "wait_commit_ci" in text
-    assert "workflow did not register" in text
+    assert "CI_GATE_TIMEOUT" in text
     assert "gh pr checks" not in text
 
 
@@ -79,12 +79,35 @@ def test_master_requires_explicit_resume_stage():
 
 def test_readonly_preflight_failure_returns_to_resumable_boundary():
     text = (AUTO / "run_stage.sh").read_text(encoding="utf-8")
-    assert "if ! run_prod_step 00_preflight.sh" in text
+    assert "for attempt in 1 2 3" in text
     assert "set_state PRE_PROD_CI" in text
-    assert "return 31" in text
+    assert "exit 31" in text
+    assert "return 31" not in text
 
 
 def test_resume_accepts_legacy_readonly_preflight_state_only():
     text = (AUTO / "resume_pre_prod.sh").read_text(encoding="utf-8")
     assert "PRODUCTION:00_preflight.sh" in text
     assert "PRE_PROD_CI|PRODUCTION:00_preflight.sh" in text
+
+
+def test_ci_gate_uses_resilient_polling_not_watch():
+    text = (AUTO / "run_stage.sh").read_text(encoding="utf-8")
+    assert "gh run watch" not in text
+    assert "gh run view" in text
+    assert "CI_GATE_PASS" in text
+    assert "transient_errors" in text
+
+
+def test_readonly_preflight_retries_and_exits_resumable():
+    text = (AUTO / "run_stage.sh").read_text(encoding="utf-8")
+    assert "for attempt in 1 2 3" in text
+    assert "exit 31" in text
+    assert "return 31" not in text
+    assert "PREFLIGHT_FAIL=" in text
+
+
+def test_blocked_notification_can_include_safe_reason():
+    text = (AUTO / "stage_eh_master.sh").read_text(encoding="utf-8")
+    assert 'reason="$(cat "$STATE_DIR/stage-$stage/reason"' in text
+    assert "reason=$reason" in text

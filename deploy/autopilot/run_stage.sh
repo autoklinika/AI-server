@@ -72,22 +72,67 @@ wait_commit_ci() {
   local label="${2:-CI}"
   local run_id=""
   local row=""
-  for _ in $(seq 1 120); do
-    row="$(gh run list --repo autoklinika/AI-server --workflow "AI Platform CI" \
-      --limit 30 --json databaseId,headSha,status,conclusion,event \
-      --jq ".[] | select(.headSha == \"$expected_sha\") | .databaseId" | head -n1 || true)"
-    if [[ -n "$row" ]]; then
-      run_id="$row"
-      break
+  local snapshot=""
+  local status=""
+  local conclusion=""
+  local observed_sha=""
+  local transient_errors=0
+
+  for _ in $(seq 1 180); do
+    if row="$(gh run list --repo autoklinika/AI-server --workflow "AI Platform CI" \
+      --limit 50 --json databaseId,headSha,status,conclusion,createdAt \
+      --jq ".[] | select(.headSha == \"$expected_sha\") | [.databaseId,.createdAt] | join(\" \")" \
+      2>/dev/null | head -n1)"; then
+      if [[ -n "$row" ]]; then
+        run_id="${row%% *}"
+        break
+      fi
+    else
+      transient_errors=$((transient_errors + 1))
     fi
     sleep 5
   done
+
   [[ -n "$run_id" ]] || {
-    echo "FAIL: $label workflow did not register for $expected_sha within timeout"
-    return 1
+    printf 'CI_GATE_TIMEOUT label=%s sha=%s transient_errors=%s\n' \
+      "$label" "$expected_sha" "$transient_errors" >&2
+    return 91
   }
+
   echo "CI_GATE label=$label sha=$expected_sha run_id=$run_id"
-  gh run watch "$run_id" --repo autoklinika/AI-server --exit-status
+
+  for _ in $(seq 1 240); do
+    if snapshot="$(gh run view "$run_id" --repo autoklinika/AI-server \
+      --json status,conclusion,headSha \
+      --jq '[.status,(.conclusion // "-"),.headSha] | join(" ")' 2>/dev/null)"; then
+      read -r status conclusion observed_sha <<<"$snapshot"
+      [[ "$observed_sha" == "$expected_sha" ]] || {
+        echo "CI_GATE_SHA_MISMATCH expected=$expected_sha observed=$observed_sha" >&2
+        return 92
+      }
+      case "$status" in
+        completed)
+          if [[ "$conclusion" == "success" ]]; then
+            echo "CI_GATE_PASS label=$label run_id=$run_id"
+            return 0
+          fi
+          echo "CI_GATE_FAIL label=$label run_id=$run_id conclusion=${conclusion:-unknown}" >&2
+          return 93
+          ;;
+        queued|in_progress|requested|waiting|pending)
+          ;;
+        *)
+          ;;
+      esac
+    else
+      transient_errors=$((transient_errors + 1))
+    fi
+    sleep 5
+  done
+
+  printf 'CI_GATE_TIMEOUT label=%s run_id=%s transient_errors=%s\n' \
+    "$label" "$run_id" "$transient_errors" >&2
+  return 94
 }
 
 wait_main_ci() {
@@ -282,13 +327,24 @@ set_state PRE_PROD_CI
 candidate_sha="$(git -C "$WORKTREE" rev-parse HEAD)"
 wait_commit_ci "$candidate_sha" "pre-production CI"
 
-if ! run_prod_step 00_preflight.sh; then
-  # 00_preflight is contractually read-only. Return to the resumable pre-prod
-  # state so a transient/diagnosed baseline failure never masquerades as a
-  # partial production mutation.
+preflight_ok=0
+for attempt in 1 2 3; do
+  if run_prod_step 00_preflight.sh; then
+    preflight_ok=1
+    break
+  fi
   set_state PRE_PROD_CI
-  return 31
+  reason="$(grep -E '^PREFLIGHT_FAIL=' "$LOG_DIR/00_preflight.sh.log" 2>/dev/null | tail -n1 || true)"
+  [[ -n "$reason" ]] && printf '%s\n' "$reason" > "$STAGE_STATE/reason"
+  if ((attempt < 3)); then
+    sleep 20
+  fi
+done
+if ((preflight_ok == 0)); then
+  set_state PRE_PROD_CI
+  exit 31
 fi
+rm -f "$STAGE_STATE/reason"
 run_prod_step 10_build_install.sh
 
 set_state PRODUCTION_MUTATING
