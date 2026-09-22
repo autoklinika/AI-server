@@ -199,3 +199,20 @@ def test_restart_recovery_uses_privilege_bridge():
     text = (AUTO / "stage_eh_master.sh").read_text(encoding="utf-8")
     assert 'sudo -n "$ROOT_BRIDGE" "$stage" 40_rollback.sh "$expected_sha"' in text
     assert 'sudo -n "$ROOT_BRIDGE" "$stage" 50_rollback_smoke.sh "$expected_sha"' in text
+
+
+def test_resume_regenerates_review_prompt_from_current_stage_spec():
+    text = (AUTO / 'run_stage.sh').read_text(encoding='utf-8')
+    marker = 'codex-review-resume.log'
+    idx = text.index(marker)
+    before = text[:idx]
+    assert 'cat > "$STAGE_STATE/review.prompt" <<EOF' in before
+    assert 'cat "$SPEC" >> "$STAGE_STATE/review.prompt"' in before
+
+
+def test_stage_e_policy_defers_external_inbound_multiuser_to_stage_f():
+    text = (AUTO / 'prompts' / 'stage_e.md').read_text(encoding='utf-8')
+    assert 'correlated multi-client Hermes-namespace requests' in text
+    assert 'successful outbound delivery' in text
+    assert 'Full fresh inbound multiuser/user-path validation' in text
+    assert 'mandatory in Stage F' in text

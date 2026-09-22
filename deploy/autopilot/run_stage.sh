@@ -214,6 +214,27 @@ if [[ "$MODE" == "--resume-pre-prod" ]]; then
     "$VENV/bin/python" -m pytest -q
   ) 2>&1 | tee "$LOG_DIR/resume-dev-gate.log"
 
+  cat > "$STAGE_STATE/review.prompt" <<EOF
+You are the independent production reviewer for AI Platform Stage $STAGE.
+You are read-only. Inspect the current worktree diff against origin/main, tests,
+Stage $STAGE production scripts and rollback design.
+
+Read:
+- docs/architecture/AI_PLATFORM_MIGRATION_PLAN_V1_PL.md
+- docs/architecture/AI_PLATFORM_TARGET_ARCHITECTURE_V1_PL.md
+- docs/architecture/AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md
+- $SPEC
+
+Reject if scope leaks into later stages, if rollback can lose the last verified state,
+if secrets may leak, if smoke tests can pass without exercising the intended boundary,
+or if a production mutation can occur before preflight/build have succeeded.
+
+Your final line MUST be exactly one of:
+AUTOPILOT_REVIEW=PASS
+AUTOPILOT_REVIEW=BLOCKED
+EOF
+  cat "$SPEC" >> "$STAGE_STATE/review.prompt"
+
   set_state REVIEW
   (
     cd "$WORKTREE"
