@@ -225,7 +225,10 @@ def test_stage_e_builder_uses_owner_git_and_verified_source_sha():
     assert 'HEAD_SHA="$(ugit -C "$ROOT" rev-parse HEAD)"' in text
     assert 'SOURCE_SHA="${STAGE_E_SOURCE_SHA:-$HEAD_SHA}"' in text
     assert 'ugit -C "$ROOT" archive "$SOURCE_SHA"' in text
-    assert 'git -C "$ROOT" archive "$SOURCE_SHA"' not in text
+    assert not any(
+        line.strip().startswith('git -C "$ROOT" archive "$SOURCE_SHA"')
+        for line in text.splitlines()
+    )
 
 
 def test_hermes_user_systemd_sets_home_and_runtime_dir():
