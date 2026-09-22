@@ -136,3 +136,19 @@ operatora i bez ręcznego `resume`.
 Terminalny CI FAIL, błąd review/dev gate oraz wszystkie stany po rozpoczęciu
 mutacji produkcji nadal są fail-closed. Dla przerwania podczas produkcji obowiązuje
 rollback/recovery, nie automatyczne ponowienie.
+
+
+## Runner exit-code i diagnostyka attempt-scoped
+
+Kod wyjścia stage runnera musi być przechwycony bezpośrednio po nieudanym
+wywołaniu, wewnątrz gałęzi `else`. W Bash konstrukcja `if ...; then ...; fi`
+bez `else` może sama zwrócić `0` po fałszywym warunku; odczyt `$?` dopiero
+po `fi` zafałszowuje rzeczywisty rc runnera. Regression test wymusza poprawny wzorzec.
+
+Plik `stage-X/reason` jest attempt-scoped: supervisor usuwa go przed każdą
+próbą runnera. Telegram nie może raportować reason odziedziczonego z poprzedniej
+próby. Brak nowego reason oznacza brak reason w komunikacie, nie użycie starego.
+
+Restart recovery dla stanów po mutacji produkcji używa tego samego root-owned
+privilege bridge co normalny production gate; nie uruchamia skryptów rollbacku
+bezpośrednio jako zwykły użytkownik.
