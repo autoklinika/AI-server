@@ -608,3 +608,16 @@ nowy PID baseline obowiązuje w kolejnej fazie smoke, ComfyUI pozostaje bez rest
 Status: **implementation ready for supervisor validation**, production NOT RUN.
 [Raport korekty](../reports/AI_PLATFORM_STAGE_D6_GATE_FIX_2026-09-22_PL.md).
 Stage E i dalsze etapy nie zostały rozpoczęte.
+
+### Wynik produkcyjnej walidacji D.6 — 2026-09-22
+
+Release `stage-d-resource-manager-v2-20260922-r2`
+(`82d55f629f763c9352ad7c9e678e22eadb623639`) przeszedł produkcyjny cutover,
+matched client restore/apply oraz pełny cykl D.6 -> D.0 r2 -> D.6.
+
+PASS: WVC/Gateway/Qwen, real media, Telegram multiuser + `/foto` + `/wideo`,
+Discord, live priority ordering i non-preemption, final health/idle.
+Live client cancellation: NOT RUN; automated cancellation coverage retained.
+
+Stage D.6 production gate jest zaliczony. Formalne `Stage D COMPLETE` pozostaje
+zależne od aktualizacji desired state, CI i merge.
