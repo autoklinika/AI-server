@@ -3,17 +3,35 @@ set -euo pipefail
 
 DEST="${1:?usage: $0 DEST RELEASE_ID}"
 RELEASE_ID="${2:?usage: $0 DEST RELEASE_ID}"
-ROOT="$(git rev-parse --show-toplevel)"
-SOURCE_SHA="$(git -C "$ROOT" rev-parse HEAD)"
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 PYTHON_BIN="${PYTHON_BIN:-python3.14}"
+
+OWNER_UID="$(stat -c '%u' "$ROOT")"
+OWNER_NAME="$(getent passwd "$OWNER_UID" | cut -d: -f1)"
+OWNER_HOME="$(getent passwd "$OWNER_UID" | cut -d: -f6)"
+[[ -n "$OWNER_NAME" && "$OWNER_HOME" == /* ]] || {
+  echo "FAIL: cannot resolve repository owner" >&2
+  exit 2
+}
+
+ugit() {
+  runuser -u "$OWNER_NAME" -- env     HOME="$OWNER_HOME"     PATH="/usr/local/bin:/usr/bin:/bin"     git "$@"
+}
+
+HEAD_SHA="$(ugit -C "$ROOT" rev-parse HEAD)"
+SOURCE_SHA="${STAGE_E_SOURCE_SHA:-$HEAD_SHA}"
+[[ "$SOURCE_SHA" == "$HEAD_SHA" ]] || {
+  echo "FAIL: Stage E source SHA does not match worktree HEAD" >&2
+  exit 2
+}
 
 say(){ printf '%s\n' "$*"; }
 fail(){ say "FAIL: $*" >&2; exit 1; }
 
-[[ -z "$(git -C "$ROOT" status --porcelain)" ]] || fail "working tree must be clean"
+[[ -z "$(ugit -C "$ROOT" status --porcelain)" ]] || fail "working tree must be clean"
 [[ "$RELEASE_ID" =~ ^stage-e-[a-f0-9]{12}$ ]] || fail "invalid Stage E release id"
 [[ ! -e "$DEST" ]] || fail "destination already exists: $DEST"
-git -C "$ROOT" cat-file -e "$SOURCE_SHA^{commit}" || fail "invalid source commit"
+ugit -C "$ROOT" cat-file -e "$SOURCE_SHA^{commit}" || fail "invalid source commit"
 
 # Stage E intentionally permits Resource Manager / Gateway source changes.
 # Dependency locks remain explicit release inputs and must be updated deliberately.
@@ -26,8 +44,8 @@ say "source_git_sha=$SOURCE_SHA"
 
 # Both services come from the same exact committed source. Stage E permits
 # Gateway / Resource Manager changes and records them in the release SHA.
-git -C "$ROOT" archive "$SOURCE_SHA" | tar -x -C "$DEST/services/ai-bridge"
-git -C "$ROOT" archive "$SOURCE_SHA" | tar -x -C "$DEST/services/ai-gateway"
+ugit -C "$ROOT" archive "$SOURCE_SHA" | tar -x -C "$DEST/services/ai-bridge"
+ugit -C "$ROOT" archive "$SOURCE_SHA" | tar -x -C "$DEST/services/ai-gateway"
 
 cp -a "$ROOT/deploy/stage-a/locks" "$DEST/metadata/locks"
 
