@@ -650,3 +650,12 @@ CI źródła: 764 tests PASS. D.0/D.6 i matched clients zachowane.
 [diagnoza i naprawa gate](../reports/AI_PLATFORM_STAGE_E_RECOVERY_2026-09-22.md).
 Stage F wymaga świeżego inbound multiuser i pełnych messaging/media user paths;
 dowody Stage E nie zastępują tych kryteriów.
+
+
+### Stage F — prerequisite gate 2026-09-23
+
+**BLOCKED przed implementacją i deploymentem**: brak provisioned external-user
+E2E harness / uczestników do świeżego Telegram multiuser i messaging user-path gate.
+Stage E COMPLETE (PR #53, final i post-merge CI PASS); aktywny release pozostaje
+`stage-e-38fff86f7704`. Stage G/H NOT STARTED.
+[Dowody i warunki wznowienia](../reports/AI_PLATFORM_STAGE_F_PREREQUISITE_BLOCKER_2026-09-23.md).
