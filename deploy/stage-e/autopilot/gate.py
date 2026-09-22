@@ -13,6 +13,7 @@ import os
 import pwd
 from pathlib import Path
 import re
+import shlex
 import stat
 import subprocess
 import sys
@@ -95,10 +96,21 @@ def private_file(path, executable=False):
 
 
 def config():
-    # Stage E adds only a localhost Platform API. Production already exposes the
-    # canonical Bridge health endpoint on loopback; no new private site harness
-    # or credential file is required for this additive migration.
-    return {'bridge_health_url': 'http://127.0.0.1:8080/health', 'api_token_file': None}
+    return {'api_token_file': None}
+
+
+def bridge_health_url():
+    # Preserve the Stage B/D network policy: AI Bridge is LAN-only and may not
+    # listen on loopback. Resolve the effective bind exactly from systemd.
+    raw = run(['systemctl', 'show', 'ai-bridge.service', '-p', 'Environment', '--value'])
+    bind_host = ''
+    for token in shlex.split(raw):
+        if token.startswith('AI_BRIDGE_HOST='):
+            bind_host = token.split('=', 1)[1]
+    if bind_host in ('', '0.0.0.0', '::', '[::]'):
+        bind_host = '127.0.0.1'
+    require(re.fullmatch(r'(?:127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3})', bind_host) is not None)
+    return f'http://{bind_host}:8080/health'
 
 
 def fetch(url, payload=None, token=None, with_headers=False):
@@ -146,7 +158,7 @@ def runtime(release, cfg, baseline=None, require_idle=True):
         require(Path('/proc/' + pid + '/cwd').resolve(strict=True) == release / 'services' / service)
         require(run(['systemctl', 'show', service + '.service', '-p', 'WorkingDirectory', '--value']) == '/opt/ai-platform/current/services/' + service)
     require(fetch(GATEWAY + '/health')['status'] == 'ok')
-    require(fetch(cfg['bridge_health_url'])['status'] == 'ok')
+    require(fetch(bridge_health_url())['status'] == 'ok')
     if require_idle:
         idle()
     actual = clients()
@@ -248,17 +260,55 @@ def preflight_step(name, function):
         raise
 
 
+def preflight_runtime(cfg):
+    preflight_step('gateway_identity', lambda: identity('ai-gateway.service'))
+    preflight_step('bridge_identity', lambda: identity('ai-bridge.service'))
+
+    gateway_pid = identity('ai-gateway.service')[0]
+    bridge_pid = identity('ai-bridge.service')[0]
+    preflight_step(
+        'gateway_cwd',
+        lambda: require(
+            Path('/proc/' + gateway_pid + '/cwd').resolve(strict=True)
+            == D6 / 'services' / 'ai-gateway'
+        ),
+    )
+    preflight_step(
+        'bridge_cwd',
+        lambda: require(
+            Path('/proc/' + bridge_pid + '/cwd').resolve(strict=True)
+            == D6 / 'services' / 'ai-bridge'
+        ),
+    )
+    preflight_step(
+        'gateway_working_directory',
+        lambda: require(
+            run(['systemctl', 'show', 'ai-gateway.service', '-p', 'WorkingDirectory', '--value'])
+            == '/opt/ai-platform/current/services/ai-gateway'
+        ),
+    )
+    preflight_step(
+        'bridge_working_directory',
+        lambda: require(
+            run(['systemctl', 'show', 'ai-bridge.service', '-p', 'WorkingDirectory', '--value'])
+            == '/opt/ai-platform/current/services/ai-bridge'
+        ),
+    )
+    preflight_step('gateway_health', lambda: require(fetch(GATEWAY + '/health')['status'] == 'ok'))
+    url = preflight_step('bridge_health_url', bridge_health_url)
+    preflight_step('bridge_health', lambda: require(fetch(url)['status'] == 'ok'))
+    preflight_step('matched_clients', clients)
+
+
 def preflight(cfg):
     preflight_step('active_release',
         lambda: require(CURRENT.resolve(strict=True) == D6))
     stamp = preflight_step('release_metadata', lambda: verify_release(D6, 'd'))
     preflight_step('release_source',
         lambda: require(stamp['source_git_sha'] == D6_SHA))
-    # Do not require a point-in-time idle state here. Background work may be
-    # legitimately active. The cutover path closes ingress and enforces idle in
-    # quiesce() immediately before any production mutation.
-    preflight_step('runtime_identity_health',
-        lambda: runtime(D6, cfg, require_idle=False))
+    # Background work may legitimately be active here. The cutover path closes
+    # ingress and enforces idle in quiesce() immediately before mutation.
+    preflight_runtime(cfg)
     for unit in ('ai-gateway.service', 'ai-bridge.service', 'ai-bridge-analysis.service'):
         preflight_step('systemd_reload_' + unit.split('.')[0],
             lambda unit=unit: require(run([
