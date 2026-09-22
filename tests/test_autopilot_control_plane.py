@@ -54,3 +54,24 @@ def test_bootstrap_disables_legacy_systemd_launcher():
     text = (AUTO / "bootstrap_stage_eh.sh").read_text(encoding="utf-8")
     assert "disable --now ai-stage-eh-agent.service" in text
     assert "LEGACY_UNIT" in text
+
+
+def test_runner_waits_for_registered_ci_by_sha():
+    text = (AUTO / "run_stage.sh").read_text(encoding="utf-8")
+    assert "wait_commit_ci" in text
+    assert "workflow did not register" in text
+    assert "gh pr checks" not in text
+
+
+def test_pre_prod_resume_is_fail_closed():
+    text = (AUTO / "resume_pre_prod.sh").read_text(encoding="utf-8")
+    assert 'state" == "PRE_PROD_CI"' in text
+    assert "worktree is dirty; refusing resume" in text
+    assert "AI_AUTOPILOT_RESUME_STAGE" in text
+    assert "git reset" not in text
+
+
+def test_master_requires_explicit_resume_stage():
+    text = (AUTO / "stage_eh_master.sh").read_text(encoding="utf-8")
+    assert "AI_AUTOPILOT_RESUME_STAGE" in text
+    assert "--resume-pre-prod" in text

@@ -2,7 +2,12 @@
 set -Eeuo pipefail
 
 STAGE="${1:-}"
-[[ "$STAGE" =~ ^[EFGH]$ ]] || { echo "usage: $0 <E|F|G|H>" >&2; exit 2; }
+MODE="${2:-fresh}"
+[[ "$STAGE" =~ ^[EFGH]$ ]] || { echo "usage: $0 <E|F|G|H> [--resume-pre-prod]" >&2; exit 2; }
+[[ "$MODE" == "fresh" || "$MODE" == "--resume-pre-prod" ]] || {
+  echo "usage: $0 <E|F|G|H> [--resume-pre-prod]" >&2
+  exit 2
+}
 stage_lc="$(printf '%s' "$STAGE" | tr '[:upper:]' '[:lower:]')"
 
 CONTROL_DIR="${AI_AUTOPILOT_CONTROL_DIR:-$HOME/agent-control/stage-eh-master}"
@@ -62,18 +67,100 @@ emergency_rollback() {
   return 1
 }
 
-wait_main_ci() {
+wait_commit_ci() {
   local expected_sha="$1"
+  local label="${2:-CI}"
   local run_id=""
-  for _ in $(seq 1 60); do
-    row="$(gh run list --repo autoklinika/AI-server --workflow "AI Platform CI" --branch main       --limit 10 --json databaseId,headSha,status,conclusion       --jq ".[] | select(.headSha == \"$expected_sha\") | .databaseId" | head -n1 || true)"
-    if [[ -n "$row" ]]; then run_id="$row"; break; fi
+  local row=""
+  for _ in $(seq 1 120); do
+    row="$(gh run list --repo autoklinika/AI-server --workflow "AI Platform CI" \
+      --limit 30 --json databaseId,headSha,status,conclusion,event \
+      --jq ".[] | select(.headSha == \"$expected_sha\") | .databaseId" | head -n1 || true)"
+    if [[ -n "$row" ]]; then
+      run_id="$row"
+      break
+    fi
     sleep 5
   done
-  [[ -n "$run_id" ]] || { echo "FAIL: post-merge CI run not found for $expected_sha"; return 1; }
+  [[ -n "$run_id" ]] || {
+    echo "FAIL: $label workflow did not register for $expected_sha within timeout"
+    return 1
+  }
+  echo "CI_GATE label=$label sha=$expected_sha run_id=$run_id"
   gh run watch "$run_id" --repo autoklinika/AI-server --exit-status
 }
 
+wait_main_ci() {
+  local expected_sha="$1"
+  wait_commit_ci "$expected_sha" "post-merge CI"
+}
+
+if [[ "$MODE" == "--resume-pre-prod" ]]; then
+  previous_state="$(awk '{print $1}' "$STAGE_STATE/status" 2>/dev/null || true)"
+  [[ "$previous_state" == "PRE_PROD_CI" ]] || {
+    echo "FAIL: resume allowed only from PRE_PROD_CI, got: ${previous_state:-missing}"
+    exit 20
+  }
+  [[ -z "$(git -C "$WORKTREE" status --porcelain)" ]] || {
+    echo "FAIL: resume worktree is dirty"
+    exit 21
+  }
+
+  git -C "$WORKTREE" fetch origin main "$BRANCH" --prune
+  current_branch="$(git -C "$WORKTREE" branch --show-current)"
+  [[ "$current_branch" == "$BRANCH" ]] || {
+    echo "FAIL: resume requires branch $BRANCH, got: ${current_branch:-detached}"
+    exit 22
+  }
+
+  # Accept reviewed remote repairs only by fast-forward; never overwrite local history.
+  if [[ "$(git -C "$WORKTREE" rev-parse HEAD)" != "$(git -C "$WORKTREE" rev-parse "origin/$BRANCH")" ]]; then
+    git -C "$WORKTREE" merge --ff-only "origin/$BRANCH"
+  fi
+
+  # Branch protection requires the candidate to contain current main. Updating here
+  # is safe because production has not been touched yet; any conflict fails closed.
+  if ! git -C "$WORKTREE" merge-base --is-ancestor origin/main HEAD; then
+    git -C "$WORKTREE" merge --no-edit origin/main
+    git -C "$WORKTREE" push origin "$BRANCH"
+  fi
+
+  head_sha="$(git -C "$WORKTREE" rev-parse HEAD)"
+  remote_sha="$(git -C "$WORKTREE" rev-parse "origin/$BRANCH")"
+  [[ "$head_sha" == "$remote_sha" ]] || {
+    echo "FAIL: local/remote Stage $STAGE branch mismatch after update"
+    exit 23
+  }
+
+  pr_number="$(cd "$WORKTREE" && gh pr view "$BRANCH" --repo autoklinika/AI-server \
+    --json number,baseRefName,state \
+    --jq 'select(.baseRefName == "main" and .state == "OPEN") | .number')"
+  [[ -n "$pr_number" ]] || {
+    echo "FAIL: open PR to main not found for $BRANCH"
+    exit 24
+  }
+
+  set_state DEV_GATE
+  git -C "$WORKTREE" diff --check
+  find "$WORKTREE/deploy" -type f -name '*.sh' -print0 | sort -z | xargs -0 -n1 bash -n
+  production_scripts || { echo "FAIL: incomplete Stage $STAGE autopilot production contract"; exit 25; }
+  "$VENV/bin/python" -m pip install --disable-pip-version-check -q -e "$WORKTREE[dev]"
+  (
+    cd "$WORKTREE"
+    "$VENV/bin/python" -m compileall -q src deploy/autopilot
+    "$VENV/bin/python" -m pytest -q
+  ) 2>&1 | tee "$LOG_DIR/resume-dev-gate.log"
+
+  set_state REVIEW
+  (
+    cd "$WORKTREE"
+    codex --sandbox read-only --ask-for-approval never exec < "$STAGE_STATE/review.prompt"
+  ) 2>&1 | tee "$LOG_DIR/codex-review-resume.log"
+  grep -qx 'AUTOPILOT_REVIEW=PASS' "$LOG_DIR/codex-review-resume.log" || {
+    set_state BLOCKED_REVIEW
+    exit 26
+  }
+else
 set_state PREFLIGHT
 git -C "$WORKTREE" fetch origin main --prune
 if [[ -n "$(git -C "$WORKTREE" status --porcelain)" ]]; then
@@ -189,8 +276,11 @@ pr_url="$(cd "$WORKTREE" && gh pr create --repo autoklinika/AI-server --base mai
 pr_number="$(printf '%s' "$pr_url" | sed -nE 's#.*/pull/([0-9]+).*#\1#p')"
 [[ -n "$pr_number" ]] || { echo "FAIL: could not determine PR number"; exit 9; }
 
+fi
+
 set_state PRE_PROD_CI
-(cd "$WORKTREE" && gh pr checks "$pr_number" --repo autoklinika/AI-server --watch)
+candidate_sha="$(git -C "$WORKTREE" rev-parse HEAD)"
+wait_commit_ci "$candidate_sha" "pre-production CI"
 
 run_prod_step 00_preflight.sh
 run_prod_step 10_build_install.sh
@@ -223,7 +313,8 @@ if ! git -C "$WORKTREE" diff --cached --quiet; then
 fi
 
 set_state FINAL_CI
-(cd "$WORKTREE" && gh pr checks "$pr_number" --repo autoklinika/AI-server --watch)
+final_sha="$(git -C "$WORKTREE" rev-parse HEAD)"
+wait_commit_ci "$final_sha" "final PR CI"
 (cd "$WORKTREE" && gh pr ready "$pr_number" --repo autoklinika/AI-server)
 (cd "$WORKTREE" && gh pr merge "$pr_number" --repo autoklinika/AI-server --merge --delete-branch)
 
