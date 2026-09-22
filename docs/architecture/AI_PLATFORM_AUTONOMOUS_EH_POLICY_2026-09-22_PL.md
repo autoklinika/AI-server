@@ -94,3 +94,27 @@ jawnie wznowiony po korekcie przyczyny bez rollbacku. Historyczny stan
 `PRODUCTION:00_preflight.sh` z wcześniejszej wersji supervisora jest traktowany
 tak samo wyłącznie przez fail-closed resume helper; inne stany `PRODUCTION:*`
 nie są uznawane za bezpiecznie wznawialne.
+
+
+## Privilege bridge
+
+Autonomiczny supervisor działa jako zwykły użytkownik, ale build/install/cutover/
+rollback wymagają uprawnień root. Stage D validation korzystał z uprzywilejowanych
+wrapperów; E–H nie mogą zakładać, że przypadkowy cache `sudo` albo interaktywny
+terminal będzie dostępny.
+
+Dlatego przed pierwszym production gate instalowany jest **jednorazowo** root-owned
+helper `/usr/local/libexec/ai-platform/autopilot-root-exec` oraz wąska reguła
+`/etc/sudoers.d/ai-platform-autopilot`. Instalacja wymaga świadomego podania hasła
+sudo przez operatora. Potem supervisor używa tylko `sudo -n`.
+
+Helper nie udostępnia ogólnej powłoki root. Akceptuje wyłącznie Stage E/F/G/H oraz
+dziewięć jawnych kroków production gate. Przed wykonaniem sprawdza: wywołującego
+użytkownika/UID, stały worktree, oczekiwaną gałąź `agent/stage-X`, dokładny HEAD,
+zgodność z `origin/agent/stage-X`, clean tree, ancestry względem `origin/main`,
+tracked step i hash working-tree równy obiektowi Git. Weryfikacja Git wykonywana jest
+jako właściciel worktree; dopiero zatwierdzony skrypt uruchamia się jako root z
+minimalnym środowiskiem.
+
+Brak lub utrata autoryzacji privilege bridge blokuje etap **przed** production mutation
+i jest zgłaszana jako `PRIVILEGE_BRIDGE_REQUIRED`.

@@ -104,10 +104,60 @@ def test_readonly_preflight_retries_and_exits_resumable():
     assert "for attempt in 1 2 3" in text
     assert "exit 31" in text
     assert "return 31" not in text
-    assert "PREFLIGHT_FAIL=" in text
+    assert "PREFLIGHT_FAIL" in text
+    assert "AUTOPILOT_ROOT_DENY" in text
 
 
 def test_blocked_notification_can_include_safe_reason():
     text = (AUTO / "stage_eh_master.sh").read_text(encoding="utf-8")
     assert 'reason="$(cat "$STATE_DIR/stage-$stage/reason"' in text
     assert "reason=$reason" in text
+
+
+def test_privilege_bridge_is_narrow_and_sha_bound():
+    text = (AUTO / "root_executor.sh").read_text(encoding="utf-8")
+    assert 'WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-eh"' in text
+    assert 'expected_branch="agent/stage-$stage_lc"' in text
+    assert 'remote_sha' in text
+    assert 'merge-base --is-ancestor origin/main' in text
+    assert 'status --porcelain --untracked-files=all' in text
+    assert 'AUTOPILOT_ROOT_DENY=' in text
+    assert 'eval ' not in text
+    for step in (
+        "00_preflight.sh",
+        "10_build_install.sh",
+        "20_cutover.sh",
+        "30_smoke.sh",
+        "40_rollback.sh",
+        "50_rollback_smoke.sh",
+        "60_reactivate.sh",
+        "70_reactivate_smoke.sh",
+        "90_finalize.sh",
+    ):
+        assert step in text
+
+
+def test_runner_routes_production_through_root_bridge():
+    text = (AUTO / "run_stage.sh").read_text(encoding="utf-8")
+    assert 'ROOT_BRIDGE="/usr/local/libexec/ai-platform/autopilot-root-exec"' in text
+    assert 'sudo -n "$ROOT_BRIDGE" "$STAGE" "$name" "$expected_sha"' in text
+    assert 'PRIVILEGE_BRIDGE_REQUIRED' in text
+    assert 'run_root_step 40_rollback.sh' in text
+    assert 'run_root_step 50_rollback_smoke.sh' in text
+
+
+def test_resume_and_bootstrap_require_privilege_bridge():
+    for name in ("resume_pre_prod.sh", "bootstrap_stage_eh.sh"):
+        text = (AUTO / name).read_text(encoding="utf-8")
+        assert "AUTOPILOT_ROOT_BRIDGE=READY" in text
+        assert "install_privilege_bridge.sh" in text
+
+
+def test_privilege_installer_uses_root_owned_helper_and_sudoers():
+    text = (AUTO / "install_privilege_bridge.sh").read_text(encoding="utf-8")
+    assert "/usr/local/libexec/ai-platform/autopilot-root-exec" in text
+    assert "/etc/sudoers.d/ai-platform-autopilot" in text
+    assert "NOPASSWD" in text
+    assert "visudo" in text
+    assert 'branch_name' in text and '"main"' in text
+    assert "main worktree must be clean" in text

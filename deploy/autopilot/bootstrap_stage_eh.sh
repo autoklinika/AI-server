@@ -23,7 +23,7 @@ done
   exit 2
 }
 
-for cmd in git gh codex python3 tmux flock; do
+for cmd in git gh codex python3 tmux flock sudo; do
   command -v "$cmd" >/dev/null || { echo "FAIL: missing command: $cmd" >&2; exit 3; }
 done
 
@@ -36,6 +36,7 @@ CONTROL_DIR="$HOME/agent-control/stage-eh-master"
 STATE_DIR="$HOME/agent-state/stage-eh"
 WORKTREE="$HOME/agent-worktrees/stage-eh"
 SESSION="stage-eh-master"
+ROOT_BRIDGE="/usr/local/libexec/ai-platform/autopilot-root-exec"
 LEGACY_UNIT="$HOME/.config/systemd/user/ai-stage-eh-agent.service"
 
 # Stage D proved that direct user-systemd execution is incompatible with the
@@ -102,6 +103,17 @@ if [[ -e "$WORKTREE/.git" || -f "$WORKTREE/.git" ]]; then
 else
   [[ ! -e "$WORKTREE" ]] || { echo "FAIL: path exists but is not a git worktree: $WORKTREE"; exit 5; }
   git -C "$REPO_ROOT" worktree add --detach "$WORKTREE" origin/main
+fi
+
+if ((START)); then
+  [[ -x "$ROOT_BRIDGE" ]] || {
+    echo "FAIL: privilege bridge missing. Run: bash deploy/autopilot/install_privilege_bridge.sh" >&2
+    exit 8
+  }
+  [[ "$(sudo -n "$ROOT_BRIDGE" --self-test 2>/dev/null || true)" == "AUTOPILOT_ROOT_BRIDGE=READY" ]] || {
+    echo "FAIL: privilege bridge is not authorized. Re-run installer." >&2
+    exit 8
+  }
 fi
 
 AI_AUTOPILOT_ENV="$PRIVATE_ENV" "$CONTROL_DIR/notify_telegram.py" INFO "E-H"   "Kanał alarmowy autopilota działa. Supervisor jest gotowy." || {
