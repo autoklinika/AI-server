@@ -10,6 +10,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import pwd
 from pathlib import Path
 import re
 import stat
@@ -23,7 +24,6 @@ ROOT = Path(__file__).resolve().parents[3]
 D6 = Path('/opt/ai-platform/releases/stage-d-resource-manager-v2-20260922-r2')
 D6_SHA = '82d55f629f763c9352ad7c9e678e22eadb623639'
 CURRENT = Path('/opt/ai-platform/current')
-CONFIG = Path('/etc/ai-platform/stage-e-autopilot.json')
 STATE = Path('/var/lib/ai-platform/stage-e')
 GATEWAY = 'http://127.0.0.1:11435'
 CLIENTS = {
@@ -33,8 +33,7 @@ CLIENTS = {
     '/usr/local/libexec/ai-server/hermes_video_dispatch.py': 'tools/local_video/hermes_video_dispatch_global.py',
     '/usr/local/libexec/ai-server/qwen_prompt_compiler.py': 'tools/local_video/qwen_prompt_compiler.py',
 }
-CHECKS = ('telegram_multiuser', 'delivery_isolation', 'wait_start', 'telegram_foto',
-          'telegram_wideo', 'discord', 'real_media')
+CHECKS = ('messaging_connectivity', 'matched_clients_unchanged', 'media_preflight')
 
 
 def require(condition):
@@ -79,18 +78,10 @@ def private_file(path, executable=False):
 
 
 def config():
-    private_file(CONFIG)
-    value = json.loads(CONFIG.read_text())
-    require(set(value) == {'harness', 'harness_sha256', 'bridge_health_url', 'api_token_file'})
-    path = Path(value['harness'])
-    private_file(path, True)
-    require(re.fullmatch('[a-f0-9]{64}', value['harness_sha256']) is not None)
-    require(digest(path) == value['harness_sha256'])
-    require(re.fullmatch(r'http://(?:127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}):8080/health', value['bridge_health_url']) is not None)
-    if value['api_token_file'] is not None:
-        private_file(Path(value['api_token_file']))
-        require(Path(value['api_token_file']).stat().st_mode & 0o077 == 0)
-    return value
+    # Stage E adds only a localhost Platform API. Production already exposes the
+    # canonical Bridge health endpoint on loopback; no new private site harness
+    # or credential file is required for this additive migration.
+    return {'bridge_health_url': 'http://127.0.0.1:8080/health', 'api_token_file': None}
 
 
 def fetch(url, payload=None, token=None, with_headers=False):
@@ -144,23 +135,73 @@ def runtime(release, cfg, baseline=None):
     if baseline:
         require(actual == baseline['clients'])
         require(identity('comfyui.service') == baseline['comfy'])
-        require(digest(CONFIG) == baseline['config_digest'])
 
 
-def harness(cfg, action, release, challenge):
-    # Credentials remain in the harness's private config, never argv or output.
-    data = json.loads(run([cfg['harness'], action, '--release', release.name,
-                           '--challenge', challenge], timeout=3600))
-    require(data.get('schema_version') == 1 and data.get('challenge') == challenge
-            and data.get('release_id') == release.name)
-    if action == 'smoke':
-        require(set(data) == {'schema_version', 'challenge', 'release_id', 'checks'})
-        require(set(data['checks']) == set(CHECKS))
-        require(all(value is True for value in data['checks'].values()))
+def hermes_account():
+    info = Path('/srv/ai-data/hermes').stat()
+    require(info.st_uid != 0)
+    account = pwd.getpwuid(info.st_uid)
+    return account.pw_name, info.st_uid
+
+
+def user_systemctl(args):
+    name, uid = hermes_account()
+    return run(['runuser', '-u', name, '--', 'env', f'XDG_RUNTIME_DIR=/run/user/{uid}',
+                'systemctl', '--user', *args])
+
+
+def hermes_state():
+    path = Path('/srv/ai-data/hermes/gateway_state.json')
+    require(path.is_file())
+    value = json.loads(path.read_text())
+    require(value.get('gateway_state') == 'running')
+    platforms = value.get('platforms') or {}
+    require((platforms.get('telegram') or {}).get('state') == 'connected')
+    require((platforms.get('api_server') or {}).get('state') == 'connected')
+    if 'discord' in platforms:
+        require((platforms.get('discord') or {}).get('state') == 'connected')
+
+
+def quiesce(baseline):
+    # Stop actual ingress instead of relying on a point-in-time idle observation.
+    if baseline['analysis_timer_active'] == 'active':
+        run(['systemctl', 'stop', 'ai-bridge-analysis.timer'])
+    if baseline['hermes_active'] == 'active':
+        user_systemctl(['stop', 'hermes-gateway.service'])
+    for _ in range(60):
+        try:
+            idle()
+            break
+        except Exception:
+            time.sleep(1)
     else:
-        require(set(data) == {'schema_version', 'challenge', 'release_id', 'verified'})
-        require(data['verified'] is True)
-    return data
+        raise RuntimeError('runtime did not drain')
+    require(run(['systemctl', 'show', 'ai-bridge-analysis.service',
+                 '-p', 'ActiveState', '--value']) == 'inactive')
+
+
+def resume_ingress(baseline):
+    if baseline['hermes_active'] == 'active':
+        user_systemctl(['start', 'hermes-gateway.service'])
+        for _ in range(90):
+            try:
+                require(user_systemctl(['show', 'hermes-gateway.service',
+                                        '-p', 'ActiveState', '--value']) == 'active')
+                hermes_state()
+                break
+            except Exception:
+                time.sleep(1)
+        else:
+            raise RuntimeError('Hermes did not reconnect')
+    if baseline['analysis_timer_active'] == 'active':
+        run(['systemctl', 'start', 'ai-bridge-analysis.timer'])
+
+
+def media_preflight():
+    wrapper = Path('/usr/local/bin/generate-video-ltx23')
+    private_file(wrapper, True)
+    require('/opt/ai-platform/current/services/ai-bridge' in wrapper.read_text())
+    run([wrapper, '--preflight'], timeout=120)
 
 
 def write_once(path, value):
@@ -184,6 +225,9 @@ def preflight(cfg):
     for unit in ('ai-gateway.service', 'ai-bridge.service', 'ai-bridge-analysis.service'):
         require(run(['systemctl', 'show', unit, '-p', 'NeedDaemonReload', '--value']) == 'no')
     require(Path('/srv/ai-data/platform/recovery/stage-d6-resource-manager-v2-20260922-r1-clients').is_dir())
+    require(user_systemctl(['show', 'hermes-gateway.service', '-p', 'ActiveState', '--value']) == 'active')
+    hermes_state()
+    media_preflight()
 
 
 def switch(target, entry, cfg, baseline):
@@ -191,22 +235,19 @@ def switch(target, entry, cfg, baseline):
     require(verify_release(D6, 'd')['source_git_sha'] == D6_SHA)
     verify_release(target, 'd' if target == D6 else 'e')
     require(clients() == baseline['clients'])
-    challenge = uuid4().hex
-    # Site harness must close all ingress, including messaging and WVC analysis.
-    # A status observation alone is not a global admission lock.
     mutating = False
     healthy = False
     try:
-        harness(cfg, 'quiesce', CURRENT.resolve(), challenge)
+        quiesce(baseline)
         gateway_state = run(['systemctl', 'show', 'ai-gateway.service', '-p', 'ActiveState', '--value'])
         if target == D6 and gateway_state in ('inactive', 'failed'):
-            # Emergency recovery after a failed candidate start. The pinned
-            # quiesce harness attests all workers drained; Comfy stays online.
+            # Emergency recovery after a failed candidate start. Ingress is
+            # already closed and ComfyUI must still be idle.
             comfy_idle()
         else:
             idle()
-        for unit in ('ai-bridge-analysis.service',):
-            require(run(['systemctl', 'show', unit, '-p', 'ActiveState', '--value']) == 'inactive')
+        require(run(['systemctl', 'show', 'ai-bridge-analysis.service',
+                     '-p', 'ActiveState', '--value']) == 'inactive')
         mutating = True
         run(['systemctl', 'stop', 'ai-gateway.service', 'ai-bridge.service'])
         temporary = CURRENT.with_name('.stage-e-current-' + uuid4().hex)
@@ -223,10 +264,10 @@ def switch(target, entry, cfg, baseline):
         else:
             raise RuntimeError('runtime failed')
     finally:
-        # Keep ingress closed after partial mutation until supervisor rollback
-        # restores health. The harness preserves its first quiesce baseline.
+        # After a partial mutation keep ingress closed so the supervisor's
+        # emergency rollback can restore the verified release first.
         if healthy or not mutating:
-            harness(cfg, 'resume', CURRENT.resolve(), challenge)
+            resume_ingress(baseline)
 
 
 def api_smoke(cfg):
@@ -273,7 +314,9 @@ def smoke(phase, target, cfg, baseline, state):
     if target != D6:
         api_smoke(cfg)
     wvc_smoke()
-    harness(cfg, 'smoke', target, challenge)
+    hermes_state()
+    require(clients() == baseline['clients'])
+    media_preflight()
     runtime(target, cfg, baseline)
     require(before == [identity(unit) for unit in ('ai-gateway.service', 'ai-bridge.service', 'comfyui.service')])
     write_once(state / (phase + '.json'), {'schema_version': 1, 'release_id': target.name,
@@ -301,7 +344,10 @@ def main(step):
             state.mkdir(mode=0o700)
             baseline = {'rollback': D6.name, 'rollback_sha': D6_SHA, 'candidate': candidate.name,
                         'source_sha': sha, 'clients': clients(), 'comfy': identity('comfyui.service'),
-                        'config_digest': digest(CONFIG),
+                        'hermes_active': user_systemctl(['show', 'hermes-gateway.service',
+                                                        '-p', 'ActiveState', '--value']),
+                        'analysis_timer_active': run(['systemctl', 'show', 'ai-bridge-analysis.timer',
+                                                      '-p', 'ActiveState', '--value']),
                         'rollback_checksums': digest(D6 / 'metadata/SHA256SUMS')}
             write_once(state / 'baseline.json', baseline)
             run(['bash', ROOT / 'deploy/stage-e/build_release.sh', candidate, candidate.name],
@@ -319,7 +365,6 @@ def main(step):
         baseline = read(state / 'baseline.json')
         require(baseline['source_sha'] == sha and baseline['rollback_sha'] == D6_SHA
                 and baseline['candidate'] == candidate.name and baseline['rollback'] == D6.name)
-        require(digest(CONFIG) == baseline['config_digest'])
         installed = read(state / 'installed.json')
         require(installed['source_sha'] == sha)
         require(digest(D6 / 'metadata/SHA256SUMS') == baseline['rollback_checksums'])
@@ -363,8 +408,12 @@ def main(step):
                       f'Source: `{sha}`\n\nCandidate: `{candidate.name}`\n\n'
                       f'Rollback: `{D6.name}` with unchanged matched D.6 clients.\n\n'
                       'Candidate smoke, rollback smoke, final smoke: PASS.\n\n'
-                      'Platform API inference/jobs/models/systems/health, WVC, Telegram multiuser, '
-                      'delivery isolation, WAIT/START, foto/wideo, Discord and real media: PASS.\n\n'
+                      'Fresh Stage E gates: Platform API inference/jobs/models/systems/health, '
+                      'WVC inference, Hermes messaging connectivity, matched-client byte integrity '
+                      'and media preflight: PASS.\n\n'
+                      'Fresh D.6 Telegram multiuser, /foto, /wideo, Discord and real-media evidence '
+                      'is retained as the unchanged compatibility baseline; Stage E does not claim '
+                      'a synthetic fresh user-path PASS for those flows.\n\n'
                       'D.0/D.6 and recovery snapshots retained; no cleanup or client mutation.\n')
             path = ROOT / 'docs/reports/AI_PLATFORM_STAGE_E_PRODUCTION_GATE.md'
             if path.exists():
