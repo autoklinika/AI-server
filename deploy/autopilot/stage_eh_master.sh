@@ -90,11 +90,10 @@ for stage in E F G H; do
     case "$state" in
       COMPLETE) ;;
       PRE_PROD_CI)
-        if [[ "$stage" == "$RESUME_STAGE" ]]; then
-          continue
-        fi
-        block_master "$stage" "Wykryto niedokończony stan '$state' po restarcie supervisora. Wznowienie PRE_PROD_CI wymaga jawnego resume."
-        exit 0
+        # This boundary is before any production mutation, so it is safe to
+        # resume automatically after a supervisor restart.
+        RESUME_STAGE="$stage"
+        continue
         ;;
       *)
         block_master "$stage" "Wykryto niedokończony stan '$state' po restarcie supervisora. Nie wykonuję automatycznie ponownie implementacji ani GitHub operations."
@@ -111,33 +110,59 @@ for stage in E F G H; do
     continue
   fi
 
-  if [[ "$stage" == "$RESUME_STAGE" ]]; then
-    notify STARTED "$stage" "Wznawiam autonomiczny Stage $stage od zweryfikowanego PRE_PROD_CI."
-    runner_args=("$stage" "--resume-pre-prod")
-  else
-    notify STARTED "$stage" "Rozpoczynam autonomiczny Stage $stage."
-    runner_args=("$stage")
-  fi
-  if "$RUNNER" "${runner_args[@]}"; then
+  retry_delay=30
+  retry_notified=0
+  while true; do
     if [[ "$stage" == "$RESUME_STAGE" ]]; then
+      if ((retry_notified == 0)); then
+        notify STARTED "$stage" "Wznawiam autonomiczny Stage $stage od bezpiecznej granicy PRE_PROD_CI."
+      fi
+      runner_args=("$stage" "--resume-pre-prod")
+    else
+      notify STARTED "$stage" "Rozpoczynam autonomiczny Stage $stage."
+      runner_args=("$stage")
+    fi
+
+    if "$RUNNER" "${runner_args[@]}"; then
       RESUME_STAGE=""
       unset AI_AUTOPILOT_RESUME_STAGE || true
+      rm -f "$STATE_DIR/stage-$stage/reason"
+      date -Is > "$STATE_DIR/stage-$stage.complete"
+      notify COMPLETE "$stage" "Wdrożenie, smoke/E2E, test rollbacku, ponowna aktywacja, PR/CI/merge i post-merge CI: PASS."
+      break
     fi
-    date -Is > "$STATE_DIR/stage-$stage.complete"
-    notify COMPLETE "$stage" "Wdrożenie, smoke/E2E, test rollbacku, ponowna aktywacja, PR/CI/merge i post-merge CI: PASS."
-  else
+
     rc=$?
-    printf 'BLOCKED stage=%s rc=%s at=%s\n' "$stage" "$rc" "$(date -Is)" > "$STATE_DIR/master.status"
     stage_state="$(awk '{print $1}' "$STATE_DIR/stage-$stage/status" 2>/dev/null || printf 'unknown')"
     reason="$(cat "$STATE_DIR/stage-$stage/reason" 2>/dev/null || true)"
+
+    if [[ "$stage_state" == "PRE_PROD_CI" ]] && [[ "$rc" =~ ^(31|91|94)$ ]]; then
+      RESUME_STAGE="$stage"
+      printf 'WAITING_SAFE_RETRY stage=%s rc=%s at=%s\n' "$stage" "$rc" "$(date -Is)" > "$STATE_DIR/master.status"
+      if ((retry_notified == 0)); then
+        if [[ -n "$reason" ]]; then
+          notify INFO "$stage" "Bezpieczny gate pre-production czeka na automatyczną ponowną próbę (rc=$rc, reason=$reason). Produkcja nie została zmieniona."
+        else
+          notify INFO "$stage" "Bezpieczny gate pre-production czeka na automatyczną ponowną próbę (rc=$rc). Produkcja nie została zmieniona."
+        fi
+        retry_notified=1
+      fi
+      sleep "$retry_delay"
+      if ((retry_delay < 300)); then
+        retry_delay=$((retry_delay * 2))
+        ((retry_delay > 300)) && retry_delay=300
+      fi
+      continue
+    fi
+
+    printf 'BLOCKED stage=%s rc=%s at=%s\n' "$stage" "$rc" "$(date -Is)" > "$STATE_DIR/master.status"
     if [[ -n "$reason" ]]; then
       notify BLOCKED "$stage" "Agent zatrzymany (rc=$rc, state=$stage_state, reason=$reason). Następny etap nie zostanie uruchomiony."
     else
       notify BLOCKED "$stage" "Agent zatrzymany (rc=$rc, state=$stage_state). Następny etap nie zostanie uruchomiony."
     fi
     exit 0
-  fi
+  done
 done
-
 printf 'COMPLETE %s\n' "$(date -Is)" > "$STATE_DIR/master.status"
 notify COMPLETE "E-H" "Stage E, F, G i H zakończone. Autonomiczna migracja core E-H: COMPLETE."
