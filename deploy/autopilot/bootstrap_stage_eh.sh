@@ -23,7 +23,7 @@ done
   exit 2
 }
 
-for cmd in git gh codex python3 tmux flock; do
+for cmd in git gh codex python3 tmux flock sudo; do
   command -v "$cmd" >/dev/null || { echo "FAIL: missing command: $cmd" >&2; exit 3; }
 done
 
