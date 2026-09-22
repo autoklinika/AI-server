@@ -252,3 +252,69 @@ def test_hermes_user_systemd_sets_home_and_runtime_dir():
     text = (ROOT / 'deploy/stage-e/autopilot/gate.py').read_text()
     assert "f'HOME={home}'" in text
     assert "f'XDG_RUNTIME_DIR=/run/user/{uid}'" in text
+
+
+def test_api_smoke_accepts_completed_tokenized_empty_content(monkeypatch):
+    gate = module()
+    calls = []
+    def fake_fetch(url, payload=None, token=None, with_headers=False):
+        calls.append((url, payload))
+        if url.endswith('/health'): return {'readiness': True}
+        if url.endswith('/models'): return {'models': [{'logical_id': 'reasoning-main'}]}
+        if url.endswith('/systems'): return {'systems': [{'system_id': 'wvc'}]}
+        if url.endswith('/ai'):
+            return {'request_id': payload['context']['request_id'], 'state': 'completed',
+                    'content': '', 'finish_reason': 'stop', 'job_id': 'job_test',
+                    'usage': {'input_tokens': 17, 'output_tokens': 1},
+                    'execution': {'model': 'reasoning-main'}}
+        if url.endswith('/jobs/job_test'):
+            return {'job': {'job_id': 'job_test', 'request_id': calls[-4][1]['context']['request_id'], 'state': 'completed'}}
+        if url.endswith('/jobs'): return {'jobs': [{'job_id': 'job_test'}]}
+        raise AssertionError(url)
+    monkeypatch.setattr(gate, 'fetch', fake_fetch)
+    gate.api_smoke({'api_token_file': None})
+
+
+def test_emergency_switch_to_d6_can_quiesce_without_gateway_status(monkeypatch, tmp_path):
+    gate = module()
+    d6, candidate = tmp_path / 'd6', tmp_path / 'candidate'
+    d6.mkdir(); candidate.mkdir()
+    current = tmp_path / 'current'
+    current.symlink_to(candidate)
+    monkeypatch.setattr(gate, 'CURRENT', current)
+    monkeypatch.setattr(gate, 'D6', d6)
+    monkeypatch.setattr(gate, 'verify_release', lambda *a: {'source_git_sha': gate.D6_SHA})
+    monkeypatch.setattr(gate, 'clients', lambda: {})
+    monkeypatch.setattr(gate, 'comfy_idle', lambda: None)
+    actions = []
+    monkeypatch.setattr(gate, 'quiesce', lambda baseline, allow_gateway_unavailable=False: actions.append(allow_gateway_unavailable))
+    monkeypatch.setattr(gate, 'idle', lambda: (_ for _ in ()).throw(ConnectionError('gateway down')))
+    monkeypatch.setattr(gate, 'runtime', lambda *a: None)
+    monkeypatch.setattr(gate, 'resume_ingress', lambda baseline: actions.append('resume'))
+    def fake_run(args, **kwargs):
+        if 'show' in args and 'ai-bridge-analysis.service' in args: return 'inactive'
+        return ''
+    monkeypatch.setattr(gate, 'run', fake_run)
+    gate.switch(d6, candidate, {}, {'clients': {}})
+    assert current.resolve() == d6
+    assert actions == [True, 'resume']
+
+
+def test_stage_e_smoke_has_fresh_hermes_and_real_media_checks():
+    text = (ROOT / 'deploy/stage-e/autopilot/gate.py').read_text()
+    assert 'def hermes_oneshot_smoke' in text
+    assert "HERMES_HOME=/srv/ai-data/hermes" in text
+    assert "job.get('capability') == 'chat'" in text
+    assert 'def real_media_smoke' in text
+    assert "deploy/stage-e/validate_media_runtime.sh" in text
+    assert "require((platforms.get('discord') or {}).get('state') == 'connected')" in text
+
+
+def test_stage_e_real_media_helper_is_parseable_and_stage_bound():
+    path = ROOT / 'deploy/stage-e/validate_media_runtime.sh'
+    subprocess.run(['bash', '-n', path], check=True)
+    text = path.read_text()
+    assert "grep -qx 'stage=E'" in text
+    assert 'stage-e-media-smoke' in text
+    assert '--duration-seconds", "1"' in text
+    assert 'media-video' in text
