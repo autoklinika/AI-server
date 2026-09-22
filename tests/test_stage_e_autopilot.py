@@ -356,3 +356,57 @@ def test_real_media_smoke_selects_expected_stage(monkeypatch):
     monkeypatch.setattr(gate.Path, 'is_file', lambda self: True)
     gate.real_media_smoke(gate.D6)
     assert calls[-1][-1] == 'D'
+
+
+def test_rollback_does_not_require_candidate_checksum(monkeypatch, tmp_path):
+    gate = module()
+    sha = 'b' * 40
+    state = tmp_path / sha
+    state.mkdir()
+    monkeypatch.setattr(gate, 'STATE', tmp_path)
+    monkeypatch.setattr(gate, 'config', lambda: {})
+    monkeypatch.setattr(gate, 'git_run', lambda *a, **k: sha)
+    monkeypatch.setattr(gate.os, 'geteuid', lambda: 0)
+    monkeypatch.setattr(gate.fcntl, 'flock', lambda *a, **k: None)
+    baseline = {
+        'source_sha': sha,
+        'rollback_sha': gate.D6_SHA,
+        'candidate': 'stage-e-' + sha[:12],
+        'rollback': gate.D6.name,
+        'rollback_checksums': 'verified',
+        'clients': {},
+    }
+    gate.write_once(state / 'baseline.json', baseline)
+    monkeypatch.setattr(gate, 'digest', lambda path: 'verified' if path == gate.D6 / 'metadata/SHA256SUMS' else (_ for _ in ()).throw(FileNotFoundError()))
+    called = []
+    monkeypatch.setattr(gate, 'switch', lambda *a, **k: called.append(True))
+    gate.main('40_rollback')
+    assert called == [True]
+    assert (state / 'rollback.json').is_file()
+
+
+def test_rollback_smoke_does_not_require_candidate_checksum(monkeypatch, tmp_path):
+    gate = module()
+    sha = 'c' * 40
+    state = tmp_path / sha
+    state.mkdir()
+    monkeypatch.setattr(gate, 'STATE', tmp_path)
+    monkeypatch.setattr(gate, 'config', lambda: {})
+    monkeypatch.setattr(gate, 'git_run', lambda *a, **k: sha)
+    monkeypatch.setattr(gate.os, 'geteuid', lambda: 0)
+    monkeypatch.setattr(gate.fcntl, 'flock', lambda *a, **k: None)
+    baseline = {
+        'source_sha': sha,
+        'rollback_sha': gate.D6_SHA,
+        'candidate': 'stage-e-' + sha[:12],
+        'rollback': gate.D6.name,
+        'rollback_checksums': 'verified',
+        'clients': {},
+    }
+    gate.write_once(state / 'baseline.json', baseline)
+    gate.write_once(state / 'rollback.json', {'release_id': gate.D6.name})
+    monkeypatch.setattr(gate, 'digest', lambda path: 'verified' if path == gate.D6 / 'metadata/SHA256SUMS' else (_ for _ in ()).throw(FileNotFoundError()))
+    called = []
+    monkeypatch.setattr(gate, 'smoke', lambda *a, **k: called.append(a[0]))
+    gate.main('50_rollback_smoke')
+    assert called == ['rollback-smoke']
