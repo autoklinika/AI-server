@@ -15,7 +15,14 @@ OWNER_HOME="$(getent passwd "$OWNER_UID" | cut -d: -f6)"
 }
 
 ugit() {
-  runuser -u "$OWNER_NAME" -- env     HOME="$OWNER_HOME"     PATH="/usr/local/bin:/usr/bin:/bin"     git "$@"
+  if [[ "$EUID" -eq 0 ]]; then
+    runuser -u "$OWNER_NAME" -- env \
+      HOME="$OWNER_HOME" \
+      PATH="/usr/local/bin:/usr/bin:/bin" \
+      git "$@"
+  else
+    git "$@"
+  fi
 }
 
 HEAD_SHA="$(ugit -C "$ROOT" rev-parse HEAD)"
