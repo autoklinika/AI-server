@@ -84,3 +84,13 @@ jakąkolwiek mutacją produkcji, dozwolone jest jawne wznowienie. Resume wymaga:
 czystego worktree, oczekiwanej gałęzi `agent/stage-X`, otwartego PR do `main`,
 aktualizacji kandydata do bieżącego `main` oraz ponownego zielonego CI. Inne stany
 nie są automatycznie konwertowane na PRE_PROD_CI.
+
+
+## Read-only preflight failure
+
+`00_preflight.sh` nie może wykonywać mutacji produkcji. Jeżeli ten krok FAIL,
+supervisor normalizuje stan z powrotem do `PRE_PROD_CI`, więc etap może zostać
+jawnie wznowiony po korekcie przyczyny bez rollbacku. Historyczny stan
+`PRODUCTION:00_preflight.sh` z wcześniejszej wersji supervisora jest traktowany
+tak samo wyłącznie przez fail-closed resume helper; inne stany `PRODUCTION:*`
+nie są uznawane za bezpiecznie wznawialne.
