@@ -34,7 +34,8 @@ CLIENTS = {
     '/usr/local/libexec/ai-server/hermes_video_dispatch.py': 'tools/local_video/hermes_video_dispatch_global.py',
     '/usr/local/libexec/ai-server/qwen_prompt_compiler.py': 'tools/local_video/qwen_prompt_compiler.py',
 }
-CHECKS = ('messaging_connectivity', 'matched_clients_unchanged', 'media_preflight')
+CHECKS = ('messaging_connectivity', 'hermes_inference', 'matched_clients_unchanged',
+          'media_preflight', 'real_media')
 
 
 def require(condition):
@@ -192,24 +193,34 @@ def hermes_state():
     platforms = value.get('platforms') or {}
     require((platforms.get('telegram') or {}).get('state') == 'connected')
     require((platforms.get('api_server') or {}).get('state') == 'connected')
-    if 'discord' in platforms:
-        require((platforms.get('discord') or {}).get('state') == 'connected')
+    require((platforms.get('discord') or {}).get('state') == 'connected')
 
 
-def quiesce(baseline):
+def quiesce(baseline, allow_gateway_unavailable=False):
     # Stop actual ingress instead of relying on a point-in-time idle observation.
     if baseline['analysis_timer_active'] == 'active':
         run(['systemctl', 'stop', 'ai-bridge-analysis.timer'])
     if baseline['hermes_active'] == 'active':
         user_systemctl(['stop', 'hermes-gateway.service'])
-    for _ in range(60):
+
+    if allow_gateway_unavailable:
         try:
             idle()
-            break
         except Exception:
-            time.sleep(1)
+            # Emergency recovery to D.6 must not depend on a broken candidate's
+            # /status endpoint. With ingress closed, ComfyUI idleness is the
+            # remaining external-work invariant.
+            comfy_idle()
     else:
-        raise RuntimeError('runtime did not drain')
+        for _ in range(60):
+            try:
+                idle()
+                break
+            except Exception:
+                time.sleep(1)
+        else:
+            raise RuntimeError('runtime did not drain')
+
     require(run(['systemctl', 'show', 'ai-bridge-analysis.service',
                  '-p', 'ActiveState', '--value']) == 'inactive')
 
@@ -236,6 +247,36 @@ def media_preflight():
     private_file(wrapper, True)
     require('/opt/ai-platform/current/services/ai-bridge' in wrapper.read_text())
     run([wrapper, '--preflight'], timeout=120)
+
+
+def hermes_oneshot_smoke():
+    before = {job['job_id'] for job in fetch(GATEWAY + '/status').get('recent_jobs', [])}
+    name, uid, home = hermes_account()
+    cli = Path(home) / '.local/bin/hermes'
+    require(cli.is_file())
+    output = run([
+        'runuser', '-u', name, '--', 'env',
+        f'HOME={home}',
+        'HERMES_HOME=/srv/ai-data/hermes',
+        f'XDG_RUNTIME_DIR=/run/user/{uid}',
+        str(cli), '-z', 'Return the word OK.',
+    ], timeout=180)
+    require(bool(output.strip()))
+    recent = fetch(GATEWAY + '/status').get('recent_jobs', [])
+    fresh = [job for job in recent if job.get('job_id') not in before]
+    require(any(
+        job.get('domain') == 'shared'
+        and job.get('capability') == 'chat'
+        and job.get('state') == 'completed'
+        and job.get('assigned_provider') == 'ollama-local'
+        for job in fresh
+    ))
+
+
+def real_media_smoke():
+    helper = ROOT / 'deploy/stage-e/validate_media_runtime.sh'
+    require(helper.is_file())
+    run(['bash', helper], timeout=1900)
 
 
 def write_once(path, value):
@@ -334,11 +375,9 @@ def switch(target, entry, cfg, baseline):
     mutating = False
     healthy = False
     try:
-        quiesce(baseline)
-        gateway_state = run(['systemctl', 'show', 'ai-gateway.service', '-p', 'ActiveState', '--value'])
-        if target == D6 and gateway_state in ('inactive', 'failed'):
-            # Emergency recovery after a failed candidate start. Ingress is
-            # already closed and ComfyUI must still be idle.
+        recovering_to_d6 = target == D6 and CURRENT.resolve(strict=True) == entry
+        quiesce(baseline, allow_gateway_unavailable=recovering_to_d6)
+        if recovering_to_d6:
             comfy_idle()
         else:
             idle()
@@ -378,8 +417,10 @@ def api_smoke(cfg):
                    'context': {'request_id': request_id, 'domain': 'shared'},
                    'messages': [{'role': 'user', 'content': 'Return the word OK.'}]}, token)
     require(result['request_id'] == request_id and result['state'] == 'completed'
-            and bool(result['content']) and result['execution']['model'] == 'reasoning-main')
+            and result['execution']['model'] == 'reasoning-main'
+            and result.get('finish_reason') == 'stop')
     require(type(result['usage']['input_tokens']) is int and result['usage']['input_tokens'] > 0)
+    require(type(result['usage']['output_tokens']) is int and result['usage']['output_tokens'] > 0)
     job = fetch(base + '/jobs/' + result['job_id'], token=token)['job']
     require(job['state'] == 'completed' and job['request_id'] == request_id)
     require(any(j['job_id'] == job['job_id'] for j in fetch(base + '/jobs', token=token)['jobs']))
@@ -411,8 +452,10 @@ def smoke(phase, target, cfg, baseline, state):
         api_smoke(cfg)
     wvc_smoke()
     hermes_state()
+    hermes_oneshot_smoke()
     require(clients() == baseline['clients'])
     media_preflight()
+    real_media_smoke()
     runtime(target, cfg, baseline)
     require(before == [identity(unit) for unit in ('ai-gateway.service', 'ai-bridge.service', 'comfyui.service')])
     write_once(state / (phase + '.json'), {'schema_version': 1, 'release_id': target.name,
