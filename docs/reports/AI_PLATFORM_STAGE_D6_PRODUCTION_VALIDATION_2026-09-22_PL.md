@@ -1,9 +1,9 @@
 # AI Platform — Stage D.6 Production Validation
 
-**Data:** 2026-09-22  
-**Release:** `stage-d-resource-manager-v2-20260922-r2`  
-**Source SHA:** `82d55f629f763c9352ad7c9e678e22eadb623639`  
-**Production validation:** PASS  
+**Data:** 2026-09-22
+**Release:** `stage-d-resource-manager-v2-20260922-r2`
+**Source SHA:** `82d55f629f763c9352ad7c9e678e22eadb623639`
+**Production validation:** PASS
 **Stage D status:** production gate PASS; repo governance / CI / merge pending.
 
 ## 1. Końcowy runtime
