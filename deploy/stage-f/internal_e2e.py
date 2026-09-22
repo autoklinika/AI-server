@@ -45,6 +45,18 @@ def idle():
     assert (doc['active_count'], doc['queued_count'], doc['resource_leases']['lease_count']) == (0, 0, 0)
 
 
+def configured_hermes_model(path):
+    # The Bridge's base model is not the Hermes runtime model. Read only the
+    # configured local binding; never serialize the private configuration.
+    import yaml
+    config = yaml.safe_load(path.read_text())
+    model = config.get('model', {})
+    assert model.get('base_url', '').rstrip('/') == GATEWAY + '/clients/hermes/v1'
+    value = model.get('default')
+    assert isinstance(value, str) and value.strip()
+    return value
+
+
 def media_child(command, payload, worker=False):
     """Keep the actual dispatcher and worker; replace ONLY egress and worker launcher."""
     if command == 'foto':
@@ -118,9 +130,8 @@ async def exercise(output, media_enabled):
     sources = [SessionSource(platform=p, chat_id=f'synthetic-{i}', user_id=f'synthetic-user-{i}',
                              thread_id=f'{100+i}')
                for i, p in enumerate((Platform.TELEGRAM, Platform.TELEGRAM, Platform.DISCORD, Platform.DISCORD))]
-    model = json.loads(subprocess.check_output([
-        '/opt/ai-platform/current/services/ai-bridge/.venv/bin/python', '-c',
-        'import json; from ai_bridge.settings import Settings; print(json.dumps(Settings(_env_file="/etc/ai-bridge/ai-bridge.env").ollama_model))'], text=True))
+    model = configured_hermes_model(Path('/srv/ai-data/hermes/config.yaml'))
+
     records = []
     async def chat(source):
         event = MessageEvent(text='Return the word OK.', source=source)

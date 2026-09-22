@@ -1,5 +1,7 @@
 # Stage F: supported Hermes messaging plugin
 
+Draft only: production cutover is blocked by the [GPU incident and open review items](../../docs/reports/AI_PLATFORM_STAGE_F_GPU_BLOCKER_2026-09-23.md). The current manual-registration harness is not yet sufficient acceptance evidence.
+
 The operator approved SYNTHETIC/INTERNAL E2E as the acceptance boundary on
 2026-09-23. External Telegram/Discord inbound transport remains DEFERRED/NOT
 TESTED. D.6 external-user evidence remains historical, not fresh Stage F evidence.

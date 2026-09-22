@@ -677,3 +677,12 @@ Rollback is required for unsafe/degraded/uncertain runtime or the mandatory plan
 rollback test, rather than automatically after every failed assertion. Stage F
 implementation/review is in progress; completion still requires the full production,
 rollback/reactivation, Git/PR/CI/merge sequence.
+
+### Stage F — GPU incident, 2026-09-23
+
+F remains draft: pre-existing AMD MES ring-full errors prevent real inference even
+after a guarded model-service restart. E source/release retained; inference ingress
+paused, telemetry/history and idle Comfy preserved. G/H NOT STARTED. See
+[incident and resumption requirements](../reports/AI_PLATFORM_STAGE_F_GPU_BLOCKER_2026-09-23.md).
+External transport deferral is not the blocker. Internal harness review gaps and the
+full candidate/rollback/reactivation cycle remain required after host GPU recovery.

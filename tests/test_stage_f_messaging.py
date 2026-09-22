@@ -162,3 +162,26 @@ def test_media_cancel_kills_and_reaps_dispatch_process(plugin, monkeypatch):
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(scenario())
     assert actions == ['kill', 'wait']
+
+
+def test_interrupted_atomic_restore_preserves_original(monkeypatch, tmp_path):
+    import os
+    gate = gate_module()
+    path = tmp_path / 'source.py'
+    path.write_bytes(b'original')
+    def fail(*_):
+        raise OSError('controlled interruption before replace')
+    monkeypatch.setattr(gate.os, 'replace', fail)
+    with pytest.raises(OSError):
+        gate.atomic_restore(path, b'candidate', 0o600, os.getuid(), os.getgid())
+    assert path.read_bytes() == b'original'
+    assert list(tmp_path.iterdir()) == [path]
+
+
+def test_harness_uses_configured_hermes_model_not_bridge_default(tmp_path):
+    spec = importlib.util.spec_from_file_location('internal_harness_test', ROOT / 'deploy/stage-f/internal_e2e.py')
+    harness = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(harness)
+    config = tmp_path / 'config.yaml'
+    config.write_text('model:\n  default: qwen3.6:35b-hermes64k\n  base_url: http://127.0.0.1:11435/clients/hermes/v1\n')
+    assert harness.configured_hermes_model(config) == 'qwen3.6:35b-hermes64k'
