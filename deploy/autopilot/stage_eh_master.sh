@@ -6,6 +6,7 @@ STATE_DIR="${AI_AUTOPILOT_STATE_DIR:-$HOME/agent-state/stage-eh}"
 WORKTREE="${AI_AUTOPILOT_WORKTREE:-$HOME/agent-worktrees/stage-eh}"
 RUNNER="$CONTROL_DIR/run_stage.sh"
 NOTIFY="$CONTROL_DIR/notify_telegram.py"
+ROOT_BRIDGE="/usr/local/libexec/ai-platform/autopilot-root-exec"
 RESUME_STAGE="${AI_AUTOPILOT_RESUME_STAGE:-}"
 [[ -z "$RESUME_STAGE" || "$RESUME_STAGE" =~ ^[EFGH]$ ]] || {
   echo "FAIL: invalid AI_AUTOPILOT_RESUME_STAGE=$RESUME_STAGE" >&2
@@ -39,12 +40,12 @@ recover_interrupted_production() {
       PRODUCTION:60_reactivate.sh|PRODUCTION:70_reactivate_smoke.sh|\
       PRODUCTION:90_finalize.sh|EMERGENCY_ROLLBACK)
         stage_lc="$(printf '%s' "$stage" | tr '[:upper:]' '[:lower:]')"
-        dir="$WORKTREE/deploy/stage-$stage_lc/autopilot"
         notify ROLLBACK "$stage" "Wykryto przerwanie supervisora podczas fazy produkcyjnej. Wykonuję konserwatywny rollback przed zatrzymaniem."
+        expected_sha="$(git -C "$WORKTREE" rev-parse HEAD 2>/dev/null || true)"
         set +e
-        (cd "$WORKTREE" && bash "$dir/40_rollback.sh") >"$STATE_DIR/stage-$stage/restart-rollback.log" 2>&1
+        sudo -n "$ROOT_BRIDGE" "$stage" 40_rollback.sh "$expected_sha" >"$STATE_DIR/stage-$stage/restart-rollback.log" 2>&1
         rb=$?
-        (cd "$WORKTREE" && bash "$dir/50_rollback_smoke.sh") >"$STATE_DIR/stage-$stage/restart-rollback-smoke.log" 2>&1
+        sudo -n "$ROOT_BRIDGE" "$stage" 50_rollback_smoke.sh "$expected_sha" >"$STATE_DIR/stage-$stage/restart-rollback-smoke.log" 2>&1
         smoke=$?
         set -e
         if ((rb == 0 && smoke == 0)); then
@@ -123,16 +124,17 @@ for stage in E F G H; do
       runner_args=("$stage")
     fi
 
+    rm -f "$STATE_DIR/stage-$stage/reason"
     if "$RUNNER" "${runner_args[@]}"; then
       RESUME_STAGE=""
       unset AI_AUTOPILOT_RESUME_STAGE || true
-      rm -f "$STATE_DIR/stage-$stage/reason"
       date -Is > "$STATE_DIR/stage-$stage.complete"
       notify COMPLETE "$stage" "Wdrożenie, smoke/E2E, test rollbacku, ponowna aktywacja, PR/CI/merge i post-merge CI: PASS."
       break
+    else
+      rc=$?
     fi
 
-    rc=$?
     stage_state="$(awk '{print $1}' "$STATE_DIR/stage-$stage/status" 2>/dev/null || printf 'unknown')"
     reason="$(cat "$STATE_DIR/stage-$stage/reason" 2>/dev/null || true)"
 
