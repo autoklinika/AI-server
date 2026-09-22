@@ -574,3 +574,21 @@ Legacy API, WAIT/START, explicit numeric priorities i recovery paths pozostają.
 D.6 production validation nie rozpoczęto. Lokalna walidacja nie jest production gate.
 [Kontrakt §7.4](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#74-compatibility-migration--stage-d5)
 i [raport D.5](../reports/AI_PLATFORM_STAGE_D5_COMPATIBILITY_MIGRATION_2026-09-22_PL.md).
+
+### Decyzja D.6 preparation — 2026-09-22
+
+Aktualny krok: przygotowanie kompletnego Stage D do późniejszej walidacji
+produkcyjnej. **READY FOR PRODUCTION VALIDATION — implementation ready for
+supervisor validation**, bez cutover, real smoke ani live rollback.
+Supervisor rozstrzygnął release contract: stage=D, phase=D.6,
+config_schema_version=3, migration_version=resource-manager-v2; Resource Manager
+contract=2, kontrakty priority/JobState/registry/admission/compatibility=1.
+Provider contracts pozostają bez zmian. D.0 foundation metadata jest historyczne,
+nie opisuje bieżącego kandydata. Pełne mapowanie stamp/YAML:
+[Component Contracts §20](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#20-release-contract-resource-manager-v2--decyzja-supervisora-2026-09-22).
+
+[Runbook D.6](../../deploy/stage-d/D6_VALIDATION_RUNBOOK.md) definiuje WVC,
+Telegram multiuser/Discord, real media, matched client inventory i rollback cycle.
+[Raport przygotowania](../reports/AI_PLATFORM_STAGE_D6_PREPARATION_2026-09-22_PL.md)
+oddziela testy lokalne od niewykonanej walidacji produkcyjnej. Stage E i kolejne
+pozostają poza zakresem. Nie usuwamy D.0 r2 ani Stage C r3 recovery evidence.

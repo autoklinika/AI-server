@@ -35,9 +35,8 @@ Production cutover is not performed by committing these scripts.
 D.1 adds semantic `priority_class` admission while preserving legacy numeric
 priorities and FIFO. It is **READY FOR PRODUCTION VALIDATION**, not deployed.
 See the [D.1 report](../../docs/reports/AI_PLATFORM_STAGE_D1_SEMANTIC_PRIORITY_2026-09-21_PL.md)
-for test evidence and remaining checks. The builder still requires clean committed
-source and carries D.0 phase metadata; verify release metadata before preparing a
-later D.1 production artifact. D.2–D.6 work is outside this implementation.
+for test evidence and remaining checks. At that stage the builder carried D.0 metadata. D.6 preparation below supersedes
+that historical metadata blocker; clean committed source is still required.
 
 ## D.3 validation handoff
 
@@ -48,5 +47,19 @@ Defaults are packaged in Python; optional `AI_BRIDGE_GATEWAY_REGISTRY` accepts a
 JSON object matching [the example](../gateway-registry.example.json), not a file
 path. Omit it to use the existing three providers on `AI_BRIDGE_NODE_ID`.
 The Gateway rejects topology changes and does not enable multi-node dispatch.
-The builder's existing D.0 phase metadata still needs release preparation by the
-supervisor before a production candidate; recovery/build guards are unchanged.
+The historical D.0 metadata blocker is resolved by D.6 preparation below;
+recovery/build guards are unchanged.
+
+## D.6 preparation
+
+**READY FOR PRODUCTION VALIDATION — implementation ready for supervisor validation.**
+The current builder emits D.6 / schema 3 / resource-manager-v2, Resource Manager
+contract 2 and D.1–D.5 subcontracts 1. Provider contracts remain 1. Historical
+D.0/C artifacts remain recovery targets. Current runtime validators require D.6.
+
+[Runbook](D6_VALIDATION_RUNBOOK.md) contains the automated coverage matrix, WVC
+regression, Telegram multiuser/Discord, real media and rollback gates. New offline
+`validate_release_metadata.py` and `validate_rollback_readiness.py` check release
+identity and preserved artifact checksums. `observe_validation.py` provides a
+read-only health/count snapshot for later authorized live tests. None proves a
+production PASS. No cutover or service operation was performed in preparation.

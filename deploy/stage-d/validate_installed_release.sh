@@ -13,6 +13,8 @@ fail(){ say "FAIL: $*" >&2; exit 1; }
 grep -qx "release_id=$RELEASE_ID" "$TARGET/RELEASE" || fail "release id mismatch"
 grep -qx 'stage=D' "$TARGET/RELEASE" || fail "not a Stage D release"
 
+python3 "$(dirname "$0")/validate_release_metadata.py" "$TARGET"
+
 CURRENT_BEFORE="$(readlink -f "$CURRENT")"
 BRIDGE_PID_BEFORE="$(systemctl show ai-bridge.service -p MainPID --value)"
 GATEWAY_PID_BEFORE="$(systemctl show ai-gateway.service -p MainPID --value)"

@@ -133,7 +133,7 @@ def test_wvc_runtime_validation_is_safe_for_disconnected_cm5() -> None:
     text = (ROOT / "deploy/stage-d/validate_wvc_gateway_runtime.sh").read_text(
         encoding="utf-8"
     )
-    assert "ventilation-d0-validation" in text
+    assert "ventilation-d6-validation" in text
     assert '"X-AI-Priority": "10"' in text
     assert 'Settings.model_fields["ollama_model"].default' in text
     assert "AI_BRIDGE_OLLAMA_MODEL missing" not in text
@@ -144,7 +144,7 @@ def test_wvc_runtime_validation_is_safe_for_disconnected_cm5() -> None:
     assert "systemctl start ai-bridge-analysis.service" not in text
     assert "/telemetry/batches" in text
     assert "urllib.request.Request" in text
-    assert "Live CM5 telemetry growth was intentionally not tested" in text
+    assert "Live CM5 telemetry growth was not tested" in text
 
 
 def test_media_runtime_validation_uses_global_lease_and_real_render() -> None:
@@ -152,7 +152,7 @@ def test_media_runtime_validation_uses_global_lease_and_real_render() -> None:
         encoding="utf-8"
     )
     assert "acquire_resource" in text
-    assert 'source="d0-media-smoke"' in text
+    assert 'source="d6-media-smoke"' in text
     assert "priority=50" in text
     assert "generate-video-ltx23" in text
     assert "--duration-seconds" in text

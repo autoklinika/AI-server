@@ -9,7 +9,7 @@ fail(){ say "FAIL: $*" >&2; exit 1; }
 
 [[ -f "$CURRENT/RELEASE" ]] || fail "active release stamp missing"
 grep -qx 'stage=D' "$CURRENT/RELEASE" || fail "active release is not Stage D"
-grep -qx 'phase=D.0' "$CURRENT/RELEASE" || fail "active release is not D.0"
+python3 "$(dirname "$0")/validate_release_metadata.py" "$CURRENT"
 sudo test -f "$ENV_FILE" || fail "AI Bridge env missing: $ENV_FILE"
 
 POLICY="$(sudo sed -n 's/^AI_BRIDGE_ANALYSIS_USE_GATEWAY=//p' "$ENV_FILE" | tail -1)"
@@ -44,7 +44,7 @@ case "$BRIDGE_HOST" in
 esac
 BRIDGE_URL="http://${BRIDGE_HOST}:8080"
 
-echo "===== D.0 WVC/GATEWAY VALIDATION ====="
+echo "===== D.6 WVC/GATEWAY VALIDATION ====="
 say "release=$(readlink -f "$CURRENT")"
 say "bridge_url=$BRIDGE_URL"
 say "gateway_url=$GATEWAY_URL"
@@ -63,7 +63,7 @@ do
     fail "obsolete analysis override remains: $stale"
   fi
 done
-systemctl show ai-bridge-analysis.service -p WorkingDirectory -p ExecStart -p Environment -p DropInPaths
+systemctl show ai-bridge-analysis.service -p WorkingDirectory -p ExecStart -p DropInPaths
 
 echo
 echo "===== AI BRIDGE HEALTH + WVC INGEST CONTRACT ====="
@@ -145,13 +145,13 @@ payload = json.dumps(
 ).encode("utf-8")
 
 request = urllib.request.Request(
-    base + "/api/chat",
+    base + "/clients/ventilation/api/chat",
     data=payload,
     method="POST",
     headers={
         "Content-Type": "application/json",
         "X-AI-Priority": "10",
-        "X-AI-Source": "ventilation-d0-validation",
+        "X-AI-Source": "ventilation-d6-validation",
     },
 )
 with urllib.request.urlopen(request, timeout=300) as response:
@@ -159,17 +159,31 @@ with urllib.request.urlopen(request, timeout=300) as response:
     priority = response.headers.get("X-AI-Gateway-Priority")
     job_id = response.headers.get("X-AI-Gateway-Job-Id")
     wait_ms = response.headers.get("X-AI-Gateway-Wait-Ms")
+    v2_job_id = response.headers.get("X-AI-Job-Id")
+    request_id = response.headers.get("X-AI-Request-Id")
 
 if body.get("done") is not True:
-    raise SystemExit(f"Qwen response not complete: {body}")
+    raise SystemExit("Qwen response not complete")
 if int(body.get("prompt_eval_count") or 0) <= 0:
-    raise SystemExit(f"Qwen did not evaluate prompt: {body}")
+    raise SystemExit("Qwen did not evaluate prompt")
 if priority != "10":
     raise SystemExit(f"unexpected gateway priority: {priority}")
 if not job_id:
     raise SystemExit("missing X-AI-Gateway-Job-Id")
 if wait_ms is None:
     raise SystemExit("missing X-AI-Gateway-Wait-Ms")
+
+with urllib.request.urlopen(base + "/status", timeout=5) as response:
+    status = json.load(response)
+matching = [job for job in status.get("recent_jobs", []) if job.get("job_id") == v2_job_id]
+if not request_id or len(matching) != 1:
+    raise SystemExit("missing D.6 WVC job correlation")
+job = matching[0]
+if (job.get("request_id") != request_id or job.get("domain") != "wvc"
+        or job.get("capability") != "reasoning" or job.get("state") != "completed"
+        or job.get("priority_class") != "infrastructure"
+        or job.get("assigned_provider") != "ollama-local" or not job.get("assigned_node")):
+    raise SystemExit("unexpected D.6 WVC job metadata")
 
 print(
     "PASS: ventilation request executed through Gateway/Qwen "
@@ -201,5 +215,5 @@ print("PASS: Resource Manager returned to idle 0/0/0")
 PY
 
 echo
-echo "D.0 WVC/GATEWAY RUNTIME VALIDATION: PASS"
-say "Live CM5 telemetry growth was intentionally not tested because WVC is disconnected."
+echo "D.6 WVC/GATEWAY RUNTIME VALIDATION: PASS"
+say "Live CM5 telemetry growth was not tested; record connected/disconnected state separately."
