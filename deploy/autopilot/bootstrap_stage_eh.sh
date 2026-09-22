@@ -105,6 +105,7 @@ Wants=network-online.target
 Type=oneshot
 WorkingDirectory=$WORKTREE
 Environment=HOME=$HOME
+Environment=PATH=$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin
 Environment=AI_AUTOPILOT_ENV=$PRIVATE_ENV
 ExecStart=$CONTROL_DIR/master.sh
 TimeoutStartSec=infinity
