@@ -207,3 +207,28 @@ def test_preflight_is_non_idle_and_has_safe_diagnostic_labels():
     assert "PREFLIGHT_FAIL=" in text
     assert "preflight_step('hermes_connected'" in text
     assert "preflight_step('media_preflight'" in text
+
+
+def test_stage_e_gate_runs_git_as_worktree_owner():
+    text = (ROOT / 'deploy/stage-e/autopilot/gate.py').read_text()
+    assert "def git_run(" in text
+    assert "'runuser', '-u', name" in text
+    assert "git_run(['rev-parse', 'HEAD'])" in text
+    assert "git_run(['status', '--porcelain'])" in text
+    assert "run(['git', '-C', ROOT" not in text
+
+
+def test_stage_e_builder_uses_owner_git_and_verified_source_sha():
+    text = (ROOT / 'deploy/stage-e/build_release.sh').read_text()
+    assert 'ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"' in text
+    assert 'ugit()' in text
+    assert 'HEAD_SHA="$(ugit -C "$ROOT" rev-parse HEAD)"' in text
+    assert 'SOURCE_SHA="${STAGE_E_SOURCE_SHA:-$HEAD_SHA}"' in text
+    assert 'ugit -C "$ROOT" archive "$SOURCE_SHA"' in text
+    assert 'git -C "$ROOT" archive "$SOURCE_SHA"' not in text
+
+
+def test_hermes_user_systemd_sets_home_and_runtime_dir():
+    text = (ROOT / 'deploy/stage-e/autopilot/gate.py').read_text()
+    assert "f'HOME={home}'" in text
+    assert "f'XDG_RUNTIME_DIR=/run/user/{uid}'" in text
