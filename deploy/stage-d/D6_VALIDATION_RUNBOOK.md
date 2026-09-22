@@ -1,7 +1,7 @@
 # D.6 production validation handoff
 
-Status: **READY FOR PRODUCTION VALIDATION** — implementation ready for supervisor
-validation. All live gates below are **NOT RUN** by the preparation agent.
+Status: **PRODUCTION VALIDATION EXECUTED — PASS (2026-09-22)**. The preparation
+sections below remain the original handoff; final evidence is linked at the end.
 Only the supervisor/operator can schedule and authorize the production window.
 No command in this document grants permission to change production.
 
@@ -242,3 +242,24 @@ previous-release record identifies the intended recovery target.
 Record failure and recovery outcome separately if a switch fails. Never mark a
 failed attempt PASS merely because the automatic source restore ran. Supervisor
 owns final production evidence, CI/merge and any eventual COMPLETE designation.
+
+## Production validation result — 2026-09-22
+
+D.6 r2 production validation została wykonana. Cutover, matched client
+restore/apply, D.6 -> D.0 r2 -> D.6 rollback cycle, WVC/Qwen, media,
+Telegram multiuser, `/foto`, `/wideo`, Discord i live priority/non-preemption
+zakończyły się PASS. Live client cancellation: NOT RUN; automated coverage retained.
+
+Dwa operator findings:
+
+1. privileged supervisor wrapper odwołujący się do istniejącego Hermes user managera
+   powinien używać `runuser` z `XDG_RUNTIME_DIR=/run/user/<uid>`. Nie zakładać, że
+   samo `runuser ... systemctl --user` odziedziczy właściwy bus. Nie wymuszać
+   `DBUS_SESSION_BUS_ADDRESS`, jeśli istniejący user manager działa przez
+   `XDG_RUNTIME_DIR`; podczas tej walidacji jawny bus address powodował failure.
+2. historyczny recovery release może nie zawierać validatora dodanego później.
+   Dla D.0 r2 użyto zweryfikowanego historycznego validatora odpowiadającego D.0
+   semantics zamiast zakładać jego obecność w starym release artifact.
+
+Pełny evidence:
+[production validation report](../../docs/reports/AI_PLATFORM_STAGE_D6_PRODUCTION_VALIDATION_2026-09-22_PL.md).

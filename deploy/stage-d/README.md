@@ -79,3 +79,20 @@ D.0. Re-activate D.6 release before applying D.6 clients. New Hermes PID baselin
 apply within each validation phase. Historical libexec generator copies remain
 untouched until Stage H. See [runbook](D6_VALIDATION_RUNBOOK.md) and
 [correction report](../../docs/reports/AI_PLATFORM_STAGE_D6_GATE_FIX_2026-09-22_PL.md).
+
+## D.6 production validation — 2026-09-22
+
+Production validation D.6 r2 zakończona **PASS**. Zweryfikowano matched client
+restore/apply, pełny rollback D.6 -> D.0 r2 -> D.6, real WVC/Gateway/Qwen,
+real Stage30 media, Telegram multiuser + `/foto` + `/wideo`, Discord oraz live
+non-preemption/priority ordering (WVC 10 przed oczekującym interactive 50).
+Końcowy runtime jest healthy/idle, analysis timer active, Hermes ma nowy stabilny
+baseline po intentional client reload, ComfyUI nie został zrestartowany.
+
+Live client cancellation nie był wykonywany (`NOT RUN`); zachowane pozostaje
+automatyczne cancellation coverage.
+
+Szczegóły:
+[production validation report](../../docs/reports/AI_PLATFORM_STAGE_D6_PRODUCTION_VALIDATION_2026-09-22_PL.md).
+
+Repo governance / CI / merge pozostają wymagane przed formalnym `Stage D COMPLETE`.
