@@ -4,7 +4,7 @@
 **Release:** `stage-d-resource-manager-v2-20260922-r2`
 **Source SHA:** `82d55f629f763c9352ad7c9e678e22eadb623639`
 **Production validation:** PASS
-**Stage D status:** production gate PASS; repo governance / CI / merge pending.
+**Stage D status:** **COMPLETE** — production gate PASS, PR #47 merged, pre-merge CI #451 PASS, post-merge CI #452 PASS.
 
 ## 1. Końcowy runtime
 
@@ -288,5 +288,17 @@ LIVE_CLIENT_CANCELLATION=NOT_RUN
 
 Stage D.6 production gate jest zaliczony.
 
-Formalne oznaczenie całego Stage D jako `COMPLETE` wymaga jeszcze aktualizacji
-desired state w repo, testów/CI oraz merge zgodnie z repo governance.
+## 10. Formalne zamknięcie Stage D
+
+Desired state został zapisany w repo i przeszedł governance:
+
+```text
+PR #47: MERGED
+merge_commit=62f00ab2a1aade2be9cc86d69e068647652d5a27
+pre_merge_ci=#451 PASS
+post_merge_ci=#452 PASS
+```
+
+Pełny test suite oraz `Validate Stage D release build` przeszły również w post-merge CI.
+
+**Stage D = COMPLETE.**

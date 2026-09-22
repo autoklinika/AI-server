@@ -263,3 +263,15 @@ Dwa operator findings:
 
 Pełny evidence:
 [production validation report](../../docs/reports/AI_PLATFORM_STAGE_D6_PRODUCTION_VALIDATION_2026-09-22_PL.md).
+
+## Stage D closure — 2026-09-22
+
+Production evidence zostało zapisane w repo. PR #47 został scalony do `main`
+jako `62f00ab2a1aade2be9cc86d69e068647652d5a27`. Pre-merge AI Platform CI #451
+oraz post-merge AI Platform CI #452 zakończyły się PASS; post-merge run obejmował
+pełny test suite i `Validate Stage D release build`.
+
+Live client cancellation pozostaje jawnie `NOT RUN`, z zachowanym automatycznym
+coverage zgodnie z runbookiem. Nie blokuje to zamknięcia zatwierdzonego gate.
+
+**Stage D = COMPLETE.**

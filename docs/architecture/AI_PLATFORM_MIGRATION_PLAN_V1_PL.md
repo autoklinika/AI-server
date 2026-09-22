@@ -619,5 +619,8 @@ PASS: WVC/Gateway/Qwen, real media, Telegram multiuser + `/foto` + `/wideo`,
 Discord, live priority ordering i non-preemption, final health/idle.
 Live client cancellation: NOT RUN; automated cancellation coverage retained.
 
-Stage D.6 production gate jest zaliczony. Formalne `Stage D COMPLETE` pozostaje
-zależne od aktualizacji desired state, CI i merge.
+Stage D.6 production gate jest zaliczony. Desired state został zapisany przez
+PR #47 i scalony do `main` jako `62f00ab2a1aade2be9cc86d69e068647652d5a27`.
+Pre-merge CI #451 oraz post-merge CI #452 zakończyły się PASS, w tym pełny test
+suite i walidacja Stage D release build. **Stage D = COMPLETE.** Następny etap
+migracji to Stage E — Platform API.

@@ -95,4 +95,4 @@ automatyczne cancellation coverage.
 Szczegóły:
 [production validation report](../../docs/reports/AI_PLATFORM_STAGE_D6_PRODUCTION_VALIDATION_2026-09-22_PL.md).
 
-Repo governance / CI / merge pozostają wymagane przed formalnym `Stage D COMPLETE`.
+Repo governance zostało zamknięte: PR #47 merged do `main`, pre-merge CI #451 PASS i post-merge CI #452 PASS (łącznie z pełnym test suite oraz release build). **Stage D = COMPLETE.**
