@@ -300,8 +300,8 @@ def recover_unmodified_baseline(sha):
     e.require_hermes_stopped()
     # Admission jobs have no external media owner (Comfy queue was proven empty).
     # Stop Gateway before its backend, then start the same verified E processes.
-    run(['systemctl', 'stop', 'ai-gateway.service'])
-    run(['systemctl', 'restart', 'ollama.service'], timeout=90)
+    run(['systemctl', 'stop', 'ai-gateway.service'], timeout=180)
+    run(['systemctl', 'restart', 'ollama.service'], timeout=180)
     run(['systemctl', 'start', 'ai-gateway.service'])
     for attempt in range(60):
         try:
