@@ -118,3 +118,21 @@ minimalnym środowiskiem.
 
 Brak lub utrata autoryzacji privilege bridge blokuje etap **przed** production mutation
 i jest zgłaszana jako `PRIVILEGE_BRIDGE_REQUIRED`.
+
+
+## Safe self-retry przed mutacją produkcji
+
+Stan `PRE_PROD_CI` jest granicą przed jakąkolwiek mutacją produkcji. Supervisor
+nie kończy już całego autopilota dla przejściowych lub naprawialnych błędów tej
+fazy. Dla kodów `31` (read-only preflight), `91` i `94` (rejestracja/timeout
+CI bez terminalnego FAIL) pozostaje uruchomiony w `tmux`, zapisuje
+`WAITING_SAFE_RETRY` i ponawia próbę z rosnącym backoffem 30–300 s.
+
+Każda ponowna próba pobiera aktualny `origin/main` i `agent/stage-X`, wykonuje
+DEV gate/review wymagany przez resume path i ponownie sprawdza CI. Dzięki temu
+poprawka dostarczona do gałęzi Stage przez GitHub zostaje podjęta bez interwencji
+operatora i bez ręcznego `resume`.
+
+Terminalny CI FAIL, błąd review/dev gate oraz wszystkie stany po rozpoczęciu
+mutacji produkcji nadal są fail-closed. Dla przerwania podczas produkcji obowiązuje
+rollback/recovery, nie automatyczne ponowienie.
