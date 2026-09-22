@@ -6,6 +6,11 @@ STATE_DIR="${AI_AUTOPILOT_STATE_DIR:-$HOME/agent-state/stage-eh}"
 WORKTREE="${AI_AUTOPILOT_WORKTREE:-$HOME/agent-worktrees/stage-eh}"
 RUNNER="$CONTROL_DIR/run_stage.sh"
 NOTIFY="$CONTROL_DIR/notify_telegram.py"
+RESUME_STAGE="${AI_AUTOPILOT_RESUME_STAGE:-}"
+[[ -z "$RESUME_STAGE" || "$RESUME_STAGE" =~ ^[EFGH]$ ]] || {
+  echo "FAIL: invalid AI_AUTOPILOT_RESUME_STAGE=$RESUME_STAGE" >&2
+  exit 2
+}
 
 mkdir -p "$STATE_DIR"
 exec 9>"$STATE_DIR/master.lock"
@@ -84,6 +89,13 @@ for stage in E F G H; do
     state="$(awk '{print $1}' "$status_file")"
     case "$state" in
       COMPLETE) ;;
+      PRE_PROD_CI)
+        if [[ "$stage" == "$RESUME_STAGE" ]]; then
+          continue
+        fi
+        block_master "$stage" "Wykryto niedokończony stan '$state' po restarcie supervisora. Wznowienie PRE_PROD_CI wymaga jawnego resume."
+        exit 0
+        ;;
       *)
         block_master "$stage" "Wykryto niedokończony stan '$state' po restarcie supervisora. Nie wykonuję automatycznie ponownie implementacji ani GitHub operations."
         exit 0
@@ -99,8 +111,18 @@ for stage in E F G H; do
     continue
   fi
 
-  notify STARTED "$stage" "Rozpoczynam autonomiczny Stage $stage."
-  if "$RUNNER" "$stage"; then
+  if [[ "$stage" == "$RESUME_STAGE" ]]; then
+    notify STARTED "$stage" "Wznawiam autonomiczny Stage $stage od zweryfikowanego PRE_PROD_CI."
+    runner_args=("$stage" "--resume-pre-prod")
+  else
+    notify STARTED "$stage" "Rozpoczynam autonomiczny Stage $stage."
+    runner_args=("$stage")
+  fi
+  if "$RUNNER" "${runner_args[@]}"; then
+    if [[ "$stage" == "$RESUME_STAGE" ]]; then
+      RESUME_STAGE=""
+      unset AI_AUTOPILOT_RESUME_STAGE || true
+    fi
     date -Is > "$STATE_DIR/stage-$stage.complete"
     notify COMPLETE "$stage" "Wdrożenie, smoke/E2E, test rollbacku, ponowna aktywacja, PR/CI/merge i post-merge CI: PASS."
   else
