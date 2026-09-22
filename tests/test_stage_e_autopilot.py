@@ -132,15 +132,29 @@ def test_partial_mutation_keeps_ingress_closed_for_emergency_rollback(
 def test_config_has_no_private_site_harness_dependency():
     gate = module()
     cfg = gate.config()
-    assert cfg == {
-        'bridge_health_url': 'http://127.0.0.1:8080/health',
-        'api_token_file': None,
-    }
+    assert cfg == {'api_token_file': None}
     assert gate.CHECKS == (
         'messaging_connectivity',
         'matched_clients_unchanged',
         'media_preflight',
     )
+
+
+def test_bridge_health_url_inherits_effective_stage_d_bind(monkeypatch):
+    gate = module()
+    monkeypatch.setattr(
+        gate,
+        'run',
+        lambda *a, **k: 'FOO=bar AI_BRIDGE_HOST=192.168.1.55 OTHER=value',
+    )
+    assert gate.bridge_health_url() == 'http://192.168.1.55:8080/health'
+
+    monkeypatch.setattr(
+        gate,
+        'run',
+        lambda *a, **k: 'AI_BRIDGE_HOST=0.0.0.0',
+    )
+    assert gate.bridge_health_url() == 'http://127.0.0.1:8080/health'
 
 
 def test_finalize_cannot_pass_missing_smokes(monkeypatch, tmp_path):
@@ -203,8 +217,11 @@ def test_stage_e_release_metadata_matches_actual_builder(tmp_path):
 
 def test_preflight_is_non_idle_and_has_safe_diagnostic_labels():
     text = (ROOT / 'deploy/stage-e/autopilot/gate.py').read_text()
-    assert "runtime(D6, cfg, require_idle=False)" in text
     assert "PREFLIGHT_FAIL=" in text
+    assert "preflight_runtime(cfg)" in text
+    assert "preflight_step('bridge_health_url'" in text
+    assert "preflight_step('bridge_health'" in text
+    assert "preflight_step('matched_clients'" in text
     assert "preflight_step('hermes_connected'" in text
     assert "preflight_step('media_preflight'" in text
 
