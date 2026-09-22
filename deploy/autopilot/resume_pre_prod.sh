@@ -10,7 +10,7 @@ STAGE="${1:-}"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [[ -n "$REPO_ROOT" ]] || { echo "FAIL: run from AI-server repository"; exit 2; }
 
-for cmd in git gh tmux flock; do
+for cmd in git gh tmux flock sudo; do
   command -v "$cmd" >/dev/null || { echo "FAIL: missing command: $cmd" >&2; exit 3; }
 done
 gh auth status >/dev/null 2>&1 || { echo "FAIL: gh auth missing" >&2; exit 3; }
