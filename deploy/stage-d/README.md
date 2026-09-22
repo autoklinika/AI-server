@@ -63,3 +63,19 @@ regression, Telegram multiuser/Discord, real media and rollback gates. New offli
 identity and preserved artifact checksums. `observe_validation.py` provides a
 read-only health/count snapshot for later authorized live tests. None proves a
 production PASS. No cutover or service operation was performed in preparation.
+
+## D.6 production-gate correction (D6GATEFIX)
+
+**Implementation ready for supervisor validation; production validation NOT RUN.**
+`d6_client_bundle.py apply|restore` transitions exactly the five inventoried active
+clients using D.6 release sources or the immutable pre-D.6 snapshot. It validates
+metadata, checksums, original manifest/backup stat, running D.6 Gateway and idle
+queues. Each transition intentionally restarts only the existing Hermes user
+service and waits for fresh Telegram/API connectivity. ComfyUI must not restart.
+The executor keeps ingress/analysis quiesced; this is not a new admission protocol.
+
+Restore clients while D.6 Gateway is still active, then roll the release back to
+D.0. Re-activate D.6 release before applying D.6 clients. New Hermes PID baselines
+apply within each validation phase. Historical libexec generator copies remain
+untouched until Stage H. See [runbook](D6_VALIDATION_RUNBOOK.md) and
+[correction report](../../docs/reports/AI_PLATFORM_STAGE_D6_GATE_FIX_2026-09-22_PL.md).

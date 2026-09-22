@@ -908,3 +908,36 @@ checksums, final-path venv, health/idle i rollback pozostają osobnymi bramkami.
 D.6 preparation: **READY FOR PRODUCTION VALIDATION**, implementacja do walidacji
 supervisora; nie jest to production PASS ani COMPLETE. Procedura i brakujące
 live evidence: [D.6 runbook](../../deploy/stage-d/D6_VALIDATION_RUNBOOK.md).
+
+
+### 20.1. D.6 matched client transition — decyzja supervisora 2026-09-22
+
+D6GATEFIX: **implementation ready for supervisor validation**, bez production PASS.
+Autorytatywny snapshot pozostaje niemutowalny:
+`/srv/ai-data/platform/recovery/stage-d6-resource-manager-v2-20260922-r1-clients`.
+Oryginalny manifest TSV: `state`, `installed_sha256`, `candidate_sha256`,
+`installed_path`, `candidate_path`. Restore używa wyłącznie pięciu zatwierdzonych
+installed paths, bytes z `SNAPSHOT/${installed_path#/}` zweryfikowanych przez
+`installed_sha256` i mode/uid/gid z backup stat. Sanitized handoff nie jest
+produkcyjnym źródłem ownership ani restore. r1 candidate hash/path nie ogranicza r2.
+Dokładna pięcioplikowa mapa: [runbook](../../deploy/stage-d/D6_VALIDATION_RUNBOOK.md#inventory-before-the-production-window).
+
+`d6_client_bundle.py` weryfikuje D.6 metadata/checksums obu packaged source copies,
+cały backup i kompletny znany installed bundle przed mutacją. Require D.6 active
+release + running Gateway cwd, health/idle RM i ComfyUI; executor utrzymuje
+quiesced ingress/analysis. Atomowe per-file install zachowuje restore metadata.
+Nie ma nowej granicy admission ani zmian protokołu schedulera.
+
+Hermes cache `_ai_server_resource_queue` wymaga celowego restartu istniejącego
+`hermes-gateway.service` po każdej zmianie bundle. Wymagane świeże potwierdzenie
+Telegram/API connected i nowy PID baseline; stabilność Hermesa obowiązuje w każdej
+fazie smoke. ComfyUI PID/invocation pozostaje bez zmian przez cały cykl.
+
+Rollback: D.6+new clients -> idle -> restore old clients pod D.6 -> Hermes
+restart/health -> release D.0 -> D.0 validation. Re-activation: D.0+old clients ->
+release D.6 -> health/idle -> apply new clients -> Hermes restart/health -> full
+D.6 validation. Nie wolno stawiać new clients przed historycznym Gateway D.0.
+Caught failure przywraca entry bundle tylko przy zachowanych idle/identity guards;
+nieudana recovery pozostawia D.6 i wymaga kontrolowanej interwencji executora.
+Legacy `generate_ltx23.py`, `generate_ltx23_stage29.py`, `generate_ltx23_base.py`
+pozostają recovery evidence do Stage H. Hermes patch, produkty, modele i GPU bez zmian.

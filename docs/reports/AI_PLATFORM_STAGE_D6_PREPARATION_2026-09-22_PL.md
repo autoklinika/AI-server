@@ -128,3 +128,15 @@ Nie wykonano sudo, operacji systemd, odczytu credential/token files, zmian
 `/opt`, `/var/lib`, sieci/secrets, produkcyjnego cutover/rollback, gh,
 commit/push/PR/merge ani zmian workflows/.gitmodules. Nie usunięto recovery
 artefaktów. Marker `.agent-result-D6PREP`: `READY_FOR_VALIDATION`.
+
+
+## Korekta po realnym inventory — D6GATEFIX, 2026-09-22
+
+Powyższy brak mapping/recovery został rozwiązany decyzją supervisora i sanitized
+handoff. Dokładnie pięć aktywnych klientów ma teraz wersjonowane apply/restore;
+r1 candidate comparison nie wiąże r2. Wymagany jest celowy restart Hermesa po
+każdej zmianie bundle oraz nowy PID baseline dla następnej fazy walidacji.
+ComfyUI pozostaje bez restartu. Restore old clients następuje pod D.6 przed
+rollbackiem release; re-activation najpierw uruchamia D.6 release, potem klientów.
+[Raport D6GATEFIX](AI_PLATFORM_STAGE_D6_GATE_FIX_2026-09-22_PL.md) opisuje aktualne
+gates i ograniczenia. Implementacja do walidacji supervisora; production NOT RUN.

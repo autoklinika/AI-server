@@ -929,3 +929,19 @@ validation**. Produkcja nie została zmieniona ani zwalidowana przez przygotowan
 Historyczny runtime D.0 i rollback Stage C pozostają zachowane. Local coverage,
 readiness tooling i przyszły plan WVC/multiuser/media/rollback opisuje
 [raport D.6](../reports/AI_PLATFORM_STAGE_D6_PREPARATION_2026-09-22_PL.md).
+
+
+### Korekta production gate D.6 — 2026-09-22
+
+D6GATEFIX dodaje wersjonowane apply/restore dokładnie pięciu aktywnych klientów
+z realnego inventory. Oryginalny snapshot pozostaje niemutowalny; legacy generatory
+libexec pozostają do Stage H. Restore bytes/hash/stat i r1/r2 semantics określa
+[Component Contracts §20.1](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#201-d6-matched-client-transition--decyzja-supervisora-2026-09-22).
+
+Rollback przywraca old clients i restartuje Hermesa jeszcze pod D.6 Gateway,
+a dopiero potem przełącza release na D.0. Re-activation przełącza najpierw release
+na D.6, potem klientów. Celowy restart Hermesa przeładowuje cached helper;
+nowy PID baseline obowiązuje w kolejnej fazie smoke, ComfyUI pozostaje bez restartu.
+Status: **implementation ready for supervisor validation**, production NOT RUN.
+[Raport korekty](../reports/AI_PLATFORM_STAGE_D6_GATE_FIX_2026-09-22_PL.md).
+Stage E i dalsze etapy nie zostały rozpoczęte.
