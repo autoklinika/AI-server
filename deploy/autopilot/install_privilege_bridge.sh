@@ -4,9 +4,11 @@ set -Eeuo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [[ -n "$REPO_ROOT" ]] || { echo "FAIL: run from AI-server repository" >&2; exit 2; }
 
-for cmd in sudo install sed visudo mktemp getent; do
+for cmd in sudo install sed mktemp getent id cut chmod; do
   command -v "$cmd" >/dev/null || { echo "FAIL: missing command: $cmd" >&2; exit 3; }
 done
+VISUDO="/usr/sbin/visudo"
+[[ -x "$VISUDO" ]] || { echo "FAIL: missing $VISUDO" >&2; exit 3; }
 
 user_name="$(id -un)"
 user_uid="$(id -u)"
@@ -42,9 +44,9 @@ sudo_tmp="$(mktemp)"
 trap 'cleanup; rm -f "$sudo_tmp"' EXIT
 printf '%s ALL=(root) NOPASSWD: %s *\n' "$user_name" "$helper_dst" > "$sudo_tmp"
 chmod 0600 "$sudo_tmp"
-sudo visudo -cf "$sudo_tmp" >/dev/null
+sudo "$VISUDO" -cf "$sudo_tmp" >/dev/null
 sudo install -o root -g root -m 0440 "$sudo_tmp" "$sudoers_dst"
-sudo visudo -cf "$sudoers_dst" >/dev/null
+sudo "$VISUDO" -cf "$sudoers_dst" >/dev/null
 
 result="$(sudo -n "$helper_dst" --self-test)"
 [[ "$result" == "AUTOPILOT_ROOT_BRIDGE=READY" ]] || {
