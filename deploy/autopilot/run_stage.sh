@@ -113,6 +113,11 @@ if [[ "$MODE" == "--resume-pre-prod" ]]; then
     exit 22
   }
 
+  # Accept reviewed remote repairs only by fast-forward; never overwrite local history.
+  if [[ "$(git -C "$WORKTREE" rev-parse HEAD)" != "$(git -C "$WORKTREE" rev-parse "origin/$BRANCH")" ]]; then
+    git -C "$WORKTREE" merge --ff-only "origin/$BRANCH"
+  fi
+
   # Branch protection requires the candidate to contain current main. Updating here
   # is safe because production has not been touched yet; any conflict fails closed.
   if ! git -C "$WORKTREE" merge-base --is-ancestor origin/main HEAD; then
@@ -133,6 +138,27 @@ if [[ "$MODE" == "--resume-pre-prod" ]]; then
   [[ -n "$pr_number" ]] || {
     echo "FAIL: open PR to main not found for $BRANCH"
     exit 24
+  }
+
+  set_state DEV_GATE
+  git -C "$WORKTREE" diff --check
+  find "$WORKTREE/deploy" -type f -name '*.sh' -print0 | sort -z | xargs -0 -n1 bash -n
+  production_scripts || { echo "FAIL: incomplete Stage $STAGE autopilot production contract"; exit 25; }
+  "$VENV/bin/python" -m pip install --disable-pip-version-check -q -e "$WORKTREE[dev]"
+  (
+    cd "$WORKTREE"
+    "$VENV/bin/python" -m compileall -q src deploy/autopilot
+    "$VENV/bin/python" -m pytest -q
+  ) 2>&1 | tee "$LOG_DIR/resume-dev-gate.log"
+
+  set_state REVIEW
+  (
+    cd "$WORKTREE"
+    codex --sandbox read-only --ask-for-approval never exec < "$STAGE_STATE/review.prompt"
+  ) 2>&1 | tee "$LOG_DIR/codex-review-resume.log"
+  grep -qx 'AUTOPILOT_REVIEW=PASS' "$LOG_DIR/codex-review-resume.log" || {
+    set_state BLOCKED_REVIEW
+    exit 26
   }
 else
 set_state PREFLIGHT
