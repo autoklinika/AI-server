@@ -75,3 +75,16 @@ def test_master_requires_explicit_resume_stage():
     text = (AUTO / "stage_eh_master.sh").read_text(encoding="utf-8")
     assert "AI_AUTOPILOT_RESUME_STAGE" in text
     assert "--resume-pre-prod" in text
+
+
+def test_readonly_preflight_failure_returns_to_resumable_boundary():
+    text = (AUTO / "run_stage.sh").read_text(encoding="utf-8")
+    assert "if ! run_prod_step 00_preflight.sh" in text
+    assert "set_state PRE_PROD_CI" in text
+    assert "return 31" in text
+
+
+def test_resume_accepts_legacy_readonly_preflight_state_only():
+    text = (AUTO / "resume_pre_prod.sh").read_text(encoding="utf-8")
+    assert "PRODUCTION:00_preflight.sh" in text
+    assert "PRE_PROD_CI|PRODUCTION:00_preflight.sh" in text
