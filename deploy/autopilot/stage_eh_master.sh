@@ -129,7 +129,12 @@ for stage in E F G H; do
     rc=$?
     printf 'BLOCKED stage=%s rc=%s at=%s\n' "$stage" "$rc" "$(date -Is)" > "$STATE_DIR/master.status"
     stage_state="$(awk '{print $1}' "$STATE_DIR/stage-$stage/status" 2>/dev/null || printf 'unknown')"
-    notify BLOCKED "$stage" "Agent zatrzymany (rc=$rc, state=$stage_state). Następny etap nie zostanie uruchomiony."
+    reason="$(cat "$STATE_DIR/stage-$stage/reason" 2>/dev/null || true)"
+    if [[ -n "$reason" ]]; then
+      notify BLOCKED "$stage" "Agent zatrzymany (rc=$rc, state=$stage_state, reason=$reason). Następny etap nie zostanie uruchomiony."
+    else
+      notify BLOCKED "$stage" "Agent zatrzymany (rc=$rc, state=$stage_state). Następny etap nie zostanie uruchomiony."
+    fi
     exit 0
   fi
 done
