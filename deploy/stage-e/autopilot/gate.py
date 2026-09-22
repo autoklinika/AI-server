@@ -34,8 +34,8 @@ CLIENTS = {
     '/usr/local/libexec/ai-server/hermes_video_dispatch.py': 'tools/local_video/hermes_video_dispatch_global.py',
     '/usr/local/libexec/ai-server/qwen_prompt_compiler.py': 'tools/local_video/qwen_prompt_compiler.py',
 }
-CHECKS = ('messaging_connectivity', 'hermes_inference', 'matched_clients_unchanged',
-          'media_preflight', 'real_media')
+CHECKS = ('messaging_connectivity', 'hermes_inference', 'messaging_boundary',
+          'matched_clients_unchanged', 'media_preflight', 'real_media')
 
 
 def require(condition):
@@ -273,10 +273,63 @@ def hermes_oneshot_smoke():
     ))
 
 
-def real_media_smoke():
+def messaging_boundary_smoke():
+    model = run([
+        CURRENT / 'services/ai-bridge/.venv/bin/python', '-c',
+        'from ai_bridge.settings import Settings; '
+        'print(Settings(_env_file="/etc/ai-bridge/ai-bridge.env").ollama_model)',
+    ])
+    observed = []
+    for source in ('telegram-synthetic-a', 'telegram-synthetic-b', 'discord-synthetic'):
+        payload = {
+            'model': model,
+            'messages': [{'role': 'user', 'content': 'Return the word OK.'}],
+            'stream': False,
+        }
+        request = Request(
+            GATEWAY + '/clients/hermes/v1/chat/completions',
+            data=json.dumps(payload).encode(),
+            headers={'Content-Type': 'application/json', 'X-AI-Source': source},
+        )
+        with urlopen(request, timeout=610) as response:
+            json.load(response)
+            observed.append((
+                response.headers['X-AI-Request-Id'],
+                response.headers['X-AI-Job-Id'],
+            ))
+    require(len(observed) == 3)
+    require(len({item[0] for item in observed}) == 3)
+    require(len({item[1] for item in observed}) == 3)
+
+    recent = fetch(GATEWAY + '/status').get('recent_jobs', [])
+    ids = {item[1] for item in observed}
+    matched = [job for job in recent if job.get('job_id') in ids]
+    require(len(matched) == 3)
+    require(all(
+        job.get('domain') == 'shared'
+        and job.get('state') == 'completed'
+        and job.get('assigned_provider') == 'ollama-local'
+        for job in matched
+    ))
+
+    name, uid, home = hermes_account()
+    cli = Path(home) / '.local/bin/hermes'
+    probe = '[AI Platform Stage E] automated compatibility probe ' + uuid4().hex[:8]
+    for platform in ('telegram', 'discord'):
+        run([
+            'runuser', '-u', name, '--', 'env',
+            f'HOME={home}',
+            'HERMES_HOME=/srv/ai-data/hermes',
+            f'XDG_RUNTIME_DIR=/run/user/{uid}',
+            str(cli), 'send', '--to', platform, '--quiet', probe,
+        ], timeout=60)
+
+
+def real_media_smoke(target):
     helper = ROOT / 'deploy/stage-e/validate_media_runtime.sh'
     require(helper.is_file())
-    run(['bash', helper], timeout=1900)
+    expected_stage = 'D' if target == D6 else 'E'
+    run(['bash', helper, expected_stage], timeout=1900)
 
 
 def write_once(path, value):
@@ -375,7 +428,7 @@ def switch(target, entry, cfg, baseline):
     mutating = False
     healthy = False
     try:
-        recovering_to_d6 = target == D6 and CURRENT.resolve(strict=True) == entry
+        recovering_to_d6 = target == D6
         quiesce(baseline, allow_gateway_unavailable=recovering_to_d6)
         if recovering_to_d6:
             comfy_idle()
@@ -453,9 +506,10 @@ def smoke(phase, target, cfg, baseline, state):
     wvc_smoke()
     hermes_state()
     hermes_oneshot_smoke()
+    messaging_boundary_smoke()
     require(clients() == baseline['clients'])
     media_preflight()
-    real_media_smoke()
+    real_media_smoke(target)
     runtime(target, cfg, baseline)
     require(before == [identity(unit) for unit in ('ai-gateway.service', 'ai-bridge.service', 'comfyui.service')])
     write_once(state / (phase + '.json'), {'schema_version': 1, 'release_id': target.name,
