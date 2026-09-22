@@ -133,6 +133,8 @@ def create_gateway_app(
     settings: Settings | None = None,
     *,
     upstream_transport: httpx.AsyncBaseTransport | None = None,
+    platform_provider=None,
+    platform_policy=None,
 ) -> FastAPI:
     resolved = settings or get_settings()
     registry = resolved.gateway_registry or local_descriptor_registry(resolved.node_id)
@@ -162,6 +164,10 @@ def create_gateway_app(
             transport=upstream_transport,
             trust_env=False,
         ) as client:
+            from ai_bridge.platform.provider import GatewayLLMAdapter
+            app.state.platform_provider = platform_provider or GatewayLLMAdapter(
+                client, resolved.ollama_model, resolved.node_id, resolved.gateway_health_timeout_seconds
+            )
             app.state.upstream = client
             app.state.scheduler = scheduler
             app.state.resource_leases = resource_leases
@@ -603,6 +609,8 @@ def create_gateway_app(
             default_source="hermes",
         )
 
+    from ai_bridge.platform.api import create_platform_app
+    app.mount("/api/v1", create_platform_app(app, resolved, platform_policy))
     return app
 
 

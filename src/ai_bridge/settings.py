@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import Field, field_validator
+from pydantic import SecretStr, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ai_bridge.providers.registry import DescriptorRegistry
@@ -32,6 +32,8 @@ class Settings(BaseSettings):
 
     # Central inference gateway. It binds to localhost by default because both
     # Hermes and the ventilation analysis runner live on the AI Server.
+    platform_api_token: SecretStr | None = Field(default=None, min_length=16)
+
     gateway_host: str = "127.0.0.1"
     gateway_port: int = Field(default=11435, ge=1, le=65535)
     gateway_url: str = "http://127.0.0.1:11435"
