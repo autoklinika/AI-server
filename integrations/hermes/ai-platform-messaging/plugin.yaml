@@ -1,0 +1,5 @@
+name: ai-platform-messaging
+version: 1.0.0
+description: AI Platform admission, isolated media commands and queue notifications
+hooks:
+  - pre_gateway_dispatch

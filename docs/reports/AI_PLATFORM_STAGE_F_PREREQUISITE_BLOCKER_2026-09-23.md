@@ -1,6 +1,14 @@
 # Stage F prerequisite gate
 
-Status: **BLOCKED before implementation/deployment**. Stage G/H: **NOT STARTED**.
+Historical status: **BLOCKED before implementation/deployment**.
+
+Superseded by operator approval on 2026-09-23: a controlled SYNTHETIC/INTERNAL
+E2E harness now satisfies the Stage F evidence boundary when all changed internal
+boundaries and production compatibility tests pass. External inbound transport
+remains DEFERRED/NOT TESTED and non-blocking. The original audit below is preserved
+as historical evidence, not a current human-participant requirement.
+
+At the time of the original audit: Stage G/H: **NOT STARTED**.
 No Stage F production mutation or cleanup was performed.
 
 ## Verified production baseline

@@ -659,3 +659,21 @@ E2E harness / uczestników do świeżego Telegram multiuser i messaging user-pat
 Stage E COMPLETE (PR #53, final i post-merge CI PASS); aktywny release pozostaje
 `stage-e-38fff86f7704`. Stage G/H NOT STARTED.
 [Dowody i warunki wznowienia](../reports/AI_PLATFORM_STAGE_F_PREREQUISITE_BLOCKER_2026-09-23.md).
+
+### Stage F — approved internal evidence boundary, 2026-09-23
+
+The operator superseded the human-participant prerequisite with controlled
+SYNTHETIC/INTERNAL E2E on AI Server. Two independent Telegram-like contexts and
+analogous Discord-like contexts must exercise every changed internal boundary:
+request/job correlation, isolation/routing, WAIT→START, media command context,
+Resource Manager leases/admission, Hermes integration, artifacts and idle recovery.
+Use real local production components where safe. External Telegram/Discord inbound
+transport remains DEFERRED/NOT TESTED, never PASS. This boundary plus passing
+production compatibility tests is sufficient for F acceptance and sequential G/H.
+Historical D.6 external-user evidence remains historical only.
+
+A stable candidate stays active while repairable validation issues are corrected.
+Rollback is required for unsafe/degraded/uncertain runtime or the mandatory planned
+rollback test, rather than automatically after every failed assertion. Stage F
+implementation/review is in progress; completion still requires the full production,
+rollback/reactivation, Git/PR/CI/merge sequence.
