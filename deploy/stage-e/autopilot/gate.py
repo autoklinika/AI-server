@@ -250,27 +250,58 @@ def media_preflight():
 
 
 def hermes_oneshot_smoke():
-    before = {job['job_id'] for job in fetch(GATEWAY + '/status').get('recent_jobs', [])}
     name, uid, home = hermes_account()
     cli = Path(home) / '.local/bin/hermes'
     require(cli.is_file())
-    output = run([
-        'runuser', '-u', name, '--', 'env',
-        f'HOME={home}',
-        'HERMES_HOME=/srv/ai-data/hermes',
-        f'XDG_RUNTIME_DIR=/run/user/{uid}',
-        str(cli), '-z', 'Return the word OK.',
-    ], timeout=180)
-    require(bool(output.strip()))
-    recent = fetch(GATEWAY + '/status').get('recent_jobs', [])
-    fresh = [job for job in recent if job.get('job_id') not in before]
-    require(any(
-        job.get('domain') == 'shared'
-        and job.get('capability') == 'chat'
-        and job.get('state') == 'completed'
-        and job.get('assigned_provider') == 'ollama-local'
-        for job in fresh
-    ))
+
+    # Close messaging ingress so the one-shot is the only possible fresh
+    # shared/chat Hermes workload. This makes job correlation unambiguous.
+    require(user_systemctl([
+        'show', 'hermes-gateway.service', '-p', 'ActiveState', '--value'
+    ]) == 'active')
+    user_systemctl(['stop', 'hermes-gateway.service'])
+    try:
+        require(user_systemctl([
+            'show', 'hermes-gateway.service', '-p', 'ActiveState', '--value'
+        ]) == 'inactive')
+        before = {
+            job['job_id']
+            for job in fetch(GATEWAY + '/status').get('recent_jobs', [])
+            if job.get('domain') == 'shared' and job.get('capability') == 'chat'
+        }
+        output = run([
+            'runuser', '-u', name, '--', 'env',
+            f'HOME={home}',
+            'HERMES_HOME=/srv/ai-data/hermes',
+            f'XDG_RUNTIME_DIR=/run/user/{uid}',
+            str(cli), '-z', 'Return the word OK.',
+        ], timeout=180)
+        require(bool(output.strip()))
+        recent = fetch(GATEWAY + '/status').get('recent_jobs', [])
+        fresh = [
+            job for job in recent
+            if job.get('domain') == 'shared'
+            and job.get('capability') == 'chat'
+            and job.get('job_id') not in before
+        ]
+        require(len(fresh) == 1)
+        require(
+            fresh[0].get('state') == 'completed'
+            and fresh[0].get('assigned_provider') == 'ollama-local'
+        )
+    finally:
+        user_systemctl(['start', 'hermes-gateway.service'])
+        for _ in range(90):
+            try:
+                require(user_systemctl([
+                    'show', 'hermes-gateway.service', '-p', 'ActiveState', '--value'
+                ]) == 'active')
+                hermes_state()
+                break
+            except Exception:
+                time.sleep(1)
+        else:
+            raise RuntimeError('Hermes did not reconnect after one-shot smoke')
 
 
 def messaging_boundary_smoke():
@@ -421,7 +452,10 @@ def preflight(cfg):
 
 
 def switch(target, entry, cfg, baseline):
-    require(CURRENT.resolve(strict=True) in (entry, target))
+    # strict=False is required for emergency recovery when CURRENT is a
+    # dangling symlink to a failed/removed candidate. The target D.6 release is
+    # validated independently below before any switch.
+    require(CURRENT.resolve(strict=False) in (entry, target))
     require(verify_release(D6, 'd')['source_git_sha'] == D6_SHA)
     verify_release(target, 'd' if target == D6 else 'e')
     require(clients() == baseline['clients'])
