@@ -260,6 +260,9 @@ Create deploy/stage-$stage_lc/autopilot/ with executable-compatible bash scripts
 90_finalize.sh        write/update the production gate report and repository evidence
 
 Every mutating script must be idempotent or fail closed. Never destroy the rollback point.
+Production scripts are executed as root by a root-owned privilege bridge with a minimal
+environment. They must not prompt for sudo, depend on an interactive shell, or require
+unversioned environment variables. The bridge verifies clean tracked bytes and exact SHA.
 Do not put secrets, prompts, tokens, chat IDs or private runtime content in reports/logs.
 Stage H must quarantine before deletion and must preserve D.0/D.6 and the most recent
 verified rollback releases required by the policy.
