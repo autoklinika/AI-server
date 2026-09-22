@@ -86,6 +86,11 @@ grep -qx 'stage=D' "$TARGET/RELEASE" || fail "target is not a Stage D release"
 ) || fail "release checksum validation failed"
 say "PASS: release checksums"
 
+# Historical D.0 remains a recovery target; D.6 must satisfy its full contract.
+if grep -qx 'phase=D.6' "$TARGET/RELEASE"; then
+  python3 "$(dirname "$0")/validate_release_metadata.py" "$TARGET"
+fi
+
 PREVIOUS="$(readlink -f "$CURRENT" 2>/dev/null || true)"
 [[ -n "$PREVIOUS" && -d "$PREVIOUS" ]] || fail "current release symlink is invalid"
 [[ "$PREVIOUS" != "$TARGET" ]] || fail "target release is already active"

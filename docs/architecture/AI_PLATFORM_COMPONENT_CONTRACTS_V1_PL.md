@@ -875,3 +875,36 @@ Dzięki temu np. `OllamaAdapter` i przyszły `vLLMAdapter` przechodzą ten sam z
 ## 19. Zasada końcowa
 
 **Domena zależy od kontraktu platformy. Adapter zależy od produktu. Produkt nigdy nie staje się kontraktem domeny.**
+
+## 20. Release contract Resource Manager v2 — decyzja supervisora 2026-09-22
+
+Decyzja autorytatywna dla kompletnego kandydata D.6 (bez Platform API Stage E):
+
+| RELEASE | Wartość | release-manifest.yaml pod `release` |
+|---|---|---|
+| stage | D | stage |
+| phase | D.6 | phase |
+| config_schema_version | 3 | config_schema_version |
+| migration_version | resource-manager-v2 | migration_version |
+| resource_manager_contract_version | 2 | contract_versions.resource_manager |
+| priority_class_contract_version | 1 | contract_versions.priority_class |
+| job_state_contract_version | 1 | contract_versions.job_state |
+| provider_registry_schema_version | 1 | schema_versions.provider_registry |
+| unified_admission_contract_version | 1 | contract_versions.unified_admission |
+| compatibility_contract_version | 1 | contract_versions.compatibility |
+
+Resource Manager 2 jest kontraktem nadrzędnym. Poszczególne kontrakty D.1–D.5
+mają wersję 1. Istniejące `llm_provider`, `agent_provider`,
+`media_generation_provider`, `embedding_provider`, `knowledge_backend` pozostają
+w `contract_versions` na wersji 1. Provider/model config pozostaje bez zmiany.
+Nie deklarujemy jeszcze wersji Platform API ani nowego protokołu restart/resume.
+
+Historyczne D.0: phase=D.0, config_schema_version=2,
+migration_version=stage-d-foundation-v1. Zachowujemy istniejące artefakty D.0/C
+jako recovery; nie przepisujemy ich metadata. Bieżący builder emituje wyłącznie
+pełnego kandydata D.6. Weryfikator metadata porównuje stamp i wygenerowany manifest;
+checksums, final-path venv, health/idle i rollback pozostają osobnymi bramkami.
+
+D.6 preparation: **READY FOR PRODUCTION VALIDATION**, implementacja do walidacji
+supervisora; nie jest to production PASS ani COMPLETE. Procedura i brakujące
+live evidence: [D.6 runbook](../../deploy/stage-d/D6_VALIDATION_RUNBOOK.md).

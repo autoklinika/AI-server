@@ -34,10 +34,10 @@ cat > "$DEST/metadata/release-manifest.yaml" <<MANIFEST
 release:
   id: $RELEASE_ID
   stage: D
-  phase: D.0
+  phase: D.6
   source_git_sha: $SOURCE_SHA
-  config_schema_version: 2
-  migration_version: stage-d-foundation-v1
+  config_schema_version: 3
+  migration_version: resource-manager-v2
   provider_model_config_version: qwen36-hermes64k-gpu-20260919-v1
   changed_components:
     - ai-bridge
@@ -45,11 +45,18 @@ release:
     - deployment
     - desired-state
   contract_versions:
+    resource_manager: 2
+    priority_class: 1
+    job_state: 1
+    unified_admission: 1
+    compatibility: 1
     llm_provider: 1
     agent_provider: 1
     media_generation_provider: 1
     embedding_provider: 1
     knowledge_backend: 1
+  schema_versions:
+    provider_registry: 1
   compatibility:
     analysis_direct_ollama_recovery: true
     legacy_gateway_priority_headers: true
@@ -83,14 +90,22 @@ echo "===== AI GATEWAY VENV ====="
 cat > "$DEST/RELEASE" <<STAMP
 release_id=$RELEASE_ID
 stage=D
-phase=D.0
+phase=D.6
 source_git_sha=$SOURCE_SHA
 ai_bridge_git_sha=$SOURCE_SHA
 ai_gateway_git_sha=$SOURCE_SHA
-config_schema_version=2
-migration_version=stage-d-foundation-v1
+config_schema_version=3
+migration_version=resource-manager-v2
+resource_manager_contract_version=2
+priority_class_contract_version=1
+job_state_contract_version=1
+provider_registry_schema_version=1
+unified_admission_contract_version=1
+compatibility_contract_version=1
 provider_model_config_version=qwen36-hermes64k-gpu-20260919-v1
 STAMP
+
+python3 "$ROOT/deploy/stage-d/validate_release_metadata.py" "$DEST"
 
 echo "===== VERIFY IMPORTS ====="
 "$DEST/services/ai-bridge/.venv/bin/python" - <<'PY'

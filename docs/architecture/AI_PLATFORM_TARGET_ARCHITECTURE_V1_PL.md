@@ -2,7 +2,7 @@
 
 **Status:** ACTIVE / TARGET ARCHITECTURE v1 — obowiązujący desired state w `main`  
 **Data bazowa:** 2026-09-19  
-**Ostatnia aktualizacja:** 2026-09-22 (implementacja D.5 do walidacji supervisora; brak nowej walidacji runtime)
+**Ostatnia aktualizacja:** 2026-09-22 (D.6 preparation do walidacji supervisora; brak nowej walidacji runtime)
 **Repozytorium:** `autoklinika/AI-server`  
 **Branch:** `main`; zmiany Stage D rozwijane przez kontrolowane feature branche  
 **Podstawa:** PRE_AUDIT principles + AI Server Architecture & Runtime Audit v1.2
@@ -915,3 +915,17 @@ Architektura jest poprawna, jeżeli możemy:
 - zabezpieczyć backendy bez łamania klientów.
 
 To jest nadrzędny test każdej kolejnej decyzji technicznej.
+
+## 26. D.6 preparation — stan 2026-09-22
+
+Bieżący kompletny kandydat Resource Manager v2 ma release metadata D.6,
+config schema 3 i migration_version=resource-manager-v2, zgodnie z decyzją
+supervisora. Umbrella Resource Manager contract=2; podkontrakty D.1–D.5=1;
+provider contracts bez zmian. To nie jest wersja Platform API (Stage E).
+[Dokładny kontrakt](AI_PLATFORM_COMPONENT_CONTRACTS_V1_PL.md#20-release-contract-resource-manager-v2--decyzja-supervisora-2026-09-22).
+
+Status: **READY FOR PRODUCTION VALIDATION — implementation ready for supervisor
+validation**. Produkcja nie została zmieniona ani zwalidowana przez przygotowanie.
+Historyczny runtime D.0 i rollback Stage C pozostają zachowane. Local coverage,
+readiness tooling i przyszły plan WVC/multiuser/media/rollback opisuje
+[raport D.6](../reports/AI_PLATFORM_STAGE_D6_PREPARATION_2026-09-22_PL.md).

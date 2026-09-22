@@ -22,6 +22,11 @@ grep -qx 'stage=D' "$SOURCE_DIR/RELEASE"   || fail "source is not a Stage D rele
 ) || fail "source release checksum validation failed"
 say "PASS: source release checksums"
 
+# Historical D.0 remains a recovery target; D.6 must satisfy its full contract.
+if grep -qx 'phase=D.6' "$SOURCE_DIR/RELEASE"; then
+  python3 "$(dirname "$0")/validate_release_metadata.py" "$SOURCE_DIR"
+fi
+
 CURRENT_BEFORE="$(readlink -f "$CURRENT" 2>/dev/null || true)"
 [[ -n "$CURRENT_BEFORE" && -d "$CURRENT_BEFORE" ]]   || fail "current production release symlink is invalid"
 

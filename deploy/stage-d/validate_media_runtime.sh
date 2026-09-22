@@ -3,14 +3,14 @@ set -euo pipefail
 
 CURRENT="/opt/ai-platform/current"
 WRAPPER="/usr/local/bin/generate-video-ltx23"
-OUTPUT_DIR="/tmp/stage-d0-media-smoke"
+OUTPUT_DIR="$(mktemp -d /tmp/stage-d6-media-smoke.XXXXXX)"
 
 say(){ printf '%s\n' "$*"; }
 fail(){ say "FAIL: $*" >&2; exit 1; }
 
 [[ -f "$CURRENT/RELEASE" ]] || fail "active release stamp missing"
 grep -qx 'stage=D' "$CURRENT/RELEASE" || fail "active release is not Stage D"
-grep -qx 'phase=D.0' "$CURRENT/RELEASE" || fail "active release is not D.0"
+python3 "$(dirname "$0")/validate_release_metadata.py" "$CURRENT"
 [[ -x "$WRAPPER" ]] || fail "media wrapper missing: $WRAPPER"
 grep -Fq '/opt/ai-platform/current/services/ai-bridge' "$WRAPPER" \
   || fail "media wrapper is not release-managed"
@@ -21,10 +21,10 @@ GATEWAY_PID_BEFORE="$(systemctl show ai-gateway.service -p MainPID --value)"
 HERMES_PID_BEFORE="$(systemctl --user show hermes-gateway.service -p MainPID --value 2>/dev/null || true)"
 COMFY_PID_BEFORE="$(systemctl show comfyui.service -p MainPID --value 2>/dev/null || true)"
 
-rm -rf "$OUTPUT_DIR"
+# Preserve smoke evidence for supervisor review.
 mkdir -p "$OUTPUT_DIR"
 
-echo "===== D.0 MEDIA RUNTIME VALIDATION ====="
+echo "===== D.6 MEDIA RUNTIME VALIDATION ====="
 say "release=$(readlink -f "$CURRENT")"
 say "wrapper=$WRAPPER"
 say "output_dir=$OUTPUT_DIR"
@@ -98,13 +98,16 @@ def assert_comfy_idle(label: str) -> None:
         )
 
 
+if get_json(GATEWAY + "/health").get("status") != "ok":
+    raise RuntimeError("Gateway health failed")
 assert_idle("precheck")
 assert_comfy_idle("precheck")
 
 lease = acquire_resource(
     target=None,
-    source="d0-media-smoke",
+    source="d6-media-smoke",
     priority=50,
+    workload="media-video",
 )
 try:
     status = get_json(GATEWAY + "/status")
@@ -112,7 +115,7 @@ try:
     matching = [
         item
         for item in leases
-        if item.get("source") == "d0-media-smoke"
+        if item.get("source") == "d6-media-smoke"
         and item.get("priority") == 50
     ]
     if (
@@ -120,7 +123,7 @@ try:
         or status.get("queued_count") != 0
         or len(matching) != 1
     ):
-        raise RuntimeError(f"media lease not active as expected: {status}")
+        raise RuntimeError("media lease not active as expected")
 
     env = os.environ.copy()
     env["HERMES_RESOURCE_LEASE_ID"] = lease.lease_id
@@ -155,7 +158,7 @@ try:
         check=False,
         timeout=1900,
     )
-    print(process.stdout, end="")
+    # Worker output can contain prompts; do not copy it into validation logs.
     if process.returncode != 0:
         raise RuntimeError(f"Stage30 render failed rc={process.returncode}")
 
@@ -164,18 +167,18 @@ try:
         raise RuntimeError("Stage30 render returned no output")
     try:
         payload = json.loads(lines[-1])
-    except json.JSONDecodeError as exc:
+    except json.JSONDecodeError:
         raise RuntimeError(
-            f"Stage30 final output is not JSON: {lines[-1][:500]}"
-        ) from exc
+            "Stage30 final output is not JSON"
+        ) from None
     if payload.get("ok") is not True:
-        raise RuntimeError(f"Stage30 returned failure: {payload}")
+        raise RuntimeError("Stage30 returned failure")
 
     path = Path(str(payload.get("path") or ""))
     if not path.is_file() or path.stat().st_size <= 0:
         raise RuntimeError(f"generated media artifact missing/empty: {path}")
     if payload.get("frames") != 25 or payload.get("fps") != 24:
-        raise RuntimeError(f"unexpected Stage30 render metadata: {payload}")
+        raise RuntimeError("unexpected Stage30 render metadata")
 
     probe = subprocess.run(
         [
@@ -252,7 +255,7 @@ say "ComfyUI before=$COMFY_PID_BEFORE after=$COMFY_PID_AFTER"
 [[ "$HERMES_PID_AFTER" == "$HERMES_PID_BEFORE" ]] || fail "Hermes restarted during media smoke"
 [[ "$COMFY_PID_AFTER" == "$COMFY_PID_BEFORE" ]] || fail "ComfyUI restarted during media smoke"
 
-rm -rf "$OUTPUT_DIR"
+# Preserve smoke evidence for supervisor review.
 
 echo
-echo "D.0 MEDIA RUNTIME VALIDATION: PASS"
+echo "D.6 MEDIA RUNTIME VALIDATION: PASS"

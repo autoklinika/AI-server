@@ -95,13 +95,13 @@ Poprzedni krok **D.2 — Job model** przeszedł niezależny
 [supervisor dev gate](docs/reports/AUTONOMOUS_D2_DEV_GATE_2026-09-22.md).
 D.3 descriptors przeszedł [supervisor dev gate](docs/reports/AUTONOMOUS_D3_DEV_GATE_2026-09-22.md).
 D.4 unified admission przeszedł [supervisor dev gate](docs/reports/AUTONOMOUS_D4_DEV_GATE_2026-09-22.md).
-Aktualny krok implementacyjny: **D.5 — Compatibility migration**, **READY FOR SUPERVISOR VALIDATION**.
-WVC używa istniejącej trasy ventilation z metadanymi wvc/reasoning; helper
-Telegram/Discord deklaruje workload llm dla znanych chat callerów. Media prompt
-compilers wymagają lokalnego Gateway :11435. Legacy endpointy, numeric priorities,
-WAIT/START i jawne recovery paths pozostają zachowane.
-[Raport D.5](docs/reports/AI_PLATFORM_STAGE_D5_COMPATIBILITY_MIGRATION_2026-09-22_PL.md).
-To gotowość implementacji, bez production validation/cutover. D.6 nie rozpoczęto.
+D.5 przeszedł [supervisor dev gate](docs/reports/AUTONOMOUS_D5_DEV_GATE_2026-09-22.md).
+Aktualny krok: **D.6 PREPARATION — READY FOR PRODUCTION VALIDATION**;
+implementacja gotowa do walidacji supervisora, bez production validation/cutover.
+Builder opisuje kompletny Resource Manager v2: phase=D.6, config schema=3,
+migration_version=resource-manager-v2. Provider contracts i recovery D.0/C
+pozostają bez zmian. [Raport przygotowania D.6](docs/reports/AI_PLATFORM_STAGE_D6_PREPARATION_2026-09-22_PL.md)
+i [runbook walidacji](deploy/stage-d/D6_VALIDATION_RUNBOOK.md).
 
 Nie zmieniamy na D.0 modelu Qwen, GPU, backendu wiedzy ani implementacji schedulera od zera. Stage C r3 pozostaje zweryfikowanym rollback pointem.
 
