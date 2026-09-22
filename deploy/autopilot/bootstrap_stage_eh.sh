@@ -23,7 +23,7 @@ done
   exit 2
 }
 
-for cmd in git gh codex python3 systemctl flock; do
+for cmd in git gh codex python3 tmux flock; do
   command -v "$cmd" >/dev/null || { echo "FAIL: missing command: $cmd" >&2; exit 3; }
 done
 
@@ -35,10 +35,9 @@ PRIVATE_ENV="$PRIVATE_DIR/autopilot.env"
 CONTROL_DIR="$HOME/agent-control/stage-eh-master"
 STATE_DIR="$HOME/agent-state/stage-eh"
 WORKTREE="$HOME/agent-worktrees/stage-eh"
-UNIT_DIR="$HOME/.config/systemd/user"
-UNIT="$UNIT_DIR/ai-stage-eh-agent.service"
+SESSION="stage-eh-master"
 
-mkdir -p "$PRIVATE_DIR" "$CONTROL_DIR/prompts" "$STATE_DIR" "$HOME/agent-worktrees" "$UNIT_DIR"
+mkdir -p "$PRIVATE_DIR" "$CONTROL_DIR/prompts" "$STATE_DIR" "$HOME/agent-worktrees"
 chmod 700 "$PRIVATE_DIR" "$CONTROL_DIR" "$STATE_DIR"
 
 TOKEN="$(python3 - "$HERMES_ENV" <<'PY'
@@ -95,30 +94,6 @@ else
   git -C "$REPO_ROOT" worktree add --detach "$WORKTREE" origin/main
 fi
 
-cat > "$UNIT" <<EOF
-[Unit]
-Description=AI Platform autonomous Stage E-H supervisor
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-WorkingDirectory=$WORKTREE
-Environment=HOME=$HOME
-Environment=PATH=$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin
-Environment=AI_AUTOPILOT_ENV=$PRIVATE_ENV
-ExecStart=$CONTROL_DIR/master.sh
-TimeoutStartSec=infinity
-PrivateTmp=true
-NoNewPrivileges=false
-
-[Install]
-WantedBy=default.target
-EOF
-
-systemctl --user daemon-reload
-systemctl --user enable ai-stage-eh-agent.service >/dev/null
-
 AI_AUTOPILOT_ENV="$PRIVATE_ENV" "$CONTROL_DIR/notify_telegram.py" INFO "E-H"   "Kanał alarmowy autopilota działa. Supervisor jest gotowy." || {
     echo "FAIL: test Telegram notification failed; supervisor was not started" >&2
     exit 6
@@ -126,8 +101,13 @@ AI_AUTOPILOT_ENV="$PRIVATE_ENV" "$CONTROL_DIR/notify_telegram.py" INFO "E-H"   "
 
 echo "READY: control=$CONTROL_DIR worktree=$WORKTREE state=$STATE_DIR"
 if ((START)); then
-  systemctl --user start --no-block ai-stage-eh-agent.service
-  echo "STARTED: ai-stage-eh-agent.service"
+  if tmux has-session -t "$SESSION" 2>/dev/null; then
+    echo "FAIL: tmux session already exists: $SESSION" >&2
+    exit 7
+  fi
+  launch="export PATH='$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin'; export AI_AUTOPILOT_ENV='$PRIVATE_ENV'; export AI_AUTOPILOT_CONTROL_DIR='$CONTROL_DIR'; export AI_AUTOPILOT_STATE_DIR='$STATE_DIR'; export AI_AUTOPILOT_WORKTREE='$WORKTREE'; exec '$CONTROL_DIR/master.sh' > '$STATE_DIR/master-console.log' 2>&1"
+  tmux new-session -d -s "$SESSION" "$launch"
+  echo "STARTED: tmux session $SESSION"
 else
-  echo "NOT STARTED: rerun with --start or use systemctl --user start ai-stage-eh-agent.service"
+  echo "NOT STARTED: rerun with --start"
 fi

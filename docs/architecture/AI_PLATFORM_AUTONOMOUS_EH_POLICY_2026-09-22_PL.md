@@ -62,3 +62,12 @@ WAIT/START są twardymi kryteriami produkcyjnymi.
 Cleanup stosuje quarantine-first. Autopilot nie wykonuje ostatecznego, nieodwracalnego
 purge. D.0/D.6 oraz ostatnie wymagane rollback points pozostają chronione do czasu
 zweryfikowanego cyklu rollback Stage H.
+
+
+## Launcher runtime
+
+Supervisor E–H jest uruchamiany w odłączonej sesji `tmux`, tak jak zweryfikowany
+supervisor Stage D. Nie uruchamiamy procesu Codex bezpośrednio jako user service systemd,
+ponieważ lokalny sandbox Codex/bubblewrap jest niekompatybilny z tym kontekstem i może
+kończyć się przed rozpoczęciem implementacji. Systemd może zarządzać usługami platformy,
+ale nie jest launcherem procesu agenta Codex.

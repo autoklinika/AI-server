@@ -41,3 +41,10 @@ def test_chat_discovery_does_not_consume_updates():
     text = (AUTO / "discover_telegram_chats.py").read_text(encoding="utf-8")
     assert "getChat" in text
     assert "getUpdates" not in text
+
+
+def test_bootstrap_uses_tmux_not_systemd_for_codex_supervisor():
+    text = (AUTO / "bootstrap_stage_eh.sh").read_text(encoding="utf-8")
+    assert "tmux new-session" in text
+    assert "systemctl --user start ai-stage-eh-agent.service" not in text
+    assert "codex" in text
