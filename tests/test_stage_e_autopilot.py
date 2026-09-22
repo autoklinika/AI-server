@@ -60,7 +60,7 @@ def test_switch_recovers_and_resumes_after_success(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(gate, 'runtime', lambda *a: None)
     actions = []
-    monkeypatch.setattr(gate, 'quiesce', lambda baseline: actions.append('quiesce'))
+    monkeypatch.setattr(gate, 'quiesce', lambda baseline, allow_gateway_unavailable=False: actions.append('quiesce'))
     monkeypatch.setattr(gate, 'resume_ingress', lambda baseline: actions.append('resume'))
 
     def run(args, **kwargs):
@@ -86,7 +86,7 @@ def test_failed_quiesce_never_switches_but_attempts_restore(monkeypatch, tmp_pat
     monkeypatch.setattr(gate, 'clients', lambda: {})
     actions = []
 
-    def fail_quiesce(_baseline):
+    def fail_quiesce(_baseline, allow_gateway_unavailable=False):
         actions.append('quiesce')
         raise RuntimeError('drain failed')
 
@@ -112,7 +112,7 @@ def test_partial_mutation_keeps_ingress_closed_for_emergency_rollback(
     monkeypatch.setattr(gate, 'clients', lambda: {})
     monkeypatch.setattr(gate, 'idle', lambda: None)
     actions = []
-    monkeypatch.setattr(gate, 'quiesce', lambda baseline: actions.append('quiesce'))
+    monkeypatch.setattr(gate, 'quiesce', lambda baseline, allow_gateway_unavailable=False: actions.append('quiesce'))
     monkeypatch.setattr(gate, 'resume_ingress', lambda baseline: actions.append('resume'))
 
     def run(args, **kwargs):
@@ -135,8 +135,10 @@ def test_config_has_no_private_site_harness_dependency():
     assert cfg == {'api_token_file': None}
     assert gate.CHECKS == (
         'messaging_connectivity',
+        'hermes_inference',
         'matched_clients_unchanged',
         'media_preflight',
+        'real_media',
     )
 
 
@@ -256,19 +258,19 @@ def test_hermes_user_systemd_sets_home_and_runtime_dir():
 
 def test_api_smoke_accepts_completed_tokenized_empty_content(monkeypatch):
     gate = module()
-    calls = []
+    seen = {'request_id': None}
     def fake_fetch(url, payload=None, token=None, with_headers=False):
-        calls.append((url, payload))
         if url.endswith('/health'): return {'readiness': True}
         if url.endswith('/models'): return {'models': [{'logical_id': 'reasoning-main'}]}
         if url.endswith('/systems'): return {'systems': [{'system_id': 'wvc'}]}
         if url.endswith('/ai'):
-            return {'request_id': payload['context']['request_id'], 'state': 'completed',
+            seen['request_id'] = payload['context']['request_id']
+            return {'request_id': seen['request_id'], 'state': 'completed',
                     'content': '', 'finish_reason': 'stop', 'job_id': 'job_test',
                     'usage': {'input_tokens': 17, 'output_tokens': 1},
                     'execution': {'model': 'reasoning-main'}}
         if url.endswith('/jobs/job_test'):
-            return {'job': {'job_id': 'job_test', 'request_id': calls[-4][1]['context']['request_id'], 'state': 'completed'}}
+            return {'job': {'job_id': 'job_test', 'request_id': seen['request_id'], 'state': 'completed'}}
         if url.endswith('/jobs'): return {'jobs': [{'job_id': 'job_test'}]}
         raise AssertionError(url)
     monkeypatch.setattr(gate, 'fetch', fake_fetch)
