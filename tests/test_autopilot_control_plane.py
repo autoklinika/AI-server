@@ -179,3 +179,23 @@ def test_stale_preprod_is_auto_resumable_but_production_is_not():
     assert 'RESUME_STAGE="$stage"' in text
     assert 'PRODUCTION_MUTATING|PRODUCTION:20_cutover.sh' in text
     assert "recover_interrupted_production" in text
+
+
+def test_master_captures_runner_rc_in_else_not_after_if():
+    text = (AUTO / "stage_eh_master.sh").read_text(encoding="utf-8")
+    assert 'else\n      rc=$?\n    fi' in text
+    assert 'fi\n\n    rc=$?' not in text
+
+
+def test_master_clears_reason_before_every_runner_attempt():
+    text = (AUTO / "stage_eh_master.sh").read_text(encoding="utf-8")
+    clear = 'rm -f "$STATE_DIR/stage-$stage/reason"'
+    runner = 'if "$RUNNER" "${runner_args[@]}"; then'
+    assert clear in text
+    assert text.index(clear) < text.index(runner)
+
+
+def test_restart_recovery_uses_privilege_bridge():
+    text = (AUTO / "stage_eh_master.sh").read_text(encoding="utf-8")
+    assert 'sudo -n "$ROOT_BRIDGE" "$stage" 40_rollback.sh "$expected_sha"' in text
+    assert 'sudo -n "$ROOT_BRIDGE" "$stage" 50_rollback_smoke.sh "$expected_sha"' in text
