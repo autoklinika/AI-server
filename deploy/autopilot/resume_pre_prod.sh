@@ -10,7 +10,7 @@ STAGE="${1:-}"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [[ -n "$REPO_ROOT" ]] || { echo "FAIL: run from AI-server repository"; exit 2; }
 
-for cmd in git gh tmux flock; do
+for cmd in git gh tmux flock sudo; do
   command -v "$cmd" >/dev/null || { echo "FAIL: missing command: $cmd" >&2; exit 3; }
 done
 gh auth status >/dev/null 2>&1 || { echo "FAIL: gh auth missing" >&2; exit 3; }
@@ -20,10 +20,19 @@ STATE_DIR="$HOME/agent-state/stage-eh"
 WORKTREE="$HOME/agent-worktrees/stage-eh"
 PRIVATE_ENV="$HOME/.config/ai-platform/autopilot.env"
 SESSION="stage-eh-master"
+ROOT_BRIDGE="/usr/local/libexec/ai-platform/autopilot-root-exec"
 STAGE_STATE="$STATE_DIR/stage-$STAGE"
 status_file="$STAGE_STATE/status"
 
 [[ -f "$PRIVATE_ENV" ]] || { echo "FAIL: autopilot private env missing"; exit 4; }
+[[ -x "$ROOT_BRIDGE" ]] || {
+  echo "FAIL: privilege bridge missing. Run: bash deploy/autopilot/install_privilege_bridge.sh" >&2
+  exit 9
+}
+[[ "$(sudo -n "$ROOT_BRIDGE" --self-test 2>/dev/null || true)" == "AUTOPILOT_ROOT_BRIDGE=READY" ]] || {
+  echo "FAIL: privilege bridge is not authorized. Re-run installer." >&2
+  exit 9
+}
 [[ -f "$status_file" ]] || { echo "FAIL: Stage $STAGE status missing"; exit 4; }
 state="$(awk '{print $1}' "$status_file")"
 case "$state" in

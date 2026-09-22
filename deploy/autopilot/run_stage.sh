@@ -19,6 +19,7 @@ BRANCH="agent/stage-${stage_lc}"
 STAGE_STATE="$STATE_DIR/stage-$STAGE"
 LOG_DIR="$STAGE_STATE/logs"
 VENV="$STATE_DIR/venv"
+ROOT_BRIDGE="/usr/local/libexec/ai-platform/autopilot-root-exec"
 
 mkdir -p "$LOG_DIR"
 [[ -f "$SPEC" ]] || { echo "FAIL: stage spec missing: $SPEC" >&2; exit 3; }
@@ -26,7 +27,7 @@ mkdir -p "$LOG_DIR"
 notify() { "$NOTIFY" "$@" >/dev/null 2>&1 || true; }
 set_state() { printf '%s %s\n' "$1" "$(date -Is)" > "$STAGE_STATE/status"; }
 
-for cmd in git gh codex python3; do
+for cmd in git gh codex python3 sudo; do
   command -v "$cmd" >/dev/null || { echo "FAIL: missing command: $cmd" >&2; exit 3; }
 done
 gh auth status >/dev/null 2>&1 || { echo "FAIL: gh auth missing" >&2; exit 3; }
@@ -40,11 +41,28 @@ production_scripts() {
   done
 }
 
+root_bridge_ready() {
+  [[ -x "$ROOT_BRIDGE" ]] || {
+    echo "PRIVILEGE_BRIDGE=missing" >&2
+    return 1
+  }
+  [[ "$(sudo -n "$ROOT_BRIDGE" --self-test 2>/dev/null || true)" == "AUTOPILOT_ROOT_BRIDGE=READY" ]] || {
+    echo "PRIVILEGE_BRIDGE=not_authorized" >&2
+    return 1
+  }
+}
+
+run_root_step() {
+  local name="$1"
+  local expected_sha
+  expected_sha="$(git -C "$WORKTREE" rev-parse HEAD)"
+  sudo -n "$ROOT_BRIDGE" "$STAGE" "$name" "$expected_sha"
+}
+
 run_prod_step() {
   local name="$1"
-  local path="$WORKTREE/deploy/stage-${stage_lc}/autopilot/$name"
   set_state "PRODUCTION:$name"
-  (cd "$WORKTREE" && bash "$path") 2>&1 | tee "$LOG_DIR/$name.log"
+  run_root_step "$name" 2>&1 | tee "$LOG_DIR/$name.log"
 }
 
 emergency_rollback() {
@@ -52,9 +70,9 @@ emergency_rollback() {
   set +e
   set_state "EMERGENCY_ROLLBACK"
   notify ROLLBACK "$STAGE" "Wykryto błąd po rozpoczęciu zmian produkcyjnych: $why. Uruchamiam automatyczny rollback."
-  (cd "$WORKTREE" && bash "deploy/stage-${stage_lc}/autopilot/40_rollback.sh")     >"$LOG_DIR/emergency-rollback.log" 2>&1
+  run_root_step 40_rollback.sh >"$LOG_DIR/emergency-rollback.log" 2>&1
   rb=$?
-  (cd "$WORKTREE" && bash "deploy/stage-${stage_lc}/autopilot/50_rollback_smoke.sh")     >"$LOG_DIR/emergency-rollback-smoke.log" 2>&1
+  run_root_step 50_rollback_smoke.sh >"$LOG_DIR/emergency-rollback-smoke.log" 2>&1
   smoke=$?
   set -e
   if ((rb == 0 && smoke == 0)); then
@@ -242,6 +260,9 @@ Create deploy/stage-$stage_lc/autopilot/ with executable-compatible bash scripts
 90_finalize.sh        write/update the production gate report and repository evidence
 
 Every mutating script must be idempotent or fail closed. Never destroy the rollback point.
+Production scripts are executed as root by a root-owned privilege bridge with a minimal
+environment. They must not prompt for sudo, depend on an interactive shell, or require
+unversioned environment variables. The bridge verifies clean tracked bytes and exact SHA.
 Do not put secrets, prompts, tokens, chat IDs or private runtime content in reports/logs.
 Stage H must quarantine before deletion and must preserve D.0/D.6 and the most recent
 verified rollback releases required by the policy.
@@ -327,6 +348,11 @@ set_state PRE_PROD_CI
 candidate_sha="$(git -C "$WORKTREE" rev-parse HEAD)"
 wait_commit_ci "$candidate_sha" "pre-production CI"
 
+if ! root_bridge_ready; then
+  printf 'PRIVILEGE_BRIDGE_REQUIRED\n' > "$STAGE_STATE/reason"
+  exit 30
+fi
+
 preflight_ok=0
 for attempt in 1 2 3; do
   if run_prod_step 00_preflight.sh; then
@@ -334,7 +360,7 @@ for attempt in 1 2 3; do
     break
   fi
   set_state PRE_PROD_CI
-  reason="$(grep -E '^PREFLIGHT_FAIL=' "$LOG_DIR/00_preflight.sh.log" 2>/dev/null | tail -n1 || true)"
+  reason="$(grep -E '^(PREFLIGHT_FAIL|AUTOPILOT_ROOT_DENY)=' "$LOG_DIR/00_preflight.sh.log" 2>/dev/null | tail -n1 || true)"
   [[ -n "$reason" ]] && printf '%s\n' "$reason" > "$STAGE_STATE/reason"
   if ((attempt < 3)); then
     sleep 20
