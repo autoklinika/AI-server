@@ -1,6 +1,7 @@
 # Stage E recovery investigation
 
-Production validation remains pending. D.6 r2 is the verified rollback release;
+Production validation: **PASS** for `stage-e-38fff86f7704` after the complete
+candidate/rollback/reactivation cycle. D.6 r2 is the verified rollback release;
 D.0/D.6 releases, client bundles and recovery evidence are retained.
 
 The previous supervisor's `40_rollback` passed but `50_rollback_smoke` failed.
@@ -57,3 +58,16 @@ Process absence uses the kernel's recursive `cgroup.events` populated field;
 read errors fail closed, and a missing event file is accepted only when the
 cgroup directory is also gone. This avoids Python glob traversal suppressing
 inspection errors. Semantics: [Linux cgroup v2 documentation](https://docs.kernel.org/admin-guide/cgroup-v2.html#un-populated-notification).
+
+
+Final result: all nine production steps passed for source
+`38fff86f7704fcee92d66a750c033a9ec69ff084`. Candidate smoke, fresh D.6 rollback
+smoke and final candidate smoke each exercised real inference, outbound delivery
+and admitted media. Final Gateway/Bridge/ComfyUI identities were stable, Hermes
+connected, and queues/leases idle. Independent review and exact-source CI passed
+(764 tests). The earlier failed candidates and immutable attempts are retained
+for diagnosis; none was converted into PASS. See the [production gate](AI_PLATFORM_STAGE_E_PRODUCTION_GATE.md).
+
+Validation logs and temporary render artifacts are classified KEEP outside Git
+until the Stage H reference/retention audit; they support this recovery cycle and
+must not be confused with production/domain data. D.0/D.6 recovery remains protected.

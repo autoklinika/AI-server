@@ -638,3 +638,15 @@ live dowodu. Stage F/G/H nie są częścią zmiany.
 Status i DEV evidence: [raport Stage E](../reports/AI_PLATFORM_STAGE_E_DEV_GATE.md).
 Production gate i rollback wykonuje wyłącznie supervisor zgodnie z
 [runbookiem](../../deploy/stage-e/README.md). Nie zadeklarowano production COMPLETE.
+
+
+### Stage E — zweryfikowany production gate
+
+Production validation **PASS** dla `stage-e-38fff86f7704`.
+Pełny cykl candidate smoke -> rollback D.6 smoke -> reactivation smoke przeszedł
+z realnym inference, outbound Telegram/Discord i renderem media pod admission.
+CI źródła: 764 tests PASS. D.0/D.6 i matched clients zachowane.
+[Raport produkcyjny](../reports/AI_PLATFORM_STAGE_E_PRODUCTION_GATE.md),
+[diagnoza i naprawa gate](../reports/AI_PLATFORM_STAGE_E_RECOVERY_2026-09-22.md).
+Stage F wymaga świeżego inbound multiuser i pełnych messaging/media user paths;
+dowody Stage E nie zastępują tych kryteriów.
