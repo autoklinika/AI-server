@@ -104,7 +104,8 @@ def test_readonly_preflight_retries_and_exits_resumable():
     assert "for attempt in 1 2 3" in text
     assert "exit 31" in text
     assert "return 31" not in text
-    assert "PREFLIGHT_FAIL=" in text
+    assert "PREFLIGHT_FAIL" in text
+    assert "AUTOPILOT_ROOT_DENY" in text
 
 
 def test_blocked_notification_can_include_safe_reason():
