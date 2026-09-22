@@ -59,7 +59,7 @@ def test_bootstrap_disables_legacy_systemd_launcher():
 def test_runner_waits_for_registered_ci_by_sha():
     text = (AUTO / "run_stage.sh").read_text(encoding="utf-8")
     assert "wait_commit_ci" in text
-    assert "workflow did not register" in text
+    assert "CI_GATE_TIMEOUT" in text
     assert "gh pr checks" not in text
 
 
@@ -79,9 +79,10 @@ def test_master_requires_explicit_resume_stage():
 
 def test_readonly_preflight_failure_returns_to_resumable_boundary():
     text = (AUTO / "run_stage.sh").read_text(encoding="utf-8")
-    assert "if ! run_prod_step 00_preflight.sh" in text
+    assert "for attempt in 1 2 3" in text
     assert "set_state PRE_PROD_CI" in text
-    assert "return 31" in text
+    assert "exit 31" in text
+    assert "return 31" not in text
 
 
 def test_resume_accepts_legacy_readonly_preflight_state_only():
