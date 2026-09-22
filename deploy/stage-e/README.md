@@ -110,3 +110,13 @@ final Stage E reactivation. Physical WVC telemetry growth is not claimed when
 CM5 is offline. `90_finalize` requires all three immutable smoke records and the
 active healthy candidate, then writes `docs/reports/AI_PLATFORM_STAGE_E_PRODUCTION_GATE.md`.
 No production report is fabricated during implementation.
+
+
+### Delivery target and failure diagnostics
+
+Discord smoke uses its configured home channel, or the single configured
+free-response channel when that channel is also in its existing directory.
+Absent/ambiguous destinations fail read-only preflight. No runtime configuration
+is rewritten. Outbound smoke requires a structured successful delivery and rejects
+skipped results even when the CLI exit code is zero. Failure diagnostics expose
+only check labels, local code locations and exception classes.

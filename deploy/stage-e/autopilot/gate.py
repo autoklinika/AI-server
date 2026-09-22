@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Supervisor-only production executor. Output is always content-free.
 
-Immutable baseline per source SHA; no client/config changes or deletion. External
-user-path tests use a pinned, root-owned site harness (see README). A failed or
-missing real integration harness blocks preflight, never becomes a fake PASS.
+Immutable baseline per source SHA; no client/config changes or deletion. Fresh smoke validates the Platform boundary and actual configured outbound
+delivery; unchanged D.6 external user-path evidence remains historical.
 """
 import fcntl
 import hashlib
@@ -18,6 +17,7 @@ import stat
 import subprocess
 import sys
 import time
+import traceback
 from uuid import uuid4
 from urllib.request import Request, urlopen
 
@@ -304,6 +304,18 @@ def hermes_oneshot_smoke():
             raise RuntimeError('Hermes did not reconnect after one-shot smoke')
 
 
+def discord_smoke_target():
+    name, uid, home = hermes_account()
+    return run([
+        'runuser', '-u', name, '--', 'env',
+        f'HOME={home}', 'HERMES_HOME=/srv/ai-data/hermes',
+        f'XDG_RUNTIME_DIR=/run/user/{uid}',
+        'PYTHONPATH=/srv/ai-data/hermes/hermes-agent',
+        '/srv/ai-data/hermes/hermes-agent/venv/bin/python',
+        ROOT / 'deploy/stage-e/messaging_target.py',
+    ])
+
+
 def messaging_boundary_smoke():
     model = run([
         CURRENT / 'services/ai-bridge/.venv/bin/python', '-c',
@@ -346,14 +358,16 @@ def messaging_boundary_smoke():
     name, uid, home = hermes_account()
     cli = Path(home) / '.local/bin/hermes'
     probe = '[AI Platform Stage E] automated compatibility probe ' + uuid4().hex[:8]
-    for platform in ('telegram', 'discord'):
-        run([
+    for platform in ('telegram', discord_smoke_target()):
+        delivery = json.loads(run([
             'runuser', '-u', name, '--', 'env',
             f'HOME={home}',
             'HERMES_HOME=/srv/ai-data/hermes',
             f'XDG_RUNTIME_DIR=/run/user/{uid}',
-            str(cli), 'send', '--to', platform, '--quiet', probe,
-        ], timeout=60)
+            str(cli), 'send', '--to', platform, '--quiet', '--json', probe,
+        ], timeout=60))
+        require(delivery.get('success') is True and not delivery.get('skipped')
+                and not delivery.get('error'))
 
 
 def real_media_smoke(target):
@@ -448,6 +462,7 @@ def preflight(cfg):
             'show', 'hermes-gateway.service', '-p', 'ActiveState', '--value'
         ]) == 'active'))
     preflight_step('hermes_connected', hermes_state)
+    preflight_step('discord_delivery_target', discord_smoke_target)
     preflight_step('media_preflight', media_preflight)
 
 
@@ -537,13 +552,13 @@ def smoke(phase, target, cfg, baseline, state):
     write_once(state / (phase + '-started.json'), {'challenge': challenge, 'release_id': target.name})
     if target != D6:
         api_smoke(cfg)
-    wvc_smoke()
-    hermes_state()
-    hermes_oneshot_smoke()
-    messaging_boundary_smoke()
+    preflight_step('smoke_wvc', wvc_smoke)
+    preflight_step('smoke_hermes_connected', hermes_state)
+    preflight_step('smoke_hermes_inference', hermes_oneshot_smoke)
+    preflight_step('smoke_messaging_boundary', messaging_boundary_smoke)
     require(clients() == baseline['clients'])
     media_preflight()
-    real_media_smoke(target)
+    preflight_step('smoke_real_media', lambda: real_media_smoke(target))
     runtime(target, cfg, baseline)
     require(before == [identity(unit) for unit in ('ai-gateway.service', 'ai-bridge.service', 'comfyui.service')])
     write_once(state / (phase + '.json'), {'schema_version': 1, 'release_id': target.name,
@@ -609,7 +624,13 @@ def main(step):
 
         if step == '50_rollback_smoke':
             require((state / 'rollback.json').is_file())
-            smoke('rollback-smoke', D6, cfg, baseline, state)
+            # Keep the planned rollback evidence immutable. Emergency recovery
+            # after reactivation (or a failed earlier smoke) needs a fresh record,
+            # never a stale PASS or an O_EXCL collision before actual validation.
+            phase = 'rollback-smoke'
+            if (state / (phase + '-started.json')).exists():
+                phase = 'recovery-smoke-' + uuid4().hex
+            smoke(phase, D6, cfg, baseline, state)
             return
 
         installed = read(state / 'installed.json')
@@ -650,8 +671,9 @@ def main(step):
                       f'Rollback: `{D6.name}` with unchanged matched D.6 clients.\n\n'
                       'Candidate smoke, rollback smoke, final smoke: PASS.\n\n'
                       'Fresh Stage E gates: Platform API inference/jobs/models/systems/health, '
-                      'WVC inference, Hermes messaging connectivity, matched-client byte integrity '
-                      'and media preflight: PASS.\n\n'
+                      'WVC inference, Hermes one-shot, correlated messaging boundary requests, '
+                      'Telegram/Discord outbound delivery, matched-client byte integrity '
+                      'and real media render under admission: PASS.\n\n'
                       'Fresh D.6 Telegram multiuser, /foto, /wideo, Discord and real-media evidence '
                       'is retained as the unchanged compatibility baseline; Stage E does not claim '
                       'a synthetic fresh user-path PASS for those flows.\n\n'
@@ -669,8 +691,12 @@ def main(step):
 if __name__ == '__main__':
     try:
         main(sys.argv[1])
-    except BaseException:
-        # No exception text: it may contain URLs, prompts, tokens or worker logs.
+    except BaseException as error:
+        # Report only local code coordinates and exception class, never values.
+        frames = [frame for frame in traceback.extract_tb(error.__traceback__)
+                  if frame.filename == __file__]
+        location = '/'.join(f'{frame.name}:{frame.lineno}' for frame in frames)
+        print(f'GATE_FAIL={type(error).__name__} location={location}', file=sys.stderr)
         print('FAIL: Stage E production gate stopped; no PASS recorded for this step', file=sys.stderr)
         sys.exit(1)
     print('PASS: Stage E ' + sys.argv[1])

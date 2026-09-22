@@ -410,3 +410,92 @@ def test_rollback_smoke_does_not_require_candidate_checksum(monkeypatch, tmp_pat
     monkeypatch.setattr(gate, 'smoke', lambda *a, **k: called.append(a[0]))
     gate.main('50_rollback_smoke')
     assert called == ['rollback-smoke']
+
+
+@pytest.mark.parametrize('delivery,passes', [
+    ({'success': True}, True),
+    ({'skipped': True}, False),
+    ({'success': True, 'skipped': True}, False),
+    ({'success': True, 'error': 'private diagnostic'}, False),
+    ({}, False),
+])
+def test_messaging_smoke_requires_actual_outbound_delivery(monkeypatch, delivery, passes):
+    import io
+    import json
+    gate = module()
+    count = 0
+    class Response(io.BytesIO):
+        def __init__(self, index):
+            super().__init__(b'{}')
+            self.headers = {'X-AI-Request-Id': f'req_{index}', 'X-AI-Job-Id': f'job_{index}'}
+    def open_request(*args, **kwargs):
+        nonlocal count
+        count += 1
+        return Response(count)
+    monkeypatch.setattr(gate, 'urlopen', open_request)
+    monkeypatch.setattr(gate, 'fetch', lambda *args: {'recent_jobs': [
+        {'job_id': f'job_{i}', 'domain': 'shared', 'state': 'completed',
+         'assigned_provider': 'ollama-local'} for i in range(1, 4)]})
+    monkeypatch.setattr(gate, 'hermes_account', lambda: ('test', 1000, '/home/test'))
+    monkeypatch.setattr(gate, 'discord_smoke_target', lambda: 'discord:123')
+    monkeypatch.setattr(gate, 'run', lambda args, **kw:
+                        json.dumps(delivery) if 'send' in args else 'model')
+    if passes:
+        gate.messaging_boundary_smoke()
+    else:
+        with pytest.raises(RuntimeError):
+            gate.messaging_boundary_smoke()
+
+
+@pytest.mark.parametrize('home,configured,directory,expected', [
+    ('123', [], [], 'discord:123'),
+    (None, ['456'], [{'id': '456', 'type': 'channel'}], 'discord:456'),
+    (None, [], [{'id': '456', 'type': 'channel'}], None),
+    (None, ['456', '789'], [{'id': '456', 'type': 'channel'}], None),
+    (None, ['456'], [{'id': '456', 'type': 'group'}], None),
+    (None, ['789'], [{'id': '456', 'type': 'channel'}], None),
+])
+def test_discord_target_requires_existing_unambiguous_config(home, configured, directory, expected):
+    spec = importlib.util.spec_from_file_location('target', ROOT / 'deploy/stage-e/messaging_target.py')
+    target = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(target)
+    if expected is None:
+        with pytest.raises(ValueError):
+            target.resolve_discord_target(home, configured, directory)
+    else:
+        assert target.resolve_discord_target(home, configured, directory) == expected
+
+
+@pytest.mark.parametrize('planned_passed', [False, True])
+def test_emergency_rollback_smoke_preserves_prior_evidence(monkeypatch, tmp_path, planned_passed):
+    gate = module()
+    sha = 'c' * 40
+    state = tmp_path / sha
+    state.mkdir()
+    baseline = {'source_sha': sha, 'rollback_sha': gate.D6_SHA,
+                'candidate': 'stage-e-' + sha[:12], 'rollback': gate.D6.name,
+                'rollback_checksums': 'verified'}
+    gate.write_once(state / 'baseline.json', baseline)
+    gate.write_once(state / 'rollback.json', {'release_id': gate.D6.name})
+    gate.write_once(state / 'rollback-smoke-started.json', {'challenge': 'original'})
+    if planned_passed:
+        gate.write_once(state / 'rollback-smoke.json', {'challenge': 'original'})
+    original = {p.name: p.read_bytes() for p in state.iterdir()}
+    monkeypatch.setattr(gate, 'STATE', tmp_path)
+    monkeypatch.setattr(gate, 'config', lambda: {})
+    monkeypatch.setattr(gate, 'git_run', lambda *a, **k: sha)
+    monkeypatch.setattr(gate.os, 'geteuid', lambda: 0)
+    monkeypatch.setattr(gate, 'digest', lambda path: 'verified')
+    calls = []
+    def fresh_smoke(phase, target, cfg, captured, destination):
+        assert target == gate.D6 and captured == baseline
+        assert phase.startswith('recovery-smoke-')
+        gate.write_once(destination / (phase + '-started.json'), {'challenge': phase})
+        gate.write_once(destination / (phase + '.json'), {'challenge': phase})
+        calls.append(phase)
+    monkeypatch.setattr(gate, 'smoke', fresh_smoke)
+    gate.main('50_rollback_smoke')
+    gate.main('50_rollback_smoke')
+    assert len(set(calls)) == 2
+    assert all((state / name).read_bytes() == data for name, data in original.items())
+    assert (state / 'rollback-smoke.json').exists() == planned_passed
