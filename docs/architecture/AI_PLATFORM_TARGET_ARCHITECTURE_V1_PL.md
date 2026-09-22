@@ -945,3 +945,18 @@ nowy PID baseline obowiązuje w kolejnej fazie smoke, ComfyUI pozostaje bez rest
 Status: **implementation ready for supervisor validation**, production NOT RUN.
 [Raport korekty](../reports/AI_PLATFORM_STAGE_D6_GATE_FIX_2026-09-22_PL.md).
 Stage E i dalsze etapy nie zostały rozpoczęte.
+
+## 27. Stage E — addytywny kandydat Platform API
+
+Platform API v1 jest montowane pod `/api/v1` na istniejącym prywatnym Gateway.
+Współdzieli scheduler/leases D.6 zamiast tworzyć drugi resource pool. Klient używa
+capability i logical model; async execution port izoluje wire protocol providera.
+Auth jest oddzielną polityką service-wide (token albo loopback), a context actor
+nie jest dowodem tożsamości. Health nie publikuje backend URL, modeli fizycznych,
+promptów, tool output ani sekretów. Nie dodano nowego listenera ani ekspozycji LAN.
+
+Legacy WVC/Hermes/media ścieżki i matched D.6 clients pozostają, podobnie jak D.0/D.6
+recovery evidence. Produkcyjny rollback target: verified D.6 r2. Zakres, wersje,
+ograniczenia i komplet supervisor scripts: [Stage E](../../deploy/stage-e/README.md).
+Status: kandydat do independent review; production validation nie była wykonywana
+przez implementera.

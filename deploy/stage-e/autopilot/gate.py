@@ -1,0 +1,386 @@
+#!/usr/bin/env python3
+"""Supervisor-only production executor. Output is always content-free.
+
+Immutable baseline per source SHA; no client/config changes or deletion. External
+user-path tests use a pinned, root-owned site harness (see README). A failed or
+missing real integration harness blocks preflight, never becomes a fake PASS.
+"""
+import fcntl
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import re
+import stat
+import subprocess
+import sys
+import time
+from uuid import uuid4
+from urllib.request import Request, urlopen
+
+ROOT = Path(__file__).resolve().parents[3]
+D6 = Path('/opt/ai-platform/releases/stage-d-resource-manager-v2-20260922-r2')
+D6_SHA = '82d55f629f763c9352ad7c9e678e22eadb623639'
+CURRENT = Path('/opt/ai-platform/current')
+CONFIG = Path('/etc/ai-platform/stage-e-autopilot.json')
+STATE = Path('/var/lib/ai-platform/stage-e')
+GATEWAY = 'http://127.0.0.1:11435'
+CLIENTS = {
+    '/usr/local/bin/hermes-foto-dispatch': 'tools/local_image/hermes_foto_dispatch_global.py',
+    '/usr/local/libexec/ai-server/hermes_resource_queue.py': 'tools/hermes_resource_queue.py',
+    '/usr/local/libexec/ai-server/hermes_foto_prompt_compiler.py': 'tools/local_image/hermes_foto_prompt_compiler.py',
+    '/usr/local/libexec/ai-server/hermes_video_dispatch.py': 'tools/local_video/hermes_video_dispatch_global.py',
+    '/usr/local/libexec/ai-server/qwen_prompt_compiler.py': 'tools/local_video/qwen_prompt_compiler.py',
+}
+CHECKS = ('telegram_multiuser', 'delivery_isolation', 'wait_start', 'telegram_foto',
+          'telegram_wideo', 'discord', 'real_media')
+
+
+def require(condition):
+    if not condition:
+        raise RuntimeError('gate condition failed')
+
+
+def run(args, timeout=60, **kwargs):
+    # Never forward subprocess diagnostics, model output, environment or journal.
+    return subprocess.run([str(x) for x in args], check=True, capture_output=True,
+                          text=True, timeout=timeout, **kwargs).stdout.strip()
+
+
+def digest(path):
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def load_module(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def verify_release(path, stage):
+    # Helper imports are local, never installed runtime modules.
+    sys.path.insert(0, str(ROOT / 'deploy/stage-d'))
+    validator = load_module('gate_metadata_' + stage, ROOT / f'deploy/stage-{stage}/validate_release_metadata.py')
+    validator.validate(path)
+    from validate_rollback_readiness import verify_checksums
+    verify_checksums(path)
+    return dict(line.split('=', 1) for line in (path / 'RELEASE').read_text().splitlines())
+
+
+def private_file(path, executable=False):
+    require(path.is_absolute() and not any(p.is_symlink() for p in (path, *path.parents)))
+    info = path.stat()
+    require(stat.S_ISREG(info.st_mode) and info.st_uid == 0 and not info.st_mode & 0o022)
+    if executable:
+        require(info.st_mode & 0o111)
+
+
+def config():
+    private_file(CONFIG)
+    value = json.loads(CONFIG.read_text())
+    require(set(value) == {'harness', 'harness_sha256', 'bridge_health_url', 'api_token_file'})
+    path = Path(value['harness'])
+    private_file(path, True)
+    require(re.fullmatch('[a-f0-9]{64}', value['harness_sha256']) is not None)
+    require(digest(path) == value['harness_sha256'])
+    require(re.fullmatch(r'http://(?:127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}):8080/health', value['bridge_health_url']) is not None)
+    if value['api_token_file'] is not None:
+        private_file(Path(value['api_token_file']))
+        require(Path(value['api_token_file']).stat().st_mode & 0o077 == 0)
+    return value
+
+
+def fetch(url, payload=None, token=None, with_headers=False):
+    headers = {'Content-Type': 'application/json'}
+    if token:
+        headers['Authorization'] = 'Bearer ' + token
+    request = Request(url, data=None if payload is None else json.dumps(payload).encode(), headers=headers)
+    with urlopen(request, timeout=610 if payload else 10) as response:
+        body = json.load(response)
+        return (body, response.headers) if with_headers else body
+
+
+def identity(unit):
+    data = dict(line.split('=', 1) for line in run(['systemctl', 'show', unit, '-p', 'ActiveState', '-p', 'MainPID', '-p', 'InvocationID']).splitlines())
+    require(data['ActiveState'] == 'active' and int(data['MainPID']) > 0 and data['InvocationID'])
+    return [data['MainPID'], data['InvocationID']]
+
+
+def clients():
+    result = {}
+    for name, source in CLIENTS.items():
+        path = Path(name)
+        private_file(path)
+        require(path.read_bytes() == (D6 / 'services/ai-bridge' / source).read_bytes())
+        info = path.stat()
+        result[name] = [digest(path), stat.S_IMODE(info.st_mode), info.st_uid, info.st_gid]
+    return result
+
+
+def comfy_idle():
+    queue = fetch('http://127.0.0.1:8188/queue')
+    require(queue['queue_running'] == [] and queue['queue_pending'] == [])
+
+
+def idle():
+    data = fetch(GATEWAY + '/status')
+    require((data['active_count'], data['queued_count'], data['resource_leases']['lease_count']) == (0, 0, 0))
+    comfy_idle()
+
+
+def runtime(release, cfg, baseline=None):
+    require(CURRENT.resolve(strict=True) == release)
+    for service in ('ai-gateway', 'ai-bridge'):
+        pid, _ = identity(service + '.service')
+        require(Path('/proc/' + pid + '/cwd').resolve(strict=True) == release / 'services' / service)
+        require(run(['systemctl', 'show', service + '.service', '-p', 'WorkingDirectory', '--value']) == '/opt/ai-platform/current/services/' + service)
+    require(fetch(GATEWAY + '/health')['status'] == 'ok')
+    require(fetch(cfg['bridge_health_url'])['status'] == 'ok')
+    idle()
+    actual = clients()
+    if baseline:
+        require(actual == baseline['clients'])
+        require(identity('comfyui.service') == baseline['comfy'])
+        require(digest(CONFIG) == baseline['config_digest'])
+
+
+def harness(cfg, action, release, challenge):
+    # Credentials remain in the harness's private config, never argv or output.
+    data = json.loads(run([cfg['harness'], action, '--release', release.name,
+                           '--challenge', challenge], timeout=3600))
+    require(data.get('schema_version') == 1 and data.get('challenge') == challenge
+            and data.get('release_id') == release.name)
+    if action == 'smoke':
+        require(set(data) == {'schema_version', 'challenge', 'release_id', 'checks'})
+        require(set(data['checks']) == set(CHECKS))
+        require(all(value is True for value in data['checks'].values()))
+    else:
+        require(set(data) == {'schema_version', 'challenge', 'release_id', 'verified'})
+        require(data['verified'] is True)
+    return data
+
+
+def write_once(path, value):
+    # O_EXCL prevents retry from silently replacing a rollback point/evidence.
+    with path.open('x') as stream:
+        os.chmod(path, 0o600)
+        json.dump(value, stream, sort_keys=True)
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
+def read(path):
+    return json.loads(path.read_text())
+
+
+def preflight(cfg):
+    require(CURRENT.resolve(strict=True) == D6)
+    stamp = verify_release(D6, 'd')
+    require(stamp['source_git_sha'] == D6_SHA)
+    runtime(D6, cfg)
+    for unit in ('ai-gateway.service', 'ai-bridge.service', 'ai-bridge-analysis.service'):
+        require(run(['systemctl', 'show', unit, '-p', 'NeedDaemonReload', '--value']) == 'no')
+    require(Path('/srv/ai-data/platform/recovery/stage-d6-resource-manager-v2-20260922-r1-clients').is_dir())
+
+
+def switch(target, entry, cfg, baseline):
+    require(CURRENT.resolve(strict=True) in (entry, target))
+    require(verify_release(D6, 'd')['source_git_sha'] == D6_SHA)
+    verify_release(target, 'd' if target == D6 else 'e')
+    require(clients() == baseline['clients'])
+    challenge = uuid4().hex
+    # Site harness must close all ingress, including messaging and WVC analysis.
+    # A status observation alone is not a global admission lock.
+    mutating = False
+    healthy = False
+    try:
+        harness(cfg, 'quiesce', CURRENT.resolve(), challenge)
+        gateway_state = run(['systemctl', 'show', 'ai-gateway.service', '-p', 'ActiveState', '--value'])
+        if target == D6 and gateway_state in ('inactive', 'failed'):
+            # Emergency recovery after a failed candidate start. The pinned
+            # quiesce harness attests all workers drained; Comfy stays online.
+            comfy_idle()
+        else:
+            idle()
+        for unit in ('ai-bridge-analysis.service',):
+            require(run(['systemctl', 'show', unit, '-p', 'ActiveState', '--value']) == 'inactive')
+        mutating = True
+        run(['systemctl', 'stop', 'ai-gateway.service', 'ai-bridge.service'])
+        temporary = CURRENT.with_name('.stage-e-current-' + uuid4().hex)
+        temporary.symlink_to(target)
+        os.replace(temporary, CURRENT)
+        run(['systemctl', 'start', 'ai-gateway.service', 'ai-bridge.service'])
+        for _ in range(30):
+            try:
+                runtime(target, cfg, baseline)
+                healthy = True
+                break
+            except Exception:
+                time.sleep(1)
+        else:
+            raise RuntimeError('runtime failed')
+    finally:
+        # Keep ingress closed after partial mutation until supervisor rollback
+        # restores health. The harness preserves its first quiesce baseline.
+        if healthy or not mutating:
+            harness(cfg, 'resume', CURRENT.resolve(), challenge)
+
+
+def api_smoke(cfg):
+    # A brand new client knows only the Platform API base URL and logical model.
+    token = Path(cfg['api_token_file']).read_text().strip() if cfg['api_token_file'] else None
+    base = GATEWAY + '/api/v1'
+    require(fetch(base + '/health', token=token)['readiness'] is True)
+    require(fetch(base + '/models', token=token)['models'][0]['logical_id'] == 'reasoning-main')
+    require(fetch(base + '/systems', token=token)['systems'])
+    request_id = 'req_' + uuid4().hex
+    result = fetch(base + '/ai', {'capability': 'reasoning',
+                   'context': {'request_id': request_id, 'domain': 'shared'},
+                   'messages': [{'role': 'user', 'content': 'Return the word OK.'}]}, token)
+    require(result['request_id'] == request_id and result['state'] == 'completed'
+            and bool(result['content']) and result['execution']['model'] == 'reasoning-main')
+    require(type(result['usage']['input_tokens']) is int and result['usage']['input_tokens'] > 0)
+    job = fetch(base + '/jobs/' + result['job_id'], token=token)['job']
+    require(job['state'] == 'completed' and job['request_id'] == request_id)
+    require(any(j['job_id'] == job['job_id'] for j in fetch(base + '/jobs', token=token)['jobs']))
+
+
+def wvc_smoke():
+    # Keep D.6 compatibility semantics and prove real inference. Resolve model
+    # internally from the installed runtime config, never from a new API client.
+    command = [CURRENT / 'services/ai-bridge/.venv/bin/python', '-c',
+               'from ai_bridge.settings import Settings; print(Settings(_env_file="/etc/ai-bridge/ai-bridge.env").ollama_model)']
+    model = run(command)
+    result, headers = fetch(GATEWAY + '/clients/ventilation/api/chat', {
+        'model': model, 'messages': [{'role': 'user', 'content': 'Return OK.'}],
+        'stream': False, 'think': False}, with_headers=True)
+    require(result.get('done') is True and result.get('prompt_eval_count', 0) > 0)
+    status = fetch(GATEWAY + '/status')
+    job = next(j for j in status['recent_jobs'] if j['job_id'] == headers['X-AI-Job-Id'])
+    require(job['request_id'] == headers['X-AI-Request-Id'])
+    require(job['domain'] == 'wvc' and job['priority_class'] == 'infrastructure'
+            and job['state'] == 'completed')
+
+
+def smoke(phase, target, cfg, baseline, state):
+    runtime(target, cfg, baseline)
+    before = [identity(unit) for unit in ('ai-gateway.service', 'ai-bridge.service', 'comfyui.service')]
+    challenge = uuid4().hex
+    write_once(state / (phase + '-started.json'), {'challenge': challenge, 'release_id': target.name})
+    if target != D6:
+        api_smoke(cfg)
+    wvc_smoke()
+    harness(cfg, 'smoke', target, challenge)
+    runtime(target, cfg, baseline)
+    require(before == [identity(unit) for unit in ('ai-gateway.service', 'ai-bridge.service', 'comfyui.service')])
+    write_once(state / (phase + '.json'), {'schema_version': 1, 'release_id': target.name,
+               'challenge': challenge, 'checks': {key: True for key in (*CHECKS, 'wvc', 'health')},
+               'platform_api': target != D6, 'time': int(time.time()), 'services': before})
+
+
+def main(step):
+    cfg = config()
+    sha = run(['git', '-C', ROOT, 'rev-parse', 'HEAD'])
+    require(re.fullmatch('[0-9a-f]{40}', sha) is not None)
+    candidate = Path('/opt/ai-platform/releases') / ('stage-e-' + sha[:12])
+    state = STATE / sha
+    if step == '00_preflight':
+        preflight(cfg)  # Read-only, including no state directory or lock writes.
+        return
+    require(os.geteuid() == 0)
+    STATE.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with (STATE / 'executor.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if step == '10_build_install':
+            preflight(cfg)
+            require(not state.exists() and not candidate.exists())
+            require(not run(['git', '-C', ROOT, 'status', '--porcelain']))
+            state.mkdir(mode=0o700)
+            baseline = {'rollback': D6.name, 'rollback_sha': D6_SHA, 'candidate': candidate.name,
+                        'source_sha': sha, 'clients': clients(), 'comfy': identity('comfyui.service'),
+                        'config_digest': digest(CONFIG),
+                        'rollback_checksums': digest(D6 / 'metadata/SHA256SUMS')}
+            write_once(state / 'baseline.json', baseline)
+            run(['bash', ROOT / 'deploy/stage-e/build_release.sh', candidate, candidate.name],
+                timeout=1800, cwd=ROOT, env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'})
+            require(verify_release(candidate, 'e')['source_git_sha'] == sha)
+            # Matched D.6 clients must remain byte-identical in the new package.
+            for source in CLIENTS.values():
+                for service in ('ai-bridge', 'ai-gateway'):
+                    require((candidate / 'services' / service / source).read_bytes()
+                            == (D6 / 'services/ai-bridge' / source).read_bytes())
+            runtime(D6, cfg, baseline)
+            write_once(state / 'installed.json', {'candidate': candidate.name, 'source_sha': sha,
+                       'checksums': digest(candidate / 'metadata/SHA256SUMS')})
+            return
+        baseline = read(state / 'baseline.json')
+        require(baseline['source_sha'] == sha and baseline['rollback_sha'] == D6_SHA
+                and baseline['candidate'] == candidate.name and baseline['rollback'] == D6.name)
+        require(digest(CONFIG) == baseline['config_digest'])
+        installed = read(state / 'installed.json')
+        require(installed['source_sha'] == sha)
+        require(digest(D6 / 'metadata/SHA256SUMS') == baseline['rollback_checksums'])
+        require(digest(candidate / 'metadata/SHA256SUMS') == installed['checksums'])
+        if step in ('20_cutover', '60_reactivate'):
+            if step == '60_reactivate':
+                require((state / 'rollback-smoke.json').is_file())
+            else:
+                require(not (state / 'rollback.json').exists())
+            require(not (state / (step + '.json')).exists())
+            switch(candidate, D6, cfg, baseline)
+            if not (state / (step + '.json')).exists():
+                write_once(state / (step + '.json'), {'release_id': candidate.name})
+        elif step == '40_rollback':
+            # Can run after a partial cutover even without a cutover PASS marker.
+            switch(D6, candidate, cfg, baseline)
+            if not (state / 'rollback.json').exists():
+                write_once(state / 'rollback.json', {'release_id': D6.name})
+        elif step in ('30_smoke', '50_rollback_smoke', '70_reactivate_smoke'):
+            phase, target, prior = {
+                '30_smoke': ('candidate-smoke', candidate, '20_cutover'),
+                '50_rollback_smoke': ('rollback-smoke', D6, 'rollback'),
+                '70_reactivate_smoke': ('final-smoke', candidate, '60_reactivate'),
+            }[step]
+            require((state / (prior + '.json')).is_file())
+            smoke(phase, target, cfg, baseline, state)
+        elif step == '90_finalize':
+            require(verify_release(candidate, 'e')['source_git_sha'] == sha)
+            runtime(candidate, cfg, baseline)
+            evidence = [read(state / (phase + '.json')) for phase in
+                        ('candidate-smoke', 'rollback-smoke', 'final-smoke')]
+            require([e['release_id'] for e in evidence] == [candidate.name, D6.name, candidate.name])
+            require(len({e['challenge'] for e in evidence}) == 3)
+            require([e['platform_api'] for e in evidence] == [True, False, True])
+            require(all(set(e['checks']) == set((*CHECKS, 'wvc', 'health'))
+                        and all(v is True for v in e['checks'].values()) for e in evidence))
+            require(evidence[0]['time'] <= evidence[1]['time'] <= evidence[2]['time'])
+            require(evidence[2]['services'] == [identity(unit) for unit in
+                    ('ai-gateway.service', 'ai-bridge.service', 'comfyui.service')])
+            report = ('# Stage E production gate\n\nProduction validation: PASS\n\n'
+                      f'Source: `{sha}`\n\nCandidate: `{candidate.name}`\n\n'
+                      f'Rollback: `{D6.name}` with unchanged matched D.6 clients.\n\n'
+                      'Candidate smoke, rollback smoke, final smoke: PASS.\n\n'
+                      'Platform API inference/jobs/models/systems/health, WVC, Telegram multiuser, '
+                      'delivery isolation, WAIT/START, foto/wideo, Discord and real media: PASS.\n\n'
+                      'D.0/D.6 and recovery snapshots retained; no cleanup or client mutation.\n')
+            path = ROOT / 'docs/reports/AI_PLATFORM_STAGE_E_PRODUCTION_GATE.md'
+            if path.exists():
+                require(path.read_text() == report)
+            else:
+                with path.open('x') as stream:
+                    stream.write(report)
+        else:
+            raise ValueError('unknown step')
+
+
+if __name__ == '__main__':
+    try:
+        main(sys.argv[1])
+    except BaseException:
+        # No exception text: it may contain URLs, prompts, tokens or worker logs.
+        print('FAIL: Stage E production gate stopped; no PASS recorded for this step', file=sys.stderr)
+        sys.exit(1)
+    print('PASS: Stage E ' + sys.argv[1])

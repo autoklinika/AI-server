@@ -941,3 +941,30 @@ Caught failure przywraca entry bundle tylko przy zachowanych idle/identity guard
 nieudana recovery pozostawia D.6 i wymaga kontrolowanej interwencji executora.
 Legacy `generate_ltx23.py`, `generate_ltx23_stage29.py`, `generate_ltx23_base.py`
 pozostają recovery evidence do Stage H. Hermes patch, produkty, modele i GPU bez zmian.
+
+## 21. Stage E — Platform API v1 (kandydat do review)
+
+Addytywna granica `/api/v1` w Gateway współdzieli istniejący Resource Manager v2.
+`POST /ai` przyjmuje capability, logical model `reasoning-main`, messages,
+context envelope, priority_class i timeout obejmujący kolejkę oraz wykonanie.
+Pierwszy executor obsługuje chat/reasoning/structured-generation; inne capability
+odmawiają bez dispatch. Nowy klient nie podaje nazw modeli backendu ani jego URL.
+Kontrakt async providera umożliwia zmianę implementacji bez zmiany klienta.
+
+`GET /jobs` i `/jobs/{job_id}` publikują lifecycle D.2 z wersją 1; historia terminalna
+nadal ma limit 128 i nie jest trwała. `GET /models` publikuje logical inventory,
+`GET /systems` deklarowane integracje, a `GET /health` agreguje RM i rzeczywistą
+dostępność skonfigurowanego modelu. Brak probe messaging/media jest jawny;
+inventory nie oznacza readiness. Błędy są normalizowane bez input/backend details.
+Correlation ID pochodzi z walidowanego nagłówka/context albo jest generowany.
+
+Polityka v1 wymaga skonfigurowanego Bearer tokenu albo bezpośredniego loopback peer.
+Actor context nie uwierzytelnia klienta; pierwsza polityka jest service-wide,
+bez per-user ACL dla jobów. Legacy trasy i D.6 matching clients pozostają bez zmian.
+Pełny wire contract, ograniczenia i supervisor gate:
+[Stage E runbook](../../deploy/stage-e/README.md).
+
+Release: stage/phase=E, config_schema_version=4, migration_version=platform-api-v1,
+platform_api_contract_version=1. RM=2 i wszystkie D.6 subcontracts=1 bez zmian.
+Rollback to verified D.6 r2 wraz z niezmienionym matched bundle. Nie oznacza to
+production PASS; wymagane real smoke, rollback i reactivation supervisora.

@@ -624,3 +624,17 @@ PR #47 i scalony do `main` jako `62f00ab2a1aade2be9cc86d69e068647652d5a27`.
 Pre-merge CI #451 oraz post-merge CI #452 zakończyły się PASS, w tym pełny test
 suite i walidacja Stage D release build. **Stage D = COMPLETE.** Następny etap
 migracji to Stage E — Platform API.
+
+### Stage E — kandydat implementacyjny
+
+Dodano wersjonowane Platform API na istniejącym Gateway, współdzielone admission,
+logical model, request/context correlation, znormalizowane błędy, job API,
+health aggregation i auth policy boundary. Compatibility D.6 pozostaje aktywne.
+Przygotowano dziewięć skryptów supervisor gate, immutable rollback baseline D.6 r2,
+real Platform API/WVC smoke i obowiązkową integrację z prywatnym site E2E harness
+Telegram/Discord/media. Brak harness blokuje preflight; unit tests nie zastępują
+live dowodu. Stage F/G/H nie są częścią zmiany.
+
+Status i DEV evidence: [raport Stage E](../reports/AI_PLATFORM_STAGE_E_DEV_GATE.md).
+Production gate i rollback wykonuje wyłącznie supervisor zgodnie z
+[runbookiem](../../deploy/stage-e/README.md). Nie zadeklarowano production COMPLETE.
