@@ -10,6 +10,15 @@ done
 VISUDO="/usr/sbin/visudo"
 [[ -x "$VISUDO" ]] || { echo "FAIL: missing $VISUDO" >&2; exit 3; }
 
+branch_name="$(git -C "$REPO_ROOT" branch --show-current)"
+[[ "$branch_name" == "main" ]] || { echo "FAIL: privilege bridge installer must be run from main"; exit 4; }
+[[ -z "$(git -C "$REPO_ROOT" status --porcelain)" ]] || { echo "FAIL: main worktree must be clean"; exit 4; }
+git -C "$REPO_ROOT" fetch origin main --prune
+[[ "$(git -C "$REPO_ROOT" rev-parse HEAD)" == "$(git -C "$REPO_ROOT" rev-parse origin/main)" ]] || {
+  echo "FAIL: local main is not current origin/main" >&2
+  exit 4
+}
+
 user_name="$(id -un)"
 user_uid="$(id -u)"
 user_home="$(getent passwd "$user_name" | cut -d: -f6)"
