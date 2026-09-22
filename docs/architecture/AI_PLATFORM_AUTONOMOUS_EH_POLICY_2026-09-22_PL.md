@@ -71,3 +71,16 @@ supervisor Stage D. Nie uruchamiamy procesu Codex bezpośrednio jako user servic
 ponieważ lokalny sandbox Codex/bubblewrap jest niekompatybilny z tym kontekstem i może
 kończyć się przed rozpoczęciem implementacji. Systemd może zarządzać usługami platformy,
 ale nie jest launcherem procesu agenta Codex.
+
+
+## PRE_PROD_CI resume
+
+GitHub Actions może zarejestrować pierwszy check kilka sekund po utworzeniu draft PR.
+Supervisor nie interpretuje braku jeszcze niezarejestrowanego checka jako wyniku CI:
+najpierw oczekuje na workflow dla dokładnego SHA, a dopiero potem na jego zakończenie.
+
+Jeśli starsza wersja supervisora zatrzymała się dokładnie w `PRE_PROD_CI` przed
+jakąkolwiek mutacją produkcji, dozwolone jest jawne wznowienie. Resume wymaga:
+czystego worktree, oczekiwanej gałęzi `agent/stage-X`, otwartego PR do `main`,
+aktualizacji kandydata do bieżącego `main` oraz ponownego zielonego CI. Inne stany
+nie są automatycznie konwertowane na PRE_PROD_CI.
