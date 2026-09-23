@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import func, select
+from sqlalchemy import event, func, select
 
 from ai_bridge.knowledge.chunking import MarkdownChunker
 from ai_bridge.knowledge.content_store import FileContentStore
@@ -24,6 +24,13 @@ INDEX_PROFILE = "dense-bge-m3-1024-cosine-v1"
 
 def setup_repo(tmp_path: Path):
     database = Database("sqlite:///" + str(tmp_path / "knowledge.sqlite"))
+
+    @event.listens_for(database.engine, "connect")
+    def enable_sqlite_foreign_keys(dbapi_connection, _connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
     Base.metadata.create_all(database.engine)
     repository = KnowledgeRepository(database)
     ingestor = MarkdownKnowledgeIngestor(
