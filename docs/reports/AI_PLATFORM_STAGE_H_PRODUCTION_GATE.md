@@ -121,3 +121,17 @@ ingestion itself remained healthy. The Stage H finalizer now treats production t
 reactivation as mandatory (`enabled` and `active`) and includes an idempotent post-merge
 reconcile path for an already accepted H release. This repair does not rebuild or
 switch the production release.
+
+### Live production verification
+
+The post-acceptance reconcile completed with `PRODUCTION_RECONCILE=PASS` while
+keeping production on `stage-h-b9362bdae1c3`. The timer is both `enabled` and
+`active`. Its first scheduled run at 2026-09-23 16:00:30 CEST completed normally,
+routed inference through `/clients/ventilation`, stored a new advisory for 141 real
+CM5 samples, and returned Resource Manager to zero active jobs/leases with GPU state
+`llm`. No new MES/ring/reset/timeout kernel fault was observed.
+
+Physical CM5 ingestion was also observed live from `192.168.1.64` at about five-second
+intervals with HTTP 200 responses. From the pre-connect baseline, ingest batches and
+raw telemetry each increased by more than 150 rows. This upgrades physical WVC
+reconnection from NOT TESTED to live-ingest PASS for this post-acceptance check.
