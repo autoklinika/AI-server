@@ -35,7 +35,8 @@ The second independent review concluded `AUTOPILOT_REVIEW=PASS` with no producti
 - shell syntax for Stage I/autopilot scripts: PASS
 - Python compile: PASS
 - focused Platform/Stage I/control-plane tests: PASS
-- full local test suite after review fixes: **841 passed**, 2 unrelated deprecation warnings
+- full local test suite on the final tree after merging current `main`: **842 passed**, 2 unrelated deprecation warnings
+- local immutable Stage I release build: PASS (`stage-i-c4bb61b52298`), metadata/import/checksum validation PASS
 - Stage I CI workflow includes a full `stage-i-*` release build validation
 - rollback point pinned to `stage-h-b9362bdae1c3` / `b9362bdae1c30b53606d992fcecb575d7de71f4b`
 - candidate smoke requires `/api/v1/observability`; H rollback smoke requires HTTP 404
