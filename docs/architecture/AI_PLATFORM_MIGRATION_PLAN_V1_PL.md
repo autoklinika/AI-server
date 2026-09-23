@@ -363,8 +363,26 @@ Wynik nie zamraża modelu na stałe — canonical Source/Document/Version/Chunk 
 niezależny od embeddingu i pozwala na pełny reindex. Szczegóły i evidence:
 [Stage J2 report](../reports/AI_PLATFORM_STAGE_J2_KNOWLEDGE_EMBEDDING_BASELINE_2026-09-23_PL.md).
 
-Następny gate w Stage J: trwały/idempotentny ingestion i odbudowywalna produkcyjna
-projekcja Qdranta, a następnie jawny exact/lexical + dense hybrid.
+### Stage J3 — canonical persistence / ingestion / hybrid
+
+J3 dodaje additive Alembic migration po `0002`, trwałe tabele canonical knowledge,
+content-addressed immutable object store, idempotentny Markdown ingestion oraz
+retryable/supersedable index jobs. Qdrant pozostaje odbudowywalną projekcją.
+
+Pierwszy worker jest single-host/single-run i korzysta z BGE-M3 przez istniejący
+Gateway/Resource Manager. Produkcyjna kolekcja jest wersjonowana nazwą profilu.
+Exact/keyword czyta tylko bieżące canonical chunks; `hybrid/auto` łączy lexical i
+dense przez reciprocal-rank fusion, nadal pod logicznym `knowledge-primary`.
+
+Rollback aplikacji nie wymaga usuwania tabel J3. Po pojawieniu się kanonicznych
+danych produkcyjnych schema downgrade do `0002` jest operacją destrukcyjną i nie
+jest zwykłym rollbackiem release.
+
+Szczegóły decyzji J3:
+[ADR-003](adr/ADR-003_STAGE_J3_CANONICAL_INGESTION_REINDEX_2026-09-23_PL.md).
+
+Następny gate po J3: PDF parser/OCR, learned sparse/reranking oraz publiczne API
+`Szukaj` / `Zapytaj AI`.
 
 Nie rozpoczynać od knowledge graph, jeśli nie ma konkretnego wymagania.
 

@@ -566,6 +566,39 @@ numerów części, DTC i pinów.
 Szczegóły i gate przyszłej zmiany:
 [ADR-002](adr/ADR-002_STAGE_J2_EMBEDDING_BASELINE_2026-09-23_PL.md).
 
+### 10.5. Trwałość, reindex i hybrid — Stage J3
+
+J3 materializuje kanoniczny model w PostgreSQL i dodaje niezmienny magazyn
+oryginalnych bajtów dokumentów:
+
+```text
+read-only source
+  -> content-addressed object (SHA-256)
+  -> Source / Document / DocumentVersion / Chunk
+  -> IndexJob
+  -> rebuildable Qdrant projection
+```
+
+`storage_uri` wersji wskazuje immutable object, a nie mutable path w checkoutcie
+źródła. `chunk_profile` i `index_profile` są wersjonowane osobno. Identyczny import
+jest idempotentny; zmiana SHA-256 tworzy nową wersję. Utrata Qdranta nie oznacza
+utraty wiedzy.
+
+Routing retrieval J3:
+
+```text
+exact / keyword -> current canonical chunks
+semantic        -> dense Qdrant
+hybrid / auto   -> dense + lexical -> RRF
+```
+
+Pierwsza implementacja lexical używa deterministycznego BM25-style score na
+canonical chunks. Jej implementację można później zastąpić PostgreSQL FTS/GIN lub
+sparse vectors bez zmiany `KnowledgeQuery` i klientów.
+
+Szczegóły trwałości, rollbacku i granicy concurrency:
+[ADR-003](adr/ADR-003_STAGE_J3_CANONICAL_INGESTION_REINDEX_2026-09-23_PL.md).
+
 ---
 
 ## 11. Domain layer

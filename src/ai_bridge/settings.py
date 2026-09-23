@@ -71,6 +71,17 @@ class Settings(BaseSettings):
     # is an explicit recovery/debug compatibility mode that bypasses scheduling.
     analysis_use_gateway: bool = True
 
+    # Knowledge Service physical index defaults. These are internal deployment
+    # choices, not part of the public Knowledge Service client contract.
+    knowledge_qdrant_url: str = "http://127.0.0.1:6333"
+    knowledge_qdrant_collection: str = "knowledge_dense_bge_m3_1024_v1"
+    knowledge_embedding_model: str = "bge-m3"
+    knowledge_embedding_dimensions: int = Field(default=1024, ge=1, le=16384)
+    knowledge_chunk_max_chars: int = Field(default=2400, ge=256, le=20000)
+    knowledge_chunk_profile: str = "md-heading-2400-v1"
+    knowledge_index_profile: str = "dense-bge-m3-1024-cosine-v1"
+    knowledge_object_store_dir: Path = Path("/srv/ai-data/knowledge/canonical/objects")
+
     analysis_window_minutes: int = Field(default=15, ge=1, le=60)
     analysis_min_samples: int = Field(default=120, ge=1)
     analysis_temperature: float = Field(default=0.0, ge=0.0, le=2.0)
