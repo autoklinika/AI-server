@@ -70,6 +70,8 @@ def test_service_can_create_embedding_without_exposing_it_to_client():
     class FakeEmbeddingProvider:
         def embed(self, request):
             assert request.inputs == ("MPC564 temperature",)
+            assert request.context["embedding_role"] == "query"
+            assert request.context["domain"] == "ecu-repair"
             return EmbeddingResult(
                 request_id=request.request_id,
                 vectors=(EmbeddingVector(index=0, values=(0.1, 0.2, 0.3)),),

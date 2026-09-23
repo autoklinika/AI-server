@@ -62,3 +62,47 @@ def test_direct_ollama_client_does_not_add_gateway_headers(monkeypatch) -> None:
     )
 
     assert captured["url"] == "http://127.0.0.1:11434/api/chat"
+
+
+def test_embedding_request_uses_gateway_headers_and_validates_vectors(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_post(url, *, json, headers, timeout):
+        captured["url"] = url
+        captured["json"] = json
+        captured["headers"] = headers
+        return httpx.Response(
+            200,
+            json={
+                "model": "qwen3-embedding:0.6b",
+                "embeddings": [[0.1, 0.2, 0.3]],
+                "prompt_eval_count": 4,
+                "total_duration": 2_000_000,
+            },
+            request=httpx.Request("POST", "http://gateway/api/embed"),
+        )
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    client = OllamaClient(
+        base_url="http://127.0.0.1:11435",
+        request_source="knowledge-embedding",
+        request_priority=100,
+    )
+    result = client.embed(
+        model="qwen3-embedding:0.6b",
+        inputs=("SPN 107",),
+        keep_alive="5m",
+    )
+
+    assert captured["url"] == "http://127.0.0.1:11435/api/embed"
+    assert captured["headers"] == {
+        "X-AI-Source": "knowledge-embedding",
+        "X-AI-Priority": "100",
+    }
+    assert captured["json"] == {
+        "model": "qwen3-embedding:0.6b",
+        "input": ["SPN 107"],
+        "truncate": True,
+        "keep_alive": "5m",
+    }
+    assert result.embeddings == ((0.1, 0.2, 0.3),)

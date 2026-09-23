@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
+import math
 from typing import Any
 
 import httpx
@@ -107,6 +108,14 @@ class OllamaChatResult:
 
 
 @dataclass(frozen=True)
+class OllamaEmbeddingResult:
+    embeddings: tuple[tuple[float, ...], ...]
+    model: str
+    prompt_eval_count: int | None
+    total_duration_ns: int | None
+
+
+@dataclass(frozen=True)
 class OllamaClient:
     base_url: str
     timeout_seconds: float = 300.0
@@ -187,5 +196,83 @@ class OllamaClient:
             model=str(data.get("model", model)),
             prompt_eval_count=optional_int("prompt_eval_count"),
             eval_count=optional_int("eval_count"),
+            total_duration_ns=optional_int("total_duration"),
+        )
+
+
+    def embed(
+        self,
+        *,
+        model: str,
+        inputs: tuple[str, ...],
+        keep_alive: str = "5m",
+    ) -> OllamaEmbeddingResult:
+        if not model.strip():
+            raise ValueError("embedding model is required")
+        if not inputs or any(not value.strip() for value in inputs):
+            raise ValueError("embedding inputs must be non-empty strings")
+        if not keep_alive.strip():
+            raise ValueError("keep_alive is required")
+
+        payload = {
+            "model": model,
+            "input": list(inputs),
+            "truncate": True,
+            "keep_alive": keep_alive,
+        }
+        request_kwargs: dict[str, Any] = {
+            "json": payload,
+            "timeout": self.timeout_seconds,
+        }
+        gateway_headers = self._gateway_headers()
+        if gateway_headers is not None:
+            request_kwargs["headers"] = gateway_headers
+
+        try:
+            response = httpx.post(
+                f"{self.base_url.rstrip('/')}/api/embed",
+                **request_kwargs,
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            detail = exc.response.text[:2000]
+            raise RuntimeError(
+                f"Ollama returned HTTP {exc.response.status_code}: {detail}"
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise RuntimeError(f"Ollama unavailable: {exc}") from exc
+
+        data = response.json()
+        raw_vectors = data.get("embeddings")
+        if not isinstance(raw_vectors, list) or len(raw_vectors) != len(inputs):
+            raise RuntimeError("Ollama response contains an invalid embedding set")
+
+        vectors: list[tuple[float, ...]] = []
+        dimensions: int | None = None
+        for raw_vector in raw_vectors:
+            if not isinstance(raw_vector, list) or not raw_vector:
+                raise RuntimeError("Ollama response contains an invalid embedding vector")
+            vector: list[float] = []
+            for value in raw_vector:
+                if isinstance(value, bool) or not isinstance(value, (int, float)):
+                    raise RuntimeError("Ollama embedding vector contains a non-numeric value")
+                converted = float(value)
+                if not math.isfinite(converted):
+                    raise RuntimeError("Ollama embedding vector contains a non-finite value")
+                vector.append(converted)
+            if dimensions is None:
+                dimensions = len(vector)
+            elif len(vector) != dimensions:
+                raise RuntimeError("Ollama embedding vectors have inconsistent dimensions")
+            vectors.append(tuple(vector))
+
+        def optional_int(name: str) -> int | None:
+            value = data.get(name)
+            return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+        return OllamaEmbeddingResult(
+            embeddings=tuple(vectors),
+            model=str(data.get("model", model)),
+            prompt_eval_count=optional_int("prompt_eval_count"),
             total_duration_ns=optional_int("total_duration"),
         )
