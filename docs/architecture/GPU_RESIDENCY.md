@@ -81,3 +81,11 @@ The only legacy exception is a planned Stage E rollback with external ingress
 paused and a freshly restarted ComfyUI process that has executed no media. The
 supervisor verifies provider memory/queues without requiring the removed extension;
 all candidate runtime handoffs require authoritative model-registry evidence.
+
+
+ComfyUI's worker condition can miss a `/free` notification delivered during an
+existing cleanup cycle: the flags remain set while an empty queue waits for a
+new notification. RM retries the idempotent `/free` request within the same total
+timeout, and requires the pending flags to clear. It never treats a fixed sleep,
+a successful POST, or zero models alone as cleanup completion. A production
+attempt demonstrated this condition and correctly remained fail-closed.

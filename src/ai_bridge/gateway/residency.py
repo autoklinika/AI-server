@@ -99,6 +99,12 @@ class GPUResidency:
                     if unloaded and all(type(d["torch_vram_total"]) is int and 0 <= d["torch_vram_total"] <= self.idle_reserve_bytes for d in devices):
                         break
                     await asyncio.sleep(self.poll)
+                    # ComfyUI's condition notification can arrive while its
+                    # worker is already cleaning up. Repeat the idempotent flags
+                    # to wake an idle worker; acknowledgement, never a delay or
+                    # HTTP 200 alone, controls admission. Total deadline holds.
+                    response = await self.comfy.post("/free", json={"unload_models": True, "free_memory": True})
+                    response.raise_for_status()
                 await self._idle()
                 if (await self._json(self.ollama, "/api/ps"))["models"] != []:
                     raise ResidencyError("Ollama reloaded outside Resource Manager")

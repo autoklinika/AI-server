@@ -269,3 +269,19 @@ async def test_missing_comfy_evidence_endpoint_fails_before_media(tmp_path):
     with pytest.raises(httpx.HTTPStatusError):
         await gpu.enter_media()
     assert gpu.state == 'blocked' and gpu.marker.exists()
+
+
+@pytest.mark.anyio
+async def test_cleanup_retries_lost_comfy_wakeup_until_acknowledged(tmp_path):
+    providers = Providers()
+    frees = []
+    def handle(request):
+        if request.url.path == '/free':
+            frees.append(True)
+            providers.cleanup_pending = len(frees) < 2
+        return providers.handle(request)
+    client = httpx.AsyncClient(base_url='http://test', transport=httpx.MockTransport(handle))
+    gpu = GPUResidency(client, client, tmp_path / 'marker', timeout=.1, poll=.001)
+    await gpu.enter_media()
+    await gpu.leave_media()
+    assert len(frees) == 2 and gpu.state == 'llm' and not gpu.marker.exists()
