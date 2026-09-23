@@ -42,6 +42,15 @@ while this shared pool is managed. Inventory/health endpoints are not proof of
 safe execution. A single Gateway process owns this local queue; multiple ASGI
 workers are unsupported. Preserve the marker across deployments and reboots.
 
+This document describes the **current single shared accelerator pool**. It must
+not become a permanent assumption of AI Platform. A future external GPU/accelerator
+is modeled as another `accelerator_id` / resource pool with its own residency,
+cleanup evidence and recovery state. The current global marker/ownership model
+must be evolved to per-device or per-pool state before two accelerators are used
+concurrently. One accelerator's dirty state must not be silently interpreted as
+proof that another accelerator is safe, nor should hardware selection leak into
+domain or Knowledge Service contracts.
+
 
 The first guarded production render exposed two additional facts. The legacy
 `generate-image` and `generate-image-edit` binaries independently preloaded Qwen
