@@ -697,6 +697,28 @@ Ollama was not restarted; no new GPU kernel faults were observed. This repairs
 shared-GPU residency ownership and does **not** claim a driver fix.
 
 External inbound Telegram/Discord remains **DEFERRED/NOT TESTED**. Messaging
-acceptance uses the approved SYNTHETIC/INTERNAL boundary. Final documentation
-CI/merge and post-merge CI remain required before G starts. See the
+acceptance uses the approved SYNTHETIC/INTERNAL boundary. PR #63 merged as `245caef`; final CI and post-merge CI #35837338807 PASS.
+**Stage F COMPLETE.** Stage G can start. See the
 [production report](../reports/AI_PLATFORM_STAGE_F_PRODUCTION_GATE.md).
+
+### Stage G — implementation candidate
+
+WVC schemas, analysis profiles/services/policy, persistence and telemetry/delivery
+API live in `ai_bridge.domains.wvc`, composed through a domain adapter. Compatibility
+imports/routes and existing database schema/history are preserved. Scheduled empty
+windows return `skipped/no_fresh_data` without inference or a placeholder row.
+Fresh windows resume processing; inter-process serialization and existing unique
+identities prevent duplicate analysis. AI remains advisory-only. Production
+candidate/rollback/reactivation, GitHub CI and merge are still pending. See
+[domain architecture](WVC_DOMAIN.md) and [gate](../../deploy/stage-g/README.md).
+
+### Stage G — new GPU blocker, 2026-09-23
+
+Candidate `stage-g-7ccc9c14da33` and planned F rollback/full smoke passed. Actual
+WVC policy and installed timer returned `skipped/no_fresh_data`; historical hashes
+were preserved. Final reactivation smoke failed after a video at 11:21:36 CEST
+with MES WAIT_REG_MEM errors despite zero observed Ollama residents. **G BLOCKED;
+H NOT STARTED.** Verified F was restored with inference/media ingress paused,
+telemetry/history active, no GPU probes/restarts and all recovery evidence retained.
+F's completed historical validation is not a claim that the GPU driver is fixed.
+[Full incident and evidence](../reports/AI_PLATFORM_STAGE_G_PRODUCTION_GATE.md).

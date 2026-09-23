@@ -45,3 +45,42 @@ with the verified E Python to unload/free both providers, archives the latch, an
 only then activates the replacement. It never restarts Ollama. A failed cleanup
 leaves ingress closed. Do not restore or discard failed harness evidence merely
 because the render produced an artifact; cleanup is part of acceptance.
+
+For a new kernel fault during G, the same-boot `gpu-blocked.json` selects a paused
+containment branch in G's `40_rollback.sh`. It restores verified F service bytes and
+telemetry only; it never calls the GPU APIs, removes latches or starts inference
+ingress. This is not rollback acceptance or a successful smoke. Preserve the failed
+media evidence. After controlled host/GPU recovery, require fresh short inference,
+explicit unload and clean kernel evidence before resuming heavy-media validation.
+The September 23 GPU fault mechanism remains unresolved. Fresh G acceptance
+passed after physical cold recovery with `stage-g-fa6b31e5f7dc`; H may proceed only
+after the accepted G PR and post-merge CI pass. Any new fault blocks progression.
+
+## Cold-boot recovery and diagnostic configuration (2026-09-23)
+
+Never initiate a warm reboot on this host. SSH/Tailscale depend on Wi-Fi through
+MediaTek MT7925 (`wlp194s0`). Warm reboot has failed to restore host/network
+access; physical power removal and power-on restored it. This is an unresolved
+operational/platform issue; firmware, AGESA, PCIe or device reset behavior are
+possible explanations, not established root causes. On another MES/ring/reset/
+timeout, contain ingress, preserve evidence and verified F, and report that an
+operator physical power-cycle is required. Do not retry inference or reboot.
+
+The cold-boot diagnostic Gateway PID 10872 did not inherit systemd's environment.
+It used the default **zero-byte** idle allocator ceiling and a separate marker
+under `~/.local/state/ai-platform/`. ComfyUI's clean residual 65,011,712 bytes
+(62 MiB) cannot meet that ceiling; production's existing 67,108,864-byte ceiling
+was not applied. Do not raise either default or production threshold. Run managed
+Gateways with their actual unit configuration; archive diagnostic configuration
+along with provider evidence. Stage G's preflight has an explicit, boot-scoped
+handoff for this recorded diagnostic process, with pidfd identity checks, stopped
+producers, verified F, official quiesced recovery and zero-lease verification.
+It does not turn a failed media test into PASS.
+
+Cleanup polls all existing queue/model/pending-flag/allocator predicates within
+its original deadline. Idempotent `/free` wakeups have a read-only settling window
+(up to two seconds, bounded by one third of the transition budget), including a
+final window without new flags. HTTP acknowledgement alone never releases
+ownership. A timeout records the observed allocator ceiling, reserved bytes and
+residency evidence, latches blocked, and pins external use until explicit
+quiesced recovery. Later DELETE retries cannot reopen a blocked transition.

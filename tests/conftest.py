@@ -8,6 +8,12 @@ from ai_bridge.settings import Settings
 from ai_bridge.storage.models import Base
 
 
+@pytest.fixture(autouse=True)
+def isolated_gpu_marker(monkeypatch, tmp_path):
+    # Offline Gateway tests must never inherit or clear an operator's real latch.
+    monkeypatch.setenv("AI_BRIDGE_GATEWAY_GPU_MARKER", str(tmp_path / "gpu.blocked"))
+
+
 @pytest.fixture
 def client():
     application = create_app(

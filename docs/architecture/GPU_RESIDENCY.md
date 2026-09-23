@@ -89,3 +89,13 @@ new notification. RM retries the idempotent `/free` request within the same tota
 timeout, and requires the pending flags to clear. It never treats a fixed sleep,
 a successful POST, or zero models alone as cleanup completion. A production
 attempt demonstrated this condition and correctly remained fail-closed.
+
+## Residual GPU failure after successful isolation
+
+On September 23 at 11:21:36 CEST, G final validation produced MES WAIT_REG_MEM
+failures seven seconds after a video finished, with zero Ollama residents in all
+stable media observations. The guard contained ingress; verified F was restored
+without GPU probes or restarts. This demonstrates that the residency repair does
+not eliminate every GPU/media failure. The remaining mechanism is unresolved; do
+not claim a driver fix or silently relax cleanup requirements. See the
+[G incident](../reports/AI_PLATFORM_STAGE_G_PRODUCTION_GATE.md).

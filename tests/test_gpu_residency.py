@@ -285,3 +285,93 @@ async def test_cleanup_retries_lost_comfy_wakeup_until_acknowledged(tmp_path):
     await gpu.enter_media()
     await gpu.leave_media()
     assert len(frees) == 2 and gpu.state == 'llm' and not gpu.marker.exists()
+
+
+@pytest.mark.anyio
+async def test_delayed_cleanup_settles_without_rearming_and_releases_stale_use(tmp_path):
+    providers = Providers()
+    last_free = None
+    frees = []
+    loop = asyncio.get_running_loop()
+    def handle(request):
+        nonlocal last_free
+        if request.url.path == '/free':
+            last_free = loop.time()
+            frees.append(last_free)
+            providers.cleanup_pending = True
+        if request.url.path == '/ai-platform/residency' and last_free is not None:
+            # A worker needs a quiet interval to finish cache reset/GC.
+            providers.cleanup_pending = loop.time() - last_free < .02
+        return providers.handle(request)
+    client = httpx.AsyncClient(base_url='http://test', transport=httpx.MockTransport(handle))
+    gpu = GPUResidency(client, client, tmp_path / 'marker', timeout=.15, poll=.001)
+    scheduler = PriorityScheduler()
+    leases = ResourceLeaseRegistry(scheduler, ttl_seconds=.001, residency=gpu)
+    lease = await leases.create(priority=50, source='delayed-cleanup')
+    use = await leases.begin_external_use(lease['lease_id'], binding(scheduler.registry, 'comfyui-local', 'video-generation'))
+    # The worker has gone away/released its lease, but cleanup still owns it.
+    await leases.release(lease['lease_id'])
+    task = asyncio.create_task(leases.end_external_use(lease['lease_id'], use))
+    await asyncio.sleep(.005)
+    assert await leases.reap_expired() == 0
+    assert (await scheduler.snapshot())['active_count'] == 1
+    with pytest.raises(ResourceLeaseNotActive):
+        await leases.end_external_use(lease['lease_id'], use)
+    await task
+    assert len(frees) == 1
+    assert gpu.state == 'llm' and not gpu.marker.exists()
+    assert (await leases.snapshot())['lease_count'] == 0
+    assert (await scheduler.snapshot())['active_count'] == 0
+
+
+@pytest.mark.anyio
+async def test_late_authoritative_clean_in_final_read_only_window(tmp_path):
+    providers = Providers()
+    started = None
+    frees = []
+    loop = asyncio.get_running_loop()
+    def handle(request):
+        nonlocal started
+        if request.url.path == '/free':
+            started = started or loop.time()
+            frees.append(loop.time())
+        if request.url.path == '/ai-platform/residency' and started:
+            providers.cleanup_pending = loop.time() - started < .075
+        return providers.handle(request)
+    client = httpx.AsyncClient(base_url='http://test', transport=httpx.MockTransport(handle))
+    gpu = GPUResidency(client, client, tmp_path / 'marker', timeout=.12, poll=.001)
+    await gpu.enter_media()
+    await gpu.leave_media()
+    assert gpu.state == 'llm' and len(frees) == 2
+
+
+@pytest.mark.anyio
+async def test_late_clean_after_deadline_cannot_reopen_blocked_stale_use(tmp_path):
+    providers = Providers()
+    gpu, scheduler, leases = setup(tmp_path, providers)
+    lease = await leases.create(priority=50, source='failed-cleanup')
+    use = await leases.begin_external_use(lease['lease_id'], binding(scheduler.registry, 'comfyui-local', 'video-generation'))
+    providers.cleanup_pending = True
+    with pytest.raises(TimeoutError):
+        await leases.end_external_use(lease['lease_id'], use)
+    providers.cleanup_pending = False
+    await leases.release(lease['lease_id'])
+    with pytest.raises(Exception, match='requires recovery'):
+        await leases.end_external_use(lease['lease_id'], use)
+    assert await leases.reap_expired() == 0
+    assert gpu.marker.exists() and scheduler.admission_blocked
+    assert (await leases.snapshot())['lease_count'] == 1
+
+
+@pytest.mark.anyio
+async def test_diagnostic_zero_ceiling_explains_clean_models_but_timeout(tmp_path):
+    providers = Providers()
+    gpu, _, _ = setup(tmp_path, providers)
+    await gpu.enter_media()
+    providers.memory, providers.stuck = 65011712, True
+    with pytest.raises(TimeoutError):
+        await gpu.leave_media()
+    assert gpu.cleanup_evidence['reserved_bytes'] == [65011712]
+    assert gpu.cleanup_evidence['idle_reserve_bytes'] == 0
+    assert gpu.cleanup_evidence['residency']['cleanup_pending'] is False
+    assert gpu.state == 'blocked'
