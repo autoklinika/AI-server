@@ -85,7 +85,7 @@ print(json.dumps([str(Path(m.__file__).resolve()) for m in (ns['stage29'], ns['s
         for line in value.splitlines():
             if not line.startswith('EnvironmentFiles='):
                 continue
-            for filename, optional in re.findall(r'(\S+) \(ignore_errors=(yes|no)\)', line):
+            for filename, optional in re.findall(r'(\S+) \(ignore_errors=(yes|no)\)', line.removeprefix('EnvironmentFiles=')):
                 p = Path(filename)
                 if not p.exists() and optional == 'yes':
                     continue
