@@ -261,7 +261,7 @@ if __name__ == '__main__':
     try:
         outcome = main(sys.argv[1])
     except BaseException as error:
-        frames = [f for f in traceback.extract_tb(error.__traceback__) if f.filename == __file__]
-        print('GATE_FAIL=' + type(error).__name__ + ' location=' + '/'.join(f'{f.name}:{f.lineno}' for f in frames), file=sys.stderr)
+        frames = [f for f in traceback.extract_tb(error.__traceback__) if str(ROOT / 'deploy') in f.filename]
+        print('GATE_FAIL=' + type(error).__name__ + ' location=' + '/'.join(f'{Path(f.filename).name}:{f.name}:{f.lineno}' for f in frames), file=sys.stderr)
         raise SystemExit(1)
     print('BLOCKED_GPU: verified F restored; ingress remains paused; no GPU probes' if outcome == 'BLOCKED_GPU' else 'PASS: Stage G ' + sys.argv[1])
