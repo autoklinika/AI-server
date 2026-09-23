@@ -214,6 +214,7 @@ last cleanup evidence. Focused tests reproduce both delay and permanent failure.
 Warm reboot has failed to restore SSH/Tailscale access on the host's MediaTek
 MT7925 Wi-Fi (`wlp194s0`); physical power-cycle restores access. Root cause is
 unproven (firmware/AGESA/PCIe/device-reset possibilities). See the updated GPU
-runbook. This is not evidence of a driver fix. G remains unaccepted pending fresh
-isolated validation and all candidate/rollback/reactivation gates; H NOT STARTED.
+runbook. This is not evidence of a driver fix. At investigation, G remained
+unaccepted pending the fresh isolated/candidate/rollback/reactivation gates that
+subsequently passed above; H had not started.
 Local investigation evidence: `/home/harrypotter/agent-state/manual-eh/gpu-isolation-video/`.
