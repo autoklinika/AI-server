@@ -32,7 +32,8 @@ external pin and blocks dispatch. Neither DELETE lease nor TTL can revoke an
 external owner's GPU authority. A dirty marker survives Gateway restarts;
 restart cannot silently reopen admission. The marker defaults to
 `~/.local/state/ai-platform/gpu-residency.blocked` and may be configured through
-`AI_BRIDGE_GATEWAY_GPU_MARKER`. Transition timeout defaults to 90 seconds; media
+`AI_BRIDGE_GATEWAY_GPU_MARKER`. Production uses `/var/lib/ai-platform-gpu/residency.blocked`
+through a systemd `StateDirectory`, compatible with `ProtectHome` and `ProtectSystem`. Transition timeout defaults to 90 seconds; media
 clients allow 120 seconds. Status exposes the transition state and recovery flag.
 
 Only the Gateway may authorize local GPU work. Direct Ollama inference, model

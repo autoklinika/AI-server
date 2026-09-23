@@ -29,6 +29,7 @@ PATCHED = ('agent/turn_api_request.py', 'gateway/run_inbound.py', 'gateway/run_t
 ORIGINAL_PATCH_HASHES = {'agent/turn_api_request.py': 'a81c83b14d93f801a7082b0900111aa7345f0b3f42b2f50dba1f3d93a63f7405', 'gateway/run_inbound.py': '3d6ff79be1ae9f8ebcffb409260992ccff7e9673ed7a48c281f088cda7f9de8c', 'gateway/run_turn_runner.py': '7d59a9585e359f5ad3cc16bbd3b48e2cf30663fddec89a3422934644ccdbd476'}
 PLUGIN = HERMES / 'plugins/ai-platform-messaging'
 RESOURCE_CLIENT = Path('/usr/local/libexec/ai-server/hermes_resource_queue.py')
+GPU_UNIT = Path('/etc/systemd/system/ai-gateway.service.d/96-gpu-residency.conf')
 CONFIG = HERMES / 'config.yaml'
 e.D6 = BASE  # Existing client fingerprints are identical in the E baseline.
 require, run = e.require, e.run
@@ -91,6 +92,9 @@ def snapshot(state):
         subprocess.run(['runuser', '-u', name, '--', 'git', '-C', SOURCE, 'archive', PIN], stdout=stream, check=True)
     (recovery / 'dirty.patch').write_text(hermes_git(['diff', '--binary']) + '\n')
     paths = [CONFIG, RESOURCE_CLIENT, *[SOURCE / p for p in PATCHED]]
+    manifest['gpu_unit_existed'] = GPU_UNIT.exists()
+    if GPU_UNIT.exists():
+        paths.append(GPU_UNIT)
     for index, path in enumerate(paths):
         target = recovery / f'file-{index}'
         shutil.copy2(path, target)
@@ -188,6 +192,8 @@ def configure(candidate, state, baseline, rollback=False):
             expected_hash = e.read(state / 'installed.json')['plugin_hashes'][filename]
             require(e.digest(PLUGIN / filename) == expected_hash)
     if rollback:
+        if not manifest['gpu_unit_existed']:
+            GPU_UNIT.unlink(missing_ok=True)
         for path_string, info in manifest['files'].items():
             path = Path(path_string)
             atomic_restore(path, (recovery / info['copy']).read_bytes(), info['mode'], info['uid'], info['gid'])
@@ -198,6 +204,9 @@ def configure(candidate, state, baseline, rollback=False):
             shutil.copytree(PLUGIN, quarantine)
             shutil.rmtree(PLUGIN)
     else:
+        GPU_UNIT.parent.mkdir(parents=True, exist_ok=True)
+        atomic_restore(GPU_UNIT, (candidate / 'services/ai-bridge/deploy/systemd/stage-f/ai-gateway.service.d/96-gpu-residency.conf').read_bytes(),
+                       0o644, 0, 0)
         info = manifest['files'][str(RESOURCE_CLIENT)]
         atomic_restore(RESOURCE_CLIENT, (candidate / 'services/ai-bridge/tools/hermes_resource_queue.py').read_bytes(),
                        info['mode'], info['uid'], info['gid'])
@@ -231,6 +240,7 @@ def switch(target, candidate, state, baseline):
     # No ingress resume until both platform and matching Hermes configuration
     # validate. On any partial failure supervisor must invoke planned recovery.
     configure(candidate, state, baseline, rollback)
+    run(['systemctl', 'daemon-reload'])
     run(['systemctl', 'stop', 'ai-gateway.service', 'ai-bridge.service'])
     temporary = e.CURRENT.with_name('.stage-f-' + uuid4().hex)
     temporary.symlink_to(target)
