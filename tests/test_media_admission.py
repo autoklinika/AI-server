@@ -119,3 +119,44 @@ def test_legacy_media_client_workload_and_cleanup(monkeypatch):
             raise RuntimeError("failed")
     assert calls[-1][:2] == ("DELETE", "/resource/leases/lease/uses/use")
     lease.release()
+
+
+@pytest.mark.parametrize('token', ['', 'unknown'])
+def test_private_renderer_requires_live_external_use(monkeypatch, token):
+    from ai_bridge.providers.media_admission import require_external_media_use
+    monkeypatch.setenv('HERMES_RESOURCE_LEASE_ID', 'lease')
+    monkeypatch.setenv('HERMES_RESOURCE_USE_ID', token)
+    client_type = httpx.Client
+    monkeypatch.setattr(httpx, 'Client', lambda **kw: client_type(**kw, transport=httpx.MockTransport(lambda request: httpx.Response(409))))
+    with pytest.raises((MediaAdmissionError, httpx.HTTPStatusError)):
+        require_external_media_use('image-generation')
+
+
+def test_managed_image_renderer_never_calls_ollama_or_preloader(monkeypatch, tmp_path):
+    import io, json, runpy, urllib.request, subprocess, time
+    root = Path(__file__).resolve().parents[1]
+    ownership = []
+    monkeypatch.setattr('ai_bridge.providers.media_admission.require_external_media_use', lambda capability: ownership.append(capability))
+    monkeypatch.setattr(sys, 'argv', ['generate-image', 'synthetic gear'])
+    import builtins
+    original_open = builtins.open
+    monkeypatch.setattr(builtins, 'open', lambda path, *a, **kw: original_open(tmp_path / 'renderer.lock' if path == '/tmp/generate-image.lock' else path, *a, **kw))
+    monkeypatch.setattr(subprocess, 'run', lambda *a, **kw: pytest.fail('renderer must not run a model CLI or preload'))
+    monkeypatch.setattr(time, 'sleep', lambda _: None)
+    calls = []
+    def urlopen(request, **kw):
+        assert ownership == ['image-generation']
+        calls.append(request.full_url)
+        assert request.full_url.startswith('http://127.0.0.1:8188/')
+        if request.full_url.endswith('/prompt'):
+            value = {'prompt_id': 'test'}
+        elif '/history/' in request.full_url:
+            value = {'test': {'outputs': {'13': {'images': [{'filename': 'synthetic.png'}]}}}}
+        else:
+            value = {}
+        return io.BytesIO(json.dumps(value).encode())
+    monkeypatch.setattr(urllib.request, 'urlopen', urlopen)
+    with pytest.raises(SystemExit) as exit:
+        runpy.run_path(str(root / 'tools/local_image/generate_image.py'), run_name='__main__')
+    assert exit.value.code == 0
+    assert [url.rsplit('/', 1)[-1] for url in calls] == ['system_stats', 'prompt', 'test']

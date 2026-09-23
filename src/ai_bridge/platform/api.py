@@ -173,9 +173,10 @@ def create_platform_app(gateway, settings, policy=None):
                 ready = await gateway.state.platform_provider.ready()
         except Exception:
             ready = False
+        ready = ready and not snapshot["admission_blocked"]
         return envelope(request, status="ready" if ready else "degraded", liveness=True,
                         readiness=ready, components={"resource_manager": {
-                            "status": "ready", "active": snapshot["active_count"],
+                            "status": "blocked" if snapshot["admission_blocked"] else "ready", "active": snapshot["active_count"],
                             "queued": snapshot["queued_count"]},
                             "inference": {"status": "ready" if ready else "unavailable"}},
                         compatibility_health="not_probed")

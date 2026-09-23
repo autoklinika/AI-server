@@ -84,6 +84,7 @@ class PriorityScheduler:
         self._heap: list[tuple[int, int, int]] = []
         self._pending: dict[int, _PendingJob] = {}
         self._active: dict[int, SchedulerTicket] = {}
+        self.admission_blocked = False
 
     async def _enqueue(self, *, priority: int, source: str, metadata: JobMetadata | None = None) -> _PendingJob:
         metadata = metadata or JobMetadata()
@@ -261,6 +262,7 @@ class PriorityScheduler:
             )
             active = sorted(self._active.values(), key=lambda ticket: ticket.job_id)
             return {
+                "admission_blocked": self.admission_blocked,
                 "recent_jobs": [job.snapshot() for job in self._history.values()],
                 "max_concurrency": self.max_concurrency,
                 "max_queue_size": self.max_queue_size,
@@ -299,7 +301,17 @@ class PriorityScheduler:
 
     def _dispatch_locked(self) -> None:
         self._purge_cancelled_locked()
-        while len(self._active) < self.max_concurrency and self._heap:
+        while not self.admission_blocked and len(self._active) < self.max_concurrency and self._heap:
+            # Media-capable reservations are exclusive, including their prompt
+            # compilation phase. Preserve priority/FIFO and drain active slots
+            # before handing off; never bypass a waiting exclusive owner.
+            def media(job_id):
+                return any(w.provider == "comfyui-local" for w in self._jobs[job_id].workload)
+            next_id = self._heap[0][2]
+            if next_id in self._pending and self._active and (
+                media(next_id) or any(media(j) for j in self._active)
+            ):
+                break
             _priority, _sequence, job_id = heapq.heappop(self._heap)
             pending = self._pending.pop(job_id, None)
             if pending is None or pending.future.cancelled():

@@ -64,6 +64,8 @@ def test_i2v_prompt_is_fidelity_first_and_does_not_invent_camera(monkeypatch):
     assert "do not simultaneously demand that the background remain pixel-identical" in system
     assert "MOTION_LEVEL: normal" in user
     assert captured["payload"]["temperature"] == 0.05
+    assert captured["payload"]["reasoning_effort"] == "none"
+    assert captured["payload"]["max_tokens"] == 512
 
 
 def test_motion_levels_have_distinct_policies():

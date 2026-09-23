@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT=/opt/ai-platform/current/services/ai-bridge
+exec "$ROOT/.venv/bin/python" "$ROOT/tools/local_image/generate_image.py" "$@"

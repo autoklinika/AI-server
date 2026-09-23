@@ -269,8 +269,10 @@ async def test_leased_http_preserves_reservation_identity_and_ownership(stream, 
 async def test_idle_active_expiry_and_in_use_protection(monkeypatch):
     scheduler = PriorityScheduler(max_concurrency=2)
     registry = ResourceLeaseRegistry(scheduler, ttl_seconds=10)
-    idle = await registry.create(priority=50, source="idle")
-    busy = await registry.create(priority=50, source="busy")
+    from ai_bridge.gateway.admission import external_workload
+    metadata = JobMetadata(workload=external_workload(scheduler.registry, "llm"))
+    idle = await registry.create(priority=50, source="idle", metadata=metadata)
+    busy = await registry.create(priority=50, source="busy", metadata=metadata)
     await registry.begin_use(busy["lease_id"])
     monkeypatch.setattr("ai_bridge.gateway.resource_leases.monotonic", lambda: float("inf"))
     assert await registry.reap_expired() == 1

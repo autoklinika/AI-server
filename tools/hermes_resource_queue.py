@@ -317,14 +317,20 @@ def media_admission(capability: str):
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", lease_id):
         raise ResourceQueueError("active resource lease required")
     path = f"/resource/leases/{lease_id}/uses"
-    created = _json("POST", path, {"provider": "comfyui-local", "capability": capability})
+    created = _json("POST", path, {"provider": "comfyui-local", "capability": capability}, timeout=120)
     use_id = created.get("use_id")
     if not isinstance(use_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", use_id):
         raise ResourceQueueError("invalid resource use response")
+    previous_use = os.environ.get("HERMES_RESOURCE_USE_ID")
+    os.environ["HERMES_RESOURCE_USE_ID"] = use_id
     try:
         yield
     finally:
+        if previous_use is None:
+            os.environ.pop("HERMES_RESOURCE_USE_ID", None)
+        else:
+            os.environ["HERMES_RESOURCE_USE_ID"] = previous_use
         try:
-            _json("DELETE", f"{path}/{use_id}")
+            _json("DELETE", f"{path}/{use_id}", timeout=120)
         except Exception:
-            pass  # Lease release/TTL retains crash-safe ownership cleanup.
+            raise ResourceQueueError("media cleanup failed; GPU admission remains closed")

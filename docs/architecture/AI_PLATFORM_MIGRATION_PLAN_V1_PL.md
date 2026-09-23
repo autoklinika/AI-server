@@ -650,3 +650,53 @@ CI źródła: 764 tests PASS. D.0/D.6 i matched clients zachowane.
 [diagnoza i naprawa gate](../reports/AI_PLATFORM_STAGE_E_RECOVERY_2026-09-22.md).
 Stage F wymaga świeżego inbound multiuser i pełnych messaging/media user paths;
 dowody Stage E nie zastępują tych kryteriów.
+
+
+### Stage F — prerequisite gate 2026-09-23
+
+**BLOCKED przed implementacją i deploymentem**: brak provisioned external-user
+E2E harness / uczestników do świeżego Telegram multiuser i messaging user-path gate.
+Stage E COMPLETE (PR #53, final i post-merge CI PASS); aktywny release pozostaje
+`stage-e-38fff86f7704`. Stage G/H NOT STARTED.
+[Dowody i warunki wznowienia](../reports/AI_PLATFORM_STAGE_F_PREREQUISITE_BLOCKER_2026-09-23.md).
+
+### Stage F — approved internal evidence boundary, 2026-09-23
+
+The operator superseded the human-participant prerequisite with controlled
+SYNTHETIC/INTERNAL E2E on AI Server. Two independent Telegram-like contexts and
+analogous Discord-like contexts must exercise every changed internal boundary:
+request/job correlation, isolation/routing, WAIT→START, media command context,
+Resource Manager leases/admission, Hermes integration, artifacts and idle recovery.
+Use real local production components where safe. External Telegram/Discord inbound
+transport remains DEFERRED/NOT TESTED, never PASS. This boundary plus passing
+production compatibility tests is sufficient for F acceptance and sequential G/H.
+Historical D.6 external-user evidence remains historical only.
+
+A stable candidate stays active while repairable validation issues are corrected.
+Rollback is required for unsafe/degraded/uncertain runtime or the mandatory planned
+rollback test, rather than automatically after every failed assertion. Stage F
+implementation/review is in progress; completion still requires the full production,
+rollback/reactivation, Git/PR/CI/merge sequence.
+
+### Stage F — GPU incident, 2026-09-23
+
+F remains draft: pre-existing AMD MES ring-full errors prevent real inference even
+after a guarded model-service restart. E source/release retained; inference ingress
+paused, telemetry/history and idle Comfy preserved. G/H NOT STARTED. See
+[incident and resumption requirements](../reports/AI_PLATFORM_STAGE_F_GPU_BLOCKER_2026-09-23.md).
+External transport deferral is not the blocker. Internal harness review gaps and the
+full candidate/rollback/reactivation cycle remain required after host GPU recovery.
+
+### Stage F — post-reboot residency validation, 2026-09-23
+
+Production gate **PASS** for `stage-f-d8f68cadd953`: 799 local tests, immutable
+build/install, kernel-guarded candidate smoke, planned E rollback/smoke, F
+reactivation/full smoke and finalize. Eight real media jobs across two independent
+internal E2E cycles verified Ollama drainage, Comfy cleanup and later Qwen inference.
+Ollama was not restarted; no new GPU kernel faults were observed. This repairs
+shared-GPU residency ownership and does **not** claim a driver fix.
+
+External inbound Telegram/Discord remains **DEFERRED/NOT TESTED**. Messaging
+acceptance uses the approved SYNTHETIC/INTERNAL boundary. Final documentation
+CI/merge and post-merge CI remain required before G starts. See the
+[production report](../reports/AI_PLATFORM_STAGE_F_PRODUCTION_GATE.md).
