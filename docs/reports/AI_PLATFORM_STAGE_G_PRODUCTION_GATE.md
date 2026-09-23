@@ -3,7 +3,8 @@
 Status: **Production acceptance PASS after operator cold-boot recovery.** Accepted
 release `stage-g-fa6b31e5f7dc`, source `fa6b31e5f7dcc7a67fe1928e7bf099f2256225c2`,
 [PR #64](https://github.com/autoklinika/AI-server/pull/64). Finalized at approximately
-13:27 CEST on 2026-09-23. Merge and post-merge CI are tracked below. H has not started.
+13:27 CEST on 2026-09-23. PR #64 merged as `7b73598f198444edd414d8fcc816fdf94fcd98f8`; post-merge
+CI passed before H began.
 Verified rollback target remains `stage-f-d8f68cadd953`. The earlier candidate
 `stage-g-7ccc9c14da33` remains rejected; its incident/evidence is retained below.
 
@@ -22,7 +23,7 @@ Verified rollback target remains `stage-f-d8f68cadd953`. The earlier candidate
 | Finalize | PASS: all three accepted phase records and history hashes verified |
 | External inbound Telegram/Discord | DEFERRED/NOT TESTED; Hermes user service remains stopped |
 | Physical WVC/CM5 reconnection | NOT TESTED |
-| Merge/post-merge CI | Pending documentation CI and merge |
+| Merge/post-merge CI | PR #64 merged; [35855156672](https://github.com/autoklinika/AI-server/actions/runs/35855156672) PASS |
 
 All three fresh smoke phases verify unchanged provider identities (Ollama PID
 2975, ComfyUI PID 2968) and no new production-parser kernel matches through their
