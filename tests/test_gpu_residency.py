@@ -165,3 +165,17 @@ async def test_http_external_use_runs_real_transition_and_repeated_cleanup(tmp_p
             assert response.status_code == 200 and response.json()['released']
         assert (await client.get('/status')).json()['gpu_residency']['state'] == 'llm'
         await client.delete(f"/resource/leases/{lease['lease_id']}")
+
+
+@pytest.mark.anyio
+async def test_restart_marker_degrades_health_and_keeps_requests_queued(tmp_path):
+    from test_gateway_priority_classes import api_client, make_app
+    marker = tmp_path / 'dirty'
+    marker.write_text('uncertain GPU ownership')
+    app = make_app(gateway_gpu_marker=marker)
+    async with api_client(app) as client:
+        assert (await client.get('/health')).json()['status'] == 'degraded'
+        lease = (await client.post('/resource/leases', json={'workload': 'llm'})).json()
+        assert lease['state'] == 'queued'
+        assert (await client.get('/status')).json()['gpu_residency']['recovery_required']
+        await client.delete(f"/resource/leases/{lease['lease_id']}")

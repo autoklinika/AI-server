@@ -425,7 +425,8 @@ def create_gateway_app(
             ollama = "unavailable"
         snapshot = await scheduler.snapshot()
         return {
-            "status": "ok" if ollama == "ok" else "degraded",
+            "status": "ok" if ollama == "ok" and not scheduler.admission_blocked else "degraded",
+            "gpu_residency": resource_leases.residency.snapshot(),
             "ollama": ollama,
             "scheduler": snapshot,
         }
