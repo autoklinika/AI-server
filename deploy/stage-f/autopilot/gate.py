@@ -31,6 +31,7 @@ ORIGINAL_PATCH_HASHES = {'agent/turn_api_request.py': 'a81c83b14d93f801a7082b090
 PLUGIN = HERMES / 'plugins/ai-platform-messaging'
 RESOURCE_CLIENT = Path('/usr/local/libexec/ai-server/hermes_resource_queue.py')
 GPU_UNIT = Path('/etc/systemd/system/ai-gateway.service.d/96-gpu-residency.conf')
+IMAGE_BINARIES = ('generate-image', 'generate-image-edit')
 CONFIG = HERMES / 'config.yaml'
 e.D6 = BASE  # Existing client fingerprints are identical in the E baseline.
 require, run = e.require, e.run
@@ -44,7 +45,13 @@ def clients():
     try:
         current = e.CURRENT.resolve()
         e.D6 = current if current.name.startswith('stage-f-') else BASE
-        return _original_clients()
+        result = _original_clients()
+        for name in IMAGE_BINARIES:
+            expected = current / 'services/ai-bridge/deploy/stage-f/bin' / name
+            if expected.exists():
+                actual = Path('/usr/local/bin') / name
+                require(actual.read_bytes() == expected.read_bytes())
+        return result
     finally:
         e.D6 = previous
 
@@ -98,7 +105,8 @@ def snapshot(state):
     with (recovery / 'upstream.tar').open('xb') as stream:
         subprocess.run(['runuser', '-u', name, '--', 'git', '-C', SOURCE, 'archive', PIN], stdout=stream, check=True)
     (recovery / 'dirty.patch').write_text(hermes_git(['diff', '--binary']) + '\n')
-    paths = [CONFIG, RESOURCE_CLIENT, *[SOURCE / p for p in PATCHED]]
+    paths = [CONFIG, RESOURCE_CLIENT, *[SOURCE / p for p in PATCHED],
+             *[Path('/usr/local/bin') / name for name in IMAGE_BINARIES]]
     manifest['gpu_unit_existed'] = GPU_UNIT.exists()
     if GPU_UNIT.exists():
         paths.append(GPU_UNIT)
@@ -209,6 +217,11 @@ def configure(candidate, state, baseline, rollback=False):
             shutil.copytree(PLUGIN, quarantine)
             shutil.rmtree(PLUGIN)
     else:
+        for name in IMAGE_BINARIES:
+            binary = Path('/usr/local/bin') / name
+            info = manifest['files'][str(binary)]
+            atomic_restore(binary, (candidate / 'services/ai-bridge/deploy/stage-f/bin' / name).read_bytes(),
+                           info['mode'], info['uid'], info['gid'])
         GPU_UNIT.parent.mkdir(parents=True, exist_ok=True)
         atomic_restore(GPU_UNIT, (candidate / 'services/ai-bridge/deploy/systemd/stage-f/ai-gateway.service.d/96-gpu-residency.conf').read_bytes(),
                        0o644, 0, 0)
@@ -233,20 +246,86 @@ def configure(candidate, state, baseline, rollback=False):
         require(not hermes_git(['status', '--porcelain']))
 
 
+def require_no_media_workers():
+    for proc in Path('/proc').iterdir():
+        if not proc.name.isdigit():
+            continue
+        try:
+            argv = (proc / 'cmdline').read_bytes().split(b'\0')
+        except FileNotFoundError:
+            continue
+        if any(b'--child-worker' == arg or b'--worker' == arg for arg in argv):
+            require(not any(b'hermes_foto' in arg or b'hermes_video' in arg or b'internal_e2e.py' in arg for arg in argv))
+
+
+def require_kernel_clear():
+    spec = importlib.util.spec_from_file_location('stage_f_gpu_check', ROOT / 'deploy/stage-f/gpu_watch.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    kernel = run(['journalctl', '-k', '-b', '--no-pager', '-o', 'cat'])
+    require(not module.GPU_ERROR.search(kernel))
+
+
+def recover_gpu_quiesced(state):
+    # Known-good E Python plus reviewed controller source; never execute a
+    # failed candidate. Both ingress and Gateway are stopped, workers reaped.
+    marker = Path('/var/lib/ai-platform-gpu/residency.blocked')
+    temporary_marker = state / ('quiesced-gpu-' + uuid4().hex)
+    script = """
+import asyncio, sys
+from pathlib import Path
+import httpx
+from ai_bridge.gateway.residency import GPUResidency
+async def recover():
+    async with httpx.AsyncClient(base_url='http://127.0.0.1:11434', timeout=90, trust_env=False) as ollama, httpx.AsyncClient(base_url='http://127.0.0.1:8188', timeout=10, trust_env=False) as comfy:
+        gpu = GPUResidency(ollama, comfy, Path(sys.argv[1]), idle_reserve_bytes=33554432)
+        await gpu.enter_media()
+        await gpu.leave_media()
+asyncio.run(recover())
+"""
+    run([BASE / 'services/ai-bridge/.venv/bin/python', '-c', script, temporary_marker],
+        timeout=200, env={**os.environ, 'PYTHONPATH': str(ROOT / 'src')})
+    require_kernel_clear()
+    if marker.exists():
+        shutil.copy2(marker, state / ('recovered-marker-' + uuid4().hex))
+        marker.unlink()
+
+
+def messaging_boundary_smoke(model):
+    ids = []
+    for source in ('telegram-synthetic-a', 'telegram-synthetic-b', 'discord-synthetic'):
+        result, headers = e.fetch(e.GATEWAY + '/clients/hermes/v1/chat/completions',
+            {'model': model, 'messages': [{'role': 'user', 'content': 'Return OK.'}],
+             'stream': False, 'max_tokens': 32, 'reasoning_effort': 'none'}, with_headers=True)
+        require(bool(result['choices'][0]['message']['content'].strip()))
+        ids.append(headers['X-AI-Job-Id'])
+    require(len(set(ids)) == 3)
+    name, uid, home = e.hermes_account()
+    for platform in ('telegram', e.discord_smoke_target()):
+        delivery = json.loads(run(['runuser', '-u', name, '--', 'env', f'HOME={home}',
+            'HERMES_HOME=/srv/ai-data/hermes', f'XDG_RUNTIME_DIR=/run/user/{uid}',
+            Path(home) / '.local/bin/hermes', 'send', '--to', platform, '--quiet', '--json',
+            '[AI Platform Stage F] automated outbound compatibility probe ' + uuid4().hex[:8]], timeout=60))
+        require(delivery.get('success') is True and not delivery.get('skipped') and not delivery.get('error'))
+
+
 def switch(target, candidate, state, baseline):
     rollback = target == BASE
-    require(e.CURRENT.resolve() in (BASE, candidate))
+    require(e.CURRENT.resolve() in (BASE, candidate, Path(baseline.get('previous_candidate', str(BASE)))))
     verify_release(target)
     if not rollback:
         e.clients()  # Rollback validates the snapshot, never the failed candidate.
-    e.quiesce(baseline, allow_gateway_unavailable=rollback)
+    recovering = bool(baseline.get('previous_candidate'))
+    e.quiesce(baseline, allow_gateway_unavailable=rollback or recovering)
     e.require_hermes_stopped()
     e.comfy_idle()
+    require_no_media_workers()
     # No ingress resume until both platform and matching Hermes configuration
     # validate. On any partial failure supervisor must invoke planned recovery.
     configure(candidate, state, baseline, rollback)
     run(['systemctl', 'daemon-reload'])
     run(['systemctl', 'stop', 'ai-gateway.service', 'ai-bridge.service'])
+    recover_gpu_quiesced(state)
     temporary = e.CURRENT.with_name('.stage-f-' + uuid4().hex)
     temporary.symlink_to(target)
     os.replace(temporary, e.CURRENT)
@@ -278,7 +357,7 @@ def _smoke(phase, target, candidate, state, baseline):
     e.api_smoke(e.config())
     e.wvc_smoke()
     e.hermes_oneshot_smoke()
-    e.messaging_boundary_smoke()
+    messaging_boundary_smoke(harness.configured_hermes_model(CONFIG))
     if target == candidate:
         require(not hermes_git(['status', '--porcelain']))
         e.quiesce(baseline)
@@ -415,6 +494,43 @@ def recover_unmodified_baseline(sha):
         'model_inference': 'PENDING separate bounded probe'})
 
 
+def repair_baseline(state, sha):
+    require_kernel_clear()
+    previous = e.CURRENT.resolve()
+    require(previous.name.startswith('stage-f-'))
+    previous_sha = verify_release(previous)['source_git_sha']
+    previous_state = STATE / previous_sha
+    original = e.read(previous_state / 'baseline.json')
+    recovery, manifest = verify_snapshot(previous_state, original)
+    require_no_media_workers()
+    e.quiesce(original, allow_gateway_unavailable=True)
+    e.require_hermes_stopped()
+    e.comfy_idle()
+    e.clients()
+    state.mkdir(mode=0o700)
+    copied = state / 'hermes-recovery'
+    shutil.copytree(recovery, copied)
+    # Earlier snapshots archived these binaries but did not list standalone
+    # copies. Recover exact bytes/stat from the checksum-verified archive.
+    copied.chmod(0o700)
+    with tarfile.open(copied / 'config-state-integration.tar') as archive:
+        for name in IMAGE_BINARIES:
+            binary = '/usr/local/bin/' + name
+            if binary in manifest['files']:
+                continue
+            member = archive.getmember('integration/bin/' + name)
+            target = copied / ('original-' + name)
+            target.write_bytes(archive.extractfile(member).read())
+            target.chmod(0o400)
+            manifest['files'][binary] = {'copy': target.name, 'sha256': e.digest(target),
+                'mode': member.mode, 'uid': member.uid, 'gid': member.gid}
+            manifest['archives'][target.name] = e.digest(target)
+    atomic_restore(copied / 'manifest.json', json.dumps(manifest, sort_keys=True).encode(), 0o400, 0, 0)
+    copied.chmod(0o500)
+    return {**original, 'source_sha': sha, 'previous_candidate': str(previous),
+            'hermes_snapshot': e.digest(copied / 'manifest.json')}
+
+
 def main(step):
     sha = e.git_run(['rev-parse', 'HEAD'])
     candidate = Path('/opt/ai-platform/releases') / ('stage-f-' + sha[:12])
@@ -430,14 +546,17 @@ def main(step):
             recover_unmodified_baseline(sha)
             return
         if step == '10_build_install':
-            preflight()
             require(not state.exists() and not candidate.exists())
-            state.mkdir(mode=0o700)
-            baseline = {'source_sha': sha, 'rollback': BASE.name, 'clients': e.clients(),
-                'comfy': e.identity('comfyui.service'), 'hermes_active': 'active',
-                'analysis_timer_active': run(['systemctl', 'show', 'ai-bridge-analysis.timer', '-p', 'ActiveState', '--value']),
-                'rollback_checksums': e.digest(BASE / 'metadata/SHA256SUMS')}
-            baseline['hermes_snapshot'] = snapshot(state)
+            if e.CURRENT.resolve() != BASE:
+                baseline = repair_baseline(state, sha)
+            else:
+                preflight()
+                state.mkdir(mode=0o700)
+                baseline = {'source_sha': sha, 'rollback': BASE.name, 'clients': e.clients(),
+                    'comfy': e.identity('comfyui.service'), 'hermes_active': 'active',
+                    'analysis_timer_active': run(['systemctl', 'show', 'ai-bridge-analysis.timer', '-p', 'ActiveState', '--value']),
+                    'rollback_checksums': e.digest(BASE / 'metadata/SHA256SUMS')}
+                baseline['hermes_snapshot'] = snapshot(state)
             e.write_once(state / 'baseline.json', baseline)
             run(['bash', ROOT / 'deploy/stage-f/build_release.sh', candidate, candidate.name],
                 timeout=1800, env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'})

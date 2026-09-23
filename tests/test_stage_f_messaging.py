@@ -135,6 +135,8 @@ def test_failed_configuration_never_switches_or_reopens_ingress(monkeypatch, tmp
     monkeypatch.setattr(gate.e, 'quiesce', lambda *a, **k: actions.append('quiesce'))
     monkeypatch.setattr(gate.e, 'require_hermes_stopped', lambda: None)
     monkeypatch.setattr(gate.e, 'comfy_idle', lambda: None)
+    monkeypatch.setattr(gate, 'require_no_media_workers', lambda: None)
+    monkeypatch.setattr(gate, 'recover_gpu_quiesced', lambda state: None)
     def fail(*a):
         raise RuntimeError('configuration validation failed')
     monkeypatch.setattr(gate, 'configure', fail)
@@ -202,6 +204,8 @@ def test_rollback_never_requires_healthy_candidate(monkeypatch, tmp_path):
     monkeypatch.setattr(gate.e, 'quiesce', lambda b, **kw: actions.append(('quiesce', kw)))
     monkeypatch.setattr(gate.e, 'require_hermes_stopped', lambda: None)
     monkeypatch.setattr(gate.e, 'comfy_idle', lambda: None)
+    monkeypatch.setattr(gate, 'require_no_media_workers', lambda: None)
+    monkeypatch.setattr(gate, 'recover_gpu_quiesced', lambda state: None)
     monkeypatch.setattr(gate, 'configure', lambda c, s, b, rollback: actions.append(('restore', rollback)))
     monkeypatch.setattr(gate, 'run', lambda *a, **kw: None)
     monkeypatch.setattr(gate.e, 'config', lambda: {})

@@ -14,9 +14,10 @@ class ResidencyError(RuntimeError):
 
 class GPUResidency:
     def __init__(self, ollama: httpx.AsyncClient, comfy: httpx.AsyncClient,
-                 marker: Path, *, timeout: float = 90, poll: float = .25):
+                 marker: Path, *, timeout: float = 90, poll: float = .25, idle_reserve_bytes: int = 0):
         self.ollama, self.comfy = ollama, comfy
         self.marker, self.timeout, self.poll = marker, timeout, poll
+        self.idle_reserve_bytes = idle_reserve_bytes
         self.state = "blocked" if marker.exists() else "llm"
 
     def snapshot(self):
@@ -79,10 +80,12 @@ class GPUResidency:
                     devices = (await self._json(self.comfy, "/system_stats"))["devices"]
                     if not isinstance(devices, list) or not devices:
                         raise ResidencyError("missing ComfyUI memory evidence")
-                    if all(type(d["torch_vram_total"]) is int and d["torch_vram_total"] == 0 for d in devices):
+                    if all(type(d["torch_vram_total"]) is int and 0 <= d["torch_vram_total"] <= self.idle_reserve_bytes for d in devices):
                         break
                     await asyncio.sleep(self.poll)
                 await self._idle()
+                if (await self._json(self.ollama, "/api/ps"))["models"] != []:
+                    raise ResidencyError("Ollama reloaded outside Resource Manager")
             self.marker.unlink()
             self.state = "llm"
         except BaseException:

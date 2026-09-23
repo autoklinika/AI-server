@@ -42,3 +42,16 @@ def media_admission(capability: str):
                 client.delete(f"{path}/{use_id}").raise_for_status()
             except httpx.HTTPError as exc:
                 raise MediaAdmissionError("media cleanup failed; GPU admission remains closed") from exc
+
+
+def require_external_media_use(capability: str):
+    """Private renderer entrypoint: it must inherit the RM's external-use token."""
+    lease = os.environ.get("HERMES_RESOURCE_LEASE_ID", "")
+    use = os.environ.get("HERMES_RESOURCE_USE_ID", "")
+    if not all(re.fullmatch(r"[A-Za-z0-9_-]{1,128}", value) for value in (lease, use)):
+        raise MediaAdmissionError("managed external GPU ownership required")
+    with httpx.Client(base_url="http://127.0.0.1:11435", timeout=5, trust_env=False) as client:
+        response = client.get(f"/resource/leases/{lease}/uses/{use}")
+        response.raise_for_status()
+        if response.json() != {"provider": "comfyui-local", "capability": capability}:
+            raise MediaAdmissionError("external GPU ownership mismatch")

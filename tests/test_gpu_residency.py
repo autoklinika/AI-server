@@ -179,3 +179,46 @@ async def test_restart_marker_degrades_health_and_keeps_requests_queued(tmp_path
         assert lease['state'] == 'queued'
         assert (await client.get('/status')).json()['gpu_residency']['recovery_required']
         await client.delete(f"/resource/leases/{lease['lease_id']}")
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize('memory,success', [(33554432, True), (33554433, False)])
+async def test_only_explicit_bounded_workspace_survives_cleanup(tmp_path, memory, success):
+    providers = Providers()
+    gpu, scheduler, leases = setup(tmp_path, providers)
+    gpu.idle_reserve_bytes = 33554432
+    await gpu.enter_media()
+    providers.memory, providers.stuck = memory, True
+    if success:
+        await gpu.leave_media()
+        assert gpu.state == 'llm'
+    else:
+        with pytest.raises(TimeoutError):
+            await gpu.leave_media()
+        assert gpu.state == 'blocked'
+
+
+@pytest.mark.anyio
+async def test_unmanaged_ollama_reload_prevents_reopening(tmp_path):
+    providers = Providers()
+    gpu, scheduler, leases = setup(tmp_path, providers)
+    await gpu.enter_media()
+    providers.models = [{'name': 'rogue-preload'}]
+    with pytest.raises(Exception, match='reloaded outside'):
+        await gpu.leave_media()
+    assert gpu.state == 'blocked' and gpu.marker.exists()
+
+
+@pytest.mark.anyio
+async def test_renderer_token_is_only_valid_during_owned_media_phase(tmp_path):
+    from test_gateway_unified_admission import media_app
+    from test_gateway_priority_classes import api_client
+    async with api_client(media_app(tmp_path)) as client:
+        lease = (await client.post('/resource/leases', json={'workload': 'media-image'})).json()
+        path = f"/resource/leases/{lease['lease_id']}/uses"
+        assert (await client.get(path + '/unknown')).status_code == 409
+        use = (await client.post(path, json={'provider': 'comfyui-local', 'capability': 'image-generation'})).json()['use_id']
+        assert (await client.get(path + '/' + use)).json() == {'provider': 'comfyui-local', 'capability': 'image-generation'}
+        await client.delete(path + '/' + use)
+        assert (await client.get(path + '/' + use)).status_code == 409
+        await client.delete(f"/resource/leases/{lease['lease_id']}")

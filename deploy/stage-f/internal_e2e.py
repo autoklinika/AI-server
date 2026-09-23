@@ -216,90 +216,99 @@ async def exercise(output, media_enabled):
     artifacts = []
     if media_enabled:
         actual_spawn = asyncio.create_subprocess_exec
-        if True:
-            root = Path(tempfile.mkdtemp(prefix='stage-f-internal-media-'))
-            groups = []
-            async def spawn(binary, args, **kwargs):
-                assert binary in ('/usr/local/bin/hermes-foto-dispatch', '/usr/local/bin/hermes-video-dispatch')
-                command = 'foto' if 'foto' in binary else 'wideo'
-                env = kwargs['env']
-                assert env['HERMES_SESSION_CHAT_ID'].startswith('synthetic-')
-                env.update(AI_INTERNAL_SINK=str(root / 'deliveries.jsonl'),
-                           HERMES_FOTO_JOB_ROOT=str(root / 'foto'), HERMES_VIDEO_JOB_ROOT=str(root / 'wideo'))
-                kwargs['start_new_session'] = True
-                process = await actual_spawn(sys.executable, __file__, '--child-dispatch', command, args, **kwargs)
-                groups.append(process.pid)
-                return process
-            asyncio.create_subprocess_exec = spawn
-            try:
-                # Both platforms exercise both commands using independent origins.
-                for index, source in enumerate(sources):
-                    command = 'foto' if index % 2 == 0 else 'wideo'
-                    prompt = 'A small metal gear on a clean workbench.'
-                    args = prompt if command == 'foto' else '1s ' + prompt
-                    media_paths = [previous_image] if index > 0 else []
-                    event = MessageEvent(text=f'/{command} {args}', source=source,
-                                         media_urls=media_paths, media_types=['image/png'] if media_paths else [])
-                    runner._hm_pre_gateway_dispatch_hook(event, source)
-                    # Actual Hermes command handler dispatch, with quick commands
-                    # empty as installed by Stage F; no fabricated inbound transport.
-                    handled, reply, _ = await runner._hm_dispatch_quick_and_plugin_commands(event, source, command)
-                    assert handled and reply and 'Przyjęto' in reply
-                    deadline = time.monotonic() + 2400
-                    while True:
-                        results = list(root.glob('*/*/result.json'))
-                        if len(results) == index + 1:
-                            latest = max(results, key=lambda p: p.stat().st_mtime_ns)
-                            result = json.loads(latest.read_text())
-                            assert result.get('ok') is True, 'production media worker failed'
-                            assert result.get('qwen_used') is True, 'prompt compiler fallback is not a PASS'
-                            if command == 'foto':
-                                previous_image = result['path']
-                            else:
-                                assert result['mode'] == 'i2v' and result.get('input_image')
-                            assert result['target'] == plugin.route(source)
-                            break
-                        assert time.monotonic() < deadline, 'media worker timeout'
-                        await asyncio.sleep(2)
-                    for attempt in range(30):
-                        try:
-                            idle()
-                            break
-                        except AssertionError:
-                            if attempt == 29:
-                                raise
-                            await asyncio.sleep(1)
-                deliveries = [json.loads(line) for line in (root / 'deliveries.jsonl').read_text().splitlines()]
-                artifacts = [d for d in deliveries if d['kind'] == 'media']
-                assert len(artifacts) == 4 and {d['target'] for d in artifacts} == {plugin.route(s) for s in sources}
-                # Only generated artifacts evidenced in this controlled run are removed.
-                for artifact in artifacts:
-                    path = Path(artifact.pop('path'))
-                    assert hashlib.sha256(path.read_bytes()).hexdigest() == artifact['sha256']
-                    path.unlink()
-                    assert not path.exists()
-            finally:
-                asyncio.create_subprocess_exec = actual_spawn
-                # Linux subreaper owns detached grandchildren. Stop every known
-                # process group and reap them before inspecting RM/Comfy state.
-                for group in groups:
+        root = Path(tempfile.mkdtemp(prefix='stage-f-internal-media-'))
+        groups = []
+        input_fixtures = []
+        async def spawn(binary, args, **kwargs):
+            assert binary in ('/usr/local/bin/hermes-foto-dispatch', '/usr/local/bin/hermes-video-dispatch')
+            command = 'foto' if 'foto' in binary else 'wideo'
+            env = kwargs['env']
+            assert env['HERMES_SESSION_CHAT_ID'].startswith('synthetic-')
+            env.update(AI_INTERNAL_SINK=str(root / 'deliveries.jsonl'),
+                       HERMES_FOTO_JOB_ROOT=str(root / 'foto'), HERMES_VIDEO_JOB_ROOT=str(root / 'wideo'))
+            kwargs['start_new_session'] = True
+            process = await actual_spawn(sys.executable, __file__, '--child-dispatch', command, args, **kwargs)
+            groups.append(process.pid)
+            return process
+        asyncio.create_subprocess_exec = spawn
+        try:
+            # Both platforms exercise both commands using independent origins.
+            for index, source in enumerate(sources):
+                command = 'foto' if index % 2 == 0 else 'wideo'
+                prompt = 'A small metal gear on a clean workbench.'
+                args = prompt if command == 'foto' else '1s ' + prompt
+                media_paths = [previous_image] if index > 0 else []
+                event = MessageEvent(text=f'/{command} {args}', source=source,
+                                     media_urls=media_paths, media_types=['image/png'] if media_paths else [])
+                runner._hm_pre_gateway_dispatch_hook(event, source)
+                # Actual Hermes command handler dispatch, with quick commands
+                # empty as installed by Stage F; no fabricated inbound transport.
+                handled, reply, _ = await runner._hm_dispatch_quick_and_plugin_commands(event, source, command)
+                assert handled and reply and 'Przyjęto' in reply
+                deadline = time.monotonic() + 2400
+                while True:
+                    results = list(root.glob('*/*/result.json'))
+                    if len(results) == index + 1:
+                        latest = max(results, key=lambda p: p.stat().st_mtime_ns)
+                        result = json.loads(latest.read_text())
+                        assert result.get('ok') is True, 'production media worker failed'
+                        assert result.get('qwen_used') is True, 'prompt compiler fallback is not a PASS'
+                        if command == 'foto':
+                            cached = Path('/srv/ai-data/hermes/cache/images') / ('stage-f-synthetic-' + uuid4().hex + '.png')
+                            cached.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copyfile(result['path'], cached)
+                            previous_image = str(cached)
+                            input_fixtures.append({'path': str(cached), 'sha256': hashlib.sha256(cached.read_bytes()).hexdigest()})
+                            (root / 'input-fixtures.json').write_text(json.dumps(input_fixtures))
+                        else:
+                            assert result['mode'] == 'i2v' and result.get('input_image')
+                        assert result['target'] == plugin.route(source)
+                        break
+                    assert time.monotonic() < deadline, 'media worker timeout'
+                    await asyncio.sleep(2)
+                for attempt in range(30):
                     try:
-                        os.killpg(group, signal.SIGTERM)
-                    except ProcessLookupError:
-                        pass
-                for group in groups:
-                    deadline = time.monotonic() + 10
-                    while True:
-                        try:
-                            pid, _ = os.waitpid(-group, os.WNOHANG)
-                        except ChildProcessError:
-                            break
-                        if pid == 0:
-                            if time.monotonic() > deadline:
-                                os.killpg(group, signal.SIGKILL)
-                            await asyncio.sleep(.1)
-                idle()  # Failure retains root and its evidence for recovery.
-            shutil.rmtree(root)
+                        idle()
+                        break
+                    except AssertionError:
+                        if attempt == 29:
+                            raise
+                        await asyncio.sleep(1)
+            deliveries = [json.loads(line) for line in (root / 'deliveries.jsonl').read_text().splitlines()]
+            artifacts = [d for d in deliveries if d['kind'] == 'media']
+            assert len(artifacts) == 4 and {d['target'] for d in artifacts} == {plugin.route(s) for s in sources}
+            # Only generated artifacts evidenced in this controlled run are removed.
+            for artifact in artifacts:
+                path = Path(artifact.pop('path'))
+                assert hashlib.sha256(path.read_bytes()).hexdigest() == artifact['sha256']
+                path.unlink()
+                assert not path.exists()
+        finally:
+            asyncio.create_subprocess_exec = actual_spawn
+            # Linux subreaper owns detached grandchildren. Stop every known
+            # process group and reap them before inspecting RM/Comfy state.
+            for group in groups:
+                try:
+                    os.killpg(group, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+            for group in groups:
+                deadline = time.monotonic() + 10
+                while True:
+                    try:
+                        pid, _ = os.waitpid(-group, os.WNOHANG)
+                    except ChildProcessError:
+                        break
+                    if pid == 0:
+                        if time.monotonic() > deadline:
+                            os.killpg(group, signal.SIGKILL)
+                        await asyncio.sleep(.1)
+            idle()  # Failure retains root and its evidence for recovery.
+        for fixture in input_fixtures:
+            path = Path(fixture['path'])
+            assert hashlib.sha256(path.read_bytes()).hexdigest() == fixture['sha256']
+            path.unlink()
+        shutil.rmtree(root)
         assert not root.exists()
     idle()
     evidence = {'evidence_class': 'SYNTHETIC/INTERNAL E2E', 'external_transport': 'DEFERRED/NOT TESTED',

@@ -170,7 +170,8 @@ def create_gateway_app(
             transport=residency_transport, trust_env=False,
         ) as comfy:
             residency = GPUResidency(client, comfy, resolved.gateway_gpu_marker,
-                                     timeout=resolved.gateway_gpu_transition_timeout)
+                                     timeout=resolved.gateway_gpu_transition_timeout,
+                                     idle_reserve_bytes=resolved.gateway_comfy_idle_reserve_bytes)
             resource_leases.residency = residency
             scheduler.admission_blocked = residency.state == "blocked"
             from ai_bridge.platform.provider import GatewayLLMAdapter
@@ -506,6 +507,13 @@ def create_gateway_app(
         except (ResourceLeaseNotActive, ResourceLeaseNotAllowed):
             return JSONResponse(status_code=409, content={"error": "resource_lease_not_available"})
         return JSONResponse(status_code=201, content={"use_id": use_id})
+
+    @app.get("/resource/leases/{lease_id}/uses/{use_id}")
+    async def verify_external_use(lease_id: str, use_id: str):
+        workload = await resource_leases.verify_external_use(lease_id, use_id)
+        if workload is None:
+            raise HTTPException(status_code=409, detail="external GPU ownership unavailable")
+        return {"provider": workload.provider, "capability": workload.capability}
 
     @app.delete("/resource/leases/{lease_id}/uses/{use_id}")
     async def end_external_use(lease_id: str, use_id: str) -> dict[str, bool]:

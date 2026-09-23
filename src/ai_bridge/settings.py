@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     gateway_port: int = Field(default=11435, ge=1, le=65535)
     gateway_url: str = "http://127.0.0.1:11435"
     gateway_comfy_url: str = "http://127.0.0.1:8188"
+    gateway_comfy_idle_reserve_bytes: int = Field(default=0, ge=0, le=33554432)
     gateway_gpu_transition_timeout: float = Field(default=90.0, gt=0.0)
     gateway_gpu_marker: Path = Field(default_factory=lambda: Path.home() / ".local/state/ai-platform/gpu-residency.blocked")
     gateway_max_concurrency: int = Field(default=1, ge=1, le=16)

@@ -22,7 +22,7 @@ and [resident inventory](https://docs.ollama.com/api/ps).
 
 On explicit external-use completion, it checks ComfyUI's queue, sends `/free`
 with both `unload_models` and `free_memory`, then verifies empty running/pending
-queues and zero `torch_vram_total` on every device. `/free` is asynchronous;
+queues and `torch_vram_total` within the explicitly configured idle workspace ceiling on every device (zero by default). `/free` is asynchronous;
 its HTTP success alone is insufficient. This check uses the installed ComfyUI
 `server.py` and `main.py` behavior. GPU driver/context overhead is not represented
 as Torch residency and is not claimed to vanish.
@@ -41,3 +41,20 @@ preload, ComfyUI UI submissions and independent render workers are prohibited
 while this shared pool is managed. Inventory/health endpoints are not proof of
 safe execution. A single Gateway process owns this local queue; multiple ASGI
 workers are unsupported. Preserve the marker across deployments and reboots.
+
+
+The first guarded production render exposed two additional facts. The legacy
+`generate-image` and `generate-image-edit` binaries independently preloaded Qwen
+outside RM after rendering. Stage F now versions these renderers, removes all
+local Ollama unload/preload actions and requires a live RM external-use token.
+Rollback restores their exact archived bytes. The new renderers never perform
+provider residency transitions themselves.
+
+ComfyUI retained exactly 32 MiB after `/free`, with an empty queue, matching
+PyTorch's documented default persistent HIP BLAS workspace. Production explicitly
+allows at most 33,554,432 reserved bytes per device after cleanup; no larger
+allocation is accepted. This is a bounded workspace allowance, not a claim that
+all GPU process/context memory disappears. See [PyTorch HIP memory/workspace
+semantics](https://docs.pytorch.org/docs/main/notes/hip.html). Any Ollama model
+reappearing before cleanup completes also fails closed. The initial production
+attempt correctly remained blocked and is not Stage F acceptance evidence.

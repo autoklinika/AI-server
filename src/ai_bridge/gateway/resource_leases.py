@@ -117,6 +117,15 @@ class ResourceLeaseRegistry:
             rec.last_heartbeat = monotonic()
         return rec.external_use_id
 
+    async def verify_external_use(self, lease_id: str, use_id: str):
+        async with self._lock:
+            rec = self._leases.get(lease_id)
+            if (rec is None or rec.external_use_id != use_id or rec.in_use
+                    or self.scheduler.admission_blocked
+                    or (self.residency and self.residency.state != "media")):
+                return None
+            return rec.external_workload
+
     async def end_external_use(self, lease_id: str, use_id: str) -> bool:
         async with self._lock:
             rec = self._leases.get(lease_id)
