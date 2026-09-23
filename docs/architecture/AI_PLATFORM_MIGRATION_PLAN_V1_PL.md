@@ -349,7 +349,9 @@ Dodać wspólną warstwę wiedzy bez wiązania jej z jednym RAG backendem.
 
 ### Pierwsza decyzja implementacyjna
 
-Osobny ADR: pgvector vs Qdrant.
+Qdrant jest pierwszym backendem retrieval, wdrażanym wyłącznie za neutralnym `KnowledgeBackend`.
+Backend pozostaje wymienny, a indeks nie jest source of truth. Decyzję i zasady migracji dokumentuje
+[ADR-001](adr/ADR-001_STAGE_J_REPLACEABLE_QDRANT_BACKEND_2026-09-23_PL.md).
 
 Nie rozpoczynać od knowledge graph, jeśli nie ma konkretnego wymagania.
 

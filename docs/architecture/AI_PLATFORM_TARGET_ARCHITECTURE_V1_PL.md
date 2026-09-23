@@ -468,6 +468,15 @@ shared
 
 Każde zapytanie ma jawny zakres domenowy.
 
+### 10.0. Dostęp człowieka do wiedzy
+
+Knowledge Service ma udostępniać co najmniej dwa tryby operatora:
+
+- `Szukaj` — surowe wyniki retrieval z fragmentem, rankingiem/trafnością, źródłem i stroną/pozycją, bez interpretacji LLM;
+- `Zapytaj AI` — odpowiedź RAG z jawnym wskazaniem wykorzystanych źródeł i możliwością otwarcia oryginalnego fragmentu.
+
+Tryb `Szukaj` nie może zależeć od dostępności modelu generatywnego.
+
 ### 10.1. Routing danych
 
 ```text
@@ -482,9 +491,12 @@ opisowe pytanie                -> RAG/hybrid + LLM
 
 ### 10.2. Wybór vector backendu
 
-Na v1 **nie zatwierdzamy jeszcze** pgvector vs Qdrant.
+Stage J rozpoczyna się od Qdranta jako pierwszego backendu retrieval, ale nie jako trwałego kontraktu produktu.
+Kontrakt `KnowledgeBackend` pozostaje granicą wymienialności; klienci używają wyłącznie Knowledge Service.
+Qdrant jest indeksem pochodnym, a nie source of truth — musi dać się odbudować z danych kanonicznych.
 
-Kontrakt `KnowledgeBackend` musi pozwolić na obie implementacje.
+Szczegóły decyzji, wymagania dla trybów „Szukaj” / „Zapytaj AI” i procedura przyszłej migracji:
+[ADR-001](adr/ADR-001_STAGE_J_REPLACEABLE_QDRANT_BACKEND_2026-09-23_PL.md).
 
 ---
 
