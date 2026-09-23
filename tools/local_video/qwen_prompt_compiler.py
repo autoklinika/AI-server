@@ -110,6 +110,8 @@ def _request(
                 },
             ],
             "stream": False,
+            "reasoning_effort": "none",
+            "max_tokens": 512,
             "temperature": 0.1,
         },
         ensure_ascii=False,

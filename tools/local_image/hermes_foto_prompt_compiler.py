@@ -102,6 +102,8 @@ def _request(original_prompt: str, has_input_image: bool, timeout: int) -> tuple
                 },
             ],
             "stream": False,
+            "reasoning_effort": "none",
+            "max_tokens": 512,
             "temperature": 0.1,
         },
         ensure_ascii=False,

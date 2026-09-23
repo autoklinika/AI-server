@@ -58,3 +58,9 @@ all GPU process/context memory disappears. See [PyTorch HIP memory/workspace
 semantics](https://docs.pytorch.org/docs/main/notes/hip.html). Any Ollama model
 reappearing before cleanup completes also fails closed. The initial production
 attempt correctly remained blocked and is not Stage F acceptance evidence.
+
+Media prompt compilers also run through the admitted lease. Stage F bounds their
+responses to 512 tokens and disables reasoning for this translation task; the
+previous unbounded video compiler exceeded its 90-second deadline. Media was
+correctly denied while the abandoned HTTP call was still draining. A compiler
+fallback is never accepted as passing internal E2E evidence.

@@ -222,3 +222,19 @@ async def test_renderer_token_is_only_valid_during_owned_media_phase(tmp_path):
         await client.delete(path + '/' + use)
         assert (await client.get(path + '/' + use)).status_code == 409
         await client.delete(f"/resource/leases/{lease['lease_id']}")
+
+
+@pytest.mark.anyio
+async def test_media_cannot_start_while_compiler_http_call_is_in_flight(tmp_path):
+    providers = Providers()
+    gpu, scheduler, leases = setup(tmp_path, providers)
+    lease = await leases.create(priority=50, source='compiler')
+    await leases.begin_use(lease['lease_id'])
+    with pytest.raises(ResourceLeaseNotActive):
+        await leases.begin_external_use(lease['lease_id'], binding(scheduler.registry, 'comfyui-local', 'video-generation'))
+    assert providers.calls == [] and gpu.state == 'llm'
+    await leases.end_use(lease['lease_id'])
+    use = await leases.begin_external_use(lease['lease_id'], binding(scheduler.registry, 'comfyui-local', 'video-generation'))
+    assert providers.models == []
+    await leases.end_external_use(lease['lease_id'], use)
+    await leases.release(lease['lease_id'])

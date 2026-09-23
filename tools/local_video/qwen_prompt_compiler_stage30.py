@@ -120,6 +120,8 @@ def _request_i2v(
                 },
             ],
             "stream": False,
+            "reasoning_effort": "none",
+            "max_tokens": 512,
             "temperature": 0.05,
         },
         ensure_ascii=False,

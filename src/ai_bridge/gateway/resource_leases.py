@@ -141,13 +141,14 @@ class ResourceLeaseRegistry:
                 await self.residency.leave_media()
         except BaseException:
             self.scheduler.admission_blocked = True
-            raise
-        finally:
             rec.in_use = 0
             rec.last_heartbeat = monotonic()
+            raise
         # Reacquiring can be cancelled. Keep external ownership in that case;
         # safe false-negative, never reopen admission on incomplete cleanup.
         async with self._lock:
+            rec.in_use = 0
+            rec.last_heartbeat = monotonic()
             rec.ended_use_id = use_id
             rec.external_use_id = None
             rec.external_workload = None

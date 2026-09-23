@@ -32,6 +32,12 @@ PLUGIN = HERMES / 'plugins/ai-platform-messaging'
 RESOURCE_CLIENT = Path('/usr/local/libexec/ai-server/hermes_resource_queue.py')
 GPU_UNIT = Path('/etc/systemd/system/ai-gateway.service.d/96-gpu-residency.conf')
 IMAGE_BINARIES = ('generate-image', 'generate-image-edit')
+MANAGED_FILES = {
+    **{Path('/usr/local/bin') / name: 'deploy/stage-f/bin/' + name for name in IMAGE_BINARIES},
+    Path('/usr/local/libexec/ai-server/qwen_prompt_compiler.py'): 'tools/local_video/qwen_prompt_compiler.py',
+    Path('/usr/local/libexec/ai-server/qwen_prompt_compiler_stage30.py'): 'tools/local_video/qwen_prompt_compiler_stage30.py',
+    Path('/usr/local/libexec/ai-server/hermes_foto_prompt_compiler.py'): 'tools/local_image/hermes_foto_prompt_compiler.py',
+}
 CONFIG = HERMES / 'config.yaml'
 e.D6 = BASE  # Existing client fingerprints are identical in the E baseline.
 require, run = e.require, e.run
@@ -46,10 +52,9 @@ def clients():
         current = e.CURRENT.resolve()
         e.D6 = current if current.name.startswith('stage-f-') else BASE
         result = _original_clients()
-        for name in IMAGE_BINARIES:
-            expected = current / 'services/ai-bridge/deploy/stage-f/bin' / name
+        for actual, relative in MANAGED_FILES.items():
+            expected = current / 'services/ai-bridge' / relative
             if expected.exists():
-                actual = Path('/usr/local/bin') / name
                 require(actual.read_bytes() == expected.read_bytes())
         return result
     finally:
@@ -106,7 +111,7 @@ def snapshot(state):
         subprocess.run(['runuser', '-u', name, '--', 'git', '-C', SOURCE, 'archive', PIN], stdout=stream, check=True)
     (recovery / 'dirty.patch').write_text(hermes_git(['diff', '--binary']) + '\n')
     paths = [CONFIG, RESOURCE_CLIENT, *[SOURCE / p for p in PATCHED],
-             *[Path('/usr/local/bin') / name for name in IMAGE_BINARIES]]
+             *MANAGED_FILES]
     manifest['gpu_unit_existed'] = GPU_UNIT.exists()
     if GPU_UNIT.exists():
         paths.append(GPU_UNIT)
@@ -217,10 +222,9 @@ def configure(candidate, state, baseline, rollback=False):
             shutil.copytree(PLUGIN, quarantine)
             shutil.rmtree(PLUGIN)
     else:
-        for name in IMAGE_BINARIES:
-            binary = Path('/usr/local/bin') / name
+        for binary, relative in MANAGED_FILES.items():
             info = manifest['files'][str(binary)]
-            atomic_restore(binary, (candidate / 'services/ai-bridge/deploy/stage-f/bin' / name).read_bytes(),
+            atomic_restore(binary, (candidate / 'services/ai-bridge' / relative).read_bytes(),
                            info['mode'], info['uid'], info['gid'])
         GPU_UNIT.parent.mkdir(parents=True, exist_ok=True)
         atomic_restore(GPU_UNIT, (candidate / 'services/ai-bridge/deploy/systemd/stage-f/ai-gateway.service.d/96-gpu-residency.conf').read_bytes(),
@@ -533,12 +537,13 @@ def repair_baseline(state, sha):
     # copies. Recover exact bytes/stat from the checksum-verified archive.
     copied.chmod(0o700)
     with tarfile.open(copied / 'config-state-integration.tar') as archive:
-        for name in IMAGE_BINARIES:
-            binary = '/usr/local/bin/' + name
+        for path in MANAGED_FILES:
+            binary = str(path)
             if binary in manifest['files']:
                 continue
-            member = archive.getmember('integration/bin/' + name)
-            target = copied / ('original-' + name)
+            category = 'bin' if path.parent == Path('/usr/local/bin') else 'libexec'
+            member = archive.getmember('integration/' + category + '/' + path.name)
+            target = copied / ('original-' + path.name)
             target.write_bytes(archive.extractfile(member).read())
             target.chmod(0o400)
             manifest['files'][binary] = {'copy': target.name, 'sha256': e.digest(target),
