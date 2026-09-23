@@ -753,3 +753,9 @@ The verified rollback point is `stage-h-b9362bdae1c3`.
 Knowledge Service remains the next functional stage after I and should be treated as
 Stage J in the continuation of this lettered migration sequence. Its pgvector/Qdrant
 ADR remains out of Stage I scope.
+
+### Stage I — production completion 2026-09-23
+
+Production gate **PASS** for `stage-i-30626dcc60f8` (`30626dcc60f86c80bacb3c602b87f2d345b22221`). Full H → I candidate smoke → verified H rollback/smoke → I reactivation/final smoke → finalize cycle passed. Functional rollback proved `/api/v1/observability` absent on H. Final runtime is I with Hermes and WVC analysis timer active, RM idle, GPU residency `llm`, and no new MES/ring/reset/timeout kernel fault. Production evidence: [Stage I report](../reports/AI_PLATFORM_STAGE_I_PRODUCTION_GATE_2026-09-23.md).
+
+**Stage I = PRODUCTION COMPLETE.** Repository closure still requires PR #68 merge and post-merge CI; the accepted runtime release remains immutable regardless of later documentation-only commits.
