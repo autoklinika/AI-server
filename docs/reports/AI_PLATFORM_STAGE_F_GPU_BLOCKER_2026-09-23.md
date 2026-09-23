@@ -1,6 +1,10 @@
 # Stage F: GPU runtime blocker
 
-Status: **BLOCKED by local GPU execution failure**, not external participants.
+> Historical pre-reboot record. The operator subsequently rebooted the host; see
+> the [post-reboot production report](AI_PLATFORM_STAGE_F_PRODUCTION_GATE.md) for
+> residency isolation, completed production validation and current GitHub status.
+
+Status at the time: **BLOCKED by local GPU execution failure**, not external participants.
 Stage F remains a draft; Stage G/H have not started. No Stage F release was built
 or installed in production, and the planned candidate/rollback/reactivation
 acceptance cycle has not run. Stage E's completed migration history is unchanged.

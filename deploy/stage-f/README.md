@@ -1,6 +1,6 @@
 # Stage F: supported Hermes messaging plugin
 
-Draft: post-reboot residency isolation is implemented; production acceptance is still pending. See [GPU ownership architecture](../../docs/architecture/GPU_RESIDENCY.md) and [recovery runbook](../../docs/runbooks/GPU_RESIDENCY_RECOVERY.md). The prior [incident report](../../docs/reports/AI_PLATFORM_STAGE_F_GPU_BLOCKER_2026-09-23.md) records the pre-reboot state.
+Production candidate/rollback/reactivation gate PASS for `stage-f-d8f68cadd953`; final GitHub gate is recorded in the [production report](../../docs/reports/AI_PLATFORM_STAGE_F_PRODUCTION_GATE.md). See [GPU ownership architecture](../../docs/architecture/GPU_RESIDENCY.md) and [recovery runbook](../../docs/runbooks/GPU_RESIDENCY_RECOVERY.md). The prior [incident report](../../docs/reports/AI_PLATFORM_STAGE_F_GPU_BLOCKER_2026-09-23.md) records the pre-reboot state.
 
 The operator approved SYNTHETIC/INTERNAL E2E as the acceptance boundary on
 2026-09-23. External Telegram/Discord inbound transport remains DEFERRED/NOT

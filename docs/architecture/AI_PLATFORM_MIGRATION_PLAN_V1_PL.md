@@ -686,3 +686,17 @@ paused, telemetry/history and idle Comfy preserved. G/H NOT STARTED. See
 [incident and resumption requirements](../reports/AI_PLATFORM_STAGE_F_GPU_BLOCKER_2026-09-23.md).
 External transport deferral is not the blocker. Internal harness review gaps and the
 full candidate/rollback/reactivation cycle remain required after host GPU recovery.
+
+### Stage F — post-reboot residency validation, 2026-09-23
+
+Production gate **PASS** for `stage-f-d8f68cadd953`: 799 local tests, immutable
+build/install, kernel-guarded candidate smoke, planned E rollback/smoke, F
+reactivation/full smoke and finalize. Eight real media jobs across two independent
+internal E2E cycles verified Ollama drainage, Comfy cleanup and later Qwen inference.
+Ollama was not restarted; no new GPU kernel faults were observed. This repairs
+shared-GPU residency ownership and does **not** claim a driver fix.
+
+External inbound Telegram/Discord remains **DEFERRED/NOT TESTED**. Messaging
+acceptance uses the approved SYNTHETIC/INTERNAL boundary. Final documentation
+CI/merge and post-merge CI remain required before G starts. See the
+[production report](../reports/AI_PLATFORM_STAGE_F_PRODUCTION_GATE.md).
