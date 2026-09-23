@@ -1,6 +1,6 @@
 # Stage F production gate — 2026-09-23
 
-Status: **Production candidate/rollback/reactivation gate PASS**; final documentation CI/merge pending. Candidate `stage-f-d8f68cadd953`, source
+Status: **Production candidate/rollback/reactivation gate PASS**; **COMPLETE**, including final CI/merge and post-merge CI. Candidate `stage-f-d8f68cadd953`, source
 `d8f68cadd95372b5a9adc75ef6450719af437850`. Reviewed in
 [PR #63](https://github.com/autoklinika/AI-server/pull/63).
 
@@ -62,7 +62,9 @@ and [recovery policy](../runbooks/GPU_RESIDENCY_RECOVERY.md).
 | Final independent full smoke | PASS: four media jobs, cleanup and subsequent Qwen inference |
 | Kernel cursor guards across all smoke phases | PASS: no new MES/ring/reset/timeout faults |
 | Production finalize | PASS |
-| Final documentation CI, merge and post-merge CI | Pending GitHub gate |
+| Final documentation CI | PASS, [35837126605](https://github.com/autoklinika/AI-server/actions/runs/35837126605) |
+| PR merge | `245caef37032ad637324ec99f171ee4492f62d5f` |
+| Post-merge CI | PASS, [35837338807](https://github.com/autoklinika/AI-server/actions/runs/35837338807) |
 | External inbound Telegram/Discord | DEFERRED/NOT TESTED |
 
 The candidate observer collected 351 samples, including 259 stable media-ownership

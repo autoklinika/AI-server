@@ -697,6 +697,17 @@ Ollama was not restarted; no new GPU kernel faults were observed. This repairs
 shared-GPU residency ownership and does **not** claim a driver fix.
 
 External inbound Telegram/Discord remains **DEFERRED/NOT TESTED**. Messaging
-acceptance uses the approved SYNTHETIC/INTERNAL boundary. Final documentation
-CI/merge and post-merge CI remain required before G starts. See the
+acceptance uses the approved SYNTHETIC/INTERNAL boundary. PR #63 merged as `245caef`; final CI and post-merge CI #35837338807 PASS.
+**Stage F COMPLETE.** Stage G can start. See the
 [production report](../reports/AI_PLATFORM_STAGE_F_PRODUCTION_GATE.md).
+
+### Stage G — implementation candidate
+
+WVC schemas, analysis profiles/services/policy, persistence and telemetry/delivery
+API live in `ai_bridge.domains.wvc`, composed through a domain adapter. Compatibility
+imports/routes and existing database schema/history are preserved. Scheduled empty
+windows return `skipped/no_fresh_data` without inference or a placeholder row.
+Fresh windows resume processing; inter-process serialization and existing unique
+identities prevent duplicate analysis. AI remains advisory-only. Production
+candidate/rollback/reactivation, GitHub CI and merge are still pending. See
+[domain architecture](WVC_DOMAIN.md) and [gate](../../deploy/stage-g/README.md).

@@ -1,0 +1,1 @@
+"""WVC domain implementation."""
