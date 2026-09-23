@@ -52,6 +52,14 @@ class CanonicalSearchChunk:
 
 
 @dataclass(frozen=True)
+class KnowledgeDocumentSnapshot:
+    source: KnowledgeSourceRecord
+    document: KnowledgeDocumentRecord
+    version: KnowledgeDocumentVersionRecord
+    chunks: tuple[KnowledgeChunkRecord, ...]
+
+
+@dataclass(frozen=True)
 class KnowledgeIndexWorkItem:
     job_id: str
     document_id: str
@@ -269,6 +277,34 @@ class KnowledgeRepository:
                 version_id=job.version_id,
                 chunk_profile=job.chunk_profile,
                 index_profile=job.index_profile,
+                source=self._source_record(source),
+                document=self._document_record(document),
+                version=self._version_record(version),
+                chunks=tuple(self._chunk_record(row) for row in rows),
+            )
+
+    def get_current_document(self, document_id: str) -> KnowledgeDocumentSnapshot:
+        with self._database.session() as session:
+            document = session.get(KnowledgeDocumentModel, document_id)
+            if document is None or document.current_version_id is None:
+                raise KeyError(document_id)
+            source = session.get(KnowledgeSourceModel, document.source_id)
+            version = session.get(
+                KnowledgeDocumentVersionModel, document.current_version_id
+            )
+            if source is None or version is None:
+                raise KnowledgeIdentityConflict("document lost canonical parent")
+            rows = tuple(
+                session.scalars(
+                    select(KnowledgeChunkModel)
+                    .where(KnowledgeChunkModel.version_id == version.version_id)
+                    .order_by(
+                        KnowledgeChunkModel.chunk_profile,
+                        KnowledgeChunkModel.ordinal,
+                    )
+                ).all()
+            )
+            return KnowledgeDocumentSnapshot(
                 source=self._source_record(source),
                 document=self._document_record(document),
                 version=self._version_record(version),

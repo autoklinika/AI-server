@@ -122,11 +122,13 @@ def test_shared_admission_timeout_queue_full_and_cancellation():
             # A legacy caller owns the only slot: v1 must wait in the same queue.
             legacy = asyncio.create_task(http.post('/api/chat', json={'model':'legacy'}))
             await started.wait()
-            waiting = asyncio.create_task(http.post('/api/v1/ai', json=payload(timeout_seconds=0.1)))
-            for _ in range(100):
+            waiting = asyncio.create_task(http.post('/api/v1/ai', json=payload(timeout_seconds=2.0)))
+            for _ in range(1000):
                 if (await app.state.scheduler.snapshot())['queued_count'] == 1:
                     break
                 await asyncio.sleep(.001)
+            else:
+                pytest.fail('v1 request never entered the shared queue')
             full = await http.post('/api/v1/ai', json=payload())
             assert full.status_code == 429
             expired = await waiting

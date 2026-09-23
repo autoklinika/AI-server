@@ -137,6 +137,7 @@ def create_gateway_app(
     residency_transport: httpx.AsyncBaseTransport | None = None,
     platform_provider=None,
     platform_policy=None,
+    knowledge_runtime_factory=None,
 ) -> FastAPI:
     resolved = settings or get_settings()
     registry = resolved.gateway_registry or local_descriptor_registry(resolved.node_id)
@@ -638,7 +639,15 @@ def create_gateway_app(
         )
 
     from ai_bridge.platform.api import create_platform_app
-    app.mount("/api/v1", create_platform_app(app, resolved, platform_policy))
+    app.mount(
+        "/api/v1",
+        create_platform_app(
+            app,
+            resolved,
+            platform_policy,
+            knowledge_runtime_factory=knowledge_runtime_factory,
+        ),
+    )
     return app
 
 

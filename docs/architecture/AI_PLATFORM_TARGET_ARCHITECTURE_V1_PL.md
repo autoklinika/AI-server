@@ -599,6 +599,30 @@ sparse vectors bez zmiany `KnowledgeQuery` i klientów.
 Szczegóły trwałości, rollbacku i granicy concurrency:
 [ADR-003](adr/ADR-003_STAGE_J3_CANONICAL_INGESTION_REINDEX_2026-09-23_PL.md).
 
+### 10.6. Publiczne Knowledge API / RAG / PDF — Stage J4
+
+Stage J kończy się stabilną powierzchnią Platform API:
+
+```text
+POST /api/v1/knowledge/search
+POST /api/v1/knowledge/ask
+GET  /api/v1/knowledge/documents/{document_id}
+GET  /api/v1/knowledge/documents/{document_id}/content
+```
+
+`search` jest retrieval-only i pozostaje dostępny bez LLM generatywnego. `ask`
+realizuje pełny RAG: hybrid/semantic retrieval -> technical rerank -> bounded context
+-> schedulerowany `reasoning-main` -> structured claims. Każdy claim ma własne
+`source_refs`, walidowane względem rzeczywiście dostarczonych chunków.
+
+PDF ingestion zachowuje oryginalny immutable PDF i page-aware provenance. Poppler
+jest podstawą ekstrakcji tekstu; słabe/puste strony mają Tesseract OCR fallback.
+Cytowanie PDF zawiera numer strony, a źródło może zostać otwarte przez canonical
+`document_id` bez ujawniania storage path.
+
+Szczegóły kontraktu i rollbacku:
+[ADR-004](adr/ADR-004_STAGE_J4_RAG_PDF_API_2026-09-24_PL.md).
+
 ---
 
 ## 11. Domain layer
