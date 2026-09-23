@@ -321,6 +321,35 @@ Scheduler wspiera:
 
 Obecny `ai-gateway` i Resource Lease Registry są bazą implementacyjną.
 
+### 8.2.1. Przyszła zewnętrzna karta / heterogeniczne akceleratory
+
+Architektura nie może zakładać, że AI Server zawsze ma jeden wspólny lokalny GPU.
+Planowana zewnętrzna karta GPU/akcelerator podłączona lokalnie (np. PCIe/OCuLink)
+ma być dodawana jako kolejny zasób compute, bez przebudowy klientów Platform API.
+Obecne iGPU/UMA może pozostać równolegle aktywne.
+
+Resource Manager i registry muszą docelowo rozróżniać co najmniej:
+- `accelerator_id` / resource pool zamiast globalnego singletonu `GPU`;
+- typ/backend wykonawczy (np. ROCm/CUDA/Vulkan) bez kodowania producenta w domenach;
+- pamięć urządzenia / klasę pamięci i budżet dla workloadu;
+- capabilities, provider binding, health/readiness i locality;
+- osobne lease/residency/cleanup per akcelerator;
+- routing modelu/workloadu na konkretny akcelerator oraz jawny fallback.
+
+Klient (Hermes, domena, Knowledge Service, GUI) żąda capability, a nie konkretnej
+karty. Model/Compute registry i Resource Manager wybierają provider + accelerator.
+Dodanie drugiej karty nie może wymagać zmian w kontraktach domen ani Knowledge API.
+
+Istniejące pojęcie `external lease` oznacza rezerwację zewnętrznego wykonawcy i
+**nie może** być używane jako nazwa dla zewnętrznej karty. Dla sprzętu używamy
+pojęć `accelerator`, `device` i `resource pool`.
+
+Przed fizycznym montażem zewnętrznej karty wymagany jest osobny gate obejmujący:
+sterownik/runtime, enumerację urządzeń, per-device residency, routing, limity mocy/
+termiki, recovery oraz test współistnienia z obecnym iGPU/UMA. Ten gate musi
+nastąpić najpóźniej przed zamrożeniem widoku `Models/Compute` w AI Control Center
+lub wcześniej, jeśli karta zostanie zamontowana przed tym etapem.
+
 ### 8.3. Priorytety
 
 Nie kodujemy nazw domen w schedulerze jako architektonicznego kontraktu.
