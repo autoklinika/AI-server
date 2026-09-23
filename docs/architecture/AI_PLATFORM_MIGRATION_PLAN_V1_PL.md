@@ -822,3 +822,27 @@ dodać trwały canonical store/ingestion oraz wersjonowany indeks, a potem
 exact/full-text/sparse/hybrid retrieval i reranking. Szczegóły:
 [ADR-001](adr/ADR-001_STAGE_J_REPLACEABLE_QDRANT_BACKEND_2026-09-23_PL.md),
 [ADR-002](adr/ADR-002_STAGE_J2_EMBEDDING_BASELINE_2026-09-23_PL.md).
+
+### Stage J3 — production completion 2026-09-23
+
+Stage J3 production gate **PASS** after merge PR #73 plus PostgreSQL FK-ordering
+hotfix PR #75. Canonical knowledge is now durable in PostgreSQL plus immutable
+content-addressed objects; Qdrant is a rebuildable projection.
+
+Real read-only ingestion of EcuRepairService at
+`0ee98b94705b691d7347c8a6a5676ac63159e359` produced 19 documents,
+19 versions, 67 chunks and 19 completed index jobs. Repeated ingestion produced
+0 new versions/chunks; reindex retry after completion selected 0 jobs.
+
+Production Qdrant collection `knowledge_dense_bge_m3_1024_v1` is green with
+67 points and indexed canonical payload fields. Exact, semantic and hybrid probes
+passed on real ECU knowledge. All 19 immutable objects passed SHA-256 revalidation.
+EcuRepairService remained clean and unmodified.
+
+The first production ingest exposed an FK flush-order defect; PostgreSQL rolled
+the transaction back fully. The fix adds explicit parent flushes and SQLite CI
+tests with foreign keys enabled. See the
+[Stage J3 production report](../reports/AI_PLATFORM_STAGE_J3_PRODUCTION_GATE_2026-09-23_PL.md)
+for backup, incident, hotfix and acceptance evidence.
+
+**Stage J3 = PRODUCTION COMPLETE.**
