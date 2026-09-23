@@ -151,11 +151,56 @@ def smoke_body(phase, target, candidate, state, baseline):
 f._smoke = smoke_body
 
 
+def paused_gpu_rollback():
+    """Restore verified service bytes after a kernel fault, never probe the GPU.
+
+    This is containment, not a passing smoke or permission to resume inference.
+    The fault marker and residency latch remain intact across the release switch.
+    """
+    marker = e.read(STATE / 'gpu-blocked.json')
+    require(marker['boot_id'] == Path('/proc/sys/kernel/random/boot_id').read_text().strip())
+    require(e.CURRENT.resolve() in (BASE, Path(marker['release'])))
+    run(['systemctl', 'stop', 'ai-gateway.service', 'ai-bridge-analysis.timer', 'ai-bridge-analysis.service'], timeout=180)
+    e.user_systemctl(['stop', 'hermes-gateway.service'])
+    e.require_hermes_stopped()
+    f.require_no_media_workers()
+    require(verify(BASE)['source_git_sha'] == BASE_SHA)
+    before = str(e.CURRENT.resolve())
+    run(['systemctl', 'stop', 'ai-bridge.service'])
+    temporary = e.CURRENT.with_name('.stage-g-contained-' + uuid4().hex)
+    temporary.symlink_to(BASE)
+    os.replace(temporary, e.CURRENT)
+    run(['systemctl', 'start', 'ai-bridge.service'])
+    for attempt in range(30):
+        try:
+            require(e.fetch(e.bridge_health_url())['status'] == 'ok')
+            break
+        except Exception:
+            if attempt == 29:
+                raise
+            time.sleep(1)
+    clients()
+    for unit in ('ai-gateway.service', 'ai-bridge-analysis.timer', 'ai-bridge-analysis.service'):
+        require(run(['systemctl', 'show', unit, '-p', 'ActiveState', '--value']) == 'inactive')
+    e.require_hermes_stopped()
+    e.write_once(STATE / ('contained-rollback-' + uuid4().hex + '.json'), {
+        'status': 'BLOCKED_GPU', 'before': before, 'restored': str(BASE), 'time': time.time(),
+        'gpu_probes': 'NOT RUN', 'ingress': 'PAUSED', 'history': history(BASE),
+        'acceptance_smoke': 'NOT RUN: kernel fault', 'fault_marker_preserved': (STATE / 'gpu-blocked.json').exists()})
+    return 'BLOCKED_GPU'
+
+
 def main(step):
     sha = e.git_run(['rev-parse', 'HEAD'])
     candidate = Path('/opt/ai-platform/releases') / ('stage-g-' + sha[:12])
     state = STATE / sha
     require(os.geteuid() == 0)
+    if step == '40_rollback' and (STATE / 'gpu-blocked.json').exists():
+        marker = e.read(STATE / 'gpu-blocked.json')
+        if marker['boot_id'] == Path('/proc/sys/kernel/random/boot_id').read_text().strip():
+            with (STATE / 'executor.lock').open('a') as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return paused_gpu_rollback()
     if step == '00_preflight':
         preflight()
         return
@@ -210,9 +255,9 @@ def main(step):
 
 if __name__ == '__main__':
     try:
-        main(sys.argv[1])
+        outcome = main(sys.argv[1])
     except BaseException as error:
         frames = [f for f in traceback.extract_tb(error.__traceback__) if f.filename == __file__]
         print('GATE_FAIL=' + type(error).__name__ + ' location=' + '/'.join(f'{f.name}:{f.lineno}' for f in frames), file=sys.stderr)
         raise SystemExit(1)
-    print('PASS: Stage G ' + sys.argv[1])
+    print('BLOCKED_GPU: verified F restored; ingress remains paused; no GPU probes' if outcome == 'BLOCKED_GPU' else 'PASS: Stage G ' + sys.argv[1])

@@ -215,3 +215,45 @@ def test_g_rollback_verifies_only_target_and_can_quiesce_failed_gateway(tmp_path
     gate.switch(baseline_release, tmp_path, {'ollama': ['unchanged-provider'], 'history': {}})
     assert current.resolve() == baseline_release
     assert actions == [('verify', baseline_release), ('quiesce', {'allow_gateway_unavailable': True}), ('recover', True), ('resume', True)]
+
+
+def test_kernel_fault_rollback_never_probes_gpu_or_reopens_ingress(tmp_path, monkeypatch):
+    import importlib.util
+    import json
+    import pytest
+    path = Path(__file__).parents[1] / 'deploy/stage-g/autopilot/gate.py'
+    spec = importlib.util.spec_from_file_location('g_containment_test', path)
+    gate = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gate)
+    baseline = tmp_path / 'verified-f'
+    baseline.mkdir()
+    failed = tmp_path / 'missing-failed-candidate'
+    current = tmp_path / 'current'
+    current.symlink_to(failed)
+    marker = tmp_path / 'gpu-blocked.json'
+    marker.write_text(json.dumps({'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip(), 'release': str(failed)}))
+    latch = tmp_path / 'residency.blocked'
+    latch.write_text('uncertain ownership')
+    monkeypatch.setattr(gate, 'STATE', tmp_path)
+    monkeypatch.setattr(gate, 'BASE', baseline)
+    monkeypatch.setattr(gate.e, 'CURRENT', current)
+    monkeypatch.setattr(gate, 'verify', lambda target: {'source_git_sha': gate.BASE_SHA} if target == baseline else pytest.fail('candidate dependency'))
+    actions = []
+    def run(args, **kwargs):
+        actions.append(args)
+        return 'inactive' if 'show' in args else ''
+    monkeypatch.setattr(gate, 'run', run)
+    monkeypatch.setattr(gate.e, 'user_systemctl', lambda args: actions.append(args))
+    monkeypatch.setattr(gate.e, 'require_hermes_stopped', lambda: None)
+    monkeypatch.setattr(gate.f, 'require_no_media_workers', lambda: None)
+    monkeypatch.setattr(gate.f, 'recover_gpu_quiesced', lambda *a: pytest.fail('no GPU operation after fault'))
+    monkeypatch.setattr(gate.e, 'resume_ingress', lambda *a: pytest.fail('no ingress after fault'))
+    monkeypatch.setattr(gate.e, 'bridge_health_url', lambda: 'http://bridge/health')
+    monkeypatch.setattr(gate.e, 'fetch', lambda url: {'status': 'ok'} if url == 'http://bridge/health' else pytest.fail('GPU probe'))
+    monkeypatch.setattr(gate, 'clients', lambda: {})
+    monkeypatch.setattr(gate, 'history', lambda target: {'history': 'retained'})
+    assert gate.paused_gpu_rollback() == 'BLOCKED_GPU'
+    assert current.resolve() == baseline and marker.exists() and latch.exists()
+    assert not any('ollama.service' in args or 'comfyui.service' in args for args in actions)
+    assert ['systemctl', 'start', 'ai-bridge.service'] in actions
+    assert ['systemctl', 'start', 'ai-gateway.service'] not in actions
