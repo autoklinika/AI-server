@@ -52,7 +52,9 @@ telemetry only; it never calls the GPU APIs, removes latches or starts inference
 ingress. This is not rollback acceptance or a successful smoke. Preserve the failed
 media evidence. After controlled host/GPU recovery, require fresh short inference,
 explicit unload and clean kernel evidence before resuming heavy-media validation.
-The September 23 G fault remains unresolved; H must not begin while G is blocked.
+The September 23 GPU fault mechanism remains unresolved. Fresh G acceptance
+passed after physical cold recovery with `stage-g-fa6b31e5f7dc`; H may proceed only
+after the accepted G PR and post-merge CI pass. Any new fault blocks progression.
 
 ## Cold-boot recovery and diagnostic configuration (2026-09-23)
 

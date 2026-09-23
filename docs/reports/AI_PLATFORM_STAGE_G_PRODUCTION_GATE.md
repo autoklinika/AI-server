@@ -1,8 +1,64 @@
 # Stage G production gate — 2026-09-23
 
-Status: **BLOCKED by a new GPU MES failure during final validation. G is not accepted or merged; H has not started.** Candidate `stage-g-7ccc9c14da33`, source
-`7ccc9c14da3371751e1e84e38bd33c5be75ec8c8`, [PR #64](https://github.com/autoklinika/AI-server/pull/64).
-Rollback target: verified `stage-f-d8f68cadd953`.
+Status: **Production acceptance PASS after operator cold-boot recovery.** Accepted
+release `stage-g-fa6b31e5f7dc`, source `fa6b31e5f7dcc7a67fe1928e7bf099f2256225c2`,
+[PR #64](https://github.com/autoklinika/AI-server/pull/64). Finalized at approximately
+13:27 CEST on 2026-09-23. Merge and post-merge CI are tracked below. H has not started.
+Verified rollback target remains `stage-f-d8f68cadd953`. The earlier candidate
+`stage-g-7ccc9c14da33` remains rejected; its incident/evidence is retained below.
+
+## Accepted cold-boot recovery validation
+
+| Check | Result |
+|---|---|
+| Full local suite | 815 PASS, including delayed cleanup, final settling window, stale external-use failure, zero-ceiling mismatch and kernel containment |
+| Source CI | PASS, [35850680868](https://github.com/autoklinika/AI-server/actions/runs/35850680868) |
+| Managed Gateway handoff | PASS: archived blocked diagnostic lease/marker, stopped PID 10872, verified provider cleanup, restored F systemd Gateway |
+| Bounded isolated RM video | PASS: 1s 640x384 MP4, Ollama empty, authoritative cleanup, zero leases, kernel cursor clear |
+| Preflight/build/cutover | PASS |
+| Candidate full smoke | PASS: four media paths, cleanup and post-media inference |
+| Planned F rollback and full smoke | PASS: four media paths, cleanup and post-media inference |
+| G reactivation and final full smoke | PASS: four media paths, cleanup and post-media inference |
+| Finalize | PASS: all three accepted phase records and history hashes verified |
+| External inbound Telegram/Discord | DEFERRED/NOT TESTED; Hermes user service remains stopped |
+| Physical WVC/CM5 reconnection | NOT TESTED |
+| Merge/post-merge CI | Pending documentation CI and merge |
+
+All three fresh smoke phases verify unchanged provider identities (Ollama PID
+2975, ComfyUI PID 2968) and no new production-parser kernel matches through their
+final journal cursors. Sampled stable media ownership: candidate 243, rollback
+252, final 254; every such sample has zero Ollama residents. These are sampled
+observations plus the enforced admission protocol, not proof of a driver fix.
+Final managed Gateway has zero active jobs and zero leases; ComfyUI has zero
+loaded models, empty queues, no pending cleanup and 65,011,712 reserved bytes,
+within the unchanged 67,108,864-byte production ceiling.
+
+Fresh WVC candidate/final policy probes returned `skipped/no_fresh_data`; physical
+reconnection was not exercised. The resumed baseline captured 2,719 analysis rows
+through ID 2751 with hash
+`a0dd6d249462a7eb1a3355c64af5dbc91c5f4d29fa14412de7b7f53ffbdc70ff`.
+Ingest/telemetry counts and hashes below are unchanged. All resumed baseline rows
+were verified through finalization. Background rows accumulated before producers
+were paused are retained; no history was rewritten to match older counts.
+
+The cold boot had also restarted the Hermes **user** unit. Recovery's stopped-unit
+check refused to proceed until it was stopped and MainPID was zero. It remained
+stopped throughout all fresh acceptance gates. The analysis timer is also paused.
+Real one-shot inference, configured outbound probes and synthetic/internal E2E
+ran without reopening external inbound.
+
+Fresh immutable evidence:
+`/var/lib/ai-platform/stage-g/fa6b31e5f7dcc7a67fe1928e7bf099f2256225c2/`.
+Isolated evidence:
+`/var/lib/ai-platform/stage-g/isolated-video-evidence-342ddcbb63524fa7bbc7b0beeab60678/`.
+Isolated MP4: `/tmp/stage-g-isolated-video-6r735lfl/ltx23-20260923-125021-92a14215.mp4`.
+Local logs/observations: `/home/harrypotter/agent-state/manual-eh/g-*fa6b31e*`;
+managed diagnostic evidence is also in `gpu-isolation-video/managed-isolated-pass.json`.
+The historical GPU fault is unresolved; a new MES/ring/reset/timeout must still
+latch immediately, stop ingress, preserve the last verified release and require
+physical power-cycle. Never issue a warm reboot.
+
+## Earlier attempt and retained incident evidence
 
 WVC policy, sensor/fan interpretation, telemetry and analysis schemas, persistence,
 API and CLI implementation now live in `ai_bridge.domains.wvc`. Platform composition
@@ -47,7 +103,7 @@ Separate outbound compatibility probes do not establish inbound transport.
 **External inbound Telegram/Discord remains DEFERRED/NOT TESTED.** No GPU driver
 fix is claimed; the F residency protocol remains in force.
 
-## Validation
+## Earlier rejected candidate validation
 
 | Check | Result |
 |---|---|
@@ -111,7 +167,7 @@ F and starts only AI Bridge telemetry/history. It calls no Ollama/Comfy API, lea
 both providers untouched, retains both block markers (the persistent residency latch was confirmed present) and never runs or labels a
 smoke PASS. The full 808-test suite includes this no-probe/no-resume invariant.
 
-Contained runtime:
+Contained runtime after the earlier fault (superseded by the accepted recovery above):
 
 - `/opt/ai-platform/current` → `stage-f-d8f68cadd953`.
 - Gateway stopped; analysis timer/service inactive; Hermes MainPID 0 and no workers.

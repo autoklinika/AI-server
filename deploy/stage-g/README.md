@@ -1,8 +1,10 @@
 # Stage G — WVC domain and freshness
 
-**BLOCKED:** candidate and F rollback smoke passed, but final G media validation
-triggered a new MES fault. Verified F is restored with inference ingress paused;
-G is not accepted and H has not started. See the [incident/production report](../../docs/reports/AI_PLATFORM_STAGE_G_PRODUCTION_GATE.md).
+**Production acceptance PASS:** `stage-g-fa6b31e5f7dc` passed the isolated
+cold-boot probe and fresh candidate/F-rollback/reactivation full gates on 2026-09-23.
+The rejected `7ccc9c14da33` incident remains preserved; no driver fix is claimed.
+Hermes/external inbound remains paused and DEFERRED/NOT TESTED. See the
+[production/incident report](../../docs/reports/AI_PLATFORM_STAGE_G_PRODUCTION_GATE.md).
 
 The [domain architecture](../../docs/architecture/WVC_DOMAIN.md) defines ownership,
 compatibility and freshness. The verified rollback point is
