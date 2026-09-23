@@ -722,3 +722,34 @@ H NOT STARTED.** Verified F was restored with inference/media ingress paused,
 telemetry/history active, no GPU probes/restarts and all recovery evidence retained.
 F's completed historical validation is not a claim that the GPU driver is fixed.
 [Full incident and evidence](../reports/AI_PLATFORM_STAGE_G_PRODUCTION_GATE.md).
+
+### Stage G/H — completion and live post-acceptance evidence, 2026-09-23
+
+Stage G production validation ultimately passed after bounded ComfyUI cleanup wakeups
+were corrected; PR #64 merged and post-merge CI passed. Stage H then completed the
+reversible four-file legacy-helper quarantine with full G rollback/reactivation;
+PR #65 merged and post-merge CI passed. No purge was performed.
+
+After H, real external acceptance additionally verified Telegram video, Discord
+voice/photo/video and physical WVC reconnect. CM5 telemetry from `192.168.1.64`
+resumed without duplicate-ingest symptoms. The H finalization defect that left the
+WVC analysis timer stopped was corrected in PR #66; the timer is now enabled/active
+and completed a scheduled Gateway/Qwen advisory over 141 real CM5 samples. Missing
+sensor values in that window are expected because physical WVC peripherals were
+intentionally disconnected. No new MES/ring/reset/timeout fault was observed.
+
+### Stage I — Observability & operations hardening — decyzja 2026-09-23
+
+P2 orders observability before Knowledge Service. Therefore the next migration step
+is Stage I, inserted explicitly between completed H and the first new knowledge
+functionality. This does not renumber the historical E–H evidence; it names the
+operational hardening step needed before further product expansion.
+
+Stage I adds a bounded metadata-only Platform observability contract and structured
+request correlation. It does not add Prometheus/Grafana, persistent metrics storage,
+a model/GPU change, a new public listener, Knowledge Service or domain control.
+The verified rollback point is `stage-h-b9362bdae1c3`.
+
+Knowledge Service remains the next functional stage after I and should be treated as
+Stage J in the continuation of this lettered migration sequence. Its pgvector/Qdrant
+ADR remains out of Stage I scope.

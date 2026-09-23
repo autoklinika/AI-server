@@ -199,3 +199,73 @@ def test_running_deadline_cancels_executor_before_releasing_slot():
             assert snap['active_count'] == snap['queued_count'] == 0
             assert snap['recent_jobs'][-1]['state'] == 'expired'
     asyncio.run(run())
+
+
+def test_observability_snapshot_is_bounded_metadata_only():
+    async def run():
+        token = 'observability-test-service-token'
+        async with client(platform_api_token=token) as (http, app):
+            headers = {'authorization': 'Bearer ' + token}
+            ok = await http.post('/api/v1/ai', json=payload(
+                context={'request_id': 'req_observe', 'domain': 'wvc'}), headers=headers)
+            assert ok.status_code == 200
+            bad = await http.post('/api/v1/ai', json=payload(
+                capability='video-generation'), headers=headers)
+            assert bad.status_code == 503
+            r = await http.get('/api/v1/observability', headers=headers)
+            assert r.status_code == 200
+            data = r.json()
+            assert data['schema_version'] == 1 and data['status'] == 'ok'
+            assert data['resource_manager']['active'] == 0
+            assert data['resource_manager']['queued'] == 0
+            assert data['resource_leases']['active'] == 0
+            assert data['gpu_residency']['recovery_required'] is False
+            assert data['execution'] == {
+                'provider': 'ollama-local', 'node': app.state.platform_provider.node_id,
+                'logical_model': 'reasoning-main'}
+            assert data['jobs']['states']['completed'] >= 1
+            assert data['jobs']['providers']['ollama-local'] >= 1
+            assert data['jobs']['queue_wait']['count'] >= 1
+            assert data['jobs']['execution']['count'] >= 1
+            assert data['requests']['errors']['capability_unavailable'] == 1
+            assert data['retention']['persistent'] is False
+            assert data['retention']['terminal_limit'] == 128
+            assert data['process']['rss_bytes'] > 0
+            serialized = r.text
+            assert 'private-prompt' not in serialized
+            assert 'private-model' not in serialized
+            assert token not in serialized
+            health = (await http.get('/api/v1/health', headers=headers)).json()
+            assert health['components']['resource_leases']['active'] == 0
+            assert health['components']['gpu_residency']['recovery_required'] is False
+    asyncio.run(run())
+
+
+def test_observability_counts_invalid_boundary_requests_without_echoing_input():
+    async def run():
+        async with client() as (http, _):
+            bad_id = 'bad request id with spaces'
+            r = await http.get('/api/v1/health', headers={'x-request-id': bad_id})
+            assert r.status_code == 400 and bad_id not in r.text
+            obs = (await http.get('/api/v1/observability')).json()
+            assert obs['requests']['errors']['invalid_request'] == 1
+            assert obs['requests']['status_classes']['4xx'] >= 1
+    asyncio.run(run())
+
+
+def test_structured_platform_log_never_contains_dynamic_path_or_query(caplog):
+    import logging
+    async def run():
+        caplog.set_level(logging.INFO, logger='ai_bridge.platform.api')
+        async with client() as (http, _):
+            dynamic = 'private-chat-id'
+            secret_query = 'private-query-token'
+            r = await http.get(f'/api/v1/jobs/{dynamic}?token={secret_query}')
+            assert r.status_code == 404
+            logs = '\n'.join(record.getMessage() for record in caplog.records
+                             if record.name == 'ai_bridge.platform.api')
+            assert 'PLATFORM_REQUEST' in logs
+            assert dynamic not in logs and secret_query not in logs
+            assert '/jobs/{job_id}' in logs
+            assert 'not_found' in logs
+    asyncio.run(run())

@@ -18,6 +18,10 @@ def main() -> None:
         host=settings.gateway_host,
         port=settings.gateway_port,
         log_level=settings.log_level.lower(),
+        # Uvicorn access logs include the raw request target, including dynamic
+        # path values and query strings. Platform API emits its own bounded,
+        # correlation-safe structured completion record instead.
+        access_log=False,
         reload=False,
     )
 

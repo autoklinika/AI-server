@@ -6,7 +6,6 @@ set -Eeuo pipefail
 ALLOWED_USER="__AUTOPILOT_USER__"
 ALLOWED_UID="__AUTOPILOT_UID__"
 ALLOWED_HOME="__AUTOPILOT_HOME__"
-WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-eh"
 
 fail() {
   printf 'AUTOPILOT_ROOT_DENY=%s\n' "$1" >&2
@@ -39,7 +38,12 @@ stage="$1"
 step="$2"
 expected_sha="$3"
 
-[[ "$stage" =~ ^[EFGH]$ ]] || fail "stage"
+[[ "$stage" =~ ^[EFGHI]$ ]] || fail "stage"
+case "$stage" in
+  E|F|G|H) WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-eh" ;;
+  I) WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-i" ;;
+  *) fail "stage_worktree" ;;
+esac
 case "$step" in
   00_preflight.sh|10_build_install.sh|20_cutover.sh|30_smoke.sh|40_rollback.sh|\
   50_rollback_smoke.sh|60_reactivate.sh|70_reactivate_smoke.sh|90_finalize.sh)

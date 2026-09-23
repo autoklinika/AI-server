@@ -5,9 +5,10 @@ DEST="${1:?usage: $0 DEST RELEASE_ID}"
 RELEASE_ID="${2:?usage: $0 DEST RELEASE_ID}"
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 STAGE="${RELEASE_STAGE:?release stage required}"
-[[ "$STAGE" =~ ^[GH]$ ]] || exit 2
+[[ "$STAGE" =~ ^[GHI]$ ]] || exit 2
 STAGE_LC="${STAGE,,}"
 MIGRATION="${RELEASE_MIGRATION:?migration version required}"
+OBSERVABILITY_CONTRACT="${RELEASE_OBSERVABILITY_CONTRACT:-}"
 PYTHON_BIN="${PYTHON_BIN:-python3.14}"
 
 OWNER_UID="$(stat -c '%u' "$ROOT")"
@@ -112,6 +113,10 @@ provider_model_config:
   knowledge_backend: contract-only
 MANIFEST
 
+if [[ -n "$OBSERVABILITY_CONTRACT" ]]; then
+  sed -i "/    platform_api: 1/a\\    observability: $OBSERVABILITY_CONTRACT" "$DEST/metadata/release-manifest.yaml"
+fi
+
 echo "===== AI BRIDGE VENV ====="
 "$PYTHON_BIN" -m venv "$DEST/services/ai-bridge/.venv"
 "$DEST/services/ai-bridge/.venv/bin/python" -m pip   --disable-pip-version-check install   -r "$ROOT/deploy/stage-a/locks/ai-bridge.requirements.txt"
@@ -140,6 +145,9 @@ unified_admission_contract_version=1
 compatibility_contract_version=1
 provider_model_config_version=qwen36-hermes64k-gpu-20260919-v1
 STAMP
+if [[ -n "$OBSERVABILITY_CONTRACT" ]]; then
+  printf "observability_contract_version=%s\n" "$OBSERVABILITY_CONTRACT" >> "$DEST/RELEASE"
+fi
 
 python3 "$ROOT/deploy/stage-$STAGE_LC/validate_release_metadata.py" "$DEST"
 

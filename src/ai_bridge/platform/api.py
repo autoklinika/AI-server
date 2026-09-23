@@ -2,6 +2,8 @@
 import asyncio
 import hmac
 import ipaddress
+import json
+import logging
 import re
 from dataclasses import asdict
 from time import monotonic
@@ -19,7 +21,9 @@ from ai_bridge.gateway.jobs import JobLifecycle, JobMetadata
 from ai_bridge.gateway.priority import PriorityClass, priority_for_class
 from ai_bridge.gateway.scheduler import SchedulerQueueFull
 from ai_bridge.providers.contracts import LLMRequest
+from ai_bridge.platform.observability import PlatformRequestMetrics, job_metrics, runtime_resources
 
+LOGGER = logging.getLogger(__name__)
 ID = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")]
 
 
@@ -88,8 +92,11 @@ class LocalServicePolicy:
 def create_platform_app(gateway, settings, policy=None):
     api = FastAPI(title="Platform API", version="1", docs_url=None, redoc_url=None)
     policy = policy or LocalServicePolicy(settings.platform_api_token)
+    metrics = PlatformRequestMetrics()
+    api.state.observability = metrics
 
     def error(request, status, code, retryable=False):
+        request.state.error_code = code
         return JSONResponse(status_code=status, content={"error": {
             "code": code, "message": code.replace("_", " ").capitalize(),
             "request_id": request.state.request_id, "retryable": retryable, "details": {}}})
@@ -97,6 +104,9 @@ def create_platform_app(gateway, settings, policy=None):
     @api.middleware("http")
     async def boundary(request, call_next):
         request.state.request_id = "req_" + uuid4().hex
+        request.state.error_code = None
+        started = metrics.begin()
+        response = None
         try:
             raw = request.headers.get("x-request-id")
             if raw is not None:
@@ -109,7 +119,21 @@ def create_platform_app(gateway, settings, policy=None):
             response = error(request, exc.status, exc.code, exc.retryable)
         except Exception:
             response = error(request, 500, "internal_error")
-        response.headers["X-Request-Id"] = request.state.request_id
+        finally:
+            status = response.status_code if response is not None else 499
+            code = request.state.error_code
+            if code is None and status >= 500:
+                code = "server_error"
+            elif code is None and status >= 400:
+                code = "client_error"
+            elapsed = metrics.finish(started, status, code)
+            route = getattr(request.scope.get("route"), "path", "unmatched")
+            LOGGER.info("PLATFORM_REQUEST %s", json.dumps({
+                "request_id": request.state.request_id, "method": request.method,
+                "route": route, "status": status, "duration_ms": round(elapsed, 3),
+                "error_class": code}, separators=(",", ":"), sort_keys=True))
+        if response is not None:
+            response.headers["X-Request-Id"] = request.state.request_id
         return response
 
     @api.exception_handler(APIError)
@@ -165,21 +189,62 @@ def create_platform_app(gateway, settings, policy=None):
                         {"system_id": "discord", "integration": "compatibility"},
                         {"system_id": "media", "integration": "compatibility"}])
 
+    async def operational_snapshot():
+        scheduler = await gateway.state.scheduler.snapshot()
+        leases = await gateway.state.resource_leases.snapshot()
+        gpu = gateway.state.resource_leases.residency.snapshot()
+        cleanup = ((gpu.get("cleanup_evidence") or {}).get("residency") or {})
+        provider = gateway.state.platform_provider
+        return {
+            "resource_manager": {
+                "admission_blocked": scheduler["admission_blocked"],
+                "active": scheduler["active_count"], "queued": scheduler["queued_count"],
+                "max_concurrency": scheduler["max_concurrency"],
+                "max_queue_size": scheduler["max_queue_size"],
+            },
+            "resource_leases": {"active": leases["lease_count"]},
+            "gpu_residency": {
+                "state": gpu.get("state"), "recovery_required": gpu.get("recovery_required"),
+                "queue_running": cleanup.get("queue_running"),
+                "queue_pending": cleanup.get("queue_pending"),
+                "loaded_models": cleanup.get("loaded_models"),
+                "cleanup_pending": cleanup.get("cleanup_pending"),
+            },
+            "execution": {"provider": provider.provider_id, "node": provider.node_id,
+                          "logical_model": "reasoning-main"},
+            "jobs": job_metrics(scheduler),
+            "retention": {"persistent": False,
+                          "recent_job_count": len(scheduler["recent_jobs"]),
+                          "terminal_limit": gateway.state.scheduler.history_limit},
+            "process": runtime_resources(),
+        }
+
+    @api.get("/observability")
+    async def observability(request: Request):
+        snapshot = await operational_snapshot()
+        return envelope(request, status="ok" if not snapshot["resource_manager"]["admission_blocked"]
+                        else "blocked", requests=metrics.snapshot(), **snapshot)
+
     @api.get("/health")
     async def health(request: Request):
-        snapshot = await gateway.state.scheduler.snapshot()
+        snapshot = await operational_snapshot()
         try:
             async with asyncio.timeout(settings.gateway_health_timeout_seconds):
-                ready = await gateway.state.platform_provider.ready()
+                inference_ready = await gateway.state.platform_provider.ready()
         except Exception:
-            ready = False
-        ready = ready and not snapshot["admission_blocked"]
+            inference_ready = False
+        ready = inference_ready and not snapshot["resource_manager"]["admission_blocked"]
         return envelope(request, status="ready" if ready else "degraded", liveness=True,
-                        readiness=ready, components={"resource_manager": {
-                            "status": "blocked" if snapshot["admission_blocked"] else "ready", "active": snapshot["active_count"],
-                            "queued": snapshot["queued_count"]},
-                            "inference": {"status": "ready" if ready else "unavailable"}},
-                        compatibility_health="not_probed")
+                        readiness=ready, components={
+                            "resource_manager": {
+                                "status": "blocked" if snapshot["resource_manager"]["admission_blocked"] else "ready",
+                                "active": snapshot["resource_manager"]["active"],
+                                "queued": snapshot["resource_manager"]["queued"],
+                            },
+                            "resource_leases": snapshot["resource_leases"],
+                            "gpu_residency": snapshot["gpu_residency"],
+                            "inference": {"status": "ready" if inference_ready else "unavailable"},
+                        }, compatibility_health="not_probed")
 
     @api.post("/ai")
     async def ai(body: AIRequest, request: Request):
