@@ -75,7 +75,7 @@ def preflight():
     require(verify(BASE)['source_git_sha'] == BASE_SHA)
     f.require_kernel_clear()
     e.runtime(BASE, e.config())
-    e.hermes_state()
+    e.require_hermes_stopped()
     require(e.fetch(e.GATEWAY + '/status')['gpu_residency']['state'] == 'llm')
     f.require_no_media_workers()
 
@@ -113,7 +113,7 @@ def smoke_body(phase, target, candidate, state, baseline):
     evidence_dir.mkdir(mode=0o700)
     e.api_smoke(e.config())
     e.wvc_smoke()
-    e.hermes_oneshot_smoke()
+    e.hermes_oneshot_smoke(keep_ingress_paused=True)
     harness = e.load_module('stage_g_compat_harness', ROOT / 'deploy/stage-f/internal_e2e.py')
     f.messaging_boundary_smoke(harness.configured_hermes_model(f.CONFIG))
     domain = history(target, baseline['history'], freshness=target != BASE)
@@ -140,7 +140,7 @@ def smoke_body(phase, target, candidate, state, baseline):
         e.resume_ingress(baseline)
     e.wvc_smoke()
     e.runtime(target, e.config(), baseline)
-    e.hermes_state()
+    e.require_hermes_stopped()
     require(before == [e.identity(u) for u in ('ai-gateway.service', 'ai-bridge.service', 'comfyui.service', 'ollama.service')])
     require(e.identity('ollama.service') == baseline['ollama'])
     e.write_once(evidence_dir / 'provisional.json', {'release': target.name, 'time': time.time(), 'phase': phase,
@@ -202,7 +202,11 @@ def main(step):
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 return paused_gpu_rollback()
     if step == '00_preflight':
+        recovery = e.load_module('stage_g_cold_recovery', ROOT / 'deploy/stage-g/cold_recovery.py')
+        recovery.recover_if_needed(sys.modules[__name__])
         preflight()
+        isolated = e.load_module('stage_g_isolated_video', ROOT / 'deploy/stage-g/isolated_video.py')
+        isolated.validate(sys.modules[__name__])
         return
     STATE.mkdir(mode=0o700, exist_ok=True)
     with (STATE / 'executor.lock').open('a') as lock:
@@ -213,7 +217,7 @@ def main(step):
             state.mkdir(mode=0o700)
             baseline = {'source_sha': sha, 'rollback': str(BASE), 'clients': clients(),
                 'comfy': e.identity('comfyui.service'), 'ollama': e.identity('ollama.service'),
-                'hermes_active': 'active', 'history': history(BASE),
+                'hermes_active': 'inactive', 'history': history(BASE),
                 'analysis_timer_active': run(['systemctl', 'show', 'ai-bridge-analysis.timer', '-p', 'ActiveState', '--value']),
                 'rollback_checksums': e.digest(BASE / 'metadata/SHA256SUMS')}
             e.write_once(state / 'baseline.json', baseline)
@@ -244,7 +248,7 @@ def main(step):
                 require(evidence['release'] == target.name)
                 require(e.read(Path(evidence['evidence']) / 'pass.json')['compatibility'] == 'PASS')
             e.runtime(candidate, e.config(), baseline)
-            e.hermes_state()
+            e.require_hermes_stopped()
             evidence = history(candidate, baseline['history'])
             e.write_once(state / 'complete.json', {'source_sha': sha, 'history': evidence,
                 'internal_e2e': 'PASS', 'external_transport': 'DEFERRED/NOT TESTED'})

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from pathlib import Path
 
@@ -20,9 +21,11 @@ class GPUResidency:
         self.idle_reserve_bytes = idle_reserve_bytes
         self.require_comfy_extension = require_comfy_extension
         self.state = "blocked" if marker.exists() else "llm"
+        self.cleanup_evidence = None
 
     def snapshot(self):
-        return {"state": self.state, "recovery_required": self.state == "blocked"}
+        return {"state": self.state, "recovery_required": self.state == "blocked",
+                "cleanup_evidence": self.cleanup_evidence}
 
     def _dirty(self):
         self.marker.parent.mkdir(parents=True, exist_ok=True)
@@ -45,6 +48,7 @@ class GPUResidency:
         if not self.require_comfy_extension:
             return True  # Only quiesced legacy rollback after ComfyUI restart.
         evidence = await self._json(self.comfy, "/ai-platform/residency")
+        self.cleanup_evidence = {**(self.cleanup_evidence or {}), "residency": evidence}
         if evidence.get("schema_version") != 1:
             raise ResidencyError("unsupported ComfyUI residency evidence")
         return (type(evidence.get("loaded_models")) is int
@@ -84,10 +88,17 @@ class GPUResidency:
             raise ResidencyError("GPU residency requires recovery")
         try:
             self.state = "freeing_comfy"
+            # Leave a read-only settling window between idempotent wakeups.
+            # Re-posting on every poll can re-arm flags while the worker is
+            # resetting caches/collecting, hiding its eventual clean state.
+            loop = asyncio.get_running_loop()
+            settle = min(2.0, self.timeout / 3)
+            deadline = loop.time() + self.timeout
             async with asyncio.timeout(self.timeout):
                 await self._idle()
                 response = await self.comfy.post("/free", json={"unload_models": True, "free_memory": True})
                 response.raise_for_status()
+                next_wakeup = loop.time() + settle
                 # /free only schedules cleanup. Verify allocator release, not
                 # just the HTTP acknowledgement or an empty prompt queue.
                 while True:
@@ -95,16 +106,20 @@ class GPUResidency:
                     devices = (await self._json(self.comfy, "/system_stats"))["devices"]
                     if not isinstance(devices, list) or not devices:
                         raise ResidencyError("missing ComfyUI memory evidence")
+                    self.cleanup_evidence = {"reserved_bytes": [d.get("torch_vram_total") for d in devices],
+                                             "idle_reserve_bytes": self.idle_reserve_bytes}
                     unloaded = await self._comfy_models_idle()
                     if unloaded and all(type(d["torch_vram_total"]) is int and 0 <= d["torch_vram_total"] <= self.idle_reserve_bytes for d in devices):
                         break
+                    # A lost condition notification still needs a wakeup, but
+                    # always observe again before sending it. The final window
+                    # only observes: late clean evidence must meet the original
+                    # deadline and every existing predicate, never a grace reset.
+                    if loop.time() >= next_wakeup and loop.time() < deadline - settle:
+                        response = await self.comfy.post("/free", json={"unload_models": True, "free_memory": True})
+                        response.raise_for_status()
+                        next_wakeup = loop.time() + settle
                     await asyncio.sleep(self.poll)
-                    # ComfyUI's condition notification can arrive while its
-                    # worker is already cleaning up. Repeat the idempotent flags
-                    # to wake an idle worker; acknowledgement, never a delay or
-                    # HTTP 200 alone, controls admission. Total deadline holds.
-                    response = await self.comfy.post("/free", json={"unload_models": True, "free_memory": True})
-                    response.raise_for_status()
                 await self._idle()
                 if (await self._json(self.ollama, "/api/ps"))["models"] != []:
                     raise ResidencyError("Ollama reloaded outside Resource Manager")
@@ -112,4 +127,5 @@ class GPUResidency:
             self.state = "llm"
         except BaseException:
             self.state = "blocked"
+            logging.getLogger(__name__).error("ComfyUI cleanup blocked: %s", self.cleanup_evidence)
             raise

@@ -8,8 +8,8 @@ The [domain architecture](../../docs/architecture/WVC_DOMAIN.md) defines ownersh
 compatibility and freshness. The verified rollback point is
 `/opt/ai-platform/releases/stage-f-d8f68cadd953` (PR #63, post-merge CI PASS).
 No provider, Hermes plugin, client binary, systemd configuration or database schema
-changes in this stage. G switches both platform services to one immutable source
-release. GPU ownership remains the verified F protocol; neither Ollama nor ComfyUI
+changes in this stage. Cleanup diagnostics and bounded polling are repaired in G. G switches both platform services to one immutable source
+release. GPU ownership retains the verified F predicates with bounded cleanup settling; neither Ollama nor ComfyUI
 is restarted by G deployment or normal handoffs.
 
 Use the exact clean/pushed `agent/stage-g` SHA through the supervisor privilege
@@ -38,3 +38,9 @@ path: verify F, stop producers, require workers gone, switch to F and start only
 telemetry/history. It does not invoke GPU providers, clear markers, resume ingress
 or claim an acceptance smoke. A new controller SHA may run this path without
 requiring an installed/healthy failed candidate.
+
+Cold-boot recovery preflight performs the recorded diagnostic-to-systemd handoff
+and a bounded admitted 1s 640x384 video with Ollama explicitly empty and kernel
+cursor evidence. Hermes/external inbound and analysis ingress remain paused
+through acceptance; the real one-shot and synthetic/internal tests run locally.
+Candidate, planned F rollback and final G reactivation smokes remain mandatory.

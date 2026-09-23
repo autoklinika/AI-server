@@ -132,3 +132,32 @@ Resume requires a controlled host/GPU recovery window and fresh bounded inferenc
 explicit unload and kernel evidence before any new heavy-media acceptance cycle.
 No automatic reboot/reset was attempted. Keep ingress paused until that recovery
 is established; do not clear markers or mistake endpoint readiness for GPU health.
+
+## Resumed cold-boot cleanup investigation
+
+The operator performed a physical power-cycle; no automated reboot is authorized.
+The resumed boot `5d7c0564-8190-4194-9b09-4877d8943184` has zero matches from the
+production `gpu_watch.py` parser as of investigation. The isolated 1s 640x384
+video produced a valid MP4, but cleanup did **not** pass: manual Gateway PID
+10872 used default configuration (no GPU-related environment and no `.env`),
+including a zero-byte allocator ceiling. ComfyUI eventually reported zero loaded
+models, empty queues, no pending flags, and 65,011,712 reserved bytes. The
+production unit's unchanged 67,108,864-byte ceiling was absent from this process.
+The lease correctly remained pinned after the 90-second cleanup timeout.
+
+The provider journal also records repeated cache resets from 12:09:19 through
+12:10:48 CEST. The old loop posts `/free` after every failed poll; this re-arms
+flags and can obscure clean-state observation while the worker resets/collects.
+The exact historical per-poll allocator/flag values were not captured, so the
+journal alone cannot attribute each failed poll to flags. The configuration
+mismatch is independently sufficient to reject the observed 62 MiB clean state.
+The repair preserves all evidence predicates and memory thresholds, spaces
+wakeups with bounded read-only settling, keeps the original deadline, and exposes
+last cleanup evidence. Focused tests reproduce both delay and permanent failure.
+
+Warm reboot has failed to restore SSH/Tailscale access on the host's MediaTek
+MT7925 Wi-Fi (`wlp194s0`); physical power-cycle restores access. Root cause is
+unproven (firmware/AGESA/PCIe/device-reset possibilities). See the updated GPU
+runbook. This is not evidence of a driver fix. G remains unaccepted pending fresh
+isolated validation and all candidate/rollback/reactivation gates; H NOT STARTED.
+Local investigation evidence: `/home/harrypotter/agent-state/manual-eh/gpu-isolation-video/`.

@@ -281,17 +281,20 @@ def require_hermes_stopped():
         require_empty_cgroup(root)
 
 
-def hermes_oneshot_smoke():
+def hermes_oneshot_smoke(*, keep_ingress_paused=False):
     name, uid, home = hermes_account()
     cli = Path(home) / '.local/bin/hermes'
     require(cli.is_file())
 
     # Close messaging ingress so the one-shot is the only possible fresh
     # shared/chat Hermes workload. This makes job correlation unambiguous.
-    require(user_systemctl([
-        'show', 'hermes-gateway.service', '-p', 'ActiveState', '--value'
-    ]) == 'active')
-    user_systemctl(['stop', 'hermes-gateway.service'])
+    if keep_ingress_paused:
+        require_hermes_stopped()
+    else:
+        require(user_systemctl([
+            'show', 'hermes-gateway.service', '-p', 'ActiveState', '--value'
+        ]) == 'active')
+        user_systemctl(['stop', 'hermes-gateway.service'])
     try:
         require_hermes_stopped()
         before = {
@@ -320,18 +323,21 @@ def hermes_oneshot_smoke():
             and fresh[0].get('assigned_provider') == 'ollama-local'
         )
     finally:
-        user_systemctl(['start', 'hermes-gateway.service'])
-        for _ in range(90):
-            try:
-                require(user_systemctl([
-                    'show', 'hermes-gateway.service', '-p', 'ActiveState', '--value'
-                ]) == 'active')
-                hermes_state()
-                break
-            except Exception:
-                time.sleep(1)
+        if keep_ingress_paused:
+            require_hermes_stopped()
         else:
-            raise RuntimeError('Hermes did not reconnect after one-shot smoke')
+            user_systemctl(['start', 'hermes-gateway.service'])
+            for _ in range(90):
+                try:
+                    require(user_systemctl([
+                        'show', 'hermes-gateway.service', '-p', 'ActiveState', '--value'
+                    ]) == 'active')
+                    hermes_state()
+                    break
+                except Exception:
+                    time.sleep(1)
+            else:
+                raise RuntimeError('Hermes did not reconnect after one-shot smoke')
 
 
 def discord_smoke_target():
