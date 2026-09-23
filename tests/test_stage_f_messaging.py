@@ -212,3 +212,20 @@ def test_rollback_never_requires_healthy_candidate(monkeypatch, tmp_path):
     assert ('verify', baseline) in actions and ('verify', candidate) not in actions
     assert ('quiesce', {'allow_gateway_unavailable': True}) in actions
     assert actions[-1] == ('resume', True)
+
+
+def test_snapshot_closes_sqlite_before_inventory(tmp_path):
+    import sqlite3
+    from contextlib import closing
+    source, target = tmp_path / 'live.sqlite', tmp_path / 'backup.sqlite'
+    with closing(sqlite3.connect(source)) as db:
+        db.execute('PRAGMA journal_mode=WAL')
+        db.execute('CREATE TABLE evidence(value INTEGER)')
+        db.execute('INSERT INTO evidence VALUES (42)')
+        db.commit()
+        gate_module().backup_database(source, target)
+        assert target.exists()
+        assert not target.with_name(target.name + '-wal').exists()
+        assert not target.with_name(target.name + '-shm').exists()
+        with closing(sqlite3.connect(target)) as restored:
+            assert restored.execute('SELECT value FROM evidence').fetchall() == [(42,)]

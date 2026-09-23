@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Stage F supervisor gate. Private recovery material never leaves local storage."""
+from contextlib import closing
 import fcntl
 import importlib.util
 import json
@@ -81,6 +82,12 @@ def preflight():
     e.media_preflight()
 
 
+def backup_database(path, target):
+    with closing(sqlite3.connect(f'file:{path}?mode=ro', uri=True)) as source, closing(sqlite3.connect(target)) as dest:
+        source.backup(dest)
+        require(dest.execute('PRAGMA integrity_check').fetchone()[0] == 'ok')
+
+
 def snapshot(state):
     recovery = state / 'hermes-recovery'
     recovery.mkdir(mode=0o700)
@@ -106,9 +113,7 @@ def snapshot(state):
     for index, path in enumerate(dbs):
         target = recovery / f'state-{index}.sqlite'
         manifest['databases'][str(path)] = target.name
-        with sqlite3.connect(f'file:{path}?mode=ro', uri=True) as source, sqlite3.connect(target) as dest:
-            source.backup(dest)
-            require(dest.execute('PRAGMA integrity_check').fetchone()[0] == 'ok')
+        backup_database(path, target)
     with tarfile.open(recovery / 'config-state-integration.tar', 'x') as archive:
         for path in HERMES.iterdir():
             if path.is_file() and not path.name.endswith(('.db', '.db-wal', '.db-shm', '.lock')):
