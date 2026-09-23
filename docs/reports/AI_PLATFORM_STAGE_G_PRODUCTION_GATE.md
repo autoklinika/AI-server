@@ -61,7 +61,7 @@ fix is claimed; the F residency protocol remains in force.
 | Final full smoke | **FAIL/BLOCKED: new MES fault after final video; no acceptance record** |
 | Production finalize | NOT RUN: GPU blocker |
 | Paused containment rollback to F | Restored verified F; no GPU probes or ingress resume; not an acceptance smoke |
-| Final branch CI | Pending; code evidence only |
+| Recovery source CI | PASS, [35842782783](https://github.com/autoklinika/AI-server/actions/runs/35842782783), source `4fca99a`; code evidence only |
 | Merge/post-merge CI | NOT RUN: PR remains draft |
 
 Each full smoke includes Platform API, WVC inference routing, real Hermes CLI,
@@ -108,7 +108,7 @@ A reviewed controller repair (`4fca99a`) adds a distinct paused rollback path.
 After a same-boot kernel fault it validates only verified F, stops all inference
 producers, requires no surviving external workers, switches service bytes back to
 F and starts only AI Bridge telemetry/history. It calls no Ollama/Comfy API, leaves
-both providers untouched, retains both block markers and never runs or labels a
+both providers untouched, retains both block markers (the persistent residency latch was confirmed present) and never runs or labels a
 smoke PASS. The full 808-test suite includes this no-probe/no-resume invariant.
 
 Contained runtime:
