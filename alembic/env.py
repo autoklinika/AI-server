@@ -6,7 +6,9 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from ai_bridge.settings import Settings
-from ai_bridge.storage.models import Base
+from ai_bridge.storage.base import Base
+from ai_bridge.domains.wvc.storage import models as _wvc_models  # noqa: F401
+from ai_bridge.knowledge.storage import models as _knowledge_models  # noqa: F401
 
 
 config = context.config

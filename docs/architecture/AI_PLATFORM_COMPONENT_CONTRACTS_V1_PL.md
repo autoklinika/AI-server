@@ -639,6 +639,45 @@ Dozwolone `mode`:
 
 Score z różnych backendów nie musi mieć identycznej semantyki. Knowledge Service odpowiada za normalizację/ranking na poziomie API.
 
+### 9.1. Canonical persistence i reindex — Stage J3
+
+Trwała tożsamość wiedzy jest niezależna od vector backendu:
+
+```text
+Source -> Document -> DocumentVersion -> Chunk -> IndexJob
+```
+
+`DocumentVersion` wskazuje content-addressed immutable object przez SHA-256 i
+`storage_uri`. `Chunk` ma wersjonowany `chunk_profile`. `IndexJob` ma osobny
+`index_profile`, więc zmiana modelu/vector DB/chunkingu może być wykonana jako
+kontrolowany reindex bez zmiany klienta.
+
+Stany J3 index job:
+
+```text
+pending -> running -> completed
+             |            |
+             v            v
+           failed      (terminal dla tej projekcji)
+
+pending/failed -> superseded   # gdy nowsza wersja dokumentu staje się current
+```
+
+`failed` jest retryable. `completed` nie jest wykonywany drugi raz. Qdrant nie
+jest źródłem prawdy; utrata kolekcji wymaga odtworzenia z canonical store.
+
+### 9.2. Retrieval routing — Stage J3
+
+```text
+exact / keyword -> current canonical chunks
+semantic        -> dense vector backend
+hybrid / auto   -> dense + lexical -> reciprocal-rank fusion
+```
+
+Klient nie zna implementacji kanałów. Wynik `hybrid` nadal ma backend logiczny
+`knowledge-primary`; fizyczne nazwy Qdrant/PostgreSQL/Ollama/BGE nie mogą być
+wymagane w publicznym `KnowledgeQuery`.
+
 ---
 
 ## 10. TelemetryBackend

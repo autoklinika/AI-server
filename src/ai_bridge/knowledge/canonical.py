@@ -114,12 +114,14 @@ class KnowledgeChunkRecord:
     ordinal: int
     text: str
     text_sha256: str
+    chunk_profile: str = "canonical-v1"
     locator: Mapping[str, Any] = field(default_factory=dict)
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         _require(self.chunk_id, "chunk_id")
         _require(self.version_id, "version_id")
+        _require(self.chunk_profile, "chunk_profile")
         _require(self.text, "text")
         _require_sha256(self.text_sha256, "text_sha256")
         if sha256_text(self.text) != self.text_sha256:
@@ -182,13 +184,17 @@ def document_version_record(
 
 def chunk_record(
     version: KnowledgeDocumentVersionRecord, *, ordinal: int, text: str,
+    chunk_profile: str = "canonical-v1",
     locator: Mapping[str, Any] | None = None,
     metadata: Mapping[str, Any] | None = None,
 ) -> KnowledgeChunkRecord:
     digest = sha256_text(text)
     return KnowledgeChunkRecord(
-        chunk_id=stable_id("kchk", version.version_id, str(ordinal), digest),
+        chunk_id=stable_id(
+            "kchk", version.version_id, chunk_profile, str(ordinal), digest
+        ),
         version_id=version.version_id,
+        chunk_profile=chunk_profile,
         ordinal=ordinal,
         text=text,
         text_sha256=digest,
