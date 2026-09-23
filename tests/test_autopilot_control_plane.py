@@ -216,3 +216,15 @@ def test_stage_e_policy_defers_external_inbound_multiuser_to_stage_f():
     assert 'successful outbound delivery' in text
     assert 'Full fresh inbound multiuser/user-path validation' in text
     assert 'mandatory in Stage F' in text
+
+
+def test_privilege_bridge_extends_only_the_stage_allowlist_for_i():
+    text = (AUTO / 'root_executor.sh').read_text(encoding='utf-8')
+    assert '[[ "$stage" =~ ^[EFGHI]$ ]]' in text
+    assert 'E|F|G|H) WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-eh"' in text
+    assert 'I) WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-i"' in text
+    assert 'expected_branch="agent/stage-$stage_lc"' in text
+    assert 'status --porcelain --untracked-files=all' in text
+    assert 'merge-base --is-ancestor origin/main' in text
+    assert 'bash "$script"' in text
+    assert 'eval ' not in text
