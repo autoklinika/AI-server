@@ -527,6 +527,45 @@ Qdrant jest indeksem pochodnym, a nie source of truth — musi dać się odbudow
 Szczegóły decyzji, wymagania dla trybów „Szukaj” / „Zapytaj AI” i procedura przyszłej migracji:
 [ADR-001](adr/ADR-001_STAGE_J_REPLACEABLE_QDRANT_BACKEND_2026-09-23_PL.md).
 
+### 10.3. Kanoniczny model wiedzy — Stage J2
+
+Źródłem prawdy nie jest rekord Qdranta. Kanoniczny model jest backend-neutralny:
+
+```text
+Source -> Document -> DocumentVersion -> Chunk
+```
+
+- `Source` opisuje autorytatywne pochodzenie i namespace/domenę;
+- `Document` jest stabilną logiczną tożsamością dokumentu;
+- `DocumentVersion` wiąże dokładny SHA-256 treści, rozmiar, storage URI i revision źródła;
+- `Chunk` jest deterministyczną jednostką tekstu z SHA-256 i locatorami (np. section/page).
+
+Identyfikatory są deterministyczne, aby ingestion/reindex były idempotentne. Vector
+index jest wyłącznie projekcją rekordów `Chunk`; zmiana Qdrant -> inny backend nie
+zmienia tożsamości źródeł, dokumentów, wersji ani chunków.
+
+Model embeddingowy, jego wymiar i parametry chunkingu należą do konfiguracji indeksu,
+a nie do kanonicznej tożsamości dokumentu. Dzięki temu można przebudować embeddingi
+bez utraty provenance lub historii wersji.
+
+### 10.4. Dense embedding baseline — Stage J2
+
+Pierwszy baseline po benchmarku ECU/WVC:
+
+- `bge-m3`;
+- `1024` wymiary, cosine;
+- heading-aware chunk target około `2400` znaków;
+- query/document embedding przez neutralny `EmbeddingProvider` i istniejący
+  Gateway/Resource Manager;
+- model/chunking są właściwością wersji indeksu i mogą zostać zmienione przez reindex.
+
+Benchmark evidence-based osiągnął Recall@1 92.3%, Recall@3/5 100% i MRR 0.962.
+Nie zastępuje to planowanego exact/full-text/sparse/hybrid retrieval dla kodów,
+numerów części, DTC i pinów.
+
+Szczegóły i gate przyszłej zmiany:
+[ADR-002](adr/ADR-002_STAGE_J2_EMBEDDING_BASELINE_2026-09-23_PL.md).
+
 ---
 
 ## 11. Domain layer

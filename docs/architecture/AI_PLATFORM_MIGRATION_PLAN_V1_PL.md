@@ -353,6 +353,19 @@ Qdrant jest pierwszym backendem retrieval, wdrażanym wyłącznie za neutralnym 
 Backend pozostaje wymienny, a indeks nie jest source of truth. Decyzję i zasady migracji dokumentuje
 [ADR-001](adr/ADR-001_STAGE_J_REPLACEABLE_QDRANT_BACKEND_2026-09-23_PL.md).
 
+### Stage J2 — embedding/chunking gate
+
+Benchmark na rzeczywistym korpusie ECU/WVC wybrał BGE-M3 (1024 dimensions) jako
+pierwszy profil embeddingowy oraz heading/paragraph-aware chunking do około 2400
+znaków. Przy 13 pytaniach dense-only osiągnięto Recall@3=100% i MRR=0.962;
+BGE zachował jakość Qwen3 Embedding 0.6B/4B przy najmniejszym runtime footprint.
+Wynik nie zamraża modelu na stałe — canonical Source/Document/Version/Chunk pozostaje
+niezależny od embeddingu i pozwala na pełny reindex. Szczegóły i evidence:
+[Stage J2 report](../reports/AI_PLATFORM_STAGE_J2_KNOWLEDGE_EMBEDDING_BASELINE_2026-09-23_PL.md).
+
+Następny gate w Stage J: trwały/idempotentny ingestion i odbudowywalna produkcyjna
+projekcja Qdranta, a następnie jawny exact/lexical + dense hybrid.
+
 Nie rozpoczynać od knowledge graph, jeśli nie ma konkretnego wymagania.
 
 ---
@@ -767,3 +780,27 @@ ADR remains out of Stage I scope.
 Production gate **PASS** for `stage-i-30626dcc60f8` (`30626dcc60f86c80bacb3c602b87f2d345b22221`). Full H → I candidate smoke → verified H rollback/smoke → I reactivation/final smoke → finalize cycle passed. Functional rollback proved `/api/v1/observability` absent on H. Final runtime is I with Hermes and WVC analysis timer active, RM idle, GPU residency `llm`, and no new MES/ring/reset/timeout kernel fault. Production evidence: [Stage I report](../reports/AI_PLATFORM_STAGE_I_PRODUCTION_GATE_2026-09-23.md).
 
 **Stage I = PRODUCTION COMPLETE.** Repository closure still requires PR #68 merge and post-merge CI; the accepted runtime release remains immutable regardless of later documentation-only commits.
+
+### Stage J — Knowledge Service foundation — 2026-09-23
+
+J0/J1 ustanowiły Qdrant jako pierwszy, ale wymienny backend retrieval za neutralnym
+`KnowledgeBackend`. Qdrant nie jest source of truth; publiczni klienci znają tylko
+Knowledge Service. Runtime Qdranta jest self-hosted, loopback-only i przeszedł live
+adapter/source-attribution smoke. Foundation została scalona przez PR #70.
+
+J2 definiuje backend-neutralny canonical model
+`Source -> Document -> DocumentVersion -> Chunk`, deterministyczne identyfikatory,
+SHA-256/provenance oraz referencję ACL niezależną od vector DB. Knowledge Service
+generuje query embedding wewnętrznie przez neutralny `EmbeddingProvider`; klient
+nie podaje fizycznego modelu ani wymiarów.
+
+Benchmark na rzeczywistych danych ECU/WVC wybiera pierwszy dense baseline:
+`bge-m3`, 1024D cosine, heading-aware chunk około 2400 znaków. Evidence-based
+quality: Recall@1 92.3%, Recall@3/5 100%, MRR 0.962. Baseline jest wymienialny przez
+reindex i nie zmienia publicznego API.
+
+J2 nie oznacza jeszcze pełnego RAG ani produkcyjnego ingestion. Następny gate powinien
+dodać trwały canonical store/ingestion oraz wersjonowany indeks, a potem
+exact/full-text/sparse/hybrid retrieval i reranking. Szczegóły:
+[ADR-001](adr/ADR-001_STAGE_J_REPLACEABLE_QDRANT_BACKEND_2026-09-23_PL.md),
+[ADR-002](adr/ADR-002_STAGE_J2_EMBEDDING_BASELINE_2026-09-23_PL.md).

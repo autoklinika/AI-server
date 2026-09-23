@@ -1,0 +1,877 @@
+{
+  "schema_version": 1,
+  "ecu_source_commit": "0ee98b94705b691d7347c8a6a5676ac63159e359",
+  "ai_server_commit": "6da63189f3fb6ad127891f14184950731932bc83",
+  "queries": 13,
+  "started_unix": 1790192782.0644226,
+  "duration_seconds": 485.444,
+  "results": [
+    {
+      "model": "qwen3-embedding:0.6b",
+      "chunk_max_chars": 2400,
+      "documents": 20,
+      "chunks": 69,
+      "dimensions": 1024,
+      "metrics": {
+        "recall_at_1": 0.9230769230769231,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0,
+        "mrr": 0.9615384615384616
+      },
+      "metrics_by_kind": {
+        "cross-language": {
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0,
+          "recall_at_5": 1.0,
+          "mrr": 1.0
+        },
+        "exact": {
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0,
+          "recall_at_5": 1.0,
+          "mrr": 1.0
+        },
+        "mixed": {
+          "recall_at_1": 0.6666666666666666,
+          "recall_at_3": 1.0,
+          "recall_at_5": 1.0,
+          "mrr": 0.8333333333333334
+        },
+        "semantic": {
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0,
+          "recall_at_5": 1.0,
+          "mrr": 1.0
+        }
+      },
+      "latency_ms": {
+        "corpus_embedding_total": 56706.284,
+        "query_embedding_total": 38850.846,
+        "search_total": 27.206,
+        "search_avg": 2.093
+      },
+      "queries": [
+        {
+          "id": "ecu-spn107-root-cause",
+          "kind": "semantic",
+          "query": "Co było rzeczywistą przyczyną SPN 107 FMI 3 w CASE-0001?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/components/bosch/0281007439/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/INDEX.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md"
+          ],
+          "top_scores": [
+            0.766722,
+            0.685778,
+            0.681787,
+            0.668257,
+            0.63008
+          ]
+        },
+        {
+          "id": "ecu-spn107-component",
+          "kind": "mixed",
+          "query": "Jaki czujnik i numer Bosch był związany z błędem SPN 107 FMI 3?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/components/bosch/0281007439/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/INDEX.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md"
+          ],
+          "top_scores": [
+            0.760273,
+            0.729826,
+            0.707144,
+            0.648101,
+            0.647972
+          ]
+        },
+        {
+          "id": "ecu-afdps-pins",
+          "kind": "semantic",
+          "query": "Na które piny ECU C81 trafiają 5 V, sygnał i masa czujnika AFDPS?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_RAW.md"
+          ],
+          "top_scores": [
+            0.773642,
+            0.698859,
+            0.691554,
+            0.646134,
+            0.639485
+          ]
+        },
+        {
+          "id": "ecu-k82",
+          "kind": "exact",
+          "query": "Co jest podłączone do pinu K82 sterownika EDC17C81?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_RAW.md"
+          ],
+          "top_scores": [
+            0.66219,
+            0.661548,
+            0.622975,
+            0.607264,
+            0.597627
+          ]
+        },
+        {
+          "id": "ecu-x6-pinout",
+          "kind": "mixed",
+          "query": "Podaj funkcje pinów 1-4 złącza diagnostycznego X6 Hatz C81.",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md"
+          ],
+          "top_scores": [
+            0.806832,
+            0.785556,
+            0.74025,
+            0.729786,
+            0.729514
+          ]
+        },
+        {
+          "id": "ecu-can-topology",
+          "kind": "semantic",
+          "query": "Czym różni się CAN0 customer-CAN od CAN1 diagnostic CAN w C81?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md"
+          ],
+          "top_scores": [
+            0.766328,
+            0.73095,
+            0.727535,
+            0.712609,
+            0.700125
+          ]
+        },
+        {
+          "id": "ecu-derate",
+          "kind": "semantic",
+          "query": "Po awarii maszyna miała około 1300 rpm zamiast 2400 rpm. Jaki przypadek to opisuje?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/machines/gayk/HRE-3000-USP/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/README.md"
+          ],
+          "top_scores": [
+            0.611063,
+            0.563584,
+            0.551512,
+            0.533733,
+            0.526895
+          ]
+        },
+        {
+          "id": "ecu-bosch-number",
+          "kind": "exact",
+          "query": "0 281 007 439",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/originals/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md"
+          ],
+          "top_scores": [
+            0.509775,
+            0.502051,
+            0.499307,
+            0.495838,
+            0.493353
+          ]
+        },
+        {
+          "id": "ecu-clear-dtc",
+          "kind": "semantic",
+          "query": "Gdzie należy szukać warstwy kasowania DTC w Hatz C81 i czego nie wolno zgadywać?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/TODO.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md"
+          ],
+          "top_scores": [
+            0.697015,
+            0.604432,
+            0.603436,
+            0.599741,
+            0.592129
+          ]
+        },
+        {
+          "id": "ecu-crosslang",
+          "kind": "cross-language",
+          "query": "Which bus should be used for service diagnostics on the Hatz C81 instead of the customer J1939 bus?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md"
+          ],
+          "top_scores": [
+            0.685857,
+            0.684599,
+            0.674278,
+            0.661827,
+            0.659594
+          ]
+        },
+        {
+          "id": "wvc-advisory",
+          "kind": "semantic",
+          "query": "Czy WVC może bezpośrednio sterować wentylatorami lub innymi actuatorami?",
+          "rank": 1,
+          "top_sources": [
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md",
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md"
+          ],
+          "top_scores": [
+            0.460335,
+            0.304872
+          ]
+        },
+        {
+          "id": "wvc-freshness",
+          "kind": "semantic",
+          "query": "Co ma się stać, gdy bieżące okno telemetrii wentylacji nie zawiera świeżych próbek?",
+          "rank": 1,
+          "top_sources": [
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md",
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md"
+          ],
+          "top_scores": [
+            0.498046,
+            0.471658
+          ]
+        },
+        {
+          "id": "wvc-replay",
+          "kind": "mixed",
+          "query": "Czy --end-at oznacza aktualną łączność urządzenia czy tylko historyczny replay?",
+          "rank": 2,
+          "top_sources": [
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md",
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md"
+          ],
+          "top_scores": [
+            0.425612,
+            0.390413
+          ]
+        }
+      ]
+    },
+    {
+      "model": "qwen3-embedding:4b",
+      "chunk_max_chars": 2400,
+      "documents": 20,
+      "chunks": 69,
+      "dimensions": 2560,
+      "metrics": {
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0,
+        "mrr": 1.0
+      },
+      "metrics_by_kind": {
+        "cross-language": {
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0,
+          "recall_at_5": 1.0,
+          "mrr": 1.0
+        },
+        "exact": {
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0,
+          "recall_at_5": 1.0,
+          "mrr": 1.0
+        },
+        "mixed": {
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0,
+          "recall_at_5": 1.0,
+          "mrr": 1.0
+        },
+        "semantic": {
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0,
+          "recall_at_5": 1.0,
+          "mrr": 1.0
+        }
+      },
+      "latency_ms": {
+        "corpus_embedding_total": 203495.655,
+        "query_embedding_total": 18772.465,
+        "search_total": 51.506,
+        "search_avg": 3.962
+      },
+      "queries": [
+        {
+          "id": "ecu-spn107-root-cause",
+          "kind": "semantic",
+          "query": "Co było rzeczywistą przyczyną SPN 107 FMI 3 w CASE-0001?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/components/bosch/0281007439/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md"
+          ],
+          "top_scores": [
+            0.712769,
+            0.643846,
+            0.643591,
+            0.614798,
+            0.602961
+          ]
+        },
+        {
+          "id": "ecu-spn107-component",
+          "kind": "mixed",
+          "query": "Jaki czujnik i numer Bosch był związany z błędem SPN 107 FMI 3?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/components/bosch/0281007439/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md"
+          ],
+          "top_scores": [
+            0.710644,
+            0.650186,
+            0.642136,
+            0.611124,
+            0.605229
+          ]
+        },
+        {
+          "id": "ecu-afdps-pins",
+          "kind": "semantic",
+          "query": "Na które piny ECU C81 trafiają 5 V, sygnał i masa czujnika AFDPS?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_RAW.md"
+          ],
+          "top_scores": [
+            0.782655,
+            0.720956,
+            0.677395,
+            0.660255,
+            0.659463
+          ]
+        },
+        {
+          "id": "ecu-k82",
+          "kind": "exact",
+          "query": "Co jest podłączone do pinu K82 sterownika EDC17C81?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_RAW.md"
+          ],
+          "top_scores": [
+            0.645641,
+            0.634193,
+            0.587841,
+            0.583883,
+            0.582612
+          ]
+        },
+        {
+          "id": "ecu-x6-pinout",
+          "kind": "mixed",
+          "query": "Podaj funkcje pinów 1-4 złącza diagnostycznego X6 Hatz C81.",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_RAW.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_RAW.md"
+          ],
+          "top_scores": [
+            0.809534,
+            0.763924,
+            0.749538,
+            0.742075,
+            0.728994
+          ]
+        },
+        {
+          "id": "ecu-can-topology",
+          "kind": "semantic",
+          "query": "Czym różni się CAN0 customer-CAN od CAN1 diagnostic CAN w C81?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md"
+          ],
+          "top_scores": [
+            0.715192,
+            0.714769,
+            0.683225,
+            0.682216,
+            0.676053
+          ]
+        },
+        {
+          "id": "ecu-derate",
+          "kind": "semantic",
+          "query": "Po awarii maszyna miała około 1300 rpm zamiast 2400 rpm. Jaki przypadek to opisuje?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md"
+          ],
+          "top_scores": [
+            0.640888,
+            0.629821,
+            0.617652,
+            0.583124,
+            0.560844
+          ]
+        },
+        {
+          "id": "ecu-bosch-number",
+          "kind": "exact",
+          "query": "0 281 007 439",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/components/bosch/0281007439/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md"
+          ],
+          "top_scores": [
+            0.462813,
+            0.460407,
+            0.459891,
+            0.45591,
+            0.453455
+          ]
+        },
+        {
+          "id": "ecu-clear-dtc",
+          "kind": "semantic",
+          "query": "Gdzie należy szukać warstwy kasowania DTC w Hatz C81 i czego nie wolno zgadywać?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/INDEX.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/README.md"
+          ],
+          "top_scores": [
+            0.753792,
+            0.715912,
+            0.713055,
+            0.701946,
+            0.698231
+          ]
+        },
+        {
+          "id": "ecu-crosslang",
+          "kind": "cross-language",
+          "query": "Which bus should be used for service diagnostics on the Hatz C81 instead of the customer J1939 bus?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md"
+          ],
+          "top_scores": [
+            0.689409,
+            0.677896,
+            0.672503,
+            0.66248,
+            0.638094
+          ]
+        },
+        {
+          "id": "wvc-advisory",
+          "kind": "semantic",
+          "query": "Czy WVC może bezpośrednio sterować wentylatorami lub innymi actuatorami?",
+          "rank": 1,
+          "top_sources": [
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md",
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md"
+          ],
+          "top_scores": [
+            0.484574,
+            0.316942
+          ]
+        },
+        {
+          "id": "wvc-freshness",
+          "kind": "semantic",
+          "query": "Co ma się stać, gdy bieżące okno telemetrii wentylacji nie zawiera świeżych próbek?",
+          "rank": 1,
+          "top_sources": [
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md",
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md"
+          ],
+          "top_scores": [
+            0.573363,
+            0.470898
+          ]
+        },
+        {
+          "id": "wvc-replay",
+          "kind": "mixed",
+          "query": "Czy --end-at oznacza aktualną łączność urządzenia czy tylko historyczny replay?",
+          "rank": 1,
+          "top_sources": [
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md",
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md"
+          ],
+          "top_scores": [
+            0.470027,
+            0.39625
+          ]
+        }
+      ]
+    },
+    {
+      "model": "bge-m3",
+      "chunk_max_chars": 2400,
+      "documents": 20,
+      "chunks": 69,
+      "dimensions": 1024,
+      "metrics": {
+        "recall_at_1": 0.9230769230769231,
+        "recall_at_3": 1.0,
+        "recall_at_5": 1.0,
+        "mrr": 0.9615384615384616
+      },
+      "metrics_by_kind": {
+        "cross-language": {
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0,
+          "recall_at_5": 1.0,
+          "mrr": 1.0
+        },
+        "exact": {
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0,
+          "recall_at_5": 1.0,
+          "mrr": 1.0
+        },
+        "mixed": {
+          "recall_at_1": 0.6666666666666666,
+          "recall_at_3": 1.0,
+          "recall_at_5": 1.0,
+          "mrr": 0.8333333333333334
+        },
+        "semantic": {
+          "recall_at_1": 1.0,
+          "recall_at_3": 1.0,
+          "recall_at_5": 1.0,
+          "mrr": 1.0
+        }
+      },
+      "latency_ms": {
+        "corpus_embedding_total": 166470.223,
+        "query_embedding_total": 435.892,
+        "search_total": 27.78,
+        "search_avg": 2.137
+      },
+      "queries": [
+        {
+          "id": "ecu-spn107-root-cause",
+          "kind": "semantic",
+          "query": "Co było rzeczywistą przyczyną SPN 107 FMI 3 w CASE-0001?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md"
+          ],
+          "top_scores": [
+            0.632799,
+            0.581509,
+            0.580199,
+            0.559107,
+            0.558416
+          ]
+        },
+        {
+          "id": "ecu-spn107-component",
+          "kind": "mixed",
+          "query": "Jaki czujnik i numer Bosch był związany z błędem SPN 107 FMI 3?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/components/bosch/0281007439/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md"
+          ],
+          "top_scores": [
+            0.666666,
+            0.64659,
+            0.639704,
+            0.601878,
+            0.591045
+          ]
+        },
+        {
+          "id": "ecu-afdps-pins",
+          "kind": "semantic",
+          "query": "Na które piny ECU C81 trafiają 5 V, sygnał i masa czujnika AFDPS?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_RAW.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md"
+          ],
+          "top_scores": [
+            0.674721,
+            0.656785,
+            0.647283,
+            0.642198,
+            0.611413
+          ]
+        },
+        {
+          "id": "ecu-k82",
+          "kind": "exact",
+          "query": "Co jest podłączone do pinu K82 sterownika EDC17C81?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_RAW.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md"
+          ],
+          "top_scores": [
+            0.568613,
+            0.56826,
+            0.563554,
+            0.550983,
+            0.53776
+          ]
+        },
+        {
+          "id": "ecu-x6-pinout",
+          "kind": "mixed",
+          "query": "Podaj funkcje pinów 1-4 złącza diagnostycznego X6 Hatz C81.",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/machines/gayk/HRE-3000-USP/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md"
+          ],
+          "top_scores": [
+            0.706099,
+            0.699596,
+            0.687484,
+            0.662473,
+            0.658329
+          ]
+        },
+        {
+          "id": "ecu-can-topology",
+          "kind": "semantic",
+          "query": "Czym różni się CAN0 customer-CAN od CAN1 diagnostic CAN w C81?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md"
+          ],
+          "top_scores": [
+            0.67125,
+            0.668352,
+            0.655765,
+            0.628683,
+            0.625492
+          ]
+        },
+        {
+          "id": "ecu-derate",
+          "kind": "semantic",
+          "query": "Po awarii maszyna miała około 1300 rpm zamiast 2400 rpm. Jaki przypadek to opisuje?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/README.md"
+          ],
+          "top_scores": [
+            0.55985,
+            0.533054,
+            0.51788,
+            0.509566,
+            0.508926
+          ]
+        },
+        {
+          "id": "ecu-bosch-number",
+          "kind": "exact",
+          "query": "0 281 007 439",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/components/bosch/0281007439/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/photos/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/TODO.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/DOWNLOAD_QUEUE.md"
+          ],
+          "top_scores": [
+            0.50257,
+            0.408607,
+            0.397405,
+            0.397175,
+            0.395185
+          ]
+        },
+        {
+          "id": "ecu-clear-dtc",
+          "kind": "semantic",
+          "query": "Gdzie należy szukać warstwy kasowania DTC w Hatz C81 i czego nie wolno zgadywać?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_RAW.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/cases/CASE-0001-GAYK-HRE3000USP-HATZ-3H50TICD-SPN107-FMI3/diagnosis.md"
+          ],
+          "top_scores": [
+            0.742172,
+            0.662167,
+            0.614493,
+            0.614453,
+            0.614248
+          ]
+        },
+        {
+          "id": "ecu-crosslang",
+          "kind": "cross-language",
+          "query": "Which bus should be used for service diagnostics on the Hatz C81 instead of the customer J1939 bus?",
+          "rank": 1,
+          "top_sources": [
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/engines/hatz/3H50TICD/PINOUT_WORKSHOP.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/sources/hatz/H50/HATZ_05653201_C81_wiring-schematic_analysis.md",
+            "github://autoklinika/EcuRepairService@0ee98b94705b691d7347c8a6a5676ac63159e359/ecus/bosch/EDC17C81/README.md"
+          ],
+          "top_scores": [
+            0.553632,
+            0.544648,
+            0.539411,
+            0.538317,
+            0.534149
+          ]
+        },
+        {
+          "id": "wvc-advisory",
+          "kind": "semantic",
+          "query": "Czy WVC może bezpośrednio sterować wentylatorami lub innymi actuatorami?",
+          "rank": 1,
+          "top_sources": [
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md",
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md"
+          ],
+          "top_scores": [
+            0.529304,
+            0.464538
+          ]
+        },
+        {
+          "id": "wvc-freshness",
+          "kind": "semantic",
+          "query": "Co ma się stać, gdy bieżące okno telemetrii wentylacji nie zawiera świeżych próbek?",
+          "rank": 1,
+          "top_sources": [
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md",
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md"
+          ],
+          "top_scores": [
+            0.573576,
+            0.55069
+          ]
+        },
+        {
+          "id": "wvc-replay",
+          "kind": "mixed",
+          "query": "Czy --end-at oznacza aktualną łączność urządzenia czy tylko historyczny replay?",
+          "rank": 2,
+          "top_sources": [
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md",
+            "repo://AI-server/docs/architecture/WVC_DOMAIN.md"
+          ],
+          "top_scores": [
+            0.456151,
+            0.438982
+          ]
+        }
+      ]
+    }
+  ]
+}

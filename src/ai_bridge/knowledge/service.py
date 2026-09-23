@@ -37,7 +37,11 @@ class KnowledgeService:
             embedded = self.embedding_provider.embed(EmbeddingRequest(
                 request_id=f"{query.request_id}:embedding",
                 inputs=(query.query,),
-                context={"domain": query.domain, "knowledge_request_id": query.request_id},
+                context={
+                    "domain": query.domain,
+                    "knowledge_request_id": query.request_id,
+                    "embedding_role": "query",
+                },
             ))
             if len(embedded.vectors) != 1 or embedded.vectors[0].index != 0:
                 raise KnowledgeContractError("embedding provider returned invalid vector set")
