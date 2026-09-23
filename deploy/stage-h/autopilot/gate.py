@@ -51,6 +51,27 @@ def reference_audit(destination):
     return report
 
 
+def resume_analysis_timer():
+    require(run(['systemctl', 'is-enabled', 'ai-bridge-analysis.timer']) == 'enabled')
+    run(['systemctl', 'start', 'ai-bridge-analysis.timer'])
+    require(run(['systemctl', 'show', 'ai-bridge-analysis.timer',
+                 '-p', 'ActiveState', '--value']) == 'active')
+    return {'enabled': 'enabled', 'active': 'active'}
+
+
+def reconcile_accepted_runtime():
+    current = e.CURRENT.resolve(strict=True)
+    stamp = verify(current)
+    release = dict(line.split('=', 1) for line in
+                   (current / 'RELEASE').read_text().splitlines())
+    require(release['stage'].lower() == 'h')
+    source_sha = stamp['source_git_sha']
+    accepted = e.read(STATE / source_sha / 'complete.json')
+    require(accepted['source_sha'] == source_sha)
+    timer = resume_analysis_timer()
+    return {'release': current.name, 'source_sha': source_sha, 'analysis_timer': timer}
+
+
 def kernel_contain():
     record = {'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
               'status': 'BLOCKED_GPU', 'release': str(e.CURRENT.resolve()), 'time': time.time()}
@@ -145,6 +166,11 @@ def main(step):
             preflight()
             reference_audit(STATE / ('preflight-' + uuid4().hex + '.json'))
             return
+        if step == '90_finalize' and e.CURRENT.resolve() != candidate:
+            result = reconcile_accepted_runtime()
+            print('PRODUCTION_RECONCILE=PASS release=' + result['release'] +
+                  ' analysis_timer=active', flush=True)
+            return
         if step == '10_build_install':
             preflight()
             require(not state.exists() and not candidate.exists())
@@ -202,9 +228,11 @@ def main(step):
             q.verify(manifest)
             reference_audit(state / 'references-final.json')
             history = g.history(candidate, baseline['history'])
+            timer = resume_analysis_timer()
             e.write_once(state / 'complete.json', {'source_sha': sha, 'history': history,
                 'quarantined': [entry['source'] for entry in manifest['entries']],
                 'restore_cycle': 'PASS', 'purge': 'NOT PERFORMED',
+                'analysis_timer': timer,
                 'external_transport': 'DEFERRED/NOT TESTED', 'physical_reconnect': 'NOT TESTED'})
         else:
             raise ValueError('unknown step')

@@ -42,7 +42,8 @@ Planned rollback restores all four files exactly and runs the full accepted-G
 compatibility smoke. Reactivation quarantines them again and repeats the smoke.
 Each smoke uses kernel cursor guards and four real media paths with verified
 Ollama drainage, authoritative cleanup and post-media inference. Hermes/external
-inbound and the analysis timer remain paused. Messaging is SYNTHETIC/INTERNAL;
+inbound and the analysis timer remain paused during acceptance. Production finalization
+re-enables and verifies the WVC analysis timer. Messaging is SYNTHETIC/INTERNAL;
 external inbound Telegram/Discord is DEFERRED/NOT TESTED; physical WVC reconnection
 is NOT TESTED. A kernel fault requires paused containment to verified G, no further
 GPU probes, no reboot, and an operator physical power-cycle.

@@ -105,9 +105,19 @@ inference. Required compatibility helpers with stage names remain maintained;
 they are not abandoned solely because of their names.
 
 Hermes user service remains stopped (MainPID 0; this host reports a failed stop
-state after its normal shutdown), and the analysis timer remains paused. Gateway
+state after its normal shutdown), and the analysis timer was paused for the acceptance gate. Production finalization now
+re-enables and verifies the timer as active. Gateway
 and Bridge are managed systemd services. The earlier MES fault mechanism remains
 unresolved: no driver fix is claimed. Any new MES/ring/reset/timeout must contain
 ingress, preserve evidence and the last verified release, and require physical
 power-cycle. Never initiate warm reboot; the MT7925 Wi-Fi/SSH/Tailscale warm-reboot
 failure is documented in the [GPU runbook](../runbooks/GPU_RESIDENCY_RECOVERY.md).
+
+## Post-acceptance production timer correction — 2026-09-23
+
+Physical WVC reconnection exposed a finalization defect: `ai-bridge-analysis.timer`
+remained inactive after accepted Stage H even though the unit was enabled. Live CM5
+ingestion itself remained healthy. The Stage H finalizer now treats production timer
+reactivation as mandatory (`enabled` and `active`) and includes an idempotent post-merge
+reconcile path for an already accepted H release. This repair does not rebuild or
+switch the production release.

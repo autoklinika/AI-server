@@ -150,3 +150,61 @@ def test_recovery_uses_deployed_manifest_after_controller_head_changes(tmp_path,
     (tmp_path / 'deployment.json').write_text(json.dumps({'source_sha': '../escape'}))
     with pytest.raises(RuntimeError):
         gate.deployment_sha('40_rollback', controller)
+
+
+def test_resume_analysis_timer_requires_enabled_and_active(monkeypatch):
+    gate = load('autopilot/gate')
+    calls = []
+    responses = {
+        ('systemctl', 'is-enabled', 'ai-bridge-analysis.timer'): 'enabled',
+        ('systemctl', 'show', 'ai-bridge-analysis.timer', '-p', 'ActiveState', '--value'): 'active',
+    }
+    def fake_run(args, **kwargs):
+        calls.append(tuple(args))
+        if tuple(args) == ('systemctl', 'start', 'ai-bridge-analysis.timer'):
+            return ''
+        return responses[tuple(args)]
+    monkeypatch.setattr(gate, 'run', fake_run)
+    assert gate.resume_analysis_timer() == {'enabled': 'enabled', 'active': 'active'}
+    assert ('systemctl', 'start', 'ai-bridge-analysis.timer') in calls
+
+
+def test_resume_analysis_timer_fails_closed_if_timer_does_not_activate(monkeypatch):
+    gate = load('autopilot/gate')
+    def fake_run(args, **kwargs):
+        if args[1] == 'is-enabled':
+            return 'enabled'
+        if args[1] == 'start':
+            return ''
+        if args[1] == 'show':
+            return 'inactive'
+        raise AssertionError(args)
+    monkeypatch.setattr(gate, 'run', fake_run)
+    with pytest.raises(RuntimeError):
+        gate.resume_analysis_timer()
+
+
+def test_reconcile_accepted_runtime_uses_deployed_acceptance_receipt(tmp_path, monkeypatch):
+    import json
+    gate = load('autopilot/gate')
+    release = tmp_path / 'stage-h-accepted'
+    release.mkdir()
+    source_sha = 'c' * 40
+    (release / 'RELEASE').write_text(
+        'release_id=stage-h-accepted\nstage=H\nphase=H\nsource_git_sha=' + source_sha + '\n'
+    )
+    current = tmp_path / 'current'
+    current.symlink_to(release)
+    accepted = tmp_path / source_sha
+    accepted.mkdir()
+    (accepted / 'complete.json').write_text(json.dumps({'source_sha': source_sha}))
+    monkeypatch.setattr(gate.e, 'CURRENT', current)
+    monkeypatch.setattr(gate, 'STATE', tmp_path)
+    monkeypatch.setattr(gate, 'verify', lambda path: {'source_git_sha': source_sha})
+    monkeypatch.setattr(gate, 'resume_analysis_timer',
+                        lambda: {'enabled': 'enabled', 'active': 'active'})
+    assert gate.reconcile_accepted_runtime() == {
+        'release': 'stage-h-accepted',
+        'source_sha': source_sha,
+        'analysis_timer': {'enabled': 'enabled', 'active': 'active'},
+    }
