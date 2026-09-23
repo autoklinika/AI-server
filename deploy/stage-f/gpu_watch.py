@@ -3,7 +3,7 @@ import re
 import threading
 import time
 
-GPU_ERROR = re.compile(r'(?:amdgpu|\bMES\b|\bring\b).*(?:failed|full|reset|timeout|timed out|hang)', re.I)
+GPU_ERROR = re.compile(r'(?:amdgpu|\bMES\b|\bring\b).*(?:\bfailed\b|\bfull\b|\breset\b|\btimeout\b|\btimed out\b|\bhang\b)', re.I)
 
 
 class KernelGuard:

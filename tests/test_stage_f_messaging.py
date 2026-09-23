@@ -233,3 +233,13 @@ def test_snapshot_closes_sqlite_before_inventory(tmp_path):
         assert not target.with_name(target.name + '-shm').exists()
         with closing(sqlite3.connect(target)) as restored:
             assert restored.execute('SELECT value FROM evidence').fetchall() == [(42,)]
+
+
+def test_kernel_guard_does_not_match_successfully():
+    spec = importlib.util.spec_from_file_location('gpu_watch_test', ROOT / 'deploy/stage-f/gpu_watch.py')
+    watch = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(watch)
+    assert not watch.GPU_ERROR.search('amdgpu 0000:c6:00.0: SMU is initialized successfully!')
+    for message in ('amdgpu: MES ring buffer is full.', 'amdgpu: MES failed to respond',
+                    'amdgpu: GPU reset begin', 'amdgpu: ring gfx timeout'):
+        assert watch.GPU_ERROR.search(message)
