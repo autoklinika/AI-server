@@ -215,7 +215,7 @@ def test_rollback_never_requires_healthy_candidate(monkeypatch, tmp_path):
     assert current.resolve() == baseline
     assert ('verify', baseline) in actions and ('verify', candidate) not in actions
     assert ('quiesce', {'allow_gateway_unavailable': True}) in actions
-    assert actions[-1] == ('resume', True)
+    assert ('resume', True) not in actions  # Legacy media ingress stays paused until F reactivation.
 
 
 def test_snapshot_closes_sqlite_before_inventory(tmp_path):

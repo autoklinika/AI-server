@@ -338,7 +338,19 @@ def switch(target, candidate, state, baseline):
             if attempt == 39:
                 raise
             time.sleep(1)
-    e.resume_ingress(baseline)
+    if not rollback:
+        e.resume_ingress(baseline)
+
+
+def rollback_hermes_probe():
+    # Validate restored Hermes through its real CLI while external ingress stays
+    # paused: Stage E does not contain the repaired residency boundary.
+    name, uid, home = e.hermes_account()
+    output = run(['runuser', '-u', name, '--', 'env', f'HOME={home}',
+        'HERMES_HOME=/srv/ai-data/hermes', f'XDG_RUNTIME_DIR=/run/user/{uid}',
+        Path(home) / '.local/bin/hermes', '-z', 'Return the word OK.'], timeout=180)
+    require(bool(output.strip()))
+    e.require_hermes_stopped()
 
 
 def _smoke(phase, target, candidate, state, baseline):
@@ -356,7 +368,10 @@ def _smoke(phase, target, candidate, state, baseline):
     require(result.get('done') is True and result.get('eval_count', 0) > 0)
     e.api_smoke(e.config())
     e.wvc_smoke()
-    e.hermes_oneshot_smoke()
+    if target == candidate:
+        e.hermes_oneshot_smoke()
+    else:
+        rollback_hermes_probe()
     messaging_boundary_smoke(harness.configured_hermes_model(CONFIG))
     if target == candidate:
         require(not hermes_git(['status', '--porcelain']))
@@ -398,11 +413,15 @@ def _smoke(phase, target, candidate, state, baseline):
     # Media cleanup must allow the same Ollama service to load/infer again.
     e.wvc_smoke()
     e.runtime(target, e.config(), baseline)
-    e.hermes_state()
+    if target == candidate:
+        e.hermes_state()
+    else:
+        e.require_hermes_stopped()
     require(before == [e.identity(u) for u in ('ai-gateway.service', 'ai-bridge.service', 'comfyui.service')])
     e.write_once(evidence_dir / 'provisional.json', {'release': target.name, 'time': time.time(), 'phase': phase,
         'compatibility': 'PASS', 'internal_e2e': 'PASS' if target == candidate else 'NOT APPLICABLE: E rollback',
-        'external_transport': 'DEFERRED/NOT TESTED'})
+        'external_transport': 'DEFERRED/NOT TESTED',
+        'external_ingress': 'connected' if target == candidate else 'paused during legacy rollback'})
     return {'evidence': str(evidence_dir), 'release': target.name}
 
 
