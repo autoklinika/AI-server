@@ -968,3 +968,28 @@ Release: stage/phase=E, config_schema_version=4, migration_version=platform-api-
 platform_api_contract_version=1. RM=2 i wszystkie D.6 subcontracts=1 bez zmian.
 Rollback to verified D.6 r2 wraz z niezmienionym matched bundle. Nie oznacza to
 production PASS; wymagane real smoke, rollback i reactivation supervisora.
+
+## 22. Stage I — Observability contract v1
+
+Stage I keeps Platform API v1 and Resource Manager v2 unchanged and adds an additive
+`observability_contract_version=1`. `GET /api/v1/observability` is authenticated by
+the same Platform API policy and returns `schema_version=1` plus bounded operational
+metadata derived from existing runtime truth.
+
+Allowed categories are: Platform request totals/in-flight/status/error classes and
+latency summary; RM admission/queue limits and counts; active lease count; GPU
+residency/cleanup summary; bounded recent-job state/capability/provider/node counts
+and timing summaries; logical provider/model/node; process RSS/CPU; and terminal-job
+retention metadata.
+
+The contract MUST NOT persist or return prompt/response content, authentication
+material, chat/user identifiers, actor/session context, raw exception text or raw
+dynamic URLs. Request logs use correlation ID, method, normalized route template,
+HTTP status, duration and bounded error class only. Metrics are process-local and
+reset on Gateway restart; they are not a durable audit log or billing source.
+
+Release metadata for Stage I: `stage=I`, `phase=I`, config schema 4,
+`migration_version=observability-v1`, Platform API contract 1, Resource Manager 2,
+existing D.6/E subcontract versions unchanged, and `observability_contract_version=1`.
+Rollback is the verified H release. Candidate and final smoke require the endpoint;
+H rollback smoke requires it to be absent, proving functional rollback.

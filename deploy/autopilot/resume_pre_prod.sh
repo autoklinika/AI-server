@@ -2,8 +2,8 @@
 set -Eeuo pipefail
 
 STAGE="${1:-}"
-[[ "$STAGE" =~ ^[EFGH]$ ]] || {
-  echo "usage: $0 <E|F|G|H>" >&2
+[[ "$STAGE" =~ ^[EFGHI]$ ]] || {
+  echo "usage: $0 <E|F|G|H|I>" >&2
   exit 2
 }
 
@@ -15,11 +15,17 @@ for cmd in git gh tmux flock sudo; do
 done
 gh auth status >/dev/null 2>&1 || { echo "FAIL: gh auth missing" >&2; exit 3; }
 
-CONTROL_DIR="$HOME/agent-control/stage-eh-master"
-STATE_DIR="$HOME/agent-state/stage-eh"
-WORKTREE="$HOME/agent-worktrees/stage-eh"
+if [[ "$STAGE" == "I" ]]; then
+  CONTROL_DIR="$HOME/agent-control/stage-i"
+  STATE_DIR="$HOME/agent-state/stage-i"
+  WORKTREE="$HOME/agent-worktrees/stage-i"
+else
+  CONTROL_DIR="$HOME/agent-control/stage-eh-master"
+  STATE_DIR="$HOME/agent-state/stage-eh"
+  WORKTREE="$HOME/agent-worktrees/stage-eh"
+fi
 PRIVATE_ENV="$HOME/.config/ai-platform/autopilot.env"
-SESSION="stage-eh-master"
+SESSION="$([[ "$STAGE" == "I" ]] && printf "stage-i-master" || printf "stage-eh-master")"
 ROOT_BRIDGE="/usr/local/libexec/ai-platform/autopilot-root-exec"
 STAGE_STATE="$STATE_DIR/stage-$STAGE"
 status_file="$STAGE_STATE/status"
@@ -64,7 +70,9 @@ current_branch="$(git -C "$WORKTREE" branch --show-current)"
 mkdir -p "$CONTROL_DIR/prompts"
 install -m 700 "$REPO_ROOT/deploy/autopilot/notify_telegram.py" "$CONTROL_DIR/notify_telegram.py"
 install -m 700 "$REPO_ROOT/deploy/autopilot/run_stage.sh" "$CONTROL_DIR/run_stage.sh"
-install -m 700 "$REPO_ROOT/deploy/autopilot/stage_eh_master.sh" "$CONTROL_DIR/master.sh"
+if [[ "$STAGE" != "I" ]]; then
+  install -m 700 "$REPO_ROOT/deploy/autopilot/stage_eh_master.sh" "$CONTROL_DIR/master.sh"
+fi
 install -m 600 "$REPO_ROOT"/deploy/autopilot/prompts/stage_*.md "$CONTROL_DIR/prompts/"
 
 # Normalize the legacy read-only preflight state back to the resumable boundary
@@ -74,7 +82,11 @@ printf 'PRE_PROD_CI %s\n' "$(date -Is)" > "$status_file"
 # The prior BLOCKED marker belongs to a diagnosed pre-production stop.
 rm -f "$STATE_DIR/master.status"
 
-launch="export PATH='$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin'; export AI_AUTOPILOT_ENV='$PRIVATE_ENV'; export AI_AUTOPILOT_CONTROL_DIR='$CONTROL_DIR'; export AI_AUTOPILOT_STATE_DIR='$STATE_DIR'; export AI_AUTOPILOT_WORKTREE='$WORKTREE'; export AI_AUTOPILOT_RESUME_STAGE='$STAGE'; exec '$CONTROL_DIR/master.sh' >> '$STATE_DIR/master-console.log' 2>&1"
+if [[ "$STAGE" == "I" ]]; then
+  launch="export PATH='$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin'; export AI_AUTOPILOT_ENV='$PRIVATE_ENV'; export AI_AUTOPILOT_CONTROL_DIR='$CONTROL_DIR'; export AI_AUTOPILOT_STATE_DIR='$STATE_DIR'; export AI_AUTOPILOT_WORKTREE='$WORKTREE'; exec '$CONTROL_DIR/run_stage.sh' I --resume-pre-prod >> '$STATE_DIR/master-console.log' 2>&1"
+else
+  launch="export PATH='$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin'; export AI_AUTOPILOT_ENV='$PRIVATE_ENV'; export AI_AUTOPILOT_CONTROL_DIR='$CONTROL_DIR'; export AI_AUTOPILOT_STATE_DIR='$STATE_DIR'; export AI_AUTOPILOT_WORKTREE='$WORKTREE'; export AI_AUTOPILOT_RESUME_STAGE='$STAGE'; exec '$CONTROL_DIR/master.sh' >> '$STATE_DIR/master-console.log' 2>&1"
+fi
 tmux new-session -d -s "$SESSION" "$launch"
 
 echo "RESUMED: Stage $STAGE from PRE_PROD_CI in tmux session $SESSION"

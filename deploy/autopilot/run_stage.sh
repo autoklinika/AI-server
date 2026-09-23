@@ -3,16 +3,25 @@ set -Eeuo pipefail
 
 STAGE="${1:-}"
 MODE="${2:-fresh}"
-[[ "$STAGE" =~ ^[EFGH]$ ]] || { echo "usage: $0 <E|F|G|H> [--resume-pre-prod]" >&2; exit 2; }
+[[ "$STAGE" =~ ^[EFGHI]$ ]] || { echo "usage: $0 <E|F|G|H|I> [--resume-pre-prod]" >&2; exit 2; }
 [[ "$MODE" == "fresh" || "$MODE" == "--resume-pre-prod" ]] || {
-  echo "usage: $0 <E|F|G|H> [--resume-pre-prod]" >&2
+  echo "usage: $0 <E|F|G|H|I> [--resume-pre-prod]" >&2
   exit 2
 }
 stage_lc="$(printf '%s' "$STAGE" | tr '[:upper:]' '[:lower:]')"
 
-CONTROL_DIR="${AI_AUTOPILOT_CONTROL_DIR:-$HOME/agent-control/stage-eh-master}"
-STATE_DIR="${AI_AUTOPILOT_STATE_DIR:-$HOME/agent-state/stage-eh}"
-WORKTREE="${AI_AUTOPILOT_WORKTREE:-$HOME/agent-worktrees/stage-eh}"
+if [[ "$STAGE" == "I" ]]; then
+  DEFAULT_CONTROL_DIR="$HOME/agent-control/stage-i"
+  DEFAULT_STATE_DIR="$HOME/agent-state/stage-i"
+  DEFAULT_WORKTREE="$HOME/agent-worktrees/stage-i"
+else
+  DEFAULT_CONTROL_DIR="$HOME/agent-control/stage-eh-master"
+  DEFAULT_STATE_DIR="$HOME/agent-state/stage-eh"
+  DEFAULT_WORKTREE="$HOME/agent-worktrees/stage-eh"
+fi
+CONTROL_DIR="${AI_AUTOPILOT_CONTROL_DIR:-$DEFAULT_CONTROL_DIR}"
+STATE_DIR="${AI_AUTOPILOT_STATE_DIR:-$DEFAULT_STATE_DIR}"
+WORKTREE="${AI_AUTOPILOT_WORKTREE:-$DEFAULT_WORKTREE}"
 NOTIFY="$CONTROL_DIR/notify_telegram.py"
 SPEC="$CONTROL_DIR/prompts/stage_${stage_lc}.md"
 BRANCH="agent/stage-${stage_lc}"
