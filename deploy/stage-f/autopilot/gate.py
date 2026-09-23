@@ -31,6 +31,8 @@ ORIGINAL_PATCH_HASHES = {'agent/turn_api_request.py': 'a81c83b14d93f801a7082b090
 PLUGIN = HERMES / 'plugins/ai-platform-messaging'
 RESOURCE_CLIENT = Path('/usr/local/libexec/ai-server/hermes_resource_queue.py')
 GPU_UNIT = Path('/etc/systemd/system/ai-gateway.service.d/96-gpu-residency.conf')
+COMFY_EXTENSION = Path('/opt/comfyui/ComfyUI/custom_nodes/ai_platform_residency.py')
+COMFY_PIN = 'ace9172e95038ac25015c419713aa7755f739034'
 IMAGE_BINARIES = ('generate-image', 'generate-image-edit')
 MANAGED_FILES = {
     **{Path('/usr/local/bin') / name: 'deploy/stage-f/bin/' + name for name in IMAGE_BINARIES},
@@ -56,12 +58,19 @@ def clients():
             expected = current / 'services/ai-bridge' / relative
             if expected.exists():
                 require(actual.read_bytes() == expected.read_bytes())
+        extension = current / 'services/ai-bridge/deploy/comfyui/ai_platform_residency.py'
+        if extension.exists():
+            require(COMFY_EXTENSION.read_bytes() == extension.read_bytes())
         return result
     finally:
         e.D6 = previous
 
 def runtime(release, cfg, baseline=None, require_idle=True):
     expected = {**baseline, 'clients': clients()} if baseline else None
+    if expected and baseline.get('comfy_extension_managed'):
+        # Deployment may restart ComfyUI to install/remove its supported route.
+        # Each smoke separately asserts identical before/after process identity.
+        expected['comfy'] = e.identity('comfyui.service')
     return _original_runtime(release, cfg, expected, require_idle)
 
 e.clients, e.runtime = clients, runtime
@@ -112,6 +121,9 @@ def snapshot(state):
     (recovery / 'dirty.patch').write_text(hermes_git(['diff', '--binary']) + '\n')
     paths = [CONFIG, RESOURCE_CLIENT, *[SOURCE / p for p in PATCHED],
              *MANAGED_FILES]
+    manifest['comfy_extension_existed'] = COMFY_EXTENSION.exists()
+    if COMFY_EXTENSION.exists():
+        paths.append(COMFY_EXTENSION)
     manifest['gpu_unit_existed'] = GPU_UNIT.exists()
     if GPU_UNIT.exists():
         paths.append(GPU_UNIT)
@@ -210,6 +222,8 @@ def configure(candidate, state, baseline, rollback=False):
             expected_hash = e.read(state / 'installed.json')['plugin_hashes'][filename]
             require(e.digest(PLUGIN / filename) == expected_hash)
     if rollback:
+        if not manifest.get('comfy_extension_existed', False):
+            COMFY_EXTENSION.unlink(missing_ok=True)
         if not manifest['gpu_unit_existed']:
             GPU_UNIT.unlink(missing_ok=True)
         for path_string, info in manifest['files'].items():
@@ -222,6 +236,8 @@ def configure(candidate, state, baseline, rollback=False):
             shutil.copytree(PLUGIN, quarantine)
             shutil.rmtree(PLUGIN)
     else:
+        require(run(['git', '-c', 'safe.directory=/opt/comfyui/ComfyUI', '-C', '/opt/comfyui/ComfyUI', 'rev-parse', 'HEAD']) == COMFY_PIN)
+        atomic_restore(COMFY_EXTENSION, (candidate / 'services/ai-bridge/deploy/comfyui/ai_platform_residency.py').read_bytes(), 0o644, 0, 0)
         for binary, relative in MANAGED_FILES.items():
             info = manifest['files'][str(binary)]
             atomic_restore(binary, (candidate / 'services/ai-bridge' / relative).read_bytes(),
@@ -270,7 +286,7 @@ def require_kernel_clear():
     require(not module.GPU_ERROR.search(kernel))
 
 
-def recover_gpu_quiesced(state):
+def recover_gpu_quiesced(state, *, require_comfy_extension=True):
     # Known-good E Python plus reviewed controller source; never execute a
     # failed candidate. Both ingress and Gateway are stopped, workers reaped.
     marker = Path('/var/lib/ai-platform-gpu/residency.blocked')
@@ -282,12 +298,12 @@ import httpx
 from ai_bridge.gateway.residency import GPUResidency
 async def recover():
     async with httpx.AsyncClient(base_url='http://127.0.0.1:11434', timeout=90, trust_env=False) as ollama, httpx.AsyncClient(base_url='http://127.0.0.1:8188', timeout=10, trust_env=False) as comfy:
-        gpu = GPUResidency(ollama, comfy, Path(sys.argv[1]), idle_reserve_bytes=33554432)
+        gpu = GPUResidency(ollama, comfy, Path(sys.argv[1]), idle_reserve_bytes=67108864, require_comfy_extension=bool(int(sys.argv[2])))
         await gpu.enter_media()
         await gpu.leave_media()
 asyncio.run(recover())
 """
-    run([BASE / 'services/ai-bridge/.venv/bin/python', '-c', script, temporary_marker],
+    run([BASE / 'services/ai-bridge/.venv/bin/python', '-c', script, temporary_marker, str(int(require_comfy_extension))],
         timeout=200, env={**os.environ, 'PYTHONPATH': str(ROOT / 'src')})
     require_kernel_clear()
     if marker.exists():
@@ -329,7 +345,23 @@ def switch(target, candidate, state, baseline):
     configure(candidate, state, baseline, rollback)
     run(['systemctl', 'daemon-reload'])
     run(['systemctl', 'stop', 'ai-gateway.service', 'ai-bridge.service'])
-    recover_gpu_quiesced(state)
+    run(['systemctl', 'restart', 'comfyui.service'], timeout=180)
+    for attempt in range(120):
+        try:
+            e.comfy_idle()
+            if not rollback:
+                require(e.fetch('http://127.0.0.1:8188/ai-platform/residency')['schema_version'] == 1)
+            break
+        except Exception:
+            if attempt == 119:
+                raise
+            time.sleep(1)
+    e.write_once(state / ('comfy-deployment-' + uuid4().hex + '.json'), {
+        'target': target.name, 'identity': e.identity('comfyui.service'),
+        'extension_installed': not rollback, 'source_pin': COMFY_PIN})
+    # Legacy rollback has a freshly restarted, never-used compositor and keeps
+    # media ingress paused. All candidate transitions require model-list proof.
+    recover_gpu_quiesced(state, require_comfy_extension=not rollback)
     temporary = e.CURRENT.with_name('.stage-f-' + uuid4().hex)
     temporary.symlink_to(target)
     os.replace(temporary, e.CURRENT)
@@ -552,6 +584,7 @@ def repair_baseline(state, sha):
     atomic_restore(copied / 'manifest.json', json.dumps(manifest, sort_keys=True).encode(), 0o400, 0, 0)
     copied.chmod(0o500)
     return {**original, 'source_sha': sha, 'previous_candidate': str(previous),
+            'comfy_extension_managed': True,
             'hermes_snapshot': e.digest(copied / 'manifest.json')}
 
 
@@ -577,6 +610,7 @@ def main(step):
                 preflight()
                 state.mkdir(mode=0o700)
                 baseline = {'source_sha': sha, 'rollback': BASE.name, 'clients': e.clients(),
+                    'comfy_extension_managed': True,
                     'comfy': e.identity('comfyui.service'), 'hermes_active': 'active',
                     'analysis_timer_active': run(['systemctl', 'show', 'ai-bridge-analysis.timer', '-p', 'ActiveState', '--value']),
                     'rollback_checksums': e.digest(BASE / 'metadata/SHA256SUMS')}

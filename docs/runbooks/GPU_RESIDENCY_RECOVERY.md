@@ -15,7 +15,9 @@ Do not erase the marker or restart Ollama as routine handoff behavior.
    `keep_alive: 0`, `stream: false`; verify `/api/ps` has zero models.
 4. Verify ComfyUI queue empty, request `/free` with both flags true, and poll
    `/system_stats` until every device reports `torch_vram_total` within its configured idle ceiling
-   (production: 32 MiB persistent HIP BLAS workspace; default: zero). Keep closed
+   (production: 64 MiB HIP workspace/small-buffer budget; default: zero).
+   Also require `/ai-platform/residency` to show zero loaded models and no pending
+   cleanup flags. Torch allocator statistics alone cannot verify dynamic models. Keep closed
    on missing evidence, a busy queue or timeout. No service restart is needed.
 5. Only after workers are proven stopped and both providers free, archive the
    residency marker with the recovery evidence, stop the Gateway, remove its live

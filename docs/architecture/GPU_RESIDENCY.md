@@ -21,8 +21,8 @@ is part of this protocol. See [Ollama generate](https://docs.ollama.com/api/gene
 and [resident inventory](https://docs.ollama.com/api/ps).
 
 On explicit external-use completion, it checks ComfyUI's queue, sends `/free`
-with both `unload_models` and `free_memory`, then verifies empty running/pending
-queues and `torch_vram_total` within the explicitly configured idle workspace ceiling on every device (zero by default). `/free` is asynchronous;
+with both `unload_models` and `free_memory`, then verifies zero loaded models, no
+pending cleanup flags, empty running/pending queues and `torch_vram_total` within the explicitly configured idle workspace ceiling on every device (zero by default). `/free` is asynchronous;
 its HTTP success alone is insufficient. This check uses the installed ComfyUI
 `server.py` and `main.py` behavior. GPU driver/context overhead is not represented
 as Torch residency and is not claimed to vanish.
@@ -51,9 +51,10 @@ Rollback restores their exact archived bytes. The new renderers never perform
 provider residency transitions themselves.
 
 ComfyUI retained exactly 32 MiB after `/free`, with an empty queue, matching
-PyTorch's documented default persistent HIP BLAS workspace. Production explicitly
-allows at most 33,554,432 reserved bytes per device after cleanup; no larger
-allocation is accepted. This is a bounded workspace allowance, not a claim that
+PyTorch's documented default persistent HIP BLAS workspace. The LTX run additionally retained a 2 MiB allocator segment containing a small
+buffer. Production explicitly allows at most 64 MiB reserved per device after
+cleanup, and independently requires zero loaded models; no larger allocation is
+accepted. This is a bounded workspace allowance, not a claim that
 all GPU process/context memory disappears. See [PyTorch HIP memory/workspace
 semantics](https://docs.pytorch.org/docs/main/notes/hip.html). Any Ollama model
 reappearing before cleanup completes also fails closed. The initial production
@@ -64,3 +65,19 @@ responses to 512 tokens and disables reasoning for this translation task; the
 previous unbounded video compiler exceeded its 90-second deadline. Media was
 correctly denied while the abandoned HTTP call was still draining. A compiler
 fallback is never accepted as passing internal E2E evidence.
+
+
+The supported custom-node extension `deploy/comfyui/ai_platform_residency.py`
+reports `/ai-platform/residency`: model-registry count, queue sizes and pending
+cleanup flags, without consuming flags or modifying models. The Gateway requires
+this evidence before and after every media phase; an absent/invalid endpoint fails
+closed. This covers dynamic allocations outside Torch's allocator counters. The
+extension is pinned to ComfyUI source `ace9172e95038ac25015c419713aa7755f739034`.
+Deployment installs/removes the route with a quiesced ComfyUI restart and records
+its new process identity. Normal media transitions restart neither ComfyUI nor
+Ollama. Each smoke proves ComfyUI identity unchanged throughout execution.
+
+The only legacy exception is a planned Stage E rollback with external ingress
+paused and a freshly restarted ComfyUI process that has executed no media. The
+supervisor verifies provider memory/queues without requiring the removed extension;
+all candidate runtime handoffs require authoritative model-registry evidence.

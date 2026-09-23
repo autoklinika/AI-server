@@ -14,10 +14,11 @@ class ResidencyError(RuntimeError):
 
 class GPUResidency:
     def __init__(self, ollama: httpx.AsyncClient, comfy: httpx.AsyncClient,
-                 marker: Path, *, timeout: float = 90, poll: float = .25, idle_reserve_bytes: int = 0):
+                 marker: Path, *, timeout: float = 90, poll: float = .25, idle_reserve_bytes: int = 0, require_comfy_extension: bool = True):
         self.ollama, self.comfy = ollama, comfy
         self.marker, self.timeout, self.poll = marker, timeout, poll
         self.idle_reserve_bytes = idle_reserve_bytes
+        self.require_comfy_extension = require_comfy_extension
         self.state = "blocked" if marker.exists() else "llm"
 
     def snapshot(self):
@@ -40,6 +41,18 @@ class GPUResidency:
         if queue["queue_running"] != [] or queue["queue_pending"] != []:
             raise ResidencyError("ComfyUI is not idle")
 
+    async def _comfy_models_idle(self):
+        if not self.require_comfy_extension:
+            return True  # Only quiesced legacy rollback after ComfyUI restart.
+        evidence = await self._json(self.comfy, "/ai-platform/residency")
+        if evidence.get("schema_version") != 1:
+            raise ResidencyError("unsupported ComfyUI residency evidence")
+        return (type(evidence.get("loaded_models")) is int
+            and evidence["loaded_models"] == 0
+            and evidence.get("cleanup_pending") is False
+            and evidence.get("queue_running") == 0
+            and evidence.get("queue_pending") == 0)
+
     async def enter_media(self):
         if self.state != "llm":
             raise ResidencyError("GPU residency requires recovery")
@@ -59,6 +72,8 @@ class GPUResidency:
                             "model": model["name"], "keep_alive": 0, "stream": False})
                         response.raise_for_status()
                     await asyncio.sleep(self.poll)
+                if not await self._comfy_models_idle():
+                    raise ResidencyError("unexpected ComfyUI residency before media")
             self.state = "media"
         except BaseException:
             self.state = "blocked"
@@ -80,7 +95,8 @@ class GPUResidency:
                     devices = (await self._json(self.comfy, "/system_stats"))["devices"]
                     if not isinstance(devices, list) or not devices:
                         raise ResidencyError("missing ComfyUI memory evidence")
-                    if all(type(d["torch_vram_total"]) is int and 0 <= d["torch_vram_total"] <= self.idle_reserve_bytes for d in devices):
+                    unloaded = await self._comfy_models_idle()
+                    if unloaded and all(type(d["torch_vram_total"]) is int and 0 <= d["torch_vram_total"] <= self.idle_reserve_bytes for d in devices):
                         break
                     await asyncio.sleep(self.poll)
                 await self._idle()

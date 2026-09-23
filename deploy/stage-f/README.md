@@ -13,6 +13,12 @@ commands run. Config replaces the two exec quick commands with plugin commands.
 All three source patches are removed at cutover; rollback restores their exact
 bytes, config, mode and ownership. No monkeypatch is installed in Hermes.
 
+A supported read-only ComfyUI custom-node route supplies loaded-model and cleanup
+flag evidence; Torch allocator counters alone are insufficient for dynamic models.
+The route is installed/removed during quiesced deployments, with a ComfyUI restart;
+normal GPU handoffs restart neither provider. Image renderers and bounded prompt
+compilers are versioned release inputs, with exact snapshot rollback.
+
 Queue admission uses the existing RM lease client, with reservation-owned
 request/job correlation and an explicit final release even on provider failure.
 Hermes consumes streaming completion inside the middleware callback at this pin.

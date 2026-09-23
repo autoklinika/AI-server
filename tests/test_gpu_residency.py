@@ -24,6 +24,8 @@ class Providers:
         self.fail = False
         self.stuck = False
         self.busy = False
+        self.loaded_models = 0
+        self.cleanup_pending = False
 
     def handle(self, request):
         path = request.url.path
@@ -40,6 +42,9 @@ class Providers:
             return httpx.Response(200, json={"queue_running": [1] if self.busy else [], "queue_pending": []})
         if path == "/free" and not self.stuck:
             self.memory = 0
+        if path == "/ai-platform/residency":
+            return httpx.Response(200, json={"schema_version": 1, "loaded_models": self.loaded_models,
+                "cleanup_pending": self.cleanup_pending, "queue_running": 0, "queue_pending": 0})
         if path == "/system_stats":
             return httpx.Response(200, json={"devices": [{"torch_vram_total": self.memory}]})
         return httpx.Response(200, json={})
@@ -238,3 +243,29 @@ async def test_media_cannot_start_while_compiler_http_call_is_in_flight(tmp_path
     assert providers.models == []
     await leases.end_external_use(lease['lease_id'], use)
     await leases.release(lease['lease_id'])
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize('pending,loaded', [(False, 1), (True, 0)])
+async def test_empty_torch_allocator_is_not_proof_of_comfy_unload(tmp_path, pending, loaded):
+    providers = Providers()
+    gpu, scheduler, leases = setup(tmp_path, providers)
+    await gpu.enter_media()
+    providers.loaded_models, providers.cleanup_pending = loaded, pending
+    with pytest.raises(TimeoutError):
+        await gpu.leave_media()
+    assert providers.memory == 0 and gpu.state == 'blocked'
+
+
+@pytest.mark.anyio
+async def test_missing_comfy_evidence_endpoint_fails_before_media(tmp_path):
+    providers = Providers()
+    def handle(request):
+        if request.url.path == '/ai-platform/residency':
+            return httpx.Response(404)
+        return providers.handle(request)
+    client = httpx.AsyncClient(base_url='http://test', transport=httpx.MockTransport(handle))
+    gpu = GPUResidency(client, client, tmp_path / 'marker')
+    with pytest.raises(httpx.HTTPStatusError):
+        await gpu.enter_media()
+    assert gpu.state == 'blocked' and gpu.marker.exists()
