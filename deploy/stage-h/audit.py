@@ -1,6 +1,7 @@
 """Content-free reference audit: runtime blockers vs retained recovery references."""
 import os
 import json
+import hashlib
 import re
 from pathlib import Path
 import subprocess
@@ -75,11 +76,31 @@ print(json.dumps([str(Path(m.__file__).resolve()) for m in (ns['stage29'], ns['s
             if hits:
                 unit_refs.append({'file': str(p), 'targets': hits})
     blockers.extend(unit_refs)
+    effective_units = []
+    for unit in ('ai-gateway.service', 'ai-bridge.service', 'ai-bridge-analysis.service', 'hermes-gateway.service'):
+        args = ['show', unit, '-p', 'ExecStart', '-p', 'Environment', '-p', 'EnvironmentFiles', '-p', 'WorkingDirectory']
+        value = e.user_systemctl(args) if unit == 'hermes-gateway.service' else run(['systemctl', *args])
+        hits = [p for p in paths if p in value]
+        env_files = []
+        for line in value.splitlines():
+            if not line.startswith('EnvironmentFiles='):
+                continue
+            for filename, optional in re.findall(r'(\S+) \(ignore_errors=(yes|no)\)', line):
+                p = Path(filename)
+                if not p.exists() and optional == 'yes':
+                    continue
+                found = references(p, q.NAMES)
+                env_files.append({'file': filename, 'targets': found})
+                hits.extend(found)
+        effective_units.append({'unit': unit, 'sha256': hashlib.sha256(value.encode()).hexdigest(),
+                                'environment_files': env_files, 'targets': hits})
+        if hits:
+            blockers.append({'unit': unit, 'targets': hits})
     for proc in Path('/proc').iterdir():
         if not proc.name.isdigit():
             continue
         try:
-            data = (proc / 'cmdline').read_bytes()
+            data = (proc / 'cmdline').read_bytes() + (proc / 'environ').read_bytes()
             matches = [p for p in paths if p.encode() in data]
             for link in [proc / 'cwd', proc / 'exe', *list((proc / 'fd').iterdir())]:
                 try:
@@ -131,6 +152,7 @@ print(json.dumps([str(Path(m.__file__).resolve()) for m in (ns['stage29'], ns['s
               'runtime_callers': process_refs, 'blockers': blockers, 'worktrees': trees,
               'current_release': str(e.CURRENT.resolve()), 'releases': releases,
               'active_generator_import_origins': origins,
+              'effective_systemd': effective_units,
               'recovery_references': recovery,
               'kept': ['/opt/ai-bridge', '/opt/ai-gateway', '/srv/ai-data', '/opt/comfyui',
                        'all models', 'D.0/D.6 snapshots', 'all F/G releases and incident evidence'],
