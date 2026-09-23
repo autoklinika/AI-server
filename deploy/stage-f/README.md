@@ -1,6 +1,6 @@
 # Stage F: supported Hermes messaging plugin
 
-Draft only: production cutover is blocked by the [GPU incident and open review items](../../docs/reports/AI_PLATFORM_STAGE_F_GPU_BLOCKER_2026-09-23.md). The current manual-registration harness is not yet sufficient acceptance evidence.
+Draft: post-reboot residency isolation is implemented; production acceptance is still pending. See [GPU ownership architecture](../../docs/architecture/GPU_RESIDENCY.md) and [recovery runbook](../../docs/runbooks/GPU_RESIDENCY_RECOVERY.md). The prior [incident report](../../docs/reports/AI_PLATFORM_STAGE_F_GPU_BLOCKER_2026-09-23.md) records the pre-reboot state.
 
 The operator approved SYNTHETIC/INTERNAL E2E as the acceptance boundary on
 2026-09-23. External Telegram/Discord inbound transport remains DEFERRED/NOT
@@ -22,7 +22,7 @@ single argv item and never shell-interpolated. Discord voice notices bind to the
 invoking event's guild/channel and task lifetime; temporary audio is owned and
 removed by the adapter.
 
-`internal_e2e.py` exercises real Hermes hook registration/dispatch/middleware,
+`internal_e2e.py` exercises installed plugin discovery, real Hermes conversation/streaming execution, hook dispatch/middleware,
 four independent synthetic contexts (two per platform), actual localhost
 Gateway/RM admission, bounded Qwen inference, WAIT before START, request/job
 identity, production foto/video dispatchers, prompt compilers, renderers and

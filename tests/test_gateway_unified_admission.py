@@ -61,9 +61,9 @@ async def test_http_routes_have_validated_workloads(path):
 
 
 @pytest.mark.anyio
-async def test_media_qwen_external_phase_and_embedding_contend_without_second_slot(caplog):
+async def test_media_qwen_external_phase_and_embedding_contend_without_second_slot(caplog, tmp_path):
     seen = []
-    app = make_app(lambda request: seen.append(request.url.path) or httpx.Response(200, json={}))
+    app = media_app(tmp_path, lambda request: seen.append(request.url.path) or httpx.Response(200, json={}))
     async with api_client(app) as client:
         lease = (await client.post("/resource/leases", json={"workload": "media-video", "priority_class": "interactive"})).json()
         lid = lease["lease_id"]
@@ -91,8 +91,8 @@ async def test_media_qwen_external_phase_and_embedding_contend_without_second_sl
 
 
 @pytest.mark.anyio
-async def test_restricted_lease_rejects_unplanned_work_and_old_use_cannot_end_new_phase():
-    app = make_app()
+async def test_restricted_lease_rejects_unplanned_work_and_old_use_cannot_end_new_phase(tmp_path):
+    app = media_app(tmp_path)
     async with api_client(app) as client:
         lease = (await client.post("/resource/leases", json={"workload": "media-video"})).json()
         lid = lease["lease_id"]
@@ -131,8 +131,10 @@ async def test_crashed_external_phase_ttl_and_http_pin_are_distinct(monkeypatch)
     now[0] = 115
     assert await leases.reap_expired() == 0
     now[0] = 120
-    assert await leases.reap_expired() == 1
-    assert (await scheduler.snapshot())["recent_jobs"][-1]["state"] == "expired"
+    assert await leases.reap_expired() == 0  # Lost heartbeat cannot prove GPU idle.
+    use_id = leases._leases[lease["lease_id"]].external_use_id
+    await leases.end_external_use(lease["lease_id"], use_id)
+    await leases.release(lease["lease_id"])
     lease = await leases.create(priority=50, source="http")
     await leases.begin_use(lease["lease_id"])
     now[0] += 100
@@ -233,3 +235,18 @@ async def test_cancel_release_waiting_on_scheduler_keeps_reaper_owner(monkeypatc
     now[0] = 11
     assert await leases.reap_expired() == 1
     assert (await scheduler.snapshot())["active_count"] == 0
+
+
+def media_app(tmp_path, handler=None):
+    from ai_bridge.gateway.app import create_gateway_app
+    from ai_bridge.settings import Settings
+    from test_gpu_residency import Providers
+    providers = Providers()
+    providers.models = []
+    def upstream(request):
+        if request.url.path == "/api/ps":
+            return providers.handle(request)
+        return handler(request) if handler else httpx.Response(200, json={})
+    return create_gateway_app(Settings(_env_file=None, gateway_gpu_marker=tmp_path / "gpu"),
+        upstream_transport=httpx.MockTransport(upstream),
+        residency_transport=httpx.MockTransport(providers.handle))

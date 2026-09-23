@@ -28,9 +28,29 @@ PIN = '79445a496c86a19332ad786494b8384d2167e2d0'
 PATCHED = ('agent/turn_api_request.py', 'gateway/run_inbound.py', 'gateway/run_turn_runner.py')
 ORIGINAL_PATCH_HASHES = {'agent/turn_api_request.py': 'a81c83b14d93f801a7082b0900111aa7345f0b3f42b2f50dba1f3d93a63f7405', 'gateway/run_inbound.py': '3d6ff79be1ae9f8ebcffb409260992ccff7e9673ed7a48c281f088cda7f9de8c', 'gateway/run_turn_runner.py': '7d59a9585e359f5ad3cc16bbd3b48e2cf30663fddec89a3422934644ccdbd476'}
 PLUGIN = HERMES / 'plugins/ai-platform-messaging'
+RESOURCE_CLIENT = Path('/usr/local/libexec/ai-server/hermes_resource_queue.py')
 CONFIG = HERMES / 'config.yaml'
 e.D6 = BASE  # Existing client fingerprints are identical in the E baseline.
 require, run = e.require, e.run
+
+# Stage F updates the supported RM client's transition timeout and fail-closed
+# cleanup. Validate installed bytes against the active immutable release.
+_original_clients, _original_runtime = e.clients, e.runtime
+
+def clients():
+    previous = e.D6
+    try:
+        current = e.CURRENT.resolve()
+        e.D6 = current if current.name.startswith('stage-f-') else BASE
+        return _original_clients()
+    finally:
+        e.D6 = previous
+
+def runtime(release, cfg, baseline=None, require_idle=True):
+    expected = {**baseline, 'clients': clients()} if baseline else None
+    return _original_runtime(release, cfg, expected, require_idle)
+
+e.clients, e.runtime = clients, runtime
 
 
 def hermes_git(args):
@@ -70,7 +90,7 @@ def snapshot(state):
     with (recovery / 'upstream.tar').open('xb') as stream:
         subprocess.run(['runuser', '-u', name, '--', 'git', '-C', SOURCE, 'archive', PIN], stdout=stream, check=True)
     (recovery / 'dirty.patch').write_text(hermes_git(['diff', '--binary']) + '\n')
-    paths = [CONFIG, *[SOURCE / p for p in PATCHED]]
+    paths = [CONFIG, RESOURCE_CLIENT, *[SOURCE / p for p in PATCHED]]
     for index, path in enumerate(paths):
         target = recovery / f'file-{index}'
         shutil.copy2(path, target)
@@ -178,6 +198,9 @@ def configure(candidate, state, baseline, rollback=False):
             shutil.copytree(PLUGIN, quarantine)
             shutil.rmtree(PLUGIN)
     else:
+        info = manifest['files'][str(RESOURCE_CLIENT)]
+        atomic_restore(RESOURCE_CLIENT, (candidate / 'services/ai-bridge/tools/hermes_resource_queue.py').read_bytes(),
+                       info['mode'], info['uid'], info['gid'])
         for relative in PATCHED:
             path = SOURCE / relative
             info = manifest['files'][str(path)]
@@ -200,7 +223,8 @@ def switch(target, candidate, state, baseline):
     rollback = target == BASE
     require(e.CURRENT.resolve() in (BASE, candidate))
     verify_release(target)
-    require(e.clients() == baseline['clients'])
+    if not rollback:
+        e.clients()  # Rollback validates the snapshot, never the failed candidate.
     e.quiesce(baseline, allow_gateway_unavailable=rollback)
     e.require_hermes_stopped()
     e.comfy_idle()
@@ -223,11 +247,19 @@ def switch(target, candidate, state, baseline):
     e.resume_ingress(baseline)
 
 
-def smoke(phase, target, candidate, state, baseline):
+def _smoke(phase, target, candidate, state, baseline):
     e.runtime(target, e.config(), baseline)
     before = [e.identity(u) for u in ('ai-gateway.service', 'ai-bridge.service', 'comfyui.service')]
     evidence_dir = state / (phase + '-' + uuid4().hex)
     evidence_dir.mkdir(mode=0o700)
+    from importlib.util import spec_from_file_location, module_from_spec
+    harness_spec = spec_from_file_location('stage_f_probe', ROOT / 'deploy/stage-f/internal_e2e.py')
+    harness = module_from_spec(harness_spec)
+    harness_spec.loader.exec_module(harness)
+    result = e.fetch(e.GATEWAY + '/api/chat', {'model': harness.configured_hermes_model(CONFIG),
+        'messages': [{'role': 'user', 'content': 'Return OK.'}], 'stream': False,
+        'think': False, 'options': {'num_predict': 16}})
+    require(result.get('done') is True and result.get('eval_count', 0) > 0)
     e.api_smoke(e.config())
     e.wvc_smoke()
     e.hermes_oneshot_smoke()
@@ -263,18 +295,49 @@ def smoke(phase, target, candidate, state, baseline):
             e.runtime(target, e.config(), baseline)
             e.resume_ingress(baseline)
     else:
-        run(['bash', ROOT / 'deploy/stage-e/validate_media_runtime.sh', 'E'], timeout=1900)
+        # Stage E lacks residency isolation. Do not run heavy legacy media here.
+        e.comfy_idle()
         recovery, manifest = verify_snapshot(state, baseline)
         for path, info in manifest['files'].items():
             require(e.digest(path) == info['sha256'])
         require(not PLUGIN.exists())
+    # Media cleanup must allow the same Ollama service to load/infer again.
+    e.wvc_smoke()
     e.runtime(target, e.config(), baseline)
     e.hermes_state()
     require(before == [e.identity(u) for u in ('ai-gateway.service', 'ai-bridge.service', 'comfyui.service')])
-    e.write_once(evidence_dir / 'pass.json', {'release': target.name, 'time': time.time(), 'phase': phase,
+    e.write_once(evidence_dir / 'provisional.json', {'release': target.name, 'time': time.time(), 'phase': phase,
         'compatibility': 'PASS', 'internal_e2e': 'PASS' if target == candidate else 'NOT APPLICABLE: E rollback',
         'external_transport': 'DEFERRED/NOT TESTED'})
-    e.write_once(state / (phase + '.json'), {'evidence': str(evidence_dir), 'release': target.name})
+    return {'evidence': str(evidence_dir), 'release': target.name}
+
+
+def smoke(phase, target, candidate, state, baseline):
+    spec = importlib.util.spec_from_file_location('stage_f_gpu_watch', ROOT / 'deploy/stage-f/gpu_watch.py')
+    watch = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(watch)
+    def contain():
+        record = {'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+                  'status': 'BLOCKED_GPU', 'release': str(e.CURRENT.resolve()), 'time': time.time()}
+        temporary = STATE / ('gpu-blocked-' + uuid4().hex)
+        temporary.write_text(json.dumps(record))
+        os.replace(temporary, STATE / 'gpu-blocked.json')
+        # Stop admission first. Preserve release bytes, journals and worker state.
+        run(['systemctl', 'stop', 'ai-gateway.service', 'ai-bridge-analysis.timer'], timeout=180)
+        e.user_systemctl(['stop', 'hermes-gateway.service'])
+    original_resume = e.resume_ingress
+    with watch.KernelGuard(run, contain, state / (phase + '-kernel.log')) as guard:
+        def safe_resume(baseline):
+            guard.check()
+            original_resume(baseline)
+        e.resume_ingress = safe_resume
+        try:
+            result = _smoke(phase, target, candidate, state, baseline)
+        finally:
+            e.resume_ingress = original_resume
+    evidence_dir = Path(result['evidence'])
+    e.write_once(evidence_dir / 'pass.json', e.read(evidence_dir / 'provisional.json'))
+    e.write_once(state / (phase + '.json'), result)
 
 
 def recover_unmodified_baseline(sha):

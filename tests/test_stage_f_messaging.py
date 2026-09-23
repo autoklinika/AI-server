@@ -185,3 +185,30 @@ def test_harness_uses_configured_hermes_model_not_bridge_default(tmp_path):
     config = tmp_path / 'config.yaml'
     config.write_text('model:\n  default: qwen3.6:35b-hermes64k\n  base_url: http://127.0.0.1:11435/clients/hermes/v1\n')
     assert harness.configured_hermes_model(config) == 'qwen3.6:35b-hermes64k'
+
+
+def test_rollback_never_requires_healthy_candidate(monkeypatch, tmp_path):
+    gate = gate_module()
+    baseline, candidate = tmp_path / 'baseline', tmp_path / 'broken-candidate'
+    baseline.mkdir()
+    candidate.mkdir()
+    current = tmp_path / 'current'
+    current.symlink_to(candidate)
+    monkeypatch.setattr(gate, 'BASE', baseline)
+    monkeypatch.setattr(gate.e, 'CURRENT', current)
+    actions = []
+    monkeypatch.setattr(gate, 'verify_release', lambda p: actions.append(('verify', p)))
+    monkeypatch.setattr(gate.e, 'clients', lambda: pytest.fail('failed candidate must not be inspected'))
+    monkeypatch.setattr(gate.e, 'quiesce', lambda b, **kw: actions.append(('quiesce', kw)))
+    monkeypatch.setattr(gate.e, 'require_hermes_stopped', lambda: None)
+    monkeypatch.setattr(gate.e, 'comfy_idle', lambda: None)
+    monkeypatch.setattr(gate, 'configure', lambda c, s, b, rollback: actions.append(('restore', rollback)))
+    monkeypatch.setattr(gate, 'run', lambda *a, **kw: None)
+    monkeypatch.setattr(gate.e, 'config', lambda: {})
+    monkeypatch.setattr(gate.e, 'runtime', lambda target, *a: actions.append(('runtime', target)))
+    monkeypatch.setattr(gate.e, 'resume_ingress', lambda b: actions.append(('resume', True)))
+    gate.switch(baseline, candidate, tmp_path, {})
+    assert current.resolve() == baseline
+    assert ('verify', baseline) in actions and ('verify', candidate) not in actions
+    assert ('quiesce', {'allow_gateway_unavailable': True}) in actions
+    assert actions[-1] == ('resume', True)

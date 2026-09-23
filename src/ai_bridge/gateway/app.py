@@ -21,6 +21,7 @@ from .resource_leases import (
     ResourceLeaseNotFound,
     ResourceLeaseRegistry,
 )
+from .residency import GPUResidency, ResidencyError
 from .scheduler import PriorityScheduler, SchedulerQueueFull, SchedulerTicket
 
 
@@ -133,6 +134,7 @@ def create_gateway_app(
     settings: Settings | None = None,
     *,
     upstream_transport: httpx.AsyncBaseTransport | None = None,
+    residency_transport: httpx.AsyncBaseTransport | None = None,
     platform_provider=None,
     platform_policy=None,
 ) -> FastAPI:
@@ -163,7 +165,14 @@ def create_gateway_app(
             timeout=timeout,
             transport=upstream_transport,
             trust_env=False,
-        ) as client:
+        ) as client, httpx.AsyncClient(
+            base_url=resolved.gateway_comfy_url.rstrip("/"), timeout=10,
+            transport=residency_transport, trust_env=False,
+        ) as comfy:
+            residency = GPUResidency(client, comfy, resolved.gateway_gpu_marker,
+                                     timeout=resolved.gateway_gpu_transition_timeout)
+            resource_leases.residency = residency
+            scheduler.admission_blocked = residency.state == "blocked"
             from ai_bridge.platform.provider import GatewayLLMAdapter
             app.state.platform_provider = platform_provider or GatewayLLMAdapter(
                 client, resolved.ollama_model, resolved.node_id, resolved.gateway_health_timeout_seconds
@@ -424,12 +433,19 @@ def create_gateway_app(
     @app.get("/status")
     async def status() -> dict[str, object]:
         snapshot = await scheduler.snapshot()
+        snapshot["gpu_residency"] = resource_leases.residency.snapshot()
         snapshot["resource_leases"] = await resource_leases.snapshot()
         snapshot["registry"] = registry.snapshot()
         return snapshot
 
     # External Resource Manager API. It is intentionally served by the existing
     # localhost-only AI Gateway and contains no prompt or response content.
+    @app.exception_handler(ResidencyError)
+    @app.exception_handler(httpx.HTTPError)
+    @app.exception_handler(TimeoutError)
+    async def residency_failure(request: Request, exc: Exception):
+        return JSONResponse(status_code=503, content={"error": "gpu_transition_failed_closed"})
+
     @app.post("/resource/leases")
     async def create_resource_lease(request: Request) -> Response:
         try:
@@ -492,7 +508,10 @@ def create_gateway_app(
 
     @app.delete("/resource/leases/{lease_id}/uses/{use_id}")
     async def end_external_use(lease_id: str, use_id: str) -> dict[str, bool]:
-        return {"released": await resource_leases.end_external_use(lease_id, use_id)}
+        try:
+            return {"released": await resource_leases.end_external_use(lease_id, use_id)}
+        except ResourceLeaseNotActive:
+            raise HTTPException(status_code=409, detail="GPU transition in progress")
 
     @app.get("/resource/leases/{lease_id}")
     async def resource_lease_status(lease_id: str) -> dict[str, object]:

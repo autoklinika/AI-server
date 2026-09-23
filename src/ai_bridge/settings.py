@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import SecretStr, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -37,6 +38,9 @@ class Settings(BaseSettings):
     gateway_host: str = "127.0.0.1"
     gateway_port: int = Field(default=11435, ge=1, le=65535)
     gateway_url: str = "http://127.0.0.1:11435"
+    gateway_comfy_url: str = "http://127.0.0.1:8188"
+    gateway_gpu_transition_timeout: float = Field(default=90.0, gt=0.0)
+    gateway_gpu_marker: Path = Field(default_factory=lambda: Path.home() / ".local/state/ai-platform/gpu-residency.blocked")
     gateway_max_concurrency: int = Field(default=1, ge=1, le=16)
     gateway_max_queue_size: int = Field(default=128, ge=1, le=10_000)
     gateway_connect_timeout_seconds: float = Field(default=5.0, gt=0.0)

@@ -12,6 +12,8 @@ import hashlib
 import importlib.util
 import json
 import os
+import shutil
+import signal
 from pathlib import Path
 import subprocess
 import sys
@@ -93,6 +95,7 @@ def media_child(command, payload, worker=False):
         # Production dispatch persists the request and chooses a worker; redirect
         # its child to the same production worker with the recording egress sink.
         assert '--worker' in argv
+        kwargs['start_new_session'] = False  # Remain in the supervised dispatcher group.
         return original([sys.executable, __file__, '--child-worker', command, argv[-1]], **kwargs)
     subprocess.Popen = launch
     try:
@@ -112,12 +115,18 @@ async def exercise(output, media_enabled):
     import hermes_cli.plugins as plugins
     from hermes_cli.middleware import run_llm_execution_middleware
 
-    plugin = load('internal_messaging_plugin', ROOT / 'integrations/hermes/ai-platform-messaging/__init__.py')
-    manager = PluginManager()
-    # Use real registration and execution; isolate discovery from private profiles.
-    plugins.get_plugin_manager = lambda *a, **k: manager
-    plugins._delivery_manager = lambda: manager
-    plugin.register(PluginContext(PluginManifest(name='ai-platform-messaging', version='1.0.0'), manager))
+    # Discover the installed bytes through Hermes' normal plugin loader, in an
+    # isolated profile. No private config/session store or fake registration.
+    profile = Path(os.environ['HERMES_HOME'])
+    installed = Path('/srv/ai-data/hermes/plugins/ai-platform-messaging')
+    assert installed.is_dir(), 'installed plugin required'
+    shutil.copytree(installed, profile / 'plugins/ai-platform-messaging')
+    (profile / 'config.yaml').write_text('plugins:\n  enabled: [ai-platform-messaging]\n')
+    manager = plugins.get_plugin_manager()
+    manager.discover_and_load()
+    loaded = manager._plugins['ai-platform-messaging']
+    assert loaded.enabled and not loaded.error and loaded.module is not None
+    plugin = loaded.module
     helper = plugin.resource_helper()
     notices = []
     helper._notify = lambda target, message: notices.append((target, message)) if message else None
@@ -133,24 +142,38 @@ async def exercise(output, media_enabled):
     model = configured_hermes_model(Path('/srv/ai-data/hermes/config.yaml'))
 
     records = []
+    original_acquire = helper.acquire_resource
+    def tracked_acquire(**kwargs):
+        lease = original_acquire(**kwargs)
+        target = kwargs.get('target')
+        if target:
+            reservation = helper._json('GET', f'/resource/leases/{lease.lease_id}')
+            records.append({'target': target, 'request_id': reservation['job']['request_id'],
+                'job_id': reservation['job']['job_id'], 'lease_id': lease.lease_id,
+                'job_kind': 'resource reservation'})
+        return lease
+    helper.acquire_resource = tracked_acquire
     async def chat(source):
         event = MessageEvent(text='Return the word OK.', source=source)
         assert runner._hm_pre_gateway_dispatch_hook(event, source) is event
         tokens = set_session_vars(platform=source.platform.value, chat_id=source.chat_id,
                                   thread_id=source.thread_id, user_id=source.user_id)
         try:
-            def terminal(request):
-                headers = request.pop('extra_headers')
-                result, response = fetch('/clients/hermes/v1/chat/completions', request, headers)
-                assert result['choices'][0]['message']['content'].strip()
-                response = {k.lower(): v for k, v in response.items()}
-                assert response['x-ai-request-id'] == headers['X-Request-Id']
-                records.append({'target': plugin.route(source), 'request_id': response['x-ai-request-id'],
-                                'job_id': response['x-ai-job-id'], 'lease_id': headers['X-AI-Resource-Lease'], 'job_kind': 'resource reservation'})
-                return result
-            await asyncio.to_thread(run_llm_execution_middleware,
-                {'model': model, 'messages': [{'role': 'user', 'content': 'Return the word OK.'}], 'stream': False, 'max_tokens': 32, 'reasoning_effort': 'none'},
-                terminal, base_url=GATEWAY + '/clients/hermes/v1', api_call_count=1)
+            def conversation():
+                from run_agent import AIAgent
+                agent = AIAgent(model=model, base_url=GATEWAY + '/clients/hermes/v1',
+                    api_key='local', provider='custom', api_mode='chat_completions',
+                    max_iterations=1, max_tokens=32, reasoning_config={'enabled': False},
+                    enabled_toolsets=[], quiet_mode=True, skip_context_files=True,
+                    skip_memory=True, skip_background_review=True,
+                    platform=source.platform.value, chat_id=source.chat_id,
+                    session_id='stage-f-' + uuid4().hex)
+                try:
+                    result = agent.run_conversation('Return the word OK.', system_message='Reply briefly. Do not call tools.')
+                    assert result.get('final_response', '').strip()
+                finally:
+                    agent.close()
+            await asyncio.to_thread(conversation)
         finally:
             clear_session_vars(tokens)
     idle()
@@ -193,8 +216,9 @@ async def exercise(output, media_enabled):
     artifacts = []
     if media_enabled:
         actual_spawn = asyncio.create_subprocess_exec
-        with tempfile.TemporaryDirectory(prefix='stage-f-internal-media-') as directory:
-            root = Path(directory)
+        if True:
+            root = Path(tempfile.mkdtemp(prefix='stage-f-internal-media-'))
+            groups = []
             async def spawn(binary, args, **kwargs):
                 assert binary in ('/usr/local/bin/hermes-foto-dispatch', '/usr/local/bin/hermes-video-dispatch')
                 command = 'foto' if 'foto' in binary else 'wideo'
@@ -202,7 +226,10 @@ async def exercise(output, media_enabled):
                 assert env['HERMES_SESSION_CHAT_ID'].startswith('synthetic-')
                 env.update(AI_INTERNAL_SINK=str(root / 'deliveries.jsonl'),
                            HERMES_FOTO_JOB_ROOT=str(root / 'foto'), HERMES_VIDEO_JOB_ROOT=str(root / 'wideo'))
-                return await actual_spawn(sys.executable, __file__, '--child-dispatch', command, args, **kwargs)
+                kwargs['start_new_session'] = True
+                process = await actual_spawn(sys.executable, __file__, '--child-dispatch', command, args, **kwargs)
+                groups.append(process.pid)
+                return process
             asyncio.create_subprocess_exec = spawn
             try:
                 # Both platforms exercise both commands using independent origins.
@@ -210,7 +237,7 @@ async def exercise(output, media_enabled):
                     command = 'foto' if index % 2 == 0 else 'wideo'
                     prompt = 'A small metal gear on a clean workbench.'
                     args = prompt if command == 'foto' else '1s ' + prompt
-                    media_paths = [previous_image] if command == 'wideo' else []
+                    media_paths = [previous_image] if index > 0 else []
                     event = MessageEvent(text=f'/{command} {args}', source=source,
                                          media_urls=media_paths, media_types=['image/png'] if media_paths else [])
                     runner._hm_pre_gateway_dispatch_hook(event, source)
@@ -253,10 +280,31 @@ async def exercise(output, media_enabled):
                     assert not path.exists()
             finally:
                 asyncio.create_subprocess_exec = actual_spawn
+                # Linux subreaper owns detached grandchildren. Stop every known
+                # process group and reap them before inspecting RM/Comfy state.
+                for group in groups:
+                    try:
+                        os.killpg(group, signal.SIGTERM)
+                    except ProcessLookupError:
+                        pass
+                for group in groups:
+                    deadline = time.monotonic() + 10
+                    while True:
+                        try:
+                            pid, _ = os.waitpid(-group, os.WNOHANG)
+                        except ChildProcessError:
+                            break
+                        if pid == 0:
+                            if time.monotonic() > deadline:
+                                os.killpg(group, signal.SIGKILL)
+                            await asyncio.sleep(.1)
+                idle()  # Failure retains root and its evidence for recovery.
+            shutil.rmtree(root)
         assert not root.exists()
     idle()
     evidence = {'evidence_class': 'SYNTHETIC/INTERNAL E2E', 'external_transport': 'DEFERRED/NOT TESTED',
-                'status': 'PASS', 'chat_contexts': records, 'queue_wait_start': 'PASS',
+                'status': 'PASS', 'plugin_discovery': 'installed bytes; normal Hermes discovery',
+                'chat_execution': 'AIAgent.run_conversation; real streaming provider path', 'chat_contexts': records, 'queue_wait_start': 'PASS',
                 'provider_failure_cleanup': 'PASS', 'idle_recovery': 'PASS',
                 'media': artifacts if media_enabled else 'NOT RUN',
                 'delivery': 'internal recording sink; no external send or inbound update',
@@ -268,6 +316,8 @@ async def exercise(output, media_enabled):
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] in ('--child-worker', '--child-dispatch'):
         raise SystemExit(media_child(sys.argv[2], sys.argv[3], sys.argv[1] == '--child-worker'))
+    import ctypes
+    assert ctypes.CDLL(None).prctl(36, 1, 0, 0, 0) == 0  # PR_SET_CHILD_SUBREAPER
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--media', action='store_true')

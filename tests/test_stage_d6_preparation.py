@@ -63,15 +63,16 @@ def anyio_backend():
 
 @pytest.mark.anyio
 @pytest.mark.parametrize("capacity", [1, 2, 4])
-async def test_crashed_workers_ttl_dispatch_priority_fifo_and_cancel(capacity, monkeypatch):
+async def test_idle_llm_workers_ttl_dispatch_priority_fifo_and_cancel(capacity, monkeypatch):
     now = [0.0]
     monkeypatch.setattr("ai_bridge.gateway.resource_leases.monotonic", lambda: now[0])
     scheduler = PriorityScheduler(max_concurrency=capacity)
     leases = ResourceLeaseRegistry(scheduler, ttl_seconds=10)
-    owners = [await leases.create(priority=50, source="media") for _ in range(capacity)]
-    for owner in owners:
-        await leases.begin_external_use(owner["lease_id"], binding(scheduler.registry, "comfyui-local", "video-generation"))
-    queued = [await leases.create(priority=p, source="test") for p in [200, 10, 50, 10, 100]]
+    from ai_bridge.gateway.admission import external_workload
+    from ai_bridge.gateway.jobs import JobMetadata
+    metadata = JobMetadata(workload=external_workload(scheduler.registry, "llm"))
+    owners = [await leases.create(priority=50, source="llm", metadata=metadata) for _ in range(capacity)]
+    queued = [await leases.create(priority=p, source="test", metadata=metadata) for p in [200, 10, 50, 10, 100]]
     cancelled = queued.pop(2)
     await leases.release(cancelled["lease_id"])
     now[0] = 10

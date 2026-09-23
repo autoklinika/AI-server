@@ -25,7 +25,7 @@ def media_admission(capability: str):
     if not valid or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", lease_id):
         raise MediaAdmissionError("active local resource lease required")
     path = f"/resource/leases/{lease_id}/uses"
-    with httpx.Client(base_url=gateway, timeout=5, trust_env=False) as client:
+    with httpx.Client(base_url=gateway, timeout=120, trust_env=False) as client:
         try:
             response = client.post(path, json={"provider": "comfyui-local", "capability": capability})
             response.raise_for_status()
@@ -37,9 +37,8 @@ def media_admission(capability: str):
         try:
             yield
         finally:
-            # Failed cleanup leaves the phase owned by the lease until explicit
-            # release/TTL. Never silently run another provider without admission.
+            # Failed cleanup retains GPU ownership, including across TTL/release.
             try:
                 client.delete(f"{path}/{use_id}").raise_for_status()
-            except httpx.HTTPError:
-                pass
+            except httpx.HTTPError as exc:
+                raise MediaAdmissionError("media cleanup failed; GPU admission remains closed") from exc
