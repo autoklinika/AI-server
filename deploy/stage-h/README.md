@@ -1,6 +1,8 @@
 # Stage H — reversible legacy quarantine
 
-Status: implementation/reference audit; production acceptance pending. G is accepted
+Status: production acceptance PASS for `stage-h-b9362bdae1c3`: candidate, exact
+restore/G rollback, reactivation and final audits passed. See the
+[production report](../../docs/reports/AI_PLATFORM_STAGE_H_PRODUCTION_GATE.md). G is accepted
 and merged (PR #64, post-merge CI 35855156672 PASS). Verified baseline:
 `/opt/ai-platform/releases/stage-g-fa6b31e5f7dc`; F `stage-f-d8f68cadd953` is retained.
 
