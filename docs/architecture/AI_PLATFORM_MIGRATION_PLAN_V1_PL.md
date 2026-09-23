@@ -409,6 +409,11 @@ Pierwsza wersja:
 - Knowledge,
 - Health/Logs.
 
+Przed zamrożeniem `Models/Compute` należy wykonać gate gotowości na zewnętrzny
+akcelerator/GPU: per-device descriptors, resource pools, routing, residency,
+health/recovery i współistnienie obecnego iGPU/UMA z dodatkową kartą. Jeśli karta
+zostanie zamontowana wcześniej, ten gate przesuwa się przed jej wdrożeniem.
+
 Nie tworzyć bezpośrednich integracji GUI z Ollama/Hermes/ComfyUI.
 
 ---
@@ -469,8 +474,9 @@ Push/PR ma być związany ze stabilnymi komponentami, nie historycznymi nazwami 
 
 13. EcuRepairService,
 14. CRT deeper integration,
-15. AI Control Center,
-16. multi-node expansion.
+15. heterogeneous accelerator / external GPU readiness gate,
+16. AI Control Center,
+17. multi-node expansion.
 
 ---
 
