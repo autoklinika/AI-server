@@ -115,6 +115,7 @@ class KnowledgeRepository:
                     metadata_json=dict(source.metadata),
                 )
                 session.add(existing_source)
+                session.flush()
             else:
                 self._validate_source_identity(existing_source, source)
                 existing_source.title = source.title
@@ -136,6 +137,7 @@ class KnowledgeRepository:
                     metadata_json=dict(document.metadata),
                 )
                 session.add(existing_document)
+                session.flush()
             else:
                 self._validate_document_identity(existing_document, document)
                 existing_document.title = document.title
@@ -160,6 +162,7 @@ class KnowledgeRepository:
                     metadata_json=dict(version.metadata),
                 )
                 session.add(existing_version)
+                session.flush()
             else:
                 self._validate_version_identity(existing_version, version)
 
