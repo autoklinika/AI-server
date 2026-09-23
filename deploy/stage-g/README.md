@@ -1,6 +1,8 @@
 # Stage G — WVC domain and freshness
 
-Candidate implementation; production acceptance pending.
+**BLOCKED:** candidate and F rollback smoke passed, but final G media validation
+triggered a new MES fault. Verified F is restored with inference ingress paused;
+G is not accepted and H has not started. See the [incident/production report](../../docs/reports/AI_PLATFORM_STAGE_G_PRODUCTION_GATE.md).
 
 The [domain architecture](../../docs/architecture/WVC_DOMAIN.md) defines ownership,
 compatibility and freshness. The verified rollback point is
@@ -30,3 +32,9 @@ Messaging E2E remains SYNTHETIC/INTERNAL. Real external inbound Telegram/Discord
 is DEFERRED/NOT TESTED. Recovery follows the
 [GPU runbook](../../docs/runbooks/GPU_RESIDENCY_RECOVERY.md). D.0/D.6/E/F recovery
 artifacts and current conversation/domain data remain preserved.
+
+On a same-boot kernel blocker, `40_rollback.sh` uses the explicit paused containment
+path: verify F, stop producers, require workers gone, switch to F and start only
+telemetry/history. It does not invoke GPU providers, clear markers, resume ingress
+or claim an acceptance smoke. A new controller SHA may run this path without
+requiring an installed/healthy failed candidate.

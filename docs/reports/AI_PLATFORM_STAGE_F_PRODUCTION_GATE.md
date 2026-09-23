@@ -4,6 +4,11 @@ Status: **Production candidate/rollback/reactivation gate PASS**; **COMPLETE**, 
 `d8f68cadd95372b5a9adc75ef6450719af437850`. Reviewed in
 [PR #63](https://github.com/autoklinika/AI-server/pull/63).
 
+> Subsequent operational state: G final validation hit a new MES failure on the
+> same boot. F was restored with ingress paused. This completed F gate remains
+> historical evidence, not a claim of current GPU health; see the
+> [G incident report](AI_PLATFORM_STAGE_G_PRODUCTION_GATE.md).
+
 ## Evidence boundary
 
 Messaging E2E is **SYNTHETIC/INTERNAL**: two independent Telegram-like contexts and

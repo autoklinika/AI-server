@@ -45,3 +45,11 @@ with the verified E Python to unload/free both providers, archives the latch, an
 only then activates the replacement. It never restarts Ollama. A failed cleanup
 leaves ingress closed. Do not restore or discard failed harness evidence merely
 because the render produced an artifact; cleanup is part of acceptance.
+
+For a new kernel fault during G, the same-boot `gpu-blocked.json` selects a paused
+containment branch in G's `40_rollback.sh`. It restores verified F service bytes and
+telemetry only; it never calls the GPU APIs, removes latches or starts inference
+ingress. This is not rollback acceptance or a successful smoke. Preserve the failed
+media evidence. After controlled host/GPU recovery, require fresh short inference,
+explicit unload and clean kernel evidence before resuming heavy-media validation.
+The September 23 G fault remains unresolved; H must not begin while G is blocked.

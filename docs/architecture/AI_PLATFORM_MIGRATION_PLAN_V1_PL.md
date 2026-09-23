@@ -711,3 +711,14 @@ Fresh windows resume processing; inter-process serialization and existing unique
 identities prevent duplicate analysis. AI remains advisory-only. Production
 candidate/rollback/reactivation, GitHub CI and merge are still pending. See
 [domain architecture](WVC_DOMAIN.md) and [gate](../../deploy/stage-g/README.md).
+
+### Stage G — new GPU blocker, 2026-09-23
+
+Candidate `stage-g-7ccc9c14da33` and planned F rollback/full smoke passed. Actual
+WVC policy and installed timer returned `skipped/no_fresh_data`; historical hashes
+were preserved. Final reactivation smoke failed after a video at 11:21:36 CEST
+with MES WAIT_REG_MEM errors despite zero observed Ollama residents. **G BLOCKED;
+H NOT STARTED.** Verified F was restored with inference/media ingress paused,
+telemetry/history active, no GPU probes/restarts and all recovery evidence retained.
+F's completed historical validation is not a claim that the GPU driver is fixed.
+[Full incident and evidence](../reports/AI_PLATFORM_STAGE_G_PRODUCTION_GATE.md).
