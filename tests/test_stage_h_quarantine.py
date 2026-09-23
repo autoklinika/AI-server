@@ -137,3 +137,16 @@ def test_kernel_containment_rollback_restores_without_gpu_probes(tmp_path, monke
     assert restores == [{'restore': True}] and current.resolve() == baseline
     assert not any('start' in c and 'ai-gateway.service' in c for c in calls)
     assert evidence[0]['physical_power_cycle'] == 'REQUIRED'
+
+
+def test_recovery_uses_deployed_manifest_after_controller_head_changes(tmp_path, monkeypatch):
+    import json
+    gate = load('autopilot/gate')
+    monkeypatch.setattr(gate, 'STATE', tmp_path)
+    deployed, controller = 'a' * 40, 'b' * 40
+    (tmp_path / 'deployment.json').write_text(json.dumps({'source_sha': deployed}))
+    assert gate.deployment_sha('40_rollback', controller) == deployed
+    assert gate.deployment_sha('10_build_install', controller) == controller
+    (tmp_path / 'deployment.json').write_text(json.dumps({'source_sha': '../escape'}))
+    with pytest.raises(RuntimeError):
+        gate.deployment_sha('40_rollback', controller)

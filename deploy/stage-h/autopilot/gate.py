@@ -4,6 +4,7 @@ import fcntl
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import sys
 import time
@@ -30,6 +31,15 @@ def verify(path):
 
 
 g.verify = verify
+
+
+def deployment_sha(step, head):
+    pointer = STATE / 'deployment.json'
+    if step == '40_rollback' and pointer.exists():
+        sha = e.read(pointer)['source_sha']
+        require(isinstance(sha, str) and re.fullmatch(r'[0-9a-f]{40}', sha))
+        return sha
+    return head
 
 
 def reference_audit(destination):
@@ -120,7 +130,8 @@ def paused_rollback(state):
 
 def main(step):
     require(os.geteuid() == 0)
-    sha = e.git_run(['rev-parse', 'HEAD'])
+    head = e.git_run(['rev-parse', 'HEAD'])
+    sha = deployment_sha(step, head)
     candidate = Path('/opt/ai-platform/releases') / ('stage-h-' + sha[:12])
     state = STATE / sha
     STATE.mkdir(mode=0o700, exist_ok=True)
@@ -162,8 +173,17 @@ def main(step):
             if step == '60_reactivate':
                 require((state / 'rollback-smoke.json').is_file())
             restore = step == '40_rollback'
+            if step == '20_cutover':
+                pointer = STATE / ('deployment-' + uuid4().hex)
+                e.write_once(pointer, {'source_sha': sha})
+                os.replace(pointer, STATE / 'deployment.json')
+                q.sync_directory(STATE)
             switch(BASE if restore else candidate, state, baseline, manifest, restore)
-            e.write_once(state / (step + '.json'), {'time': time.time(), 'restored': restore})
+            receipt = step + '.json'
+            if restore and (state / receipt).exists():
+                receipt = 'recovery-rollback-' + uuid4().hex + '.json'
+            e.write_once(state / receipt, {'time': time.time(), 'restored': restore,
+                                         'controller_sha': head, 'deployment_sha': sha})
         elif step in ('30_smoke', '50_rollback_smoke', '70_reactivate_smoke'):
             phase, target, prerequisite = {'30_smoke': ('candidate-smoke', candidate, '20_cutover'),
                 '50_rollback_smoke': ('rollback-smoke', BASE, '40_rollback'),

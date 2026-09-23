@@ -54,3 +54,10 @@ A later purge may be considered only after the H rollback/reactivation cycle,
 a separately approved retention period, and a new reference/recovery audit. This
 stage does not automatically delete the quarantine, its manifest, any old release,
 worktree, model, incident evidence or stateful/domain data.
+
+Rollback resolves the original manifest from the root-owned
+`/var/lib/ai-platform/stage-h/deployment.json`, independently of later controller or
+documentation commits. Repeated explicit rollback writes a separate recovery
+receipt without overwriting the original acceptance evidence. The bridge still
+requires a clean, pushed, authorized controller HEAD; it does not require rewinding
+that branch to the deployed source merely to restore the four quarantined files.
