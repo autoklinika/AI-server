@@ -32,6 +32,8 @@ from common import (
 
 NETWORK_FS = {"cifs", "nfs", "nfs4", "fuse.sshfs"}
 MARKER = ".ai-platform-backup-target.json"
+MARKER_SCHEMA_VERSION = 1
+MIN_TARGET_FREE_BYTES = 1024 * 1024 * 1024
 
 
 def utc_now() -> datetime:
@@ -50,14 +52,40 @@ def verify_target(root: Path, allow_local: bool) -> dict[str, object]:
         raise RuntimeError("invalid NAS marker") from exc
     require(marker_data.get("purpose") == "ai-platform-stage-k",
             "NAS marker purpose mismatch")
+    require(marker_data.get("schema_version") == MARKER_SCHEMA_VERSION,
+            "NAS marker schema mismatch")
     fs_type = run([
         "findmnt", "-T", str(root), "-n", "-o", "FSTYPE"
     ]).strip()
     require(fs_type in NETWORK_FS, f"target is not approved network FS: {fs_type}")
+
+    usage = os.statvfs(root)
+    free_bytes = usage.f_bavail * usage.f_frsize
+    require(free_bytes >= MIN_TARGET_FREE_BYTES,
+            "NAS target has less than 1 GiB free")
+
+    probe = root / f".stage-k-write-probe-{os.getpid()}"
+    payload = os.urandom(32)
+    try:
+        fd = os.open(probe, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            os.write(fd, payload)
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        require(probe.read_bytes() == payload, "NAS write/read probe mismatch")
+    finally:
+        try:
+            probe.unlink()
+        except FileNotFoundError:
+            pass
+
     return {
         "mode": "nas",
         "filesystem": fs_type,
-        "marker_schema": marker_data.get("schema_version"),
+        "marker_schema": MARKER_SCHEMA_VERSION,
+        "free_bytes_at_start": free_bytes,
+        "write_read_probe": "PASS",
     }
 
 
