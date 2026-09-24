@@ -1,0 +1,12 @@
+[Unit]
+Description=AI Platform Stage K weekly backup and restore validation timer
+
+[Timer]
+OnCalendar=Sun *-*-* 02:30:00
+Persistent=true
+RandomizedDelaySec=0
+AccuracySec=1s
+Unit=ai-platform-stage-k-weekly.service
+
+[Install]
+WantedBy=timers.target

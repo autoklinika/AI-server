@@ -1,0 +1,12 @@
+[Unit]
+Description=AI Platform Stage K backup/DR health monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/AI-server
+Environment=PYTHONUNBUFFERED=1
+UMask=0077
+ExecStart=/opt/ai-platform/current/services/ai-bridge/.venv/bin/python %h/AI-server/deploy/stage-k/k5_monitor.py
+TimeoutStartSec=2m

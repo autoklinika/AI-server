@@ -1,0 +1,12 @@
+[Unit]
+Description=AI Platform Stage K hourly backup/DR monitor
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=2m
+AccuracySec=1m
+Unit=ai-platform-stage-k-monitor.service
+
+[Install]
+WantedBy=timers.target
