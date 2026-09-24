@@ -23,7 +23,7 @@ import httpx
 import psycopg
 
 from common import active_release, atomic_text, file_sha256, require, run
-from verify_backup import verify as verify_backup
+from verify_backup import resolve_from_root, verify as verify_backup
 
 PG_BIN = Path("/usr/lib/postgresql/18/bin")
 RESTORE_ROOT = Path("/srv/ai-data/backups/stage-k/restore-validation")
@@ -88,11 +88,13 @@ def stop_postgres(pgdata: str) -> None:
         pass
 
 
-def restore_database(backup: Path, port: int, user: str) -> str:
+def restore_database(
+    backup: Path, manifest: dict[str, object], port: int, user: str
+) -> str:
     database = "ai_bridge_restore"
     env = pg_command_env(port, user)
     run([str(PG_BIN / "createdb"), database], env=env, timeout=60)
-    dump = backup / "postgres" / "ai_bridge.dump"
+    dump = resolve_from_root(backup, manifest["postgres"]["dump"]["path"])
     run([
         "pg_restore",
         "--no-owner",
@@ -104,10 +106,17 @@ def restore_database(backup: Path, port: int, user: str) -> str:
     return database
 
 
-def restore_objects(backup: Path, root: Path) -> Path:
-    source = backup / "knowledge" / "canonical-objects"
+def restore_objects(
+    backup: Path, root: Path, manifest: dict[str, object]
+) -> Path:
+    canonical = manifest["knowledge"]["canonical"]
+    source_pool = resolve_from_root(backup, canonical["pool_root"])
     target = root / "canonical-objects"
-    shutil.copytree(source, target, copy_function=shutil.copy2)
+    for item in canonical["files"]:
+        source = source_pool / item["path"]
+        destination = target / item["path"]
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
     return target
 
 
@@ -450,8 +459,8 @@ def validate(backup: Path) -> Path:
     prod_qdrant_before = production_qdrant_points()
     try:
         port, user, pgdata = start_postgres(evidence)
-        database = restore_database(backup, port, user)
-        objects = restore_objects(backup, evidence)
+        database = restore_database(backup, manifest, port, user)
+        objects = restore_objects(backup, evidence, manifest)
         restored = relocate_and_verify(
             port=port, user=user, database=database,
             objects=objects, manifest=manifest,

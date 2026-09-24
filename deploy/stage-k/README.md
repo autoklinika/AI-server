@@ -26,14 +26,16 @@ Aktywny runtime Stage J pozostaje nietknięty:
 
 ## K2 — recovery set
 
-`backup.py` tworzy atomowy recovery set. Dla produkcyjnego targetu wymaga
-network filesystem oraz markera `.ai-platform-backup-target.json`.
-Lokalny target jest dozwolony tylko z `--allow-local` i nigdy nie jest dowodem DR.
+`backup.py` tworzy spójny backup o wspólnym `backup_id`. Dla produkcyjnego targetu
+wymaga network filesystem oraz markera `.ai-platform-backup-target.json`. Lokalny
+target jest dozwolony tylko z `--allow-local` i nigdy nie jest dowodem DR.
 
-Recovery set zawiera custom-format dump PostgreSQL, canonical objects wskazane
-przez snapshot DB, manifest, checksum manifestu i marker `COMPLETE` tworzony na końcu.
-Backup używa eksportowanego snapshotu `REPEATABLE READ READ ONLY` i weryfikuje
-SHA-256 canonical objects przed i po kopiowaniu.
+Jedna fizyczna kopia PostgreSQL trafia do `_Shared/PostgreSQL/ai_bridge/`. Knowledge
+i WVC publikują osobne manifesty wskazujące ten sam snapshot DB. Canonical objects
+trafiają do przyrostowego, content-addressed poolu `Knowledge/canonical-objects/`;
+już istniejące obiekty są weryfikowane i używane ponownie zamiast ponownego kopiowania.
+Manifest, jego checksum i marker `COMPLETE` są publikowane dopiero po weryfikacji.
+Backup używa eksportowanego snapshotu `REPEATABLE READ READ ONLY`.
 
 ## Verification
 
@@ -50,9 +52,18 @@ Production Qdrant jest obserwowany przed/po teście i nie może ulec zmianie.
 
 ## K1 — aktualny blocker
 
-NAS `nas-klinika.local` jest osiągalny w LAN jako `192.168.1.15`.
-SMB 445/139 odpowiada; NFS i SSH nie są wystawione. Na AI Serverze nie ma jeszcze
-mountu NAS, `cifs-utils`, udziału Stage K ani bezpiecznie skonfigurowanych credentials.
+Docelowy NAS to `GlobalNAS` / `globalnas.local` (`192.168.1.79`).
+SMB 445/139 odpowiada. Na AI Serverze nie ma jeszcze mountu NAS ani `cifs-utils`.
+Anonimowa sesja SMB jest możliwa, ale enumeracja udziałów jest zabroniona przez NAS,
+dlatego nazwa udziału i credentials muszą pochodzić z rzeczywistej konfiguracji.
+
+Na wybranym udziale powstaje root `AI_Platform/`, a backupy są rozdzielane według
+źródeł: `Knowledge/`, `WVC/`, `ERS/`, `Hermes/`, `Platform/`, `CRT/`.
+Wspólna baza `ai_bridge` jest przechowywana tylko raz w
+`AI_Platform/_Shared/PostgreSQL/ai_bridge/`; manifesty domen wskazują właściwy
+snapshot DB.
+
+System backupu Stage K nie używa GitHub jako elementu DR.
 Lokalne recovery sety w `/srv/ai-data/backups/stage-k` są wyłącznie walidacją.
 
 ## Secrets

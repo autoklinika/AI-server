@@ -45,12 +45,15 @@ EcuRepairService source cache był czysty: HEAD
 
 ## 3. NAS i transport
 
-`nas-klinika.local` rozwiązuje się do `192.168.1.15` i jest osiągalny w LAN.
-Otwarte są SMB 445/139. NFS 2049, rpcbind 111 i SSH 22 nie są dostępne.
-Tailscale NAS ma wygasły node key; nie jest potrzebny do lokalnego transportu DR.
-Docelowo K1 używa dedykowanego udziału SMB3 oraz dedykowanego konta backupowego.
-AI Server montuje udział w osobnym punkcie, np. `/mnt/ai-platform-backup`.
-Dokładna nazwa udziału nie jest zgadywana — musi wynikać z realnej konfiguracji NAS.
+Docelowy NAS to `GlobalNAS` / `globalnas.local`, który rozwiązuje się do
+`192.168.1.79` i jest osiągalny w LAN. Otwarte są SMB 445/139.
+K1 używa SMB3 oraz dedykowanego konta backupowego. AI Server montuje wskazany
+udział GlobalNAS w osobnym punkcie. Nazwa istniejącego udziału SMB nie jest
+zgadywana; anonimowe logowanie SMB działa, ale enumeracja udziałów kończy się
+`STATUS_ACCESS_DENIED`.
+
+Na zamontowanym udziale tworzony jest jeden nadrzędny katalog:
+`AI_Platform/`.
 
 Warunki fail-closed przed zapisem:
 - mount istnieje i `findmnt` raportuje zatwierdzony network FS;
@@ -61,19 +64,59 @@ Warunki fail-closed przed zapisem:
 
 Awaria NAS oznacza FAIL joba, a nie zapis lokalny udający DR.
 
-## 4. Format recovery set
+## 4. Układ backupu według źródła
 
-Docelowy układ:
-`AI-Server/sets/daily/<backup_id>/`
-`AI-Server/sets/weekly/<backup_id>/`
-`AI-Server/sets/manual/<backup_id>/`
+Backup na GlobalNAS jest rozdzielony według domen/źródeł. Root:
+`AI_Platform/`.
 
-Każdy set zawiera dump PostgreSQL, canonical objects, manifest, checksum manifestu
-i marker `COMPLETE`. `.incomplete` nigdy nie jest kwalifikowany jako backup.
+Docelowa struktura v1:
 
-Pierwsza wersja jest samowystarczalna. Powiela immutable objects między setami,
-ale maksymalnie upraszcza restore i dowód kompletności. Deduplikowany object pool
-może zostać dodany później bez zmiany semantyki manifestu.
+```text
+AI_Platform/
+  _Shared/
+    PostgreSQL/
+      ai_bridge/
+        daily/
+        weekly/
+        manual/
+  Knowledge/
+    canonical-objects/sha256/
+    manifests/
+    restore-evidence/
+  WVC/
+    manifests/
+    restore-evidence/
+  ERS/
+    snapshots/
+    manifests/
+  Hermes/
+    sqlite/
+    state/
+    memories/
+    skills/
+    pending/
+    manifests/
+  Platform/
+    config/
+    secrets/
+    manifests/
+  CRT/
+    manifests/
+```
+
+Każda domena ma własny manifest i własną retencję. Wyjątkiem jest PostgreSQL
+`ai_bridge`: jedna fizyczna, spójna kopia całej bazy znajduje się w
+`_Shared/PostgreSQL/ai_bridge`, ponieważ ta sama baza zawiera jednocześnie dane
+Knowledge i WVC. Nie dublujemy jej w obu domenach. Manifesty Knowledge i WVC
+wskazują identyfikator wspólnego snapshotu DB.
+
+Canonical objects są immutable i content-addressed. Na NAS utrzymujemy jeden
+przyrostowy pool `Knowledge/canonical-objects/sha256/`; kolejne backupy nie
+kopiują ponownie już istniejących obiektów. Manifest recovery setu wskazuje
+dokładny zestaw SHA-256 wymagany do restore.
+
+Marker `COMPLETE` oraz checksumy publikowane są dopiero po pełnej weryfikacji.
+`.incomplete` nigdy nie jest kwalifikowany jako backup.
 ## 5. PostgreSQL i spójność
 
 Backup obejmuje całą bazę `ai_bridge`, nie tylko Knowledge, dzięki czemu zachowuje
@@ -102,9 +145,11 @@ K4 zaczyna z pustym Qdrantem i wykonuje pełny reindex z odtworzonego source of 
 
 WVC: centralne dane trwałe są w `ai_bridge`, więc są pokryte przez K2.
 
-EcuRepairService: Git jest podstawowym kanałem odtworzenia source repo. Dla
-niezależności od GitHub K5 powinien dodatkowo utrzymywać na NAS okresowy Git bundle
-lub mirror. Nie backupujemy source-cache jako przypadkowego working tree.
+EcuRepairService: system backupu Stage K nie używa GitHub ani żadnego zewnętrznego
+repozytorium jako elementu DR. Dane ERS są kopiowane z lokalnego źródła na AI Serverze
+do `AI_Platform/ERS/` jako niezależny snapshot z manifestem i checksumami.
+Zakres obejmuje dane przypadków, dokumentację, źródła i inne nieodtwarzalne artefakty;
+metadane VCS nie są wymagane do poprawnego restore danych ERS.
 
 Hermes: do ochrony kwalifikują się trwałe SQLite/state stores, konfiguracja bez
 sekretów, własne skills oraz pending state. Aktywne SQLite backupujemy przez SQLite
@@ -130,9 +175,12 @@ recovery jest przechowywany offline/offsite, poza AI Serverem i NAS.
 ## 10. Retencja i częstotliwość
 
 Baseline:
-- daily: 1 raz na dobę;
-- weekly: 1 pełny recovery set tygodniowo;
-- retention: 30 daily + 12 weekly;
+- PostgreSQL `ai_bridge`: daily, 30 daily + 12 weekly;
+- Knowledge canonical objects: przyrostowo do jednego immutable pool; bez
+  wielokrotnego kopiowania identycznych SHA-256;
+- ERS: daily po zmianie danych lub minimum daily snapshot manifest; retencja
+  ustalana niezależnie od Knowledge/WVC;
+- Hermes durable state: daily;
 - manual: przed/po ryzykownych migracjach lub dużym ingestion; bez automatycznego
   kasowania evidence na wczesnym etapie K.
 

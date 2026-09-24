@@ -155,20 +155,18 @@ def fetch_snapshot_metadata(conn) -> dict[str, object]:
 
 
 def copy_canonical(versions: list[dict[str, object]], destination: Path) -> dict[str, object]:
+    """Populate/reuse the immutable canonical pool and return set references."""
     seen: set[str] = set()
     rows: list[dict[str, object]] = []
-    destination.mkdir(parents=True)
+    copied = 0
+    reused = 0
+    destination.mkdir(parents=True, exist_ok=True)
     for item in versions:
         digest = str(item["content_sha256"])
         require(re.fullmatch(r"[0-9a-f]{64}", digest) is not None,
                 "invalid canonical SHA-256 in database")
         expected = OBJECT_ROOT / "sha256" / digest[:2] / digest
         if digest in seen:
-            require(expected.is_file(), f"canonical object missing: {digest}")
-            require(expected.stat().st_size == int(item["byte_size"]),
-                    f"canonical object size mismatch: {digest}")
-            require(file_sha256(expected) == digest,
-                    f"canonical object checksum mismatch: {digest}")
             continue
         seen.add(digest)
         parsed = urlparse(str(item["storage_uri"]))
@@ -180,11 +178,22 @@ def copy_canonical(versions: list[dict[str, object]], destination: Path) -> dict
                 f"canonical object size mismatch: {digest}")
         require(file_sha256(source) == digest,
                 f"canonical object checksum mismatch: {digest}")
+
         target = destination / "sha256" / digest[:2] / digest
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, target)
-        require(file_sha256(target) == digest,
-                f"copied canonical object checksum mismatch: {digest}")
+        if target.exists():
+            require(target.stat().st_size == int(item["byte_size"]),
+                    f"NAS canonical object size mismatch: {digest}")
+            require(file_sha256(target) == digest,
+                    f"NAS canonical object checksum mismatch: {digest}")
+            reused += 1
+        else:
+            tmp = target.with_name(target.name + f".tmp-{os.getpid()}")
+            shutil.copy2(source, tmp)
+            require(file_sha256(tmp) == digest,
+                    f"copied canonical object checksum mismatch: {digest}")
+            os.replace(tmp, target)
+            copied += 1
         rows.append({
             "sha256": digest,
             "bytes": int(item["byte_size"]),
@@ -194,8 +203,10 @@ def copy_canonical(versions: list[dict[str, object]], destination: Path) -> dict
         "objects": len(rows),
         "bytes": sum(int(row["bytes"]) for row in rows),
         "files": rows,
+        "copied_objects": copied,
+        "reused_objects": reused,
+        "pool_root": "Knowledge/canonical-objects",
     }
-
 
 def release_identity() -> dict[str, str]:
     values: dict[str, str] = {}
@@ -210,24 +221,23 @@ def release_identity() -> dict[str, str]:
     return values
 
 
-def create_backup(args) -> Path:
+def create_backup(args) -> dict[str, Path]:
     root = args.target_root.resolve()
+    require(root.name == "AI_Platform",
+            "target root must be the AI_Platform directory")
     target_info = verify_target(root, args.allow_local)
     backup_id = utc_now().strftime("%Y%m%dT%H%M%SZ")
-    final_parent = root / "AI-Server" / "sets" / args.tier
-    staging_parent = root / "AI-Server" / ".incomplete"
-    final_parent.mkdir(parents=True, exist_ok=True)
-    staging_parent.mkdir(parents=True, exist_ok=True)
-    staging = staging_parent / f"{backup_id}.{os.getpid()}"
-    final = final_parent / backup_id
-    require(not final.exists(), "backup ID collision")
-    staging.mkdir(mode=0o700)
-    pg_dir = staging / "postgres"
-    objects_dir = staging / "knowledge" / "canonical-objects"
-    pg_dir.mkdir(parents=True)
+
+    shared_pg = root / "_Shared" / "PostgreSQL" / "ai_bridge" / args.tier / backup_id
+    knowledge_final = root / "Knowledge" / "manifests" / args.tier / backup_id
+    wvc_final = root / "WVC" / "manifests" / args.tier / backup_id
+    staging = root / ".incomplete" / f"{backup_id}.{os.getpid()}"
+    for path in (shared_pg, knowledge_final, wvc_final):
+        require(not path.exists(), "backup ID collision")
+    staging.mkdir(parents=True, mode=0o700)
+    dump = staging / "ai_bridge.dump"
 
     pg = production_postgres_env()
-    dump = pg_dir / "ai_bridge.dump"
     started = utc_now()
     with connect_snapshot(pg) as conn:
         with conn.cursor() as cur:
@@ -243,39 +253,50 @@ def create_backup(args) -> Path:
         ], env=pg, timeout=900)
         require(dump.is_file() and dump.stat().st_size > 0, "empty PostgreSQL dump")
         run(["pg_restore", "-l", str(dump)], timeout=120)
-        canonical = copy_canonical(metadata["versions"], objects_dir)
+
+        canonical = copy_canonical(
+            metadata["versions"], root / "Knowledge" / "canonical-objects"
+        )
         conn.commit()
 
+    shared_pg.mkdir(parents=True, exist_ok=False)
+    final_dump = shared_pg / "ai_bridge.dump"
+    os.replace(dump, final_dump)
 
     release = release_identity()
-    manifest = {
-        "manifest_schema_version": 1,
+    common_source = {
+        "hostname": socket.gethostname(),
+        "machine_id_sha256": machine_identity_hash(),
+        "active_release": str(active_release()),
+        "release_id": release.get("release_id"),
+        "runtime_source_git_sha": release["source_git_sha"],
+        "stage_k_code_git_sha": git_head(),
+    }
+    postgres = {
+        "database": metadata["database_name"],
+        "server_version": metadata["postgres_version"],
+        "schema_version": metadata["schema_version"],
+        "dump": {
+            "path": final_dump.relative_to(root).as_posix(),
+            "bytes": final_dump.stat().st_size,
+            "sha256": file_sha256(final_dump),
+            "format": "custom",
+        },
+        "table_counts": metadata["table_counts"],
+    }
+
+    knowledge_manifest = {
+        "manifest_schema_version": 2,
         "status": "COMPLETE",
+        "domain": "Knowledge",
         "backup_id": backup_id,
         "tier": args.tier,
         "created_at": started.isoformat(),
         "completed_at": utc_now().isoformat(),
         "target": target_info,
-        "source": {
-            "hostname": socket.gethostname(),
-            "machine_id_sha256": machine_identity_hash(),
-            "active_release": str(active_release()),
-            "release_id": release.get("release_id"),
-            "runtime_source_git_sha": release["source_git_sha"],
-            "stage_k_code_git_sha": git_head(),
-        },
-        "postgres": {
-            "database": metadata["database_name"],
-            "server_version": metadata["postgres_version"],
-            "schema_version": metadata["schema_version"],
-            "dump": {
-                "path": "postgres/ai_bridge.dump",
-                "bytes": dump.stat().st_size,
-                "sha256": file_sha256(dump),
-                "format": "custom",
-            },
-            "table_counts": metadata["table_counts"],
-        },
+        "layout": {"root": "AI_Platform", "shared_postgres": True},
+        "source": common_source,
+        "postgres": postgres,
         "knowledge": {
             "source_of_truth": "postgres+canonical-objects",
             "versions": len(metadata["versions"]),
@@ -287,19 +308,54 @@ def create_backup(args) -> Path:
         },
         "secrets_included": False,
     }
-    manifest_path = staging / "manifest.json"
-    atomic_text(
-        manifest_path,
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-    )
-    atomic_text(
-        staging / "manifest.sha256",
-        file_sha256(manifest_path) + "  manifest.json\n",
-    )
-    atomic_text(staging / "COMPLETE", backup_id + "\n")
-    os.replace(staging, final)
-    return final
 
+    wvc_counts = {
+        k: v for k, v in metadata["table_counts"].items()
+        if k.startswith("ventilation_")
+    }
+    wvc_manifest = {
+        "manifest_schema_version": 2,
+        "status": "COMPLETE",
+        "domain": "WVC",
+        "backup_id": backup_id,
+        "tier": args.tier,
+        "created_at": started.isoformat(),
+        "completed_at": utc_now().isoformat(),
+        "target": target_info,
+        "layout": {"root": "AI_Platform", "shared_postgres": True},
+        "source": common_source,
+        "postgres": {
+            **postgres,
+            "domain_table_counts": wvc_counts,
+        },
+        "secrets_included": False,
+    }
+
+    for final, manifest in (
+        (knowledge_final, knowledge_manifest),
+        (wvc_final, wvc_manifest),
+    ):
+        tmp_set = staging / final.parent.parent.parent.name
+        tmp_set.mkdir(parents=True, exist_ok=True)
+        manifest_path = tmp_set / "manifest.json"
+        atomic_text(
+            manifest_path,
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        )
+        atomic_text(
+            tmp_set / "manifest.sha256",
+            file_sha256(manifest_path) + "  manifest.json\n",
+        )
+        atomic_text(tmp_set / "COMPLETE", backup_id + "\n")
+        final.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(tmp_set, final)
+
+    try:
+        staging.rmdir()
+        staging.parent.rmdir()
+    except OSError:
+        pass
+    return {"knowledge": knowledge_final, "wvc": wvc_final, "postgres": shared_pg}
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -311,8 +367,13 @@ def main() -> None:
         help="validation only: permit a non-network target",
     )
     args = parser.parse_args()
-    final = create_backup(args)
-    print(json.dumps({"status": "PASS", "backup_set": str(final)}))
+    result = create_backup(args)
+    print(json.dumps({
+        "status": "PASS",
+        "knowledge_set": str(result["knowledge"]),
+        "wvc_set": str(result["wvc"]),
+        "postgres_set": str(result["postgres"]),
+    }, sort_keys=True))
 
 
 if __name__ == "__main__":

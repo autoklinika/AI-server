@@ -12,10 +12,12 @@ Aktywny Stage J nie został przełączony ani zmodyfikowany.
 ## K0 — ustalenia
 
 - `/srv/ai-data` jest lokalnym ext4 na osobnym SSD; nie jest NAS.
-- NAS `nas-klinika.local` / `192.168.1.15` odpowiada po LAN.
-- SMB 445/139 jest dostępne; NFS/SSH nie są dostępne.
+- Docelowy NAS to `GlobalNAS` / `globalnas.local` / `192.168.1.79`.
+- SMB 445/139 jest dostępne.
+- Anonimowa sesja SMB jest możliwa, ale listowanie udziałów zwraca
+  `STATUS_ACCESS_DENIED`.
 - Na AI Serverze brak konfiguracji mount SMB i `cifs-utils`.
-- Tailscale NAS ma wygasły node key.
+- Docelowy root backupu na wskazanym udziale: `AI_Platform/`.
 - PostgreSQL `ai_bridge` jest źródłem trwałych danych Knowledge oraz WVC.
 - canonical objects są pod `/srv/ai-data/knowledge/canonical/objects`.
 - Qdrant jest mały i w pełni odbudowywalny.
@@ -62,13 +64,41 @@ Wynik:
 - production Qdrant points po: 566;
 - source Qdrant snapshot used: false;
 - status: PASS.
+## K2 — walidacja układu per-source
+
+Po decyzji o rozdzieleniu backupów według źródła przetestowano nowy układ
+`AI_Platform/`:
+
+- wspólny PostgreSQL: `_Shared/PostgreSQL/ai_bridge/`;
+- Knowledge: `Knowledge/canonical-objects/` + `Knowledge/manifests/`;
+- WVC: `WVC/manifests/`;
+- ERS/Hermes/Platform/CRT mają osobne namespace'y zgodnie z architekturą.
+
+Backup `20260924T130426Z` przeszedł offline verification. Osobny manifest WVC
+przeszedł PASS i zawierał liczniki 42 447 ingest batches, 96 563 telemetry raw
+oraz 2 730 analysis runs.
+
+Pełny K4 na tym nowym formacie zakończył się PASS:
+- pusty izolowany PostgreSQL;
+- pusty izolowany Qdrant;
+- 32 canonical objects;
+- 566 punktów po pełnym reindex;
+- Search: 8 wyników;
+- RAG: 1 grounded claim / 1 citation;
+- source opening i SHA-256: PASS;
+- production Qdrant: 566 przed i 566 po;
+- duration: 109.003 s.
+
+Drugi backup `20260924T130735Z` potwierdził deduplikację canonical pool:
+`copied_objects=0`, `reused_objects=32`.
+
 ## Wniosek
 
 Mechanizm danych K2/K4 został praktycznie udowodniony lokalnie:
 `PostgreSQL + canonical objects -> empty PostgreSQL restore -> empty Qdrant -> reindex -> Search/RAG/source opening`.
 
 Stage K pozostaje otwarty. Do production acceptance brakuje co najmniej:
-- K1 realnego transportu na NAS;
+- K1 realnego transportu na GlobalNAS i utworzenia rootu `AI_Platform/`;
 - K3 szyfrowanego recovery bundle;
 - automatyzacji, retencji i monitoringu;
 - powtórzenia pełnego K4 na recovery secie pobranym z NAS.
