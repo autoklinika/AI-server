@@ -256,6 +256,11 @@ def main(step):
             e.preflight(cfg)
             require(not state.exists() and not candidate.exists())
             require(not e.git_run(['status', '--porcelain']))
+            data_prepare = json.loads(e.run([
+                "python3", "-B", ROOT / "deploy/stage-j/data_prepare.py",
+                "--source-sha", sha,
+            ], timeout=3600, cwd=ROOT))
+            require(data_prepare["status"] == "PASS")
             state.mkdir(mode=0o700)
             baseline = {
                 'rollback': BASE.name, 'rollback_sha': BASE_SHA,
@@ -267,6 +272,7 @@ def main(step):
                     'systemctl', 'show', 'ai-bridge-analysis.timer',
                     '-p', 'ActiveState', '--value']),
                 'rollback_checksums': e.digest(BASE / 'metadata/SHA256SUMS'),
+                "data_prepare": data_prepare,
             }
             require(baseline['hermes_active'] == 'active')
             require(baseline['analysis_timer_active'] == 'active')
