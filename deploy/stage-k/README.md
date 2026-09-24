@@ -79,3 +79,13 @@ klucz deszyfrujący musi być przechowywany poza AI Serverem i poza NAS.
 Evidence: `docs/reports/AI_PLATFORM_STAGE_K_NAS_RECOVERY_ACCEPTANCE_2026-09-24_PL.md`.
 
 K1 = PASS, K2 Knowledge/WVC = PASS, K4 Knowledge = PASS. Stage K pozostaje otwarty dla K3 i K5.
+
+## K3 — ERS / Hermes / Platform config / secrets
+
+`k3_domains.py` tworzy osobne backupy domenowe pod `AI_Platform/ERS/`, `AI_Platform/Hermes/` i `AI_Platform/Platform/config/`. ERS jest snapshotem lokalnych danych bez `.git`; GitHub nie jest elementem backupu. Hermes SQLite jest kopiowany przez SQLite Backup API do lokalnego frozen DB, weryfikowany `quick_check`/SHA-256 i dopiero wtedy publikowany na GlobalNAS.
+
+`k3_secrets_backup.sh` tworzy osobny encrypted bundle `age` pod `AI_Platform/Platform/secrets/`. Plaintext nie jest zapisywany na NAS ani do pliku tymczasowego. Bundle jest szyfrowany do zaakceptowanego publicznego klucza SSH recovery i skrypt fail-closed sprawdza jego fingerprint przed szyfrowaniem.
+
+`k3_secrets_verify.py` weryfikuje manifest, SHA-256, nagłówek `age`, listę źródeł, fingerprint recipienta i brak nieoczekiwanych plików w secrets set. Prywatny klucz recovery pozostaje poza AI Serverem i GlobalNAS.
+
+Runbook: `docs/runbooks/AI_PLATFORM_STAGE_K_SECRETS_RECOVERY_PL.md`.
