@@ -1,7 +1,7 @@
 # AI Platform — Stage L storage prerequisite
 
 **Data:** 2026-09-24
-**Status:** POSTGRESQL DATA-DISK MIGRATION COMPLETE; CASE-0002 RAW IMPORT PENDING
+**Status:** COMPLETE — STORAGE PREREQUISITE FOR L1 PASS
 
 ## Cel
 
@@ -115,16 +115,38 @@ W Bibliotece ChatGPT odzyskano:
 Pakiet recovery ma SHA-256:
 `36d42e2899b10914c35db9de86fe0012becd2a4ce6d57b1718f9d8981e6d7bba`.
 
-Na drugim NVMe przygotowano intake:
+Na drugim NVMe intake:
 `.../CASE-0002-SCANIA-EMS-S6-DC1210-ECU-CLONE/local-originals/`
 
-z serwerowym `EXPECTED_SHA256SUMS.txt`.
+zawiera 11 oryginałów + lokalny manifest/README.
 Surowe pliki nie są commitowane do GitHub.
 
-Pozostający warunek przed L1:
-- skopiować recovery ZIP na AI Server;
-- uruchomić fail-closed importer;
-- uzyskać 11/11 SHA-256 PASS;
-- wykonać K3 backup + restore validation obejmujący te 11 originals.
+Import:
+- 11/11 artifact SHA-256: `PASS`;
+- recovery ZIP SHA-256: `PASS`;
+- importer jest idempotentny;
+- pierwszy run ujawnił wyłącznie błąd licznika, który traktował źródłowy ZIP jako 12. artifact;
+- licznik został poprawiony tak, by liczyć wyłącznie rekordy manifestu.
 
-Do tego momentu L1 pozostaje zablokowane.
+Safety backup z ZIP:
+- K3 `20260924T211133Z`;
+- ERS files: 87;
+- isolated restore: `PASS`.
+
+Po tym PASS źródłowy ZIP został usunięty jako redundantny.
+11 oryginalnych plików ponownie przeszło `sha256sum -c`.
+
+Finalny docelowy K3:
+- backup ID: `20260924T211207Z`;
+- ERS files: 86;
+- local-originals: 13 plików = 11 originals + manifest + README;
+- recovery ZIP: nieobecny;
+- Platform config files: 17;
+- isolated restore: `PASS`;
+- `production_modified=false`.
+
+Evidence:
+`/srv/ai-data/backups/stage-k/k3-restore-validation/20260924T211207Z-20260924T211226Z-475522`.
+
+Storage prerequisite Stage L jest zamknięty. L1 nie jest już blokowane przez
+lokalizację PostgreSQL, corpus v0 ani brakujące originals CASE-0002.
