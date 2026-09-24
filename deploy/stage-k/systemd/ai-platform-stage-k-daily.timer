@@ -1,0 +1,12 @@
+[Unit]
+Description=AI Platform Stage K daily backup timer
+
+[Timer]
+OnCalendar=Mon..Sat *-*-* 02:30:00
+Persistent=true
+RandomizedDelaySec=0
+AccuracySec=1s
+Unit=ai-platform-stage-k-daily.service
+
+[Install]
+WantedBy=timers.target

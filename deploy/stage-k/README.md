@@ -97,3 +97,17 @@ Finalny K3 recovery set `20260924T165315Z` na GlobalNAS przeszedł weryfikację 
 Encrypted secrets bundle `20260924T164644Z` przeszedł offline verification. Nie zawiera plaintext secrets, a private recovery key nie znajduje się na AI Serverze ani GlobalNAS.
 
 K3 data/config = PASS. K3 encrypted secrets backup = PASS. Rzeczywisty external-key decrypt drill pozostaje elementem K5.
+
+## K5 — scheduling / retention / monitoring
+
+Automatyczny backup jest rozdzielony na dwa poziomy:
+- `daily`: poniedziałek–sobota o 02:30; backup + pełna weryfikacja integralności;
+- `weekly`: niedziela o 02:30; backup + pełna weryfikacja + izolowany restore Knowledge oraz ERS/Hermes/Platform config.
+
+Retencja: 30 daily + 12 weekly. Zestawy `manual` i encrypted secrets nie są usuwane automatycznie. Canonical object pool pozostaje append-only; automatyczny GC jest celowo wyłączony, żeby retencja nie mogła usunąć obiektu potrzebnego do recovery.
+
+`k5_run.py` zapisuje stan do `/srv/ai-data/platform/backup-status/stage-k/{daily,weekly}.json`. `k5_monitor.py` działa co godzinę, kontroluje mount/marker GlobalNAS, świeżość backupu, świeżość weekly restore i wolne miejsce. Telegram alarm jest wysyłany tylko przy zmianie stanu na FAIL oraz jednokrotnie po recovery.
+
+Timery są user-systemd użytkownika `harrypotter`; host ma `Linger=yes`, więc nie wymagają otwartego terminala ani aktywnej sesji. Instalacja: `install_k5_user_services.sh`; rollback scheduler/monitoringu: `uninstall_k5_user_services.sh` — bez usuwania backupów, evidence i statusów.
+
+Automatyzacja secrets pozostaje `DEFERRED` do decyzji o docelowym recovery key i nie blokuje backupów danych K5.
