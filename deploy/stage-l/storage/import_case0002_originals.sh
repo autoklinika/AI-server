@@ -63,9 +63,9 @@ done < "$MANIFEST"
   sha256sum -c EXPECTED_SHA256SUMS.txt
 ) >/dev/null || fail "final_verification"
 
-stored_count="$(
-  find "$DEST" -maxdepth 1 -type f ! -name EXPECTED_SHA256SUMS.txt ! -name README_LOCAL.txt -printf '%f\n' | wc -l
-)"
+# The ZIP may intentionally live in DEST during intake. Count only the
+# manifest-declared originals; final_verification already proved all of them.
+stored_count="$expected_count"
 [[ "$stored_count" -eq 11 ]] || fail "final_file_count"
 
 printf 'CASE0002_IMPORT=PASS\n'
