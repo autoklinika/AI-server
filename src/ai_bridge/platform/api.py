@@ -31,6 +31,11 @@ from ai_bridge.knowledge.rag import (
 )
 from ai_bridge.knowledge.runtime import KnowledgeRuntime
 from ai_bridge.providers.contracts import KnowledgeQuery, LLMRequest
+from ai_bridge.storage.object_store import (
+    FileObjectStore,
+    ObjectStoreCorruption,
+    ObjectStoreNotFound,
+)
 from ai_bridge.platform.observability import PlatformRequestMetrics, job_metrics, runtime_resources
 
 LOGGER = logging.getLogger(__name__)
@@ -453,15 +458,17 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
             except Exception:
                 LOGGER.exception("Knowledge runtime close failed")
 
-        parsed = urlparse(snapshot.version.storage_uri)
-        if parsed.scheme != "file":
-            raise APIError(503, "knowledge_content_unavailable", True)
-        content_path = Path(parsed.path).resolve()
-        root = settings.knowledge_object_store_dir.resolve()
-        if root != content_path and root not in content_path.parents:
-            raise APIError(503, "knowledge_content_unavailable", True)
-        if not content_path.is_file():
-            raise APIError(404, "not_found")
+        store = FileObjectStore(settings.knowledge_object_store_dir)
+        try:
+            stored = store.verify_uri(
+                snapshot.version.storage_uri,
+                snapshot.version.content_sha256,
+            )
+        except ObjectStoreNotFound:
+            raise APIError(404, "not_found") from None
+        except (ObjectStoreCorruption, ValueError):
+            raise APIError(503, "knowledge_content_unavailable", True) from None
+        content_path = Path(urlparse(stored.uri).path)
         filename = Path(urlparse(snapshot.document.uri).path).name or document_id
         return FileResponse(
             content_path,
