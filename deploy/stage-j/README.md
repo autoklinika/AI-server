@@ -32,6 +32,15 @@ deploy/stage-j/autopilot/90_finalize.sh
 
 The supervisor performs a real `J -> I -> J` cycle.
 
+Before building the candidate, `10_build_install` also performs fail-closed production data preparation:
+- one immutable PostgreSQL custom-format backup keyed by the source Git SHA;
+- two-pass PDF ingestion (the second pass must create zero versions/chunks);
+- pending Knowledge index drain through the existing retrieval adapter;
+- SHA-256 verification of every content-addressed canonical object.
+
+The backup and integrity evidence live under `/srv/ai-data/backups/stage-j/<sha>/`.
+Secrets are read only by the privileged executor and are never emitted.
+
 Candidate/final smoke proves:
 - existing Platform API + observability;
 - raw Knowledge search;

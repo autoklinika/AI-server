@@ -75,6 +75,10 @@ Build/release metadata uses:
 - `knowledge_service_contract_version=1`;
 - rollback point `stage-i-30626dcc60f8`.
 
+Production data preparation is now executed automatically and fail-closed by
+Stage J `10_build_install`. The manual ingestion commands above remain useful for
+development/recovery diagnostics, but are not a substitute for the production gate.
+
 Production order:
 
 ```text
