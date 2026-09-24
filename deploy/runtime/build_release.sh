@@ -182,6 +182,7 @@ PY
 
 if [[ -n "$KNOWLEDGE_CONTRACT" ]]; then
   "$DEST/services/ai-gateway/.venv/bin/python" - <<'PY'
+import psycopg
 from ai_bridge.knowledge.runtime import KnowledgeRuntime
 from ai_bridge.knowledge.pdf_ingestion import PdfKnowledgeIngestor, PdfTextExtractor
 from ai_bridge.knowledge.rag import build_rag_prompt, parse_rag_response
