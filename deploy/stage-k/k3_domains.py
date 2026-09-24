@@ -58,6 +58,7 @@ HERMES_DURABLE_PATHS = (
 
 PLATFORM_CONFIG_PATHS = (
     "/etc/fstab",
+    "/etc/postgresql/18/main/conf.d/99-ai-platform-data-directory.conf",
     "/etc/systemd/system/ai-bridge.service",
     "/etc/systemd/system/ai-bridge.service.d/zz-lan-only.conf",
     "/etc/systemd/system/ai-gateway.service",

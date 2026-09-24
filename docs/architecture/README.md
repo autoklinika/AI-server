@@ -117,3 +117,10 @@ Dla nowej aktywnej domeny ERS obowiązują dodatkowo:
   stan zastany i klasyfikacja danych.
 
 Stage L0 jest etapem dokumentacyjnym i nie zmienia aktywnego runtime Stage J.
+
+
+### ADR-008 — PostgreSQL na niezależnym dysku danych
+
+Przed L1 production schema PostgreSQL `18/main` musi zostać przeniesiony z dysku
+systemowego na `/srv/ai-data/platform/postgresql/18/main`.
+Szczegóły: `adr/ADR-008_STAGE_L_POSTGRESQL_DATA_DISK_2026-09-24_PL.md`.
