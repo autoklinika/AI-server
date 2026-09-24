@@ -235,3 +235,13 @@ Secrets są odseparowane od jawnych snapshotów. Bundle `20260924T164644Z` używ
 K3 durable data/config = PASS. K3 encrypted secrets backup = PASS. External-key decrypt drill jest częścią K5 replacement-host validation.
 
 Szczegóły: `docs/reports/AI_PLATFORM_STAGE_K_K3_RECOVERY_ACCEPTANCE_2026-09-24_PL.md`.
+
+## 15. Production completion — 2026-09-24
+
+Finalny K5 runtime gate wykonał daily i weekly service przez user-systemd z `main` SHA `146804a58bde03b2b8092e2794c117215d15e6c5`. Oba zakończyły się `Result=success`. Weekly odbudował Knowledge z GlobalNAS do pustego PostgreSQL/Qdrant i przeszedł Search/RAG/citations/source opening; K3 restore przeszedł ERS/Hermes/Platform config wraz z 5/5 SQLite Hermes.
+
+Produkcja ma enabled daily, weekly i hourly monitor timers; `Linger=yes`. Finalny monitor ma `issues=[]` i `status=PASS`.
+
+Szczegóły: `docs/reports/AI_PLATFORM_STAGE_K_PRODUCTION_ACCEPTANCE_2026-09-24_PL.md`.
+
+**Stage K = PRODUCTION COMPLETE dla backup/DR data plane.** Recovery-key lifecycle dla secrets pozostaje deferred/non-blocking hardeningiem.

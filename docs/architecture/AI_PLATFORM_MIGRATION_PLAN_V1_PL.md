@@ -888,3 +888,17 @@ Production evidence:
 [Stage J production report](../reports/AI_PLATFORM_STAGE_J_PRODUCTION_GATE_2026-09-24_PL.md).
 
 **Stage J = PRODUCTION COMPLETE.**
+
+### Stage K — Backup / Disaster Recovery production completion 2026-09-24
+
+Stage K wdrożył rzeczywisty off-host backup na `GlobalNAS/AI_Platform`, spójny recovery model dla `PostgreSQL + canonical objects`, osobne backupy domenowe ERS/Hermes/Platform config, encrypted secrets bundle, real restore validation, retencję oraz automatyczny monitoring/scheduling.
+
+Finalny production gate potwierdził wykonanie daily i weekly pipeline przez user-systemd z kodu z `main`. Weekly service odtworzył Knowledge do pustego PostgreSQL i pustego Qdranta, odbudował 566 punktów przez reindex oraz przeszedł Search/RAG/citations/source opening. ERS/Hermes/Platform restore również przeszedł PASS, w tym 5/5 baz SQLite Hermes.
+
+RPO automatycznych danych wynosi <=24 h. Monitor działa co godzinę, daily backup poniedziałek–sobota o 02:30, weekly backup + restore validation w niedzielę o 02:30. Retencja wynosi 30 daily + 12 weekly; manual sets i secrets nie są automatycznie kasowane.
+
+Docelowy lifecycle niezależnego recovery key dla secrets został świadomie odroczony przez operatora jako osobny hardening i nie blokuje backup/DR data plane.
+
+Production evidence: [Stage K production report](../reports/AI_PLATFORM_STAGE_K_PRODUCTION_ACCEPTANCE_2026-09-24_PL.md).
+
+**Stage K = PRODUCTION COMPLETE dla backup/DR data plane.**
