@@ -8,3 +8,7 @@ Podczas wznowienia Stage J zastano aktywny release J z istniejącymi immutable m
 Nie usuwamy ani nie nadpisujemy wcześniejszych dowodów. Ten commit nadaje recovery rerun nowy source SHA, aby wykonać od Stage I pełny, świeży i audytowalny cykl: `preflight -> data backup/ingest/integrity -> build -> J -> I -> J -> finalize`.
 
 Dane kanoniczne pozostają idempotentne; drugi przebieg PDF musi utworzyć 0 nowych wersji i 0 nowych chunków. Stary release i evidence pozostają zachowane do diagnostyki.
+
+## Messaging boundary recovery hardening
+
+Rollback smoke ujawnił wyścig po restarcie Hermes: `gateway_state.json` raportował kanały jako connected, ale pierwszy realny outbound mógł jeszcze trafić w krótkie okno niedostępności. Telegram i Discord zostały następnie zweryfikowane osobnymi probe'ami jako sprawne. Stage J gate dodaje ograniczony retry messaging boundary oraz recoverable smoke evidence, bez kasowania wcześniejszych markerów i bez osłabiania fail-closed dla trwałych błędów.
