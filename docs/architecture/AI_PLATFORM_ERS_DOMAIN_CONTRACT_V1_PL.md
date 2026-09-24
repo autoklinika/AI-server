@@ -815,7 +815,20 @@ source of truth, schema boundary, ObjectStore, lifecycle, publication i DR.
 
 To jest Definition of Ready dla implementacji ERS Domain Platform.
 
-## 27. Schema inventory i kolejność migracji
+## 27. Physical durable storage prerequisite
+
+Przed L1 production migration cały PostgreSQL AI Platform musi używać niezależnego
+dysku danych:
+
+`/srv/ai-data/platform/postgresql/18/main`
+
+Systemowy `/var/lib/postgresql/18/main` nie może pozostać production source of truth.
+GitHub przechowuje wyłącznie kod, migracje i dokumentację — nigdy runtime DB ani raw case data.
+
+Powiązana decyzja:
+`adr/ADR-008_STAGE_L_POSTGRESQL_DATA_DISK_2026-09-24_PL.md`.
+
+## 28. Schema inventory i kolejność migracji
 
 Nie tworzymy wszystkich tabel w jednym big-bang migration.
 
