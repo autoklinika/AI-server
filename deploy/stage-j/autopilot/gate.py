@@ -34,6 +34,30 @@ def require(condition):
     return e.require(condition)
 
 
+def messaging_boundary_smoke_with_retry():
+    for attempt in range(6):
+        try:
+            e.hermes_state()
+            return e.messaging_boundary_smoke()
+        except Exception:
+            if attempt == 5:
+                raise
+            time.sleep(5)
+
+
+def recoverable_smoke(canonical_phase, target, candidate, cfg, baseline, state):
+    completed = state / (canonical_phase + '.json')
+    require(not completed.exists())
+    phase = canonical_phase
+    if (state / (canonical_phase + '-started.json')).exists():
+        phase = canonical_phase + '-recovery-' + uuid4().hex
+    smoke(phase, target, candidate, cfg, baseline, state)
+    if phase != canonical_phase:
+        evidence = dict(e.read(state / (phase + '.json')))
+        evidence['recovered_from'] = phase
+        e.write_once(completed, evidence)
+
+
 def verify_release(path, _stage=None):
     stamp = dict(line.split('=', 1) for line in (path / 'RELEASE').read_text().splitlines())
     stage = stamp['stage'].lower()
@@ -199,7 +223,7 @@ def smoke(phase, target, candidate, cfg, baseline, state):
         e.preflight_step('smoke_wvc', e.wvc_smoke)
         e.preflight_step('smoke_hermes_connected', e.hermes_state)
         e.preflight_step('smoke_hermes_inference', e.hermes_oneshot_smoke)
-        e.preflight_step('smoke_messaging_boundary', e.messaging_boundary_smoke)
+        e.preflight_step('smoke_messaging_boundary', messaging_boundary_smoke_with_retry)
         require(e.clients() == baseline['clients'])
         e.media_preflight()
         e.runtime(target, cfg, baseline)
@@ -298,10 +322,8 @@ def main(step):
 
         if step == '50_rollback_smoke':
             require((state / 'rollback.json').is_file())
-            phase = 'rollback-smoke'
-            if (state / (phase + '-started.json')).exists():
-                phase = 'recovery-smoke-' + uuid4().hex
-            smoke(phase, BASE, candidate, cfg, baseline, state)
+            recoverable_smoke(
+                'rollback-smoke', BASE, candidate, cfg, baseline, state)
             return
 
         installed = e.read(state / 'installed.json')
@@ -325,7 +347,8 @@ def main(step):
                 '70_reactivate_smoke': ('final-smoke', '60_reactivate'),
             }[step]
             require((state / (prior + '.json')).is_file())
-            smoke(phase, candidate, candidate, cfg, baseline, state)
+            recoverable_smoke(
+                phase, candidate, candidate, cfg, baseline, state)
             return
 
         if step == '90_finalize':
