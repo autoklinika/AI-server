@@ -223,3 +223,15 @@ K1 przeszedł produkcyjny gate na `GlobalNAS` / `//globalnas.local/AI_Platform`.
 Szczegółowe evidence: `docs/reports/AI_PLATFORM_STAGE_K_NAS_RECOVERY_ACCEPTANCE_2026-09-24_PL.md`.
 
 K1 = PASS. K2 Knowledge/WVC = PASS. K4 Knowledge = PASS. Stage K pozostaje otwarty dla K3 i K5.
+
+## 14. K3 acceptance — 2026-09-24
+
+K3 durable data/config przeszedł rzeczywisty backup na GlobalNAS i izolowany restore validation. Finalny backup ID `20260924T165315Z` obejmuje osobne domeny ERS, Hermes i Platform config. Wszystkie trzy manifesty wskazują commit `12b27ba1e8f77e0acefeccbe82ea8cd582ac7c87`.
+
+Hermes aktywne SQLite są backupowane przez SQLite Backup API do lokalnego frozen DB, przechodzą `quick_check` i SHA-256, a dopiero potem trafiają na CIFS.
+
+Secrets są odseparowane od jawnych snapshotów. Bundle `20260924T164644Z` używa `age` z zaakceptowanym recipientem SSH Ed25519. Plaintext nie trafia na NAS ani do pliku pośredniego. Prywatny klucz pozostaje poza AI Serverem i GlobalNAS.
+
+K3 durable data/config = PASS. K3 encrypted secrets backup = PASS. External-key decrypt drill jest częścią K5 replacement-host validation.
+
+Szczegóły: `docs/reports/AI_PLATFORM_STAGE_K_K3_RECOVERY_ACCEPTANCE_2026-09-24_PL.md`.

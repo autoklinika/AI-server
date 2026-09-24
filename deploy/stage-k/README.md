@@ -89,3 +89,11 @@ K1 = PASS, K2 Knowledge/WVC = PASS, K4 Knowledge = PASS. Stage K pozostaje otwar
 `k3_secrets_verify.py` weryfikuje manifest, SHA-256, nagłówek `age`, listę źródeł, fingerprint recipienta i brak nieoczekiwanych plików w secrets set. Prywatny klucz recovery pozostaje poza AI Serverem i GlobalNAS.
 
 Runbook: `docs/runbooks/AI_PLATFORM_STAGE_K_SECRETS_RECOVERY_PL.md`.
+
+## K3 acceptance
+
+Finalny K3 recovery set `20260924T165315Z` na GlobalNAS przeszedł weryfikację ERS/Hermes/Platform config oraz izolowany restore. ERS: 65 plików; Hermes: 367 plików + 5 spójnych SQLite; Platform config: 16 plików.
+
+Encrypted secrets bundle `20260924T164644Z` przeszedł offline verification. Nie zawiera plaintext secrets, a private recovery key nie znajduje się na AI Serverze ani GlobalNAS.
+
+K3 data/config = PASS. K3 encrypted secrets backup = PASS. Rzeczywisty external-key decrypt drill pozostaje elementem K5.
