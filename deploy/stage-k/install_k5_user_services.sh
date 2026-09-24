@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+USER_UID="$(id -u)"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$USER_UID}"
+export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=$XDG_RUNTIME_DIR/bus}"
+
+
 REPO="$HOME/AI-server"
 SOURCE="$REPO/deploy/stage-k/systemd"
 TARGET="$HOME/.config/systemd/user"
@@ -14,6 +19,7 @@ fail() {
 }
 
 [[ "$EUID" -ne 0 ]] || fail "run as harrypotter, not root"
+[[ -S "$XDG_RUNTIME_DIR/bus" ]] || fail "user systemd bus unavailable: $XDG_RUNTIME_DIR/bus"
 [[ "$(id -un)" == "harrypotter" ]] || fail "unexpected user"
 [[ -d "$REPO/.git" ]] || fail "main AI-server repo missing"
 [[ "$(git -C "$REPO" branch --show-current)" == "main" ]] || fail "AI-server must be on main"
