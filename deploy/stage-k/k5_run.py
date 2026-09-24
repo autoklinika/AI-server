@@ -68,13 +68,17 @@ def notify(event: str, message: str) -> None:
     notifier = NOTIFIER_INSTALLED if NOTIFIER_INSTALLED.is_file() else NOTIFIER_REPO
     if not notifier.is_file():
         return
-    subprocess.run(
-        [str(notifier), event, "K", message],
-        check=False,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        timeout=20,
-    )
+    try:
+        subprocess.run(
+            [sys.executable, str(notifier), event, "K", message],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=20,
+        )
+    except Exception:
+        # Notification delivery must never change backup/DR result semantics.
+        return
 
 
 def write_status(tier: str, payload: dict[str, object]) -> None:
