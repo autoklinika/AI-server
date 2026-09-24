@@ -71,3 +71,11 @@ Lokalne recovery sety w `/srv/ai-data/backups/stage-k` są wyłącznie walidacj�
 Zwykły recovery set ma `secrets_included=false`. Sekrety nie mogą trafiać do
 manifestu, logów ani repo. K3 użyje osobnego zaszyfrowanego recovery bundle;
 klucz deszyfrujący musi być przechowywany poza AI Serverem i poza NAS.
+
+## K1/K2/K4 — NAS acceptance
+
+2026-09-24 pierwszy rzeczywisty recovery set na `//globalnas.local/AI_Platform` przeszedł offline verification i pełny izolowany restore Knowledge. Backup `20260924T152707Z` odbudował pusty PostgreSQL i pusty Qdrant do 566 punktów oraz przeszedł Search/RAG/citations/source opening bez snapshotu produkcyjnego Qdranta.
+
+Evidence: `docs/reports/AI_PLATFORM_STAGE_K_NAS_RECOVERY_ACCEPTANCE_2026-09-24_PL.md`.
+
+K1 = PASS, K2 Knowledge/WVC = PASS, K4 Knowledge = PASS. Stage K pozostaje otwarty dla K3 i K5.

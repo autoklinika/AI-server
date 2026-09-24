@@ -215,3 +215,11 @@ Stage K kończy się dopiero gdy recovery set pobrany z NAS:
 11. pozostawi komplet evidence i monitoring status.
 
 Dopóki test nie używa kopii z NAS, Stage K nie jest PRODUCTION COMPLETE.
+
+## 13. Acceptance status — 2026-09-24
+
+K1 przeszedł produkcyjny gate na `GlobalNAS` / `//globalnas.local/AI_Platform`. Pierwszy rzeczywisty backup NAS `20260924T152707Z` przeszedł integralność dla Knowledge i WVC. Pełny K4 z tego backupu zakończył się PASS po 110.318 s, z pustym PostgreSQL i pustym Qdrantem, pełnym reindexem do 566 punktów, Search/RAG/citations/source opening oraz bez użycia snapshotu starego Qdranta.
+
+Szczegółowe evidence: `docs/reports/AI_PLATFORM_STAGE_K_NAS_RECOVERY_ACCEPTANCE_2026-09-24_PL.md`.
+
+K1 = PASS. K2 Knowledge/WVC = PASS. K4 Knowledge = PASS. Stage K pozostaje otwarty dla K3 i K5.
