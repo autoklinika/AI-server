@@ -102,3 +102,18 @@ Stage A, Stage B i Stage C są zakończone i zwalidowane.
 Stage D.0 został zmergowany do `main` w PR #38. Aktualnym krokiem Stage D jest **D.1 — semantic priority classes**.
 
 Szczegółowy handoff: `../reports/AI_PLATFORM_STAGE_D0_FOUNDATION_2026-09-21_PL.md`.
+
+---
+
+## Addendum 2026-09-24 — Stage L / EcuRepairService
+
+Dla nowej aktywnej domeny ERS obowiązują dodatkowo:
+
+- `AI_PLATFORM_ERS_DOMAIN_CONTRACT_V1_PL.md` — model domenowy, schema ownership,
+  lifecycle, artifacts, binaries, evidence, diagnosis, Knowledge publication i gate'y L0–L5;
+- `adr/ADR-007_STAGE_L0_ERS_DOMAIN_SOURCE_OF_TRUTH_2026-09-24_PL.md` —
+  source of truth i granice ERS;
+- `../reports/AI_PLATFORM_STAGE_L0_ERS_READ_ONLY_AUDIT_2026-09-24_PL.md` —
+  stan zastany i klasyfikacja danych.
+
+Stage L0 jest etapem dokumentacyjnym i nie zmienia aktywnego runtime Stage J.
