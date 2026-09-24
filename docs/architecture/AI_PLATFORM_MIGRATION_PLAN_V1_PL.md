@@ -863,3 +863,28 @@ locator jest zachowywany w chunkach/cytowaniach. GUI nie należy do Stage J — 
 AI Control Center ma konsumować stabilne Knowledge API.
 
 Szczegóły: [ADR-004](adr/ADR-004_STAGE_J4_RAG_PDF_API_2026-09-24_PL.md).
+
+### Stage J — production completion 2026-09-24
+
+Pełny Stage J production gate **PASS** dla `stage-j-3b456a56343a`
+(`3b456a56343a533d2d920e1e63dfe304530c865b`). Zweryfikowano pełny cykl
+`I -> J -> I -> J`: candidate smoke, funkcjonalny rollback do Stage I,
+rollback smoke, reactivation, final smoke i finalize.
+
+Końcowy runtime to Stage J z aktywnym Gateway, AI Bridge, WVC analysis timer i
+ComfyUI; Gateway health jest `ok`, Resource Manager idle, admission odblokowany,
+a liczba active leases wynosi 0. Candidate/final smoke objęły Knowledge search,
+claim-level cited RAG, source opening, WVC, Hermes inference, Telegram/Discord
+messaging boundary i media preflight. Rollback smoke potwierdził brak Knowledge
+routes na Stage I przy zachowaniu wcześniejszych kontraktów.
+
+Acceptance ujawnił i zamknął race condition gotowości outbound Hermes po restarcie;
+bounded retry pozostaje fail-closed dla trwałych błędów, a przerwany smoke może
+zachować wcześniejsze write-once evidence i wznowić się przez recovery evidence.
+Zmiana przeszła GitHub CI wraz z `Validate Stage J release build` i została scalona
+przez PR #80.
+
+Production evidence:
+[Stage J production report](../reports/AI_PLATFORM_STAGE_J_PRODUCTION_GATE_2026-09-24_PL.md).
+
+**Stage J = PRODUCTION COMPLETE.**

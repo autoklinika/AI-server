@@ -1,5 +1,10 @@
 # Stage J — Knowledge Service production release
 
+**Production status: PASS / COMPLETE — 2026-09-24**
+Accepted release: `stage-j-3b456a56343a`
+Accepted source SHA: `3b456a56343a533d2d920e1e63dfe304530c865b`
+Production report: [AI_PLATFORM_STAGE_J_PRODUCTION_GATE_2026-09-24_PL.md](../../docs/reports/AI_PLATFORM_STAGE_J_PRODUCTION_GATE_2026-09-24_PL.md)
+
 Stage J closes the Knowledge Service migration introduced after Stage I.
 
 ## Release identity
