@@ -79,8 +79,16 @@ class Settings(BaseSettings):
     knowledge_embedding_dimensions: int = Field(default=1024, ge=1, le=16384)
     knowledge_chunk_max_chars: int = Field(default=2400, ge=256, le=20000)
     knowledge_chunk_profile: str = "md-heading-2400-v1"
+    knowledge_pdf_chunk_profile: str = "pdf-page-2400-v1"
     knowledge_index_profile: str = "dense-bge-m3-1024-cosine-v1"
     knowledge_object_store_dir: Path = Path("/srv/ai-data/knowledge/canonical/objects")
+    knowledge_pdf_tesseract: Path = Path("/srv/ai-data/tools/tesseract-portable/root/usr/bin/tesseract")
+    knowledge_pdf_tessdata_dir: Path = Path("/srv/ai-data/tools/tesseract-portable/root/usr/share/tesseract-ocr/5/tessdata")
+    knowledge_pdf_tesseract_lib_dir: Path = Path("/srv/ai-data/tools/tesseract-portable/root/usr/lib/x86_64-linux-gnu")
+    knowledge_pdf_ocr_languages: str = "eng+pol"
+    knowledge_pdf_ocr_min_alnum: int = Field(default=80, ge=0, le=10000)
+    knowledge_rag_max_sources: int = Field(default=8, ge=1, le=20)
+    knowledge_rag_context_max_chars: int = Field(default=24000, ge=2000, le=100000)
 
     analysis_window_minutes: int = Field(default=15, ge=1, le=60)
     analysis_min_samples: int = Field(default=120, ge=1)

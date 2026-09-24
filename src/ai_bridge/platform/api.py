@@ -6,13 +6,15 @@ import json
 import logging
 import re
 from dataclasses import asdict
+from pathlib import Path
 from time import monotonic
 from typing import Annotated, Literal
+from urllib.parse import urlparse
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException
 
@@ -20,7 +22,15 @@ from ai_bridge.gateway.admission import WorkloadBinding
 from ai_bridge.gateway.jobs import JobLifecycle, JobMetadata
 from ai_bridge.gateway.priority import PriorityClass, priority_for_class
 from ai_bridge.gateway.scheduler import SchedulerQueueFull
-from ai_bridge.providers.contracts import LLMRequest
+from ai_bridge.knowledge.rag import (
+    build_rag_prompt,
+    citation_payload,
+    claim_payload,
+    parse_rag_response,
+    referenced_source_refs,
+)
+from ai_bridge.knowledge.runtime import KnowledgeRuntime
+from ai_bridge.providers.contracts import KnowledgeQuery, LLMRequest
 from ai_bridge.platform.observability import PlatformRequestMetrics, job_metrics, runtime_resources
 
 LOGGER = logging.getLogger(__name__)
@@ -59,6 +69,25 @@ class AIRequest(Contract):
     timeout_seconds: float = Field(default=300, gt=0, le=600)
 
 
+class KnowledgeSearchRequest(Contract):
+    schema_version: Literal[1] = 1
+    context: Context = Field(default_factory=Context)
+    query: str = Field(min_length=1, max_length=8192)
+    mode: Literal["exact", "keyword", "semantic", "hybrid", "auto"] = "hybrid"
+    namespaces: list[ID] = Field(default_factory=list, max_length=32)
+    source_types: list[ID] = Field(default_factory=list, max_length=32)
+    filters: dict = Field(default_factory=dict)
+    limit: int = Field(default=10, ge=1, le=50)
+
+
+class KnowledgeAskRequest(KnowledgeSearchRequest):
+    mode: Literal["semantic", "hybrid", "auto"] = "hybrid"
+    limit: int = Field(default=8, ge=1, le=20)
+    priority_class: Literal["infrastructure", "interactive-high", "interactive", "normal",
+                            "background", "maintenance"] = "interactive"
+    timeout_seconds: float = Field(default=300, gt=0, le=600)
+
+
 class APIError(Exception):
     def __init__(self, status, code, retryable=False):
         self.status, self.code, self.retryable = status, code, retryable
@@ -89,9 +118,10 @@ class LocalServicePolicy:
                 raise APIError(403, "forbidden")
 
 
-def create_platform_app(gateway, settings, policy=None):
+def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factory=None):
     api = FastAPI(title="Platform API", version="1", docs_url=None, redoc_url=None)
     policy = policy or LocalServicePolicy(settings.platform_api_token)
+    runtime_factory = knowledge_runtime_factory or (lambda: KnowledgeRuntime(settings))
     metrics = PlatformRequestMetrics()
     api.state.observability = metrics
 
@@ -163,6 +193,73 @@ def create_platform_app(gateway, settings, policy=None):
                 "started_at", "finished_at")
         return {"schema_version": 1, **{key: job[key] for key in keys}}
 
+    def apply_context_request_id(context: Context, request: Request) -> None:
+        if context.request_id:
+            if request.headers.get("x-request-id") not in (None, context.request_id):
+                raise APIError(400, "invalid_request")
+            request.state.request_id = context.request_id
+
+    def knowledge_query(body: KnowledgeSearchRequest, request: Request) -> KnowledgeQuery:
+        apply_context_request_id(body.context, request)
+        for key, value in body.filters.items():
+            if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", key):
+                raise APIError(400, "invalid_request")
+            if isinstance(value, list):
+                if not value or not all(isinstance(item, (str, int, bool)) for item in value):
+                    raise APIError(400, "invalid_request")
+            elif not isinstance(value, (str, int, bool)):
+                raise APIError(400, "invalid_request")
+        return KnowledgeQuery(
+            request_id=request.state.request_id,
+            domain=body.context.domain,
+            query=body.query,
+            mode=body.mode,
+            namespaces=tuple(body.namespaces),
+            source_types=tuple(body.source_types),
+            filters=dict(body.filters),
+            limit=body.limit,
+            context=body.context.model_dump(exclude_none=True),
+        )
+
+    def public_knowledge_result(hit):
+        allowed_metadata = {
+            key: value for key, value in hit.metadata.items()
+            if key in {
+                "source_id", "document_id", "version_id", "chunk_id",
+                "chunk_profile", "chunk_ordinal", "page", "section",
+                "extraction_method", "content_sha256", "source_revision",
+                "repository_path", "fusion", "rerank",
+            }
+        }
+        return {
+            "result_id": hit.result_id,
+            "text": hit.text,
+            "score": hit.score,
+            "source": {
+                "type": hit.source.type,
+                "uri": hit.source.uri,
+                "title": hit.source.title,
+            },
+            "metadata": allowed_metadata,
+        }
+
+    async def run_knowledge_search(body: KnowledgeSearchRequest, request: Request):
+        query = knowledge_query(body, request)
+        runtime = runtime_factory()
+        try:
+            result = await asyncio.to_thread(runtime.search, query)
+        except KeyError:
+            raise APIError(404, "not_found") from None
+        except Exception:
+            LOGGER.exception("Knowledge retrieval failed")
+            raise APIError(503, "knowledge_unavailable", True) from None
+        finally:
+            try:
+                runtime.close()
+            except Exception:
+                LOGGER.exception("Knowledge runtime close failed")
+        return query, result
+
     @api.get("/jobs")
     async def list_jobs(request: Request):
         return envelope(request, jobs=[public_job(job) for job in await jobs()],
@@ -174,6 +271,203 @@ def create_platform_app(gateway, settings, policy=None):
         if job is None:
             raise APIError(404, "not_found")
         return envelope(request, job=public_job(job))
+
+    @api.post("/knowledge/search")
+    async def knowledge_search(body: KnowledgeSearchRequest, request: Request):
+        _query, result = await run_knowledge_search(body, request)
+        return envelope(
+            request,
+            mode=body.mode,
+            backend=result.backend,
+            duration_ms=result.duration_ms,
+            results=[public_knowledge_result(hit) for hit in result.results],
+        )
+
+    @api.post("/knowledge/ask")
+    async def knowledge_ask(body: KnowledgeAskRequest, request: Request):
+        query, retrieval = await run_knowledge_search(body, request)
+        if not retrieval.results:
+            return envelope(
+                request,
+                answer="Brak wystarczającej wiedzy w wybranym zakresie.",
+                claims=[],
+                insufficient_context=True,
+                insufficiency_reason="Brak wyników retrieval w wybranym zakresie.",
+                citations=[],
+                retrieval={
+                    "mode": body.mode,
+                    "backend": retrieval.backend,
+                    "result_count": 0,
+                    "duration_ms": retrieval.duration_ms,
+                },
+                execution=None,
+            )
+
+        prompt = build_rag_prompt(
+            question=body.query,
+            results=retrieval.results,
+            max_sources=settings.knowledge_rag_max_sources,
+            max_context_chars=settings.knowledge_rag_context_max_chars,
+        )
+        scheduler = gateway.state.scheduler
+        provider = gateway.state.platform_provider
+        metadata = JobMetadata(
+            request_id=request.state.request_id,
+            domain=body.context.domain,
+            capability="structured-generation",
+            priority_class=PriorityClass(body.priority_class),
+            workload=(
+                WorkloadBinding(
+                    provider.provider_id,
+                    provider.node_id,
+                    "structured-generation",
+                ),
+            ),
+        )
+        ticket = None
+        outcome = JobLifecycle.FAILED
+        started = monotonic()
+        try:
+            async with asyncio.timeout(body.timeout_seconds):
+                ticket = await scheduler.acquire(
+                    priority=priority_for_class(body.priority_class),
+                    source="knowledge-rag-v1",
+                    metadata=metadata,
+                )
+                await scheduler.mark_running(
+                    ticket.job_id,
+                    provider=provider.provider_id,
+                    node=provider.node_id,
+                )
+                generated = await provider.generate(LLMRequest(
+                    request_id=request.state.request_id,
+                    capability="structured-generation",
+                    messages=prompt.messages,
+                    response_schema=prompt.response_schema,
+                    temperature=0.0,
+                    reasoning_enabled=False,
+                    context={
+                        **body.context.model_dump(exclude_none=True),
+                        "knowledge_mode": body.mode,
+                    },
+                ))
+                parsed = parse_rag_response(generated.content, prompt)
+                outcome = JobLifecycle.COMPLETED
+        except SchedulerQueueFull:
+            raise APIError(429, "queue_full", True) from None
+        except TimeoutError:
+            outcome = JobLifecycle.EXPIRED
+            raise APIError(504, "deadline_exceeded", True) from None
+        except asyncio.CancelledError:
+            outcome = JobLifecycle.CANCELLED
+            raise
+        except ValueError:
+            raise APIError(502, "rag_invalid_response", True) from None
+        except Exception:
+            LOGGER.exception("RAG generation failed")
+            raise APIError(503, "provider_unavailable", True) from None
+        finally:
+            if ticket is not None:
+                await scheduler.release(ticket, state=outcome)
+
+        return envelope(
+            request,
+            answer=parsed.answer,
+            claims=claim_payload(parsed),
+            insufficient_context=parsed.insufficient_context,
+            insufficiency_reason=parsed.insufficiency_reason,
+            citations=citation_payload(prompt, referenced_source_refs(parsed)),
+            retrieval={
+                "mode": body.mode,
+                "backend": retrieval.backend,
+                "result_count": len(retrieval.results),
+                "duration_ms": retrieval.duration_ms,
+                "reranker": retrieval.backend_metadata.get("reranker"),
+            },
+            execution={
+                "model": "reasoning-main",
+                "queue_wait_ms": round(ticket.wait_ms, 3),
+                "duration_ms": round((monotonic() - started) * 1000, 3),
+            },
+        )
+
+    @api.get("/knowledge/documents/{document_id}")
+    async def knowledge_document(document_id: str, request: Request):
+        runtime = runtime_factory()
+        try:
+            snapshot = await asyncio.to_thread(runtime.get_document, document_id)
+        except KeyError:
+            raise APIError(404, "not_found") from None
+        except Exception:
+            LOGGER.exception("Knowledge document lookup failed")
+            raise APIError(503, "knowledge_unavailable", True) from None
+        finally:
+            try:
+                runtime.close()
+            except Exception:
+                LOGGER.exception("Knowledge runtime close failed")
+        return envelope(
+            request,
+            source={
+                "source_id": snapshot.source.source_id,
+                "type": snapshot.source.source_type,
+                "uri": snapshot.source.uri,
+                "title": snapshot.source.title,
+                "domain": snapshot.source.domain,
+                "namespace": snapshot.source.namespace,
+            },
+            document={
+                "document_id": snapshot.document.document_id,
+                "uri": snapshot.document.uri,
+                "title": snapshot.document.title,
+                "media_type": snapshot.document.media_type,
+                "language": snapshot.document.language,
+            },
+            version={
+                "version_id": snapshot.version.version_id,
+                "content_sha256": snapshot.version.content_sha256,
+                "source_revision": snapshot.version.source_revision,
+            },
+            chunks=[{
+                "chunk_id": chunk.chunk_id,
+                "chunk_profile": chunk.chunk_profile,
+                "ordinal": chunk.ordinal,
+                "text": chunk.text,
+                "locator": dict(chunk.locator),
+            } for chunk in snapshot.chunks],
+        )
+
+    @api.get("/knowledge/documents/{document_id}/content")
+    async def knowledge_document_content(document_id: str, request: Request):
+        runtime = runtime_factory()
+        try:
+            snapshot = await asyncio.to_thread(runtime.get_document, document_id)
+        except KeyError:
+            raise APIError(404, "not_found") from None
+        except Exception:
+            LOGGER.exception("Knowledge document content lookup failed")
+            raise APIError(503, "knowledge_unavailable", True) from None
+        finally:
+            try:
+                runtime.close()
+            except Exception:
+                LOGGER.exception("Knowledge runtime close failed")
+
+        parsed = urlparse(snapshot.version.storage_uri)
+        if parsed.scheme != "file":
+            raise APIError(503, "knowledge_content_unavailable", True)
+        content_path = Path(parsed.path).resolve()
+        root = settings.knowledge_object_store_dir.resolve()
+        if root != content_path and root not in content_path.parents:
+            raise APIError(503, "knowledge_content_unavailable", True)
+        if not content_path.is_file():
+            raise APIError(404, "not_found")
+        filename = Path(urlparse(snapshot.document.uri).path).name or document_id
+        return FileResponse(
+            content_path,
+            media_type=snapshot.document.media_type,
+            filename=filename,
+        )
 
     @api.get("/models")
     async def models(request: Request):

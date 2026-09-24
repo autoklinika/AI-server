@@ -678,6 +678,37 @@ Klient nie zna implementacji kanałów. Wynik `hybrid` nadal ma backend logiczny
 `knowledge-primary`; fizyczne nazwy Qdrant/PostgreSQL/Ollama/BGE nie mogą być
 wymagane w publicznym `KnowledgeQuery`.
 
+### 9.3. Platform API Knowledge v1 — Stage J4
+
+Publiczne route'y:
+
+```text
+POST /api/v1/knowledge/search
+POST /api/v1/knowledge/ask
+GET  /api/v1/knowledge/documents/{document_id}
+GET  /api/v1/knowledge/documents/{document_id}/content
+```
+
+`search` zwraca raw retrieval/rerank i nie używa generatywnego LLM. `ask` wykonuje
+RAG i zwraca co najmniej:
+
+```text
+answer
+claims[] { text, source_refs[] }
+insufficient_context
+insufficiency_reason
+citations[] { ref, document_id, version_id, chunk_id, page?, section?, snippet }
+retrieval
+execution.logical model
+```
+
+Każdy niepusty claim musi mieć minimum jedno `source_ref`, a ref musi należeć do
+zestawu chunków przekazanych modelowi. Fizyczny provider/model/backend i
+`storage_uri` nie są elementami publicznego wyniku.
+
+Dla PDF locator strony jest częścią provenance. Endpoint content może podać tylko
+canonical immutable object znajdujący się pod skonfigurowanym object-store root.
+
 ---
 
 ## 10. TelemetryBackend

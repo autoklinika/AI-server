@@ -1,50 +1,60 @@
-# Stage J — Knowledge Service / Qdrant foundation
+# Stage J — Knowledge Service production release
 
-## Cel
+Stage J closes the Knowledge Service migration introduced after Stage I.
 
-Uruchomić pierwszy retrieval backend bez związania platformy z produktem Qdrant.
-Qdrant jest prywatnym indeksem Knowledge Service i nie jest source of truth.
+## Release identity
 
-## Deployment baseline
+- stage: `J`
+- migration: `knowledge-service-v1`
+- Platform API contract: `1` (additive routes)
+- observability contract: `1`
+- Knowledge Service contract: `1`
+- rollback release: `stage-i-30626dcc60f8`
 
-- image: Qdrant `v1.19.1`, przypięty również digestem obrazu;
-- REST: `127.0.0.1:6333`;
-- gRPC: `127.0.0.1:6334`;
-- cluster port 6335 nie jest publikowany;
-- storage: `/srv/ai-data/qdrant/storage`;
-- producent telemetry: disabled;
-- publiczni klienci nie łączą się z tymi portami.
+Stage J does not replace the existing Platform API. It adds the Knowledge surface
+under `/api/v1/knowledge/*`.
 
-## Start
+## Production gate
 
-Na AI Server źródłem wykonywalnego deploymentu jest idempotentny wrapper:
-
-```bash
-deploy/stage-j/qdrant_runtime.sh start
-```
-
-Manifest `docker-compose.qdrant.yml` pozostaje równoważnym, przenośnym desired state
-dla hostów posiadających Docker Compose. Bieżący AI Server nie wymaga Compose.
-## Smoke
+Run in order:
 
 ```bash
-deploy/stage-j/qdrant_runtime.sh smoke
+deploy/stage-j/autopilot/00_preflight.sh
+deploy/stage-j/autopilot/10_build_install.sh
+deploy/stage-j/autopilot/20_cutover.sh
+deploy/stage-j/autopilot/30_smoke.sh
+deploy/stage-j/autopilot/40_rollback.sh
+deploy/stage-j/autopilot/50_rollback_smoke.sh
+deploy/stage-j/autopilot/60_reactivate.sh
+deploy/stage-j/autopilot/70_reactivate_smoke.sh
+deploy/stage-j/autopilot/90_finalize.sh
 ```
 
-Smoke tworzy tymczasową kolekcję 3D, zapisuje jeden fragment ze źródłem,
-wykonuje wyszukiwanie przez `KnowledgeService -> QdrantKnowledgeBackend`,
-sprawdza source attribution i usuwa kolekcję w `finally`.
+The supervisor performs a real `J -> I -> J` cycle.
 
-## Stop
+Candidate/final smoke proves:
+- existing Platform API + observability;
+- raw Knowledge search;
+- RAG answer with citations;
+- document metadata and immutable content opening;
+- WVC;
+- Hermes inference;
+- messaging boundary;
+- media preflight.
 
-```bash
-deploy/stage-j/qdrant_runtime.sh stop
-```
+Rollback smoke proves Stage I is healthy and Knowledge routes are absent.
 
-Stop nie usuwa danych z `/srv/ai-data/qdrant/storage`.
+## Gateway canonical DB access
 
-## Ważne
+Stage I gateway did not need PostgreSQL. At Stage J cutover the supervisor copies
+only the existing `AI_BRIDGE_DATABASE_URL=...` assignment from the protected
+AI Bridge env file into the Gateway env file. It never prints the value.
+The extra variable is backward-compatible with Stage I and remains harmless during
+rollback. The production database is not migrated or recreated by Stage J cutover.
 
-Produkcyjna kolekcja nie jest tworzona na tym etapie. Jej wymiary i konfiguracja
-zależą od wyboru embedding modelu i wyników benchmarku ECU/WVC.
-Exact/keyword/full hybrid będą dodawane jako jawne capability, bez ukrytych fallbacków.
+## Data independence
+
+Stage J release activation does not modify canonical knowledge. PostgreSQL and the
+object store outlive code rollback. Qdrant remains rebuildable.
+
+PDF ingestion/reindex are separate data operations documented in `deploy/stage-j4`.

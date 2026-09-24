@@ -5,10 +5,11 @@ DEST="${1:?usage: $0 DEST RELEASE_ID}"
 RELEASE_ID="${2:?usage: $0 DEST RELEASE_ID}"
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 STAGE="${RELEASE_STAGE:?release stage required}"
-[[ "$STAGE" =~ ^[GHI]$ ]] || exit 2
+[[ "$STAGE" =~ ^[GHIJ]$ ]] || exit 2
 STAGE_LC="${STAGE,,}"
 MIGRATION="${RELEASE_MIGRATION:?migration version required}"
 OBSERVABILITY_CONTRACT="${RELEASE_OBSERVABILITY_CONTRACT:-}"
+KNOWLEDGE_CONTRACT="${RELEASE_KNOWLEDGE_CONTRACT:-}"
 PYTHON_BIN="${PYTHON_BIN:-python3.14}"
 
 OWNER_UID="$(stat -c '%u' "$ROOT")"
@@ -116,6 +117,11 @@ MANIFEST
 if [[ -n "$OBSERVABILITY_CONTRACT" ]]; then
   sed -i "/    platform_api: 1/a\\    observability: $OBSERVABILITY_CONTRACT" "$DEST/metadata/release-manifest.yaml"
 fi
+if [[ -n "$KNOWLEDGE_CONTRACT" ]]; then
+  sed -i "/    platform_api: 1/a\\    knowledge_service: $KNOWLEDGE_CONTRACT" "$DEST/metadata/release-manifest.yaml"
+  sed -i 's/embedding_provider: contract-only/embedding_provider: OllamaEmbeddingAdapter/' "$DEST/metadata/release-manifest.yaml"
+  sed -i 's/knowledge_backend: contract-only/knowledge_backend: CompositeKnowledgeBackend/' "$DEST/metadata/release-manifest.yaml"
+fi
 
 echo "===== AI BRIDGE VENV ====="
 "$PYTHON_BIN" -m venv "$DEST/services/ai-bridge/.venv"
@@ -148,6 +154,9 @@ STAMP
 if [[ -n "$OBSERVABILITY_CONTRACT" ]]; then
   printf "observability_contract_version=%s\n" "$OBSERVABILITY_CONTRACT" >> "$DEST/RELEASE"
 fi
+if [[ -n "$KNOWLEDGE_CONTRACT" ]]; then
+  printf "knowledge_service_contract_version=%s\n" "$KNOWLEDGE_CONTRACT" >> "$DEST/RELEASE"
+fi
 
 python3 "$ROOT/deploy/stage-$STAGE_LC/validate_release_metadata.py" "$DEST"
 
@@ -170,6 +179,16 @@ PY
 from ai_bridge.gateway.app import app
 print("AI GATEWAY: PASS")
 PY
+
+if [[ -n "$KNOWLEDGE_CONTRACT" ]]; then
+  "$DEST/services/ai-gateway/.venv/bin/python" - <<'PY'
+from ai_bridge.knowledge.runtime import KnowledgeRuntime
+from ai_bridge.knowledge.pdf_ingestion import PdfKnowledgeIngestor, PdfTextExtractor
+from ai_bridge.knowledge.rag import build_rag_prompt, parse_rag_response
+from ai_bridge.knowledge.rerank import TechnicalEvidenceReranker
+print("KNOWLEDGE SERVICE: PASS")
+PY
+fi
 
 echo "===== VERIFY STAGE30 IMPORT ====="
 "$DEST/services/ai-bridge/.venv/bin/python"   "$DEST/services/ai-bridge/tools/local_video/generate_ltx23_stage30.py"   --help >/dev/null
