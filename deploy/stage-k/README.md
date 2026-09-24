@@ -111,3 +111,11 @@ Retencja: 30 daily + 12 weekly. Zestawy `manual` i encrypted secrets nie są usu
 Timery są user-systemd użytkownika `harrypotter`; host ma `Linger=yes`, więc nie wymagają otwartego terminala ani aktywnej sesji. Instalacja: `install_k5_user_services.sh`; rollback scheduler/monitoringu: `uninstall_k5_user_services.sh` — bez usuwania backupów, evidence i statusów.
 
 Automatyzacja secrets pozostaje `DEFERRED` do decyzji o docelowym recovery key i nie blokuje backupów danych K5.
+
+## Stage K production completion
+
+2026-09-24 Stage K przeszedł finalny production gate. Daily i weekly user-systemd services uruchomione z `main` zakończyły się `Result=success`; weekly wykonał pełny Knowledge restore i K3 domain restore. Hourly monitor jest aktywny, wszystkie trzy timery są enabled, a monitor raportuje `status=PASS`.
+
+Raport: `docs/reports/AI_PLATFORM_STAGE_K_PRODUCTION_ACCEPTANCE_2026-09-24_PL.md`.
+
+**Stage K = PRODUCTION COMPLETE dla backup/DR data plane.** Docelowy recovery-key lifecycle pozostaje świadomie odroczonym hardeningiem.
