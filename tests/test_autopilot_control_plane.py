@@ -119,7 +119,9 @@ def test_privilege_bridge_is_narrow_and_sha_bound():
     assert 'WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-eh"' in text
     assert 'expected_branch="agent/stage-$stage_lc"' in text
     assert 'remote_sha' in text
-    assert 'merge-base --is-ancestor origin/main' in text
+    assert 'merge-base --is-ancestor origin/main "$expected_sha"' in text
+    assert 'merge-base --is-ancestor "$expected_sha" origin/main' in text
+    assert 'fail "main_relation"' in text
     assert 'status --porcelain --untracked-files=all' in text
     assert 'AUTOPILOT_ROOT_DENY=' in text
     assert 'eval ' not in text
@@ -230,6 +232,8 @@ def test_privilege_bridge_allows_dedicated_worktrees_through_stage_j():
     assert 'L) WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-l"' in text
     assert 'expected_branch="agent/stage-$stage_lc"' in text
     assert 'status --porcelain --untracked-files=all' in text
-    assert 'merge-base --is-ancestor origin/main' in text
+    assert 'merge-base --is-ancestor origin/main "$expected_sha"' in text
+    assert 'merge-base --is-ancestor "$expected_sha" origin/main' in text
+    assert 'fail "main_relation"' in text
     assert 'bash "$script"' in text
     assert 'eval ' not in text

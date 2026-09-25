@@ -71,8 +71,10 @@ branch="$(ugit -C "$WORKTREE" branch --show-current 2>/dev/null || true)"
 
 remote_sha="$(ugit -C "$WORKTREE" rev-parse "refs/remotes/origin/$expected_branch" 2>/dev/null || true)"
 [[ "$remote_sha" == "$expected_sha" ]] || fail "remote_sha"
-ugit -C "$WORKTREE" merge-base --is-ancestor origin/main "$expected_sha" >/dev/null 2>&1 \
-  || fail "main_ancestor"
+if ! ugit -C "$WORKTREE" merge-base --is-ancestor origin/main "$expected_sha" >/dev/null 2>&1 \
+  && ! ugit -C "$WORKTREE" merge-base --is-ancestor "$expected_sha" origin/main >/dev/null 2>&1; then
+  fail "main_relation"
+fi
 
 relative="deploy/stage-$stage_lc/autopilot/$step"
 script="$WORKTREE/$relative"
