@@ -32,6 +32,17 @@ def test_stage_l_release_contract_is_explicit():
     assert "RELEASE_OBSERVABILITY_CONTRACT=1" in wrapper
     assert "RELEASE_KNOWLEDGE_CONTRACT=1" in wrapper
     assert "RELEASE_ERS_CONTRACT=1" in wrapper
+    assert "RELEASE_MIGRATION_TOOLING=1" in wrapper
+    assert "migration.requirements.txt" in wrapper
+
+    migration_lock = (
+        ROOT / "deploy/stage-l/locks/migration.requirements.txt"
+    ).read_text().splitlines()
+    assert migration_lock == [
+        "alembic==1.19.1",
+        "Mako==1.4.1",
+        "MarkupSafe==3.0.3",
+    ]
 
     builder = (ROOT / "deploy/runtime/build_release.sh").read_text()
     assert '[[ "$STAGE" =~ ^[GHIJL]$ ]]' in builder
