@@ -20,7 +20,6 @@ import time
 from uuid import uuid4
 
 import httpx
-import psycopg
 
 from common import active_release, atomic_text, file_sha256, require, run
 from verify_backup import resolve_from_root, verify as verify_backup
@@ -251,6 +250,8 @@ def verify_restored_ers(
 
 
 def restore_conn(port: int, user: str, database: str):
+    import psycopg
+
     return psycopg.connect(
         host="127.0.0.1", port=port, user=user, dbname=database,
         autocommit=False,

@@ -16,8 +16,6 @@ import shutil
 import socket
 from urllib.parse import urlparse
 
-import psycopg
-
 from ers_dr import copy_object_set as copy_ers_object_set
 from ers_dr import fetch_snapshot_metadata as fetch_ers_snapshot_metadata
 
@@ -93,6 +91,8 @@ def verify_target(root: Path, allow_local: bool) -> dict[str, object]:
 
 
 def connect_snapshot(pg: dict[str, str]):
+    import psycopg
+
     return psycopg.connect(
         host=pg["PGHOST"],
         port=int(pg["PGPORT"]),
