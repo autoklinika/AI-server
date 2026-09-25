@@ -279,3 +279,21 @@ def test_structured_platform_log_never_contains_dynamic_path_or_query(caplog):
             assert '/jobs/{job_id}' in logs
             assert 'not_found' in logs
     asyncio.run(run())
+
+
+def test_benchmark_catalog_contract_is_read_only_and_stable():
+    async def run():
+        async with client() as (http, _):
+            catalog = await http.get("/api/v1/benchmarks")
+            assert catalog.status_code == 200
+            suites = catalog.json()["suites"]
+            ids = [item["suite_id"] for item in suites]
+            assert ids[:2] == ["knowledge-retrieval", "qwen-ventilation"]
+            assert "decision-models" in ids
+            runs = await http.get("/api/v1/benchmarks/knowledge-retrieval/runs")
+            assert runs.status_code == 200
+            assert isinstance(runs.json()["runs"], list)
+            missing = await http.get("/api/v1/benchmarks/not-a-suite/runs")
+            assert missing.status_code == 404
+    asyncio.run(run())
+
