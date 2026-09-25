@@ -148,6 +148,16 @@ def run(tier: str) -> dict[str, object]:
                 timeout=900,
             )
 
+            ers_case_store_verify: dict[str, object] | None = None
+            if k2.get("ers_set"):
+                phase = "verify_ers_case_store"
+                ers_case_store_verify = run_json(
+                    phase,
+                    [sys.executable, str(STAGE_K / "verify_backup.py"),
+                     str(k2["ers_set"])],
+                    timeout=900,
+                )
+
             domain_verify: dict[str, object] = {}
             for name, key in (
                 ("ers", "ers_manifest"),
@@ -165,10 +175,16 @@ def run(tier: str) -> dict[str, object]:
             restore: dict[str, object] = {}
             if tier == "weekly":
                 phase = "restore_knowledge"
+                restore_args = [
+                    sys.executable,
+                    str(STAGE_K / "restore_validate.py"),
+                    str(k2["knowledge_set"]),
+                ]
+                if k2.get("ers_set"):
+                    restore_args.extend(["--ers", str(k2["ers_set"])])
                 restore["knowledge"] = run_json(
                     phase,
-                    [sys.executable, str(STAGE_K / "restore_validate.py"),
-                     str(k2["knowledge_set"])],
+                    restore_args,
                     timeout=7200,
                 )
                 phase = "restore_domains"
@@ -204,6 +220,7 @@ def run(tier: str) -> dict[str, object]:
                 "domain_backup_id": str(k3["backup_id"]),
                 "knowledge_verify": knowledge_verify,
                 "wvc_verify": wvc_verify,
+                "ers_case_store_verify": ers_case_store_verify,
                 "domain_verify": domain_verify,
                 "restore_validation": restore,
                 "retention": retention,

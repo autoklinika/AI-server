@@ -119,3 +119,44 @@ Automatyzacja secrets pozostaje `DEFERRED` do decyzji o docelowym recovery key i
 Raport: `docs/reports/AI_PLATFORM_STAGE_K_PRODUCTION_ACCEPTANCE_2026-09-24_PL.md`.
 
 **Stage K = PRODUCTION COMPLETE dla backup/DR data plane.** Docelowy recovery-key lifecycle pozostaje świadomie odroczonym hardeningiem.
+
+
+## L1.5 — ERS Case Store DR extension
+
+Stage K obsługuje aktywny ERS Case Store bez tworzenia drugiego dumpu PostgreSQL.
+Gdy schema produkcyjna zawiera `ers_cases`, `backup.py` automatycznie dodaje:
+
+- pełne row counts wszystkich tabel `ers_*` do wspólnego snapshotu PostgreSQL;
+- manifest `ERSCaseStore` pod
+  `AI_Platform/ERS/case-store/manifests/<tier>/<backup_id>/`;
+- dokładny object-set wszystkich `ers_artifact_versions` o
+  `availability=available`;
+- case boundaries: UUID, `row_version`, liczba eventów oraz min/max `event_seq`;
+- availability counts dla artifact versions.
+
+Obiekty ERS są kopiowane do append-only DR poolu:
+`AI_Platform/ERS/object-store/sha256/<2>/<sha256>`.
+Jest to projekcja DR wspólnego lokalnego ObjectStore; PostgreSQL + lokalny shared
+ObjectStore pozostają źródłem prawdy.
+
+Przed migracją produkcji do schema `0004` mechanizm jest kompatybilny wstecz:
+`ers_set=null`, a dotychczasowy Knowledge/WVC backup działa bez zmian.
+
+`verify_backup.py` dla `ERSCaseStore` sprawdza wspólny dump PostgreSQL,
+domain table counts, manifest object-set, byte size, SHA-256, liczbę referencji
+oraz case event boundaries.
+
+`restore_validate.py --ers <manifest-set>` odtwarza ten sam wspólny dump do
+izolowanego PostgreSQL, odtwarza ERS object-set do izolowanego katalogu i sprawdza:
+table counts, case boundaries, availability counts, DB->object references oraz
+SHA-256/size każdego obiektu. Następnie ten sam restore kontynuuje normalny
+Knowledge reindex/Search/RAG/source-opening gate.
+
+Jeżeli dump Knowledge zawiera jakiekolwiek `ers_*`, pełny restore bez odpowiadającego
+manifestu `ERSCaseStore` kończy się fail-closed.
+
+K5:
+- daily: backup + offline verify ERS, jeżeli ERS jest aktywny;
+- weekly: dodatkowo pełny isolated Knowledge + ERS restore;
+- retention usuwa sparowany manifest ERS razem z K2 setem, ale object pool pozostaje
+  append-only i nie ma automatycznego GC.
