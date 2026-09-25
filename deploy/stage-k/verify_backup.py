@@ -9,6 +9,7 @@ import re
 
 from common import file_sha256, require, run
 from ers_dr import validate_object_set
+import crt_dr
 
 
 def platform_root(backup: Path) -> Path:
@@ -50,6 +51,7 @@ def verify(backup: Path) -> dict[str, object]:
     require(manifest.get("secrets_included") is False,
             "plain backup set must not include secrets")
 
+    crt_dr.validate(manifest["postgres"])
     dump_meta = manifest["postgres"]["dump"]
     dump = resolve_from_root(backup, dump_meta["path"])
     require(dump.is_file(), "PostgreSQL dump missing")

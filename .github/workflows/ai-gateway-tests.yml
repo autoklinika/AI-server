@@ -73,3 +73,8 @@ jobs:
           PYTHON_BIN: python
         run: |
           bash deploy/stage-l/build_release.sh "$RUNNER_TEMP/stage-l-ci-release" "stage-l-${GITHUB_SHA::12}"
+      - name: Validate Stage M release build
+        env:
+          PYTHON_BIN: python
+        run: |
+          bash deploy/stage-m/build_release.sh "$RUNNER_TEMP/stage-m-ci-release" "stage-m-${GITHUB_SHA::12}"

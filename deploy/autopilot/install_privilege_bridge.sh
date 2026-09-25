@@ -69,4 +69,4 @@ result="$(sudo -n "$helper_dst" --self-test)"
 }
 
 echo "PASS: AI Platform privilege bridge installed for $user_name"
-echo "The bridge grants no general shell; it accepts only Stage E-J/L production step names."
+echo "The bridge grants no general shell; it accepts only Stage E-J/L/M production step names."
