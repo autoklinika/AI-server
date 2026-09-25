@@ -3,9 +3,11 @@ set -Eeuo pipefail
 
 TARGET_ROOT="${1:-/mnt/AI_Platform}"
 TIER="${2:-manual}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 AGE_BIN="/srv/ai-data/tools/age/usr/bin/age"
-RECIPIENTS="/srv/ai-data/platform/recovery/stage-k/age-recipients.txt"
-EXPECTED_RECIPIENT_FINGERPRINT="SHA256:BVPwRUzB0IbP/6QVNsy9/XbIxs8MxHxbvFJ6soFNUPM"
+AGE_PLUGIN_BIN="/srv/ai-data/tools/age/usr/bin/age-plugin-yubikey"
+RECIPIENTS="${STAGE_K_AGE_RECIPIENTS:-/srv/ai-data/platform/recovery/stage-k/age-recipients.txt}"
+RECIPIENT_HELPER="$SCRIPT_DIR/k3_recipients.py"
 MARKER="$TARGET_ROOT/.ai-platform-backup-target.json"
 
 fail() {
@@ -20,10 +22,15 @@ fail() {
 [[ "$(findmnt -T "$TARGET_ROOT" -n -o FSTYPE)" == "cifs" ]] || fail "target is not CIFS"
 [[ -f "$MARKER" ]] || fail "Stage K target marker missing"
 [[ -x "$AGE_BIN" ]] || fail "age binary missing"
+[[ -x "$AGE_PLUGIN_BIN" ]] || fail "age-plugin-yubikey binary missing"
+[[ -f "$RECIPIENT_HELPER" ]] || fail "recipient policy helper missing"
 [[ -s "$RECIPIENTS" ]] || fail "age recipients missing"
-ACTUAL_RECIPIENT_FINGERPRINT="$(ssh-keygen -lf "$RECIPIENTS" | awk '{print $2}')"
-[[ "$ACTUAL_RECIPIENT_FINGERPRINT" == "$EXPECTED_RECIPIENT_FINGERPRINT" ]] \
-  || fail "age recipient fingerprint mismatch"
+
+RECIPIENT_META_JSON=""
+if ! RECIPIENT_META_JSON="$(python3 "$RECIPIENT_HELPER" validate-active "$RECIPIENTS" 2>&1)"; then
+  fail "$RECIPIENT_META_JSON"
+fi
+export PATH="$(dirname "$AGE_BIN"):$PATH"
 
 python3 - "$MARKER" <<'PY'
 import json, sys
@@ -58,7 +65,8 @@ chmod 0700 "$STAGING"
 [[ ! -e "$FINAL" ]] || fail "backup ID collision"
 umask 077
 echo "Encrypting secrets directly to age bundle..."
-tar --numeric-owner -C / -czf - "${SOURCES[@]}" |   "$AGE_BIN" -R "$RECIPIENTS" -o "$BUNDLE"
+tar --numeric-owner -C / -czf - "${SOURCES[@]}" | \
+  "$AGE_BIN" -R "$RECIPIENTS" -o "$BUNDLE"
 
 [[ -s "$BUNDLE" ]] || fail "encrypted bundle is empty"
 [[ "$(head -1 "$BUNDLE")" == "age-encryption.org/v1" ]] || fail "invalid age bundle header"
@@ -70,14 +78,16 @@ export STAGE_K_SECRET_BACKUP_ID="$BACKUP_ID"
 export STAGE_K_SECRET_TIER="$TIER"
 export STAGE_K_SECRET_BUNDLE="$BUNDLE"
 export STAGE_K_SECRET_RECIPIENTS="$RECIPIENTS"
+export STAGE_K_SECRET_RECIPIENT_META="$RECIPIENT_META_JSON"
 export STAGE_K_SECRET_STAGING="$STAGING"
 python3 - <<'PY'
-import hashlib, json, os, pathlib, stat, subprocess
+import hashlib, json, os, pathlib, stat
 backup_id=os.environ["STAGE_K_SECRET_BACKUP_ID"]
 tier=os.environ["STAGE_K_SECRET_TIER"]
 bundle=pathlib.Path(os.environ["STAGE_K_SECRET_BUNDLE"])
 recipients=pathlib.Path(os.environ["STAGE_K_SECRET_RECIPIENTS"])
 staging=pathlib.Path(os.environ["STAGE_K_SECRET_STAGING"])
+recipient_meta=json.loads(os.environ["STAGE_K_SECRET_RECIPIENT_META"])
 sources=[
     pathlib.Path("/etc/ai-bridge/ai-bridge.env"),
     pathlib.Path("/etc/ai-gateway/ai-gateway.env"),
@@ -96,9 +106,6 @@ def sha256(path):
             h.update(block)
     return h.hexdigest()
 
-fp=subprocess.check_output(
-    ["ssh-keygen","-lf",str(recipients)], text=True
-).strip()
 entries=[]
 for p in sources:
     st=p.stat()
@@ -109,15 +116,14 @@ for p in sources:
         "mode": oct(stat.S_IMODE(st.st_mode)),
     })
 manifest={
-    "manifest_schema_version": 1,
+    "manifest_schema_version": 2,
     "status": "COMPLETE",
     "domain": "PlatformSecrets",
     "backup_id": backup_id,
     "tier": tier,
     "encryption": {
         "format": "age",
-        "recipient_type": "ssh-ed25519",
-        "recipient_fingerprint": fp,
+        **recipient_meta,
         "private_key_stored_on_ai_server": False,
         "private_key_stored_on_nas": False,
     },
