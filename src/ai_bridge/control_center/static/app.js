@@ -1,7 +1,7 @@
 const API_BASE = "/api/v1";
 const CONTROL_BASE = "/control";
 
-const APP_REGISTRY = [
+const FALLBACK_APP_REGISTRY = [
   { id: "dashboard", group: "operations", label: "Dashboard", route: "/", icon: "◫" },
   { id: "agents", group: "operations", label: "Agents", route: "/operations/agents", icon: "A" },
   { id: "models", group: "operations", label: "Models", route: "/operations/models", icon: "M" },
@@ -26,10 +26,29 @@ const state = {
   jobs: null,
   models: null,
   systems: null,
+  apps: null,
+  knowledge: {
+    tab: "search",
+    query: "",
+    domain: "shared",
+    loading: false,
+    error: null,
+    search: null,
+    ask: null
+  },
   errors: {},
   lastRefresh: null,
   loading: true
 };
+
+function registry() {
+  return state.apps && Array.isArray(state.apps.apps)
+    ? state.apps.apps.map(function (remote) {
+        const fallback = FALLBACK_APP_REGISTRY.find(function (item) { return item.id === remote.id; }) || {};
+        return { ...fallback, ...remote };
+      })
+    : FALLBACK_APP_REGISTRY;
+}
 
 function escapeHtml(value) {
   return String(value == null ? "" : value)
@@ -81,16 +100,29 @@ function statusDot(status) {
   return '<span class="status-dot ' + statusClass(status) + '" aria-hidden="true"></span>';
 }
 
-async function api(path) {
+async function api(path, options) {
+  const config = options || {};
+  const headers = { "Accept": "application/json", ...(config.headers || {}) };
+  if (config.body !== undefined) headers["Content-Type"] = "application/json";
+
   const response = await fetch(API_BASE + path, {
-    method: "GET",
+    method: config.method || "GET",
     credentials: "same-origin",
-    headers: { "Accept": "application/json" },
+    headers: headers,
+    body: config.body === undefined ? undefined : JSON.stringify(config.body),
     cache: "no-store"
   });
   if (!response.ok) {
-    const error = new Error("HTTP " + response.status);
+    let code = "http_" + response.status;
+    try {
+      const payload = await response.json();
+      code = payload && payload.error && payload.error.code ? payload.error.code : code;
+    } catch (_error) {
+      // Keep the bounded status-only fallback.
+    }
+    const error = new Error(code);
     error.status = response.status;
+    error.code = code;
     throw error;
   }
   return response.json();
@@ -102,7 +134,8 @@ async function refreshData() {
     observability: api("/observability"),
     jobs: api("/jobs"),
     models: api("/models"),
-    systems: api("/systems")
+    systems: api("/systems"),
+    apps: api("/apps")
   };
 
   await Promise.all(Object.entries(requests).map(async function (entry) {
@@ -118,18 +151,20 @@ async function refreshData() {
 
   state.loading = false;
   state.lastRefresh = new Date();
-  render();
+  const focused = document.activeElement;
+  if (!focused || !["INPUT", "TEXTAREA", "SELECT"].includes(focused.tagName)) {
+    render();
+  }
 }
 
 function appStatus(app) {
-  if (app.id === "knowledge") return state.errors.health ? "unknown" : "ready";
-  if (app.id === "benchmarks" || app.id === "ers") return "foundation";
-  return null;
+  if (app.id === "knowledge" && state.errors.health) return "unknown";
+  return app.status || null;
 }
 
 function navGroup(group, title) {
   const current = routePath();
-  const items = APP_REGISTRY.filter(function (item) { return item.group === group; });
+  const items = registry().filter(function (item) { return item.group === group; });
   return '<div class="nav-group">' +
     '<div class="nav-title">' + escapeHtml(title) + '</div>' +
     items.map(function (item) {
@@ -252,7 +287,7 @@ function dashboard() {
     '<section class="section-head"><div><div class="eyebrow">APPLICATIONS</div><h2>Workspace</h2></div>' +
       '<span class="section-note">Osobne aplikacje, wspólna AI Platform</span></section>' +
     '<section class="app-grid">' +
-      APP_REGISTRY.filter(function (app) { return app.group === "applications"; }).map(appCard).join("") +
+      registry().filter(function (app) { return app.group === "applications"; }).map(appCard).join("") +
     '</section>';
 }
 
@@ -389,11 +424,144 @@ function integrationsPage() {
 }
 
 function knowledgePage() {
-  return sectionPage("Knowledge", "Osobna aplikacja Knowledge Service.",
-    '<div class="app-hero panel"><span class="app-logo large">K</span><div><h2>Knowledge App</h2>' +
-    '<p>Platform API ma już kontrakty <code>/knowledge/search</code>, <code>/knowledge/ask</code> i otwieranie dokumentów. ' +
-    'Pełny interfejs Szukaj / Zapytaj AI powstanie w GUI-1.</p>' +
-    '<div class="capability-list"><span>Search API · LIVE</span><span>RAG API · LIVE</span><span>Source opening · LIVE</span></div></div></div>');
+  const k = state.knowledge;
+  const activeResult = k.tab === "search" ? knowledgeSearchResults(k.search) : knowledgeAskResult(k.ask);
+  return sectionPage("Knowledge", "Szukaj bezpośrednio w źródłach albo pytaj AI z cytowaniami.",
+    '<div class="knowledge-shell">' +
+      '<div class="knowledge-tabs" role="tablist">' +
+        '<button class="knowledge-tab' + (k.tab === "search" ? " active" : "") + '" data-knowledge-tab="search">Szukaj</button>' +
+        '<button class="knowledge-tab' + (k.tab === "ask" ? " active" : "") + '" data-knowledge-tab="ask">Zapytaj AI</button>' +
+      '</div>' +
+      '<form id="knowledge-form" class="knowledge-form panel">' +
+        '<div class="knowledge-input-row">' +
+          '<input id="knowledge-query" name="query" required maxlength="8192" autocomplete="off" ' +
+            'placeholder="' + (k.tab === "search" ? "np. MPC555 reset architecture" : "np. Dlaczego BDM może być niedostępne w tym ECU?") + '" ' +
+            'value="' + escapeHtml(k.query) + '">' +
+          '<button type="submit" class="primary-button"' + (k.loading ? " disabled" : "") + '>' +
+            (k.loading ? "Pracuję…" : (k.tab === "search" ? "Szukaj" : "Zapytaj")) +
+          '</button>' +
+        '</div>' +
+        '<div class="knowledge-options">' +
+          '<label>Domena <select id="knowledge-domain" name="domain">' +
+            '<option value="shared"' + (k.domain === "shared" ? " selected" : "") + '>shared</option>' +
+            '<option value="ecu-repair"' + (k.domain === "ecu-repair" ? " selected" : "") + '>ecu-repair</option>' +
+          '</select></label>' +
+          '<span>Tryb: hybrid</span><span>Źródła przez Platform API</span>' +
+        '</div>' +
+        (k.error ? '<div class="knowledge-error">' + escapeHtml(k.error) + '</div>' : '') +
+      '</form>' +
+      '<div class="knowledge-results">' + activeResult + '</div>' +
+    '</div>');
+}
+
+function knowledgeSearchResults(payload) {
+  if (!payload) {
+    return '<div class="panel knowledge-empty"><h3>Raw retrieval</h3><p>Wyniki pokażą fragment, relevance score, źródło i lokalizator.</p></div>';
+  }
+  const results = Array.isArray(payload.results) ? payload.results : [];
+  if (!results.length) {
+    return '<div class="panel knowledge-empty"><h3>Brak wyników</h3><p>Knowledge Service nie znalazł pasujących fragmentów.</p></div>';
+  }
+  return '<div class="knowledge-result-meta">Backend: ' + escapeHtml(payload.backend || "—") +
+    ' · ' + humanDurationMs(payload.duration_ms) + ' · ' + results.length + ' wyników</div>' +
+    results.map(function (result, index) {
+      const meta = result.metadata || {};
+      const source = result.source || {};
+      const locator = meta.page ? "str. " + meta.page : (meta.section || "");
+      const docId = meta.document_id;
+      const open = docId
+        ? '<a class="source-link" href="' + API_BASE + '/knowledge/documents/' + encodeURIComponent(docId) + '/content" target="_blank" rel="noopener">Otwórz źródło ↗</a>'
+        : '';
+      return '<article class="panel knowledge-result">' +
+        '<div class="knowledge-result-head"><span>#' + (index + 1) + '</span><strong>' +
+          Math.round(Number(result.score || 0) * 100) + '%</strong></div>' +
+        '<p>' + escapeHtml(result.text || "") + '</p>' +
+        '<div class="knowledge-source"><div><strong>' + escapeHtml(source.title || source.uri || "Źródło") + '</strong>' +
+          '<small>' + escapeHtml([source.type, locator].filter(Boolean).join(" · ")) + '</small></div>' + open + '</div>' +
+      '</article>';
+    }).join("");
+}
+
+function knowledgeAskResult(payload) {
+  if (!payload) {
+    return '<div class="panel knowledge-empty"><h3>RAG z cytowaniami</h3><p>Odpowiedź będzie oparta wyłącznie na wynikach Knowledge Service i pokaże użyte źródła.</p></div>';
+  }
+  const citations = Array.isArray(payload.citations) ? payload.citations : [];
+  const retrieval = payload.retrieval || {};
+  const execution = payload.execution || {};
+  let citationsHtml = citations.map(function (citation) {
+    const source = citation.source || {};
+    const open = citation.document_id
+      ? '<a class="source-link" href="' + API_BASE + '/knowledge/documents/' + encodeURIComponent(citation.document_id) + '/content" target="_blank" rel="noopener">Otwórz ↗</a>'
+      : '';
+    return '<article class="citation-card">' +
+      '<div class="citation-ref">' + escapeHtml(citation.ref || "source") + '</div>' +
+      '<div><strong>' + escapeHtml(source.title || source.uri || "Źródło") + '</strong>' +
+      '<small>' + escapeHtml([citation.page ? "str. " + citation.page : "", citation.section || ""].filter(Boolean).join(" · ")) + '</small>' +
+      '<p>' + escapeHtml(citation.snippet || "") + '</p></div>' + open +
+    '</article>';
+  }).join("");
+
+  return '<article class="panel knowledge-answer">' +
+    '<div class="panel-head"><h3>Odpowiedź</h3><span class="badge">' +
+      escapeHtml(payload.insufficient_context ? "LIMITED" : "CITED RAG") + '</span></div>' +
+    '<div class="knowledge-answer-body"><p class="answer-text">' + escapeHtml(payload.answer || "") + '</p>' +
+      (payload.insufficiency_reason ? '<p class="insufficient">' + escapeHtml(payload.insufficiency_reason) + '</p>' : '') +
+      '<div class="answer-meta"><span>Retrieval ' + escapeHtml(retrieval.backend || "—") + '</span>' +
+      '<span>' + humanDurationMs(retrieval.duration_ms) + '</span>' +
+      '<span>LLM ' + humanDurationMs(execution.duration_ms) + '</span></div>' +
+    '</div></article>' +
+    '<div class="citations-head"><h3>Źródła</h3><span>' + citations.length + '</span></div>' +
+    (citationsHtml || '<div class="panel knowledge-empty"><p>Brak cytowań.</p></div>');
+}
+
+async function runKnowledge(form) {
+  const query = String(new FormData(form).get("query") || "").trim();
+  const domain = String(new FormData(form).get("domain") || "shared");
+  if (!query) return;
+
+  state.knowledge.query = query;
+  state.knowledge.domain = domain;
+  state.knowledge.loading = true;
+  state.knowledge.error = null;
+  render();
+
+  const target = state.knowledge.tab === "search" ? "/knowledge/search" : "/knowledge/ask";
+  try {
+    const payload = await api(target, {
+      method: "POST",
+      body: {
+        schema_version: 1,
+        query: query,
+        mode: "hybrid",
+        context: { domain: domain }
+      }
+    });
+    if (state.knowledge.tab === "search") state.knowledge.search = payload;
+    else state.knowledge.ask = payload;
+  } catch (error) {
+    state.knowledge.error = "Knowledge API: " + (error.code || error.message || "unknown_error");
+  } finally {
+    state.knowledge.loading = false;
+    render();
+  }
+}
+
+function wirePageActions() {
+  document.querySelectorAll("[data-knowledge-tab]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      state.knowledge.tab = button.dataset.knowledgeTab;
+      state.knowledge.error = null;
+      render();
+    });
+  });
+  const form = document.getElementById("knowledge-form");
+  if (form) {
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      runKnowledge(form);
+    });
+  }
 }
 
 function placeholderApplication(title, text) {
@@ -441,6 +609,7 @@ function pageForRoute() {
 
 function render() {
   document.getElementById("app").innerHTML = shell(pageForRoute());
+  wirePageActions();
 }
 
 function navigate(url) {
