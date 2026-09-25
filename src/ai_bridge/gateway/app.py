@@ -652,7 +652,9 @@ def create_gateway_app(
             default_source="hermes",
         )
 
+    from ai_bridge.control_center.app import create_control_center_app
     from ai_bridge.platform.api import create_platform_app
+    app.mount("/control", create_control_center_app())
     app.mount(
         "/api/v1",
         create_platform_app(
