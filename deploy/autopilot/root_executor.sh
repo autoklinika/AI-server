@@ -38,12 +38,13 @@ stage="$1"
 step="$2"
 expected_sha="$3"
 
-[[ "$stage" =~ ^[EFGHIJL]$ ]] || fail "stage"
+[[ "$stage" =~ ^[EFGHIJLM]$ ]] || fail "stage"
 case "$stage" in
   E|F|G|H) WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-eh" ;;
   I) WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-i" ;;
   J) WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-j" ;;
   L) WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-l" ;;
+  M) WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-m" ;;
   *) fail "stage_worktree" ;;
 esac
 case "$step" in

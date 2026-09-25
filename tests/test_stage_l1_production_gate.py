@@ -45,7 +45,7 @@ def test_stage_l_release_contract_is_explicit():
     ]
 
     builder = (ROOT / "deploy/runtime/build_release.sh").read_text()
-    assert '[[ "$STAGE" =~ ^[GHIJL]$ ]]' in builder
+    assert '[[ "$STAGE" =~ ^[GHIJLM]$ ]]' in builder
     assert 'ERS_CONTRACT="${RELEASE_ERS_CONTRACT:-}"' in builder
     assert 'ers_domain: $ERS_CONTRACT' in builder
     assert "ers_domain_contract_version" in builder

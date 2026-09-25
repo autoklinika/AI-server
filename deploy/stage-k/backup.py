@@ -16,6 +16,7 @@ import shutil
 import socket
 from urllib.parse import urlparse
 
+import crt_dr
 from ers_dr import copy_object_set as copy_ers_object_set
 from ers_dr import fetch_snapshot_metadata as fetch_ers_snapshot_metadata
 
@@ -251,6 +252,10 @@ def create_backup(args) -> dict[str, Path]:
             cur.execute("SELECT pg_export_snapshot()")
             snapshot_id = cur.fetchone()[0]
         metadata = fetch_snapshot_metadata(conn)
+        crt_snapshot = None
+        if metadata["schema_version"] == crt_dr.REVISION:
+            crt_snapshot = crt_dr.snapshot(conn)
+            metadata["table_counts"].update({k: v["count"] for k, v in crt_snapshot["tables"].items()})
         ers_snapshot = fetch_ers_snapshot_metadata(conn)
         if ers_snapshot["active"]:
             metadata["table_counts"].update(ers_snapshot["table_counts"])
@@ -300,6 +305,9 @@ def create_backup(args) -> dict[str, Path]:
         },
         "table_counts": metadata["table_counts"],
     }
+
+    if crt_snapshot is not None:
+        postgres["crt"] = crt_snapshot
 
     knowledge_manifest = {
         "manifest_schema_version": 2,

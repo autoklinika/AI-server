@@ -220,7 +220,8 @@ def test_stage_e_policy_defers_external_inbound_multiuser_to_stage_f():
 
 def test_privilege_bridge_allows_dedicated_worktrees_through_stage_j():
     text = (AUTO / 'root_executor.sh').read_text(encoding='utf-8')
-    assert '[[ "$stage" =~ ^[EFGHIJL]$ ]]' in text
+    assert '[[ "$stage" =~ ^[EFGHIJLM]$ ]]' in text
+    assert 'M) WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-m"' in text
     assert 'E|F|G|H) WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-eh"' in text
     assert 'I) WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-i"' in text
     assert 'J) WORKTREE="$ALLOWED_HOME/agent-worktrees/stage-j"' in text

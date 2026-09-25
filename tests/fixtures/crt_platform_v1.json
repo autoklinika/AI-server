@@ -1,0 +1,171 @@
+{
+  "manifest": {
+    "schema_id": "crt.platform.session-export",
+    "schema_version": 1,
+    "algorithm_version": "1",
+    "project_id": "1f014614-fb2d-44f5-b842-47993e69422b",
+    "session_id": "8c40526d-23f9-4763-909a-b1d68dc23451",
+    "source": {
+      "kind": "test",
+      "header_source": "test",
+      "started_at_utc": "2026-09-25T13:11:02.828743+00:00",
+      "adapter": "",
+      "bitrate": null,
+      "channel": null
+    },
+    "capture_mode": "silent",
+    "time_bounds": {
+      "min_timestamp_ns": 20,
+      "max_timestamp_ns": 30,
+      "clock": "source session clock; UTC correspondence unspecified"
+    },
+    "frame_count": 2,
+    "catalog_frame_count": 2,
+    "files": [
+      {
+        "relative_path": "sessions/live/capture.crt.jsonl",
+        "sha256": "2c401b7a52e27408ac207a4823541ace4352e144a621380989404efec3bd8ea2",
+        "bytes": 812,
+        "media_type": "application/x-ndjson",
+        "role": "raw_capture"
+      },
+      {
+        "relative_path": "sessions/imported/source/input.csv",
+        "sha256": "37a084be87246ef17563f0337770335bf02cd3d9cccb623b02e6b70d973ef74b",
+        "bytes": 17,
+        "media_type": "text/csv",
+        "role": "original_import"
+      }
+    ],
+    "artifacts": [
+      {
+        "id": "c7ddf806-c80b-4765-8572-fefd53e288d3",
+        "analysis_run_id": "2a8df0db-9e04-4222-809a-586880945eb7",
+        "artifact_type": "statistics",
+        "schema_version": 2,
+        "provider_id": "crt.test",
+        "provider_version": "1",
+        "algorithm_version": "2",
+        "sources": [
+          {
+            "session_id": "8c40526d-23f9-4763-909a-b1d68dc23451",
+            "source_kind": "session",
+            "source_reference": {}
+          }
+        ],
+        "sha256": "57413ce83ee1d989e384dfd3a82c6e2d9052a23c4204706bd2d7df11aa4c2d7c",
+        "metadata": {
+          "encoding": "utf-8",
+          "media_type": "application/json",
+          "size_bytes": 11
+        },
+        "created_at_utc": "2026-09-25T13:11:02.832522+00:00",
+        "file": {
+          "relative_path": "artifacts/2a8df0db-9e04-4222-809a-586880945eb7/stats.json",
+          "sha256": "57413ce83ee1d989e384dfd3a82c6e2d9052a23c4204706bd2d7df11aa4c2d7c",
+          "bytes": 11,
+          "media_type": "application/json",
+          "role": "analysis_artifact"
+        }
+      }
+    ],
+    "provenance": {
+      "session_schema_id": "crt-session-jsonl",
+      "session_schema_version": 1,
+      "decoder": "unknown; consult selected artifact provenance"
+    },
+    "omitted_data": [
+      "unselected artifacts",
+      "other sessions",
+      "markers",
+      "notes",
+      "attachments",
+      "unselected metadata",
+      "decoder files"
+    ],
+    "limitations": [
+      "local references only; file contents are not embedded",
+      "capture mode is recorded metadata, not a hardware guarantee",
+      "requires a quiescent project; not a live transactional snapshot"
+    ]
+  },
+  "context": {
+    "schema_id": "crt.platform.ai-context",
+    "schema_version": 1,
+    "algorithm_version": "1",
+    "project_id": "1f014614-fb2d-44f5-b842-47993e69422b",
+    "session_id": "8c40526d-23f9-4763-909a-b1d68dc23451",
+    "manifest_sha256": "d8edcaf466db28f37ec4f73098d7eb3863b0b331e4afb14cfe45ca77ce489cb4",
+    "source_files": [
+      {
+        "relative_path": "sessions/live/capture.crt.jsonl",
+        "sha256": "2c401b7a52e27408ac207a4823541ace4352e144a621380989404efec3bd8ea2",
+        "bytes": 812,
+        "media_type": "application/x-ndjson",
+        "role": "raw_capture"
+      },
+      {
+        "relative_path": "sessions/imported/source/input.csv",
+        "sha256": "37a084be87246ef17563f0337770335bf02cd3d9cccb623b02e6b70d973ef74b",
+        "bytes": 17,
+        "media_type": "text/csv",
+        "role": "original_import"
+      }
+    ],
+    "question": "Explain count",
+    "evidence": [
+      {
+        "artifact": {
+          "id": "c7ddf806-c80b-4765-8572-fefd53e288d3",
+          "analysis_run_id": "2a8df0db-9e04-4222-809a-586880945eb7",
+          "artifact_type": "statistics",
+          "schema_version": 2,
+          "provider_id": "crt.test",
+          "provider_version": "1",
+          "algorithm_version": "2",
+          "sources": [
+            {
+              "session_id": "8c40526d-23f9-4763-909a-b1d68dc23451",
+              "source_kind": "session",
+              "source_reference": {}
+            }
+          ],
+          "sha256": "57413ce83ee1d989e384dfd3a82c6e2d9052a23c4204706bd2d7df11aa4c2d7c",
+          "metadata": {
+            "encoding": "utf-8",
+            "media_type": "application/json",
+            "size_bytes": 11
+          },
+          "created_at_utc": "2026-09-25T13:11:02.832522+00:00",
+          "file": {
+            "relative_path": "artifacts/2a8df0db-9e04-4222-809a-586880945eb7/stats.json",
+            "sha256": "57413ce83ee1d989e384dfd3a82c6e2d9052a23c4204706bd2d7df11aa4c2d7c",
+            "bytes": 11,
+            "media_type": "application/json",
+            "role": "analysis_artifact"
+          }
+        },
+        "selected_payload": {
+          "count": 2
+        }
+      }
+    ],
+    "omitted_data": [
+      "unselected artifacts",
+      "other sessions",
+      "markers",
+      "notes",
+      "attachments",
+      "unselected metadata",
+      "decoder files",
+      "raw frame contents"
+    ],
+    "limitations": [
+      "local references only; file contents are not embedded",
+      "capture mode is recorded metadata, not a hardware guarantee",
+      "requires a quiescent project; not a live transactional snapshot",
+      "AI output is advisory and requires review"
+    ],
+    "maximum_bytes": 1048576
+  }
+}

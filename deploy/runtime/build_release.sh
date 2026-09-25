@@ -5,12 +5,13 @@ DEST="${1:?usage: $0 DEST RELEASE_ID}"
 RELEASE_ID="${2:?usage: $0 DEST RELEASE_ID}"
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 STAGE="${RELEASE_STAGE:?release stage required}"
-[[ "$STAGE" =~ ^[GHIJL]$ ]] || exit 2
+[[ "$STAGE" =~ ^[GHIJLM]$ ]] || exit 2
 STAGE_LC="${STAGE,,}"
 MIGRATION="${RELEASE_MIGRATION:?migration version required}"
 OBSERVABILITY_CONTRACT="${RELEASE_OBSERVABILITY_CONTRACT:-}"
 KNOWLEDGE_CONTRACT="${RELEASE_KNOWLEDGE_CONTRACT:-}"
 ERS_CONTRACT="${RELEASE_ERS_CONTRACT:-}"
+CRT_CONTRACT="${RELEASE_CRT_CONTRACT:-}"
 EXTRA_REQUIREMENTS="${RELEASE_EXTRA_REQUIREMENTS:-}"
 MIGRATION_TOOLING="${RELEASE_MIGRATION_TOOLING:-}"
 PYTHON_BIN="${PYTHON_BIN:-python3.14}"
@@ -170,6 +171,13 @@ if [[ -n "$KNOWLEDGE_CONTRACT" ]]; then
 fi
 if [[ -n "$ERS_CONTRACT" ]]; then
   printf "ers_domain_contract_version=%s\n" "$ERS_CONTRACT" >> "$DEST/RELEASE"
+fi
+
+if [[ "$STAGE" == "M" ]]; then
+  [[ "$CRT_CONTRACT" == "1" ]] || fail "Stage M requires CRT contract 1"
+  printf 'crt_domain_contract_version=%s\n' "$CRT_CONTRACT" >> "$DEST/RELEASE"
+  sed -i "/    platform_api: 1/a\\    crt_domain: $CRT_CONTRACT" "$DEST/metadata/release-manifest.yaml"
+  touch "$DEST/services/ai-bridge/src/ai_bridge/stage_m_enabled"
 fi
 
 python3 "$ROOT/deploy/stage-$STAGE_LC/validate_release_metadata.py" "$DEST"

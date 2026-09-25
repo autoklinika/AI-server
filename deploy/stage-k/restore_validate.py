@@ -7,6 +7,8 @@ opening probes. Production PostgreSQL and production Qdrant are never modified.
 """
 from __future__ import annotations
 
+import crt_dr
+
 import argparse
 from datetime import datetime, timezone
 import json
@@ -264,6 +266,7 @@ def relocate_and_verify(
 ) -> dict[str, int]:
     counts: dict[str, int] = {}
     with restore_conn(port, user, database) as conn:
+        crt_dr.verify_restored(conn, manifest["postgres"])
         with conn.cursor() as cur:
             for table, expected in manifest["postgres"]["table_counts"].items():
                 cur.execute(f"SELECT count(*) FROM {table}")
