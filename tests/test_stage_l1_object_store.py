@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from hashlib import sha256
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import event
@@ -11,7 +12,11 @@ from ai_bridge.domains.ers.artifacts import (
     ErsArtifactService,
 )
 from ai_bridge.domains.ers.storage.artifact_repository import ErsArtifactRepository
-from ai_bridge.domains.ers.storage.models import ErsCaseCounterModel
+from ai_bridge.domains.ers.storage.models import (
+    ErsCaseCounterModel,
+    ErsCaseEcuModel,
+    ErsEcuModel,
+)
 from ai_bridge.domains.ers.storage.repository import ErsCaseRepository
 from ai_bridge.knowledge.content_store import FileContentStore
 from ai_bridge.storage.base import Base
@@ -199,4 +204,33 @@ def test_artifact_versions_are_monotonic_and_content_verified_on_read(tmp_path):
 
     with pytest.raises(ErsArtifactContentUnavailable):
         service.read_version(third.id)
+    database.dispose()
+
+
+def test_artifact_cannot_reference_ecu_from_another_case(tmp_path):
+    database, cases, _artifacts, _store, service = setup_services(tmp_path)
+    first = cases.create_case(title="First", actor_id="operator")
+    second = cases.create_case(title="Second", actor_id="operator")
+
+    ecu = ErsEcuModel(id=uuid4(), metadata_json={})
+    with database.session() as session:
+        session.add(ecu)
+        session.flush()
+        session.add(ErsCaseEcuModel(
+            id=uuid4(),
+            case_id=first.id,
+            ecu_id=ecu.id,
+            role="original",
+        ))
+
+    content = b"not allowed"
+    with pytest.raises(ValueError, match="not linked to this case"):
+        service.ingest_bytes(
+            case_id=second.id,
+            artifact_kind="binary",
+            created_by="operator",
+            content=content,
+            ecu_id=ecu.id,
+        )
+    assert not _store.exists(sha256(content).hexdigest())
     database.dispose()
