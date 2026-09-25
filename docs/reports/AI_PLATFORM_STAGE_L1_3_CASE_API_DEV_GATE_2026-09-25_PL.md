@@ -179,14 +179,19 @@ Domyślna produkcyjna kompozycja nadal instaluje tylko WVC.
 
 ## Następny gate
 
-Po merge L1.3 potrzebny jest kontrolowany production gate:
-1. świeży Stage K backup;
-2. production `alembic upgrade 0004_ers_core_persistence`;
-3. schema/count verification;
-4. rollback test do `0003`;
-5. ponowne `0004`;
-6. dopiero potem włączenie ERSAdapter w produkcyjnym runtime release;
-7. realny HTTP smoke create/read/lifecycle;
-8. final Stage K backup/restore.
+Po merge L1.3 nadal nie wykonujemy production migration.
+
+Kolejność zgodna z Domain Contract v1:
+1. **L1.4 — Legacy seed migration**:
+   deterministic importer obecnego repo ERS, dry-run, CASE-0001 complete seed,
+   CASE-0002 metadata + 11 verified originals, idempotency;
+2. **L1.5 — ERS DR extension**:
+   Stage K manifest dla tabel `ers_*` i ERS object-set oraz isolated restore;
+3. **L1.6 — Production gate**:
+   świeży backup, `0004` upgrade, rollback/re-upgrade, runtime activation,
+   realny HTTP smoke i finalny backup/restore.
+
+Do końca L1.5 production pozostaje na schema `0003_knowledge_canonical`
+i Stage J pozostaje aktywnym runtime.
 
 L1.3 dev gate sam nie zmienia produkcji.
