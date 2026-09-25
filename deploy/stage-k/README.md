@@ -84,9 +84,9 @@ K1 = PASS, K2 Knowledge/WVC = PASS, K4 Knowledge = PASS. Stage K pozostaje otwar
 
 `k3_domains.py` tworzy osobne backupy domenowe pod `AI_Platform/ERS/`, `AI_Platform/Hermes/` i `AI_Platform/Platform/config/`. ERS jest snapshotem lokalnych danych bez `.git`; GitHub nie jest elementem backupu. Hermes SQLite jest kopiowany przez SQLite Backup API do lokalnego frozen DB, weryfikowany `quick_check`/SHA-256 i dopiero wtedy publikowany na GlobalNAS.
 
-`k3_secrets_backup.sh` tworzy osobny encrypted bundle `age` pod `AI_Platform/Platform/secrets/`. Plaintext nie jest zapisywany na NAS ani do pliku tymczasowego. Bundle jest szyfrowany do zaakceptowanego publicznego klucza SSH recovery i skrypt fail-closed sprawdza jego fingerprint przed szyfrowaniem.
+`k3_secrets_backup.sh` tworzy osobny encrypted bundle `age` pod `AI_Platform/Platform/secrets/`. Plaintext nie jest zapisywany na NAS ani do pliku tymczasowego. Nowe bundle są szyfrowane do zaakceptowanych recipientów `age-plugin-yubikey`; prywatny klucz PIV pozostaje sprzętowo w YubiKey, a do automatycznego szyfrowania potrzebny jest wyłącznie publiczny recipient. Polityka recipientów jest fail-closed i obsługuje wiele YubiKeyów.
 
-`k3_secrets_verify.py` weryfikuje manifest, SHA-256, nagłówek `age`, listę źródeł, fingerprint recipienta i brak nieoczekiwanych plików w secrets set. Prywatny klucz recovery pozostaje poza AI Serverem i GlobalNAS.
+`k3_secrets_verify.py` weryfikuje manifest, SHA-256, nagłówek `age`, listę źródeł i recipientów oraz brak nieoczekiwanych plików w secrets set. Zachowana jest kompatybilność weryfikacji z historycznymi bundle `ssh-ed25519`. Prywatny materiał recovery nie jest zapisywany na AI Serverze ani GlobalNAS.
 
 Runbook: `docs/runbooks/AI_PLATFORM_STAGE_K_SECRETS_RECOVERY_PL.md`.
 
