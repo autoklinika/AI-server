@@ -25,6 +25,9 @@ from ai_bridge.storage.base import Base
 
 
 JSON_TYPE = JSON().with_variant(JSONB(), "postgresql")
+NULLABLE_JSON_TYPE = JSON(none_as_null=True).with_variant(
+    JSONB(none_as_null=True), "postgresql"
+)
 UUID_TYPE = Uuid(as_uuid=True)
 
 
@@ -391,7 +394,7 @@ class ErsMeasurementModel(Base):
     channel: Mapped[str | None] = mapped_column(String(160))
     value_numeric: Mapped[float | None] = mapped_column(Float)
     value_text: Mapped[str | None] = mapped_column(Text)
-    value_json: Mapped[dict | None] = mapped_column(JSON_TYPE)
+    value_json: Mapped[dict | None] = mapped_column(NULLABLE_JSON_TYPE)
     unit: Mapped[str | None] = mapped_column(String(64))
     captured_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow

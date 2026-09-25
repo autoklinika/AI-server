@@ -11,6 +11,8 @@ from ai_bridge.storage.database import Database
 from .models import (
     ErsArtifactModel,
     ErsArtifactVersionModel,
+    ErsCaseAssetModel,
+    ErsCaseEcuModel,
     ErsCaseModel,
 )
 
@@ -77,6 +79,21 @@ class ErsArtifactRepository:
     def __init__(self, database: Database) -> None:
         self._database = database
 
+    def validate_scope(
+        self,
+        *,
+        case_id: UUID,
+        ecu_id: UUID | None = None,
+        asset_id: UUID | None = None,
+    ) -> None:
+        with self._database.session() as session:
+            self._validate_scope_session(
+                session,
+                case_id=case_id,
+                ecu_id=ecu_id,
+                asset_id=asset_id,
+            )
+
     def create_with_version(
         self,
         *,
@@ -101,8 +118,12 @@ class ErsArtifactRepository:
         self._validate_version(object_sha256, byte_size, availability)
 
         with self._database.session() as session:
-            if session.get(ErsCaseModel, case_id) is None:
-                raise ErsArtifactCaseNotFound(str(case_id))
+            self._validate_scope_session(
+                session,
+                case_id=case_id,
+                ecu_id=ecu_id,
+                asset_id=asset_id,
+            )
 
             now = _now()
             artifact = ErsArtifactModel(
@@ -209,6 +230,35 @@ class ErsArtifactRepository:
                 .order_by(ErsArtifactVersionModel.version_no)
             ).all()
             return tuple(self._version_snapshot(row) for row in rows)
+
+    @staticmethod
+    def _validate_scope_session(
+        session,
+        *,
+        case_id: UUID,
+        ecu_id: UUID | None,
+        asset_id: UUID | None,
+    ) -> None:
+        if session.get(ErsCaseModel, case_id) is None:
+            raise ErsArtifactCaseNotFound(str(case_id))
+        if ecu_id is not None:
+            linked_ecu = session.scalar(
+                select(ErsCaseEcuModel.id).where(
+                    ErsCaseEcuModel.case_id == case_id,
+                    ErsCaseEcuModel.ecu_id == ecu_id,
+                )
+            )
+            if linked_ecu is None:
+                raise ValueError("ecu_id is not linked to this case")
+        if asset_id is not None:
+            linked_asset = session.scalar(
+                select(ErsCaseAssetModel.id).where(
+                    ErsCaseAssetModel.case_id == case_id,
+                    ErsCaseAssetModel.asset_id == asset_id,
+                )
+            )
+            if linked_asset is None:
+                raise ValueError("asset_id is not linked to this case")
 
     @staticmethod
     def _validate_header(artifact_kind: str, created_by: str) -> None:

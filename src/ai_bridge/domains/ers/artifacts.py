@@ -54,6 +54,11 @@ class ErsArtifactService:
         artifact_metadata: dict | None = None,
         version_metadata: dict | None = None,
     ) -> ErsStoredArtifact:
+        self._repository.validate_scope(
+            case_id=case_id,
+            ecu_id=ecu_id,
+            asset_id=asset_id,
+        )
         stored = self._object_store.put(content)
         artifact, version = self._repository.create_with_version(
             case_id=case_id,
