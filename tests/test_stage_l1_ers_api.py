@@ -39,15 +39,15 @@ def create_case(client, *, legacy=None):
     return client.post("/api/v1/ecu-repair/cases", json=payload)
 
 
-def test_ers_is_opt_in_domain_and_not_default_production_composition():
+def test_ers_is_default_production_domain_and_can_be_explicitly_omitted():
     default = create_app(Settings(database_url="sqlite+pysqlite://"))
-    assert "/api/v1/ecu-repair/cases" not in default.openapi()["paths"]
+    assert "/api/v1/ecu-repair/cases" in default.openapi()["paths"]
 
-    explicit = create_app(
+    without_domains = create_app(
         Settings(database_url="sqlite+pysqlite://"),
-        domains=(ERSAdapter(),),
+        domains=(),
     )
-    assert "/api/v1/ecu-repair/cases" in explicit.openapi()["paths"]
+    assert "/api/v1/ecu-repair/cases" not in without_domains.openapi()["paths"]
 
 
 def test_case_create_get_patch_etag_and_stale_conflict(tmp_path):

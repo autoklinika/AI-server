@@ -14,6 +14,7 @@ from ai_bridge.settings import Settings, get_settings
 from ai_bridge.storage.database import Database
 
 from ai_bridge.domains.contracts import DomainAdapter
+from ai_bridge.domains.ers.adapter import ERSAdapter
 from ai_bridge.domains.wvc.adapter import WVCAdapter
 
 
@@ -84,7 +85,7 @@ def create_app(settings: Settings | None = None, *, domains: tuple[DomainAdapter
                 components=HealthComponents(database="unavailable"),
             )
 
-    for domain in (WVCAdapter(),) if domains is None else domains:
+    for domain in (WVCAdapter(), ERSAdapter()) if domains is None else domains:
         domain.install(app, resolved, database)
     return app
 

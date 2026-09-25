@@ -5,11 +5,14 @@ DEST="${1:?usage: $0 DEST RELEASE_ID}"
 RELEASE_ID="${2:?usage: $0 DEST RELEASE_ID}"
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 STAGE="${RELEASE_STAGE:?release stage required}"
-[[ "$STAGE" =~ ^[GHIJ]$ ]] || exit 2
+[[ "$STAGE" =~ ^[GHIJL]$ ]] || exit 2
 STAGE_LC="${STAGE,,}"
 MIGRATION="${RELEASE_MIGRATION:?migration version required}"
 OBSERVABILITY_CONTRACT="${RELEASE_OBSERVABILITY_CONTRACT:-}"
 KNOWLEDGE_CONTRACT="${RELEASE_KNOWLEDGE_CONTRACT:-}"
+ERS_CONTRACT="${RELEASE_ERS_CONTRACT:-}"
+EXTRA_REQUIREMENTS="${RELEASE_EXTRA_REQUIREMENTS:-}"
+MIGRATION_TOOLING="${RELEASE_MIGRATION_TOOLING:-}"
 PYTHON_BIN="${PYTHON_BIN:-python3.14}"
 
 OWNER_UID="$(stat -c '%u' "$ROOT")"
@@ -122,11 +125,19 @@ if [[ -n "$KNOWLEDGE_CONTRACT" ]]; then
   sed -i 's/embedding_provider: contract-only/embedding_provider: OllamaEmbeddingAdapter/' "$DEST/metadata/release-manifest.yaml"
   sed -i 's/knowledge_backend: contract-only/knowledge_backend: CompositeKnowledgeBackend/' "$DEST/metadata/release-manifest.yaml"
 fi
+if [[ -n "$ERS_CONTRACT" ]]; then
+  sed -i "/    platform_api: 1/a\\    ers_domain: $ERS_CONTRACT" "$DEST/metadata/release-manifest.yaml"
+fi
 
 echo "===== AI BRIDGE VENV ====="
 "$PYTHON_BIN" -m venv "$DEST/services/ai-bridge/.venv"
 "$DEST/services/ai-bridge/.venv/bin/python" -m pip   --disable-pip-version-check install   -r "$ROOT/deploy/stage-a/locks/ai-bridge.requirements.txt"
 "$DEST/services/ai-bridge/.venv/bin/python" -m pip   --disable-pip-version-check install   --no-deps "$DEST/services/ai-bridge"
+
+if [[ -n "$EXTRA_REQUIREMENTS" ]]; then
+  [[ "$EXTRA_REQUIREMENTS" == "$ROOT"/deploy/* && -f "$EXTRA_REQUIREMENTS" ]]     || fail "invalid extra requirements path"
+  "$DEST/services/ai-bridge/.venv/bin/python" -m pip     --disable-pip-version-check install     -r "$EXTRA_REQUIREMENTS"
+fi
 
 echo "===== AI GATEWAY VENV ====="
 "$PYTHON_BIN" -m venv "$DEST/services/ai-gateway/.venv"
@@ -156,6 +167,9 @@ if [[ -n "$OBSERVABILITY_CONTRACT" ]]; then
 fi
 if [[ -n "$KNOWLEDGE_CONTRACT" ]]; then
   printf "knowledge_service_contract_version=%s\n" "$KNOWLEDGE_CONTRACT" >> "$DEST/RELEASE"
+fi
+if [[ -n "$ERS_CONTRACT" ]]; then
+  printf "ers_domain_contract_version=%s\n" "$ERS_CONTRACT" >> "$DEST/RELEASE"
 fi
 
 python3 "$ROOT/deploy/stage-$STAGE_LC/validate_release_metadata.py" "$DEST"
@@ -188,6 +202,15 @@ from ai_bridge.knowledge.pdf_ingestion import PdfKnowledgeIngestor, PdfTextExtra
 from ai_bridge.knowledge.rag import build_rag_prompt, parse_rag_response
 from ai_bridge.knowledge.rerank import TechnicalEvidenceReranker
 print("KNOWLEDGE SERVICE: PASS")
+PY
+fi
+
+if [[ "$MIGRATION_TOOLING" == "1" ]]; then
+  "$DEST/services/ai-bridge/.venv/bin/python" - <<'PY'
+import alembic
+import mako
+import markupsafe
+print("MIGRATION TOOLING: PASS")
 PY
 fi
 
