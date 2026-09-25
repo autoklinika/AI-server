@@ -30,6 +30,7 @@ from ai_bridge.knowledge.rag import (
     referenced_source_refs,
 )
 from ai_bridge.knowledge.runtime import KnowledgeRuntime
+from ai_bridge.providers.accelerators import accelerator_state_snapshot
 from ai_bridge.providers.contracts import KnowledgeQuery, LLMRequest
 from ai_bridge.storage.object_store import (
     FileObjectStore,
@@ -494,6 +495,9 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
         scheduler = await gateway.state.scheduler.snapshot()
         leases = await gateway.state.resource_leases.snapshot()
         gpu = gateway.state.resource_leases.residency.snapshot()
+        accelerators = accelerator_state_snapshot(
+            gateway.state.accelerator_registry, gpu
+        )
         cleanup = ((gpu.get("cleanup_evidence") or {}).get("residency") or {})
         provider = gateway.state.platform_provider
         return {
@@ -511,6 +515,7 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                 "loaded_models": cleanup.get("loaded_models"),
                 "cleanup_pending": cleanup.get("cleanup_pending"),
             },
+            "accelerators": accelerators,
             "execution": {"provider": provider.provider_id, "node": provider.node_id,
                           "logical_model": "reasoning-main"},
             "jobs": job_metrics(scheduler),
@@ -544,6 +549,7 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                             },
                             "resource_leases": snapshot["resource_leases"],
                             "gpu_residency": snapshot["gpu_residency"],
+                            "accelerators": snapshot["accelerators"],
                             "inference": {"status": "ready" if inference_ready else "unavailable"},
                         }, compatibility_health="not_probed")
 

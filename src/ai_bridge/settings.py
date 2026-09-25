@@ -6,6 +6,7 @@ from pathlib import Path
 from pydantic import SecretStr, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from ai_bridge.providers.accelerators import AcceleratorRegistry
 from ai_bridge.providers.registry import DescriptorRegistry
 
 
@@ -50,6 +51,9 @@ class Settings(BaseSettings):
     # Optional JSON static inventory. None derives the D.3 baseline from node_id.
     # Gateway validates existing single-node bindings before creating clients.
     gateway_registry: DescriptorRegistry | None = None
+    # Stage N0 static accelerator inventory. It is descriptive only: live
+    # routing remains on the existing shared local resource pool until N1.
+    gateway_accelerator_registry: AcceleratorRegistry | None = None
 
     # External Resource Manager leases let FLUX/LTX and other non-HTTP workers
     # reserve the same admission slot as Ollama. Idle leases expire so a crashed
