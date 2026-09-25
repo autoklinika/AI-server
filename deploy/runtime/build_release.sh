@@ -123,6 +123,9 @@ if [[ -n "$KNOWLEDGE_CONTRACT" ]]; then
   sed -i 's/embedding_provider: contract-only/embedding_provider: OllamaEmbeddingAdapter/' "$DEST/metadata/release-manifest.yaml"
   sed -i 's/knowledge_backend: contract-only/knowledge_backend: CompositeKnowledgeBackend/' "$DEST/metadata/release-manifest.yaml"
 fi
+if [[ -n "$ERS_CONTRACT" ]]; then
+  sed -i "/    platform_api: 1/a\\    ers_domain: $ERS_CONTRACT" "$DEST/metadata/release-manifest.yaml"
+fi
 
 echo "===== AI BRIDGE VENV ====="
 "$PYTHON_BIN" -m venv "$DEST/services/ai-bridge/.venv"
