@@ -21,11 +21,11 @@ jobs:
         run: python -m pip install -e '.[dev]'
       - name: Validate active deployment scripts
         run: |
-          find deploy/stage-a deploy/stage-b deploy/stage-c deploy/stage-d deploy/stage-e deploy/stage-f deploy/stage-g deploy/stage-h deploy/stage-i deploy/stage-j deploy/stage-j4 deploy/stage-l deploy/runtime deploy/autopilot -type f -name '*.sh' -print0 | sort -z | xargs -0 -n1 bash -n
+          find deploy/stage-a deploy/stage-b deploy/stage-c deploy/stage-d deploy/stage-e deploy/stage-f deploy/stage-g deploy/stage-h deploy/stage-i deploy/stage-j deploy/stage-j4 deploy/stage-l deploy/stage-m deploy/stage-o deploy/runtime deploy/autopilot -type f -name '*.sh' -print0 | sort -z | xargs -0 -n1 bash -n
           bash -n tools/local_video/generate-video-telegram
           bash -n tools/local_video/hermes-video-dispatch
       - name: Compile Python sources
-        run: python -m compileall -q src tools/local_image tools/local_video integrations deploy/stage-e deploy/stage-f deploy/stage-g deploy/stage-h deploy/stage-i deploy/stage-j deploy/stage-j4 deploy/runtime deploy/autopilot
+        run: python -m compileall -q src tools/local_image tools/local_video integrations deploy/stage-e deploy/stage-f deploy/stage-g deploy/stage-h deploy/stage-i deploy/stage-j deploy/stage-j4 deploy/stage-l deploy/stage-m deploy/stage-o deploy/runtime deploy/autopilot
       - name: Provider and contract tests
         run: |
           pytest tests/test_provider_contracts.py tests/test_agent_provider_contracts.py tests/test_media_provider_contracts.py tests/test_embedding_knowledge_contracts.py
@@ -78,3 +78,8 @@ jobs:
           PYTHON_BIN: python
         run: |
           bash deploy/stage-m/build_release.sh "$RUNNER_TEMP/stage-m-ci-release" "stage-m-${GITHUB_SHA::12}"
+      - name: Validate Stage O release build
+        env:
+          PYTHON_BIN: python
+        run: |
+          bash deploy/stage-o/build_release.sh "$RUNNER_TEMP/stage-o-ci-release" "stage-o-${GITHUB_SHA::12}"

@@ -5,13 +5,14 @@ DEST="${1:?usage: $0 DEST RELEASE_ID}"
 RELEASE_ID="${2:?usage: $0 DEST RELEASE_ID}"
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 STAGE="${RELEASE_STAGE:?release stage required}"
-[[ "$STAGE" =~ ^[GHIJLM]$ ]] || exit 2
+[[ "$STAGE" =~ ^[GHIJLMO]$ ]] || exit 2
 STAGE_LC="${STAGE,,}"
 MIGRATION="${RELEASE_MIGRATION:?migration version required}"
 OBSERVABILITY_CONTRACT="${RELEASE_OBSERVABILITY_CONTRACT:-}"
 KNOWLEDGE_CONTRACT="${RELEASE_KNOWLEDGE_CONTRACT:-}"
 ERS_CONTRACT="${RELEASE_ERS_CONTRACT:-}"
 CRT_CONTRACT="${RELEASE_CRT_CONTRACT:-}"
+CONTROL_CENTER_CONTRACT="${RELEASE_CONTROL_CENTER_CONTRACT:-}"
 EXTRA_REQUIREMENTS="${RELEASE_EXTRA_REQUIREMENTS:-}"
 MIGRATION_TOOLING="${RELEASE_MIGRATION_TOOLING:-}"
 PYTHON_BIN="${PYTHON_BIN:-python3.14}"
@@ -129,6 +130,9 @@ fi
 if [[ -n "$ERS_CONTRACT" ]]; then
   sed -i "/    platform_api: 1/a\\    ers_domain: $ERS_CONTRACT" "$DEST/metadata/release-manifest.yaml"
 fi
+if [[ -n "$CONTROL_CENTER_CONTRACT" ]]; then
+  sed -i "/    platform_api: 1/a\\    control_center: $CONTROL_CENTER_CONTRACT" "$DEST/metadata/release-manifest.yaml"
+fi
 
 echo "===== AI BRIDGE VENV ====="
 "$PYTHON_BIN" -m venv "$DEST/services/ai-bridge/.venv"
@@ -172,9 +176,12 @@ fi
 if [[ -n "$ERS_CONTRACT" ]]; then
   printf "ers_domain_contract_version=%s\n" "$ERS_CONTRACT" >> "$DEST/RELEASE"
 fi
+if [[ -n "$CONTROL_CENTER_CONTRACT" ]]; then
+  printf "control_center_contract_version=%s\n" "$CONTROL_CENTER_CONTRACT" >> "$DEST/RELEASE"
+fi
 
-if [[ "$STAGE" == "M" ]]; then
-  [[ "$CRT_CONTRACT" == "1" ]] || fail "Stage M requires CRT contract 1"
+if [[ "$STAGE" == "M" || "$STAGE" == "O" ]]; then
+  [[ "$CRT_CONTRACT" == "1" ]] || fail "Stage $STAGE requires CRT contract 1"
   printf 'crt_domain_contract_version=%s\n' "$CRT_CONTRACT" >> "$DEST/RELEASE"
   sed -i "/    platform_api: 1/a\\    crt_domain: $CRT_CONTRACT" "$DEST/metadata/release-manifest.yaml"
   touch "$DEST/services/ai-bridge/src/ai_bridge/stage_m_enabled"
@@ -210,6 +217,14 @@ from ai_bridge.knowledge.pdf_ingestion import PdfKnowledgeIngestor, PdfTextExtra
 from ai_bridge.knowledge.rag import build_rag_prompt, parse_rag_response
 from ai_bridge.knowledge.rerank import TechnicalEvidenceReranker
 print("KNOWLEDGE SERVICE: PASS")
+PY
+fi
+
+if [[ -n "$CONTROL_CENTER_CONTRACT" ]]; then
+  "$DEST/services/ai-gateway/.venv/bin/python" - <<'PY'
+from ai_bridge.control_center.app import create_control_center_app
+assert create_control_center_app() is not None
+print("CONTROL CENTER: PASS")
 PY
 fi
 
