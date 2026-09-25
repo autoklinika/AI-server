@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from ai_bridge import __version__
+from ai_bridge.control_center.app import create_control_center_app
 from ai_bridge.core.health import HealthComponents, HealthResponse
 from ai_bridge.core.errors import BatchIdentityConflict, UnsupportedSchemaVersion
 from ai_bridge.settings import Settings, get_settings
@@ -87,6 +88,14 @@ def create_app(settings: Settings | None = None, *, domains: tuple[DomainAdapter
 
     for domain in (WVCAdapter(), ERSAdapter()) if domains is None else domains:
         domain.install(app, resolved, database)
+
+    app.mount(
+        "/control",
+        create_control_center_app(
+            platform_base_url=resolved.gateway_url.rstrip("/") + "/api/v1",
+            platform_api_token=resolved.platform_api_token,
+        ),
+    )
     return app
 
 
