@@ -219,7 +219,7 @@ def release_identity() -> dict[str, str]:
         if "=" in raw:
             key, value = raw.split("=", 1)
             values[key] = value
-    require(values.get("stage") in {"J", "L"}, "active production stage is not J/L")
+    require(values.get("stage") in {"J", "L", "M"}, "active production stage is not J/L/M")
     require(re.fullmatch(r"[0-9a-f]{40}", values.get("source_git_sha", "")) is not None,
             "active release source SHA unavailable")
     return values

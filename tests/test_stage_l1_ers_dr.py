@@ -348,3 +348,16 @@ def test_stage_k_release_identity_accepts_stage_l(tmp_path, monkeypatch):
     identity = backup.release_identity()
     assert identity["stage"] == "L"
     assert identity["source_git_sha"] == "b" * 40
+
+def test_stage_k_release_identity_accepts_stage_m(tmp_path, monkeypatch):
+    release = tmp_path / "release"
+    release.mkdir()
+    (release / "RELEASE").write_text(
+        "stage=M\n"
+        "release_id=stage-m-test\n"
+        f"source_git_sha={'c' * 40}\n"
+    )
+    monkeypatch.setattr(backup, "active_release", lambda: release)
+    identity = backup.release_identity()
+    assert identity["stage"] == "M"
+    assert identity["source_git_sha"] == "c" * 40
