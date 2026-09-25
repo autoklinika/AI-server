@@ -2,68 +2,116 @@
 
 ## Cel
 
-Ten runbook opisuje odzyskanie sekretów z zaszyfrowanego bundle Stage K bez przechowywania prywatnego klucza na AI Serverze lub GlobalNAS.
+Sekrety Stage K są archiwizowane jako `secrets.tar.gz.age` pod
+`AI_Platform/Platform/secrets/<tier>/<backup_id>/`.
 
-Encrypted bundle znajduje się pod `AI_Platform/Platform/secrets/<tier>/<backup_id>/secrets.tar.gz.age`.
+Od 2026-09-25 docelowym mechanizmem recovery jest `age-plugin-yubikey` z kluczem
+PIV ECC P-256 wygenerowanym wewnątrz YubiKey 5C. AI Server przechowuje wyłącznie
+publiczny recipient potrzebny do szyfrowania. Prywatny materiał klucza nie opuszcza
+YubiKeya.
 
-Prywatny klucz recovery jest kluczem SSH Ed25519 odpowiadającym fingerprintowi zapisanym w `manifest.json`. Dla pierwszego recovery setu fingerprint to `SHA256:BVPwRUzB0IbP/6QVNsy9/XbIxs8MxHxbvFJ6soFNUPM`.
+Historyczne bundle utworzone przed migracją mogą nadal używać `ssh-ed25519`.
+`k3_secrets_verify.py` zachowuje ich kompatybilność i weryfikuje historyczny
+zaakceptowany fingerprint.
+## Bieżąca polityka YubiKey
 
-## Zasady bezpieczeństwa
+Pierwszy klucz recovery:
+- YubiKey 5C, PIV `RETIRED1` / slot `0x82`;
+- algorytm ECC P-256;
+- `PIN policy = once`;
+- `Touch policy = never`;
+- management key jest losowy i przechowywany na YubiKeyu pod ochroną PIN-u.
 
-- Nie kopiuj prywatnego klucza recovery na produkcyjny AI Server.
-- Nie przechowuj odszyfrowanego archiwum na GlobalNAS.
-- Przed odszyfrowaniem zweryfikuj `manifest.sha256`, SHA-256 bundle i fingerprint recipienta.
-- Odszyfrowuj wyłącznie na zaufanym recovery workstation posiadającym prywatny klucz.
-- Restore wykonuj dopiero na przygotowanym replacement/recovery host.
+Automatyczny backup nie wymaga podłączonego YubiKeya. `age` korzysta tylko z
+publicznego recipienta. YubiKey jest wymagany dopiero do odszyfrowania.
 
+Po zakończeniu recovery należy odłączyć YubiKey. Odłączenie kończy sesję PIV i
+czyści cache PIN wynikający z polityki `once`.
 ## Weryfikacja przed decrypt
 
 Na AI Serverze lub recovery host uruchom:
 
 ```bash
-python3 deploy/stage-k/k3_secrets_verify.py /mnt/AI_Platform/Platform/secrets/<tier>/<backup_id>
+python3 deploy/stage-k/k3_secrets_verify.py \
+  /mnt/AI_Platform/Platform/secrets/<tier>/<backup_id>
 ```
 
-Wynik musi mieć `status=PASS`.
+Wynik musi mieć `"status": "PASS"`. Dla nowych backupów oczekiwany jest
+`"recipient_type": "age-plugin-yubikey"` i `manifest_schema_version = 2`.
 
-## Decrypt test na recovery workstation
+Nie odszyfrowuj bundle, którego integralność lub recipient policy nie przechodzi
+weryfikacji.
+## Przygotowanie identity stub na recovery host
 
-Zainstaluj `age`, a następnie użyj prywatnego klucza SSH odpowiadającego recipientowi:
+Identity stub nie zawiera prywatnego klucza. Można go odtworzyć z podłączonego
+YubiKeya:
 
 ```bash
-age -d -i ~/.ssh/id_ed25519_ai_server \
+age-plugin-yubikey --identity --slot 1 > yubikey-identity.txt
+chmod 600 yubikey-identity.txt
+```
+
+Publiczny recipient można sprawdzić:
+
+```bash
+age-plugin-yubikey --list
+```
+
+Do normalnego backupu plik identity nie jest wymagany.
+## Decrypt test
+
+Po zweryfikowaniu bundle:
+
+```bash
+age -d \
+  -i yubikey-identity.txt \
   -o /tmp/stage-k-secrets.tar.gz \
   secrets.tar.gz.age
 
 tar -tzf /tmp/stage-k-secrets.tar.gz
 ```
 
-Lista musi zawierać tylko oczekiwane ścieżki recovery.
-
-Po kontroli usuń plaintext:
+Program poprosi o PIN zgodnie z polityką PIV. Fizyczne dotknięcie klucza nie jest
+wymagane. Po kontroli usuń plaintext:
 
 ```bash
 rm -f /tmp/stage-k-secrets.tar.gz
 ```
-
 ## Preferowany restore bez plaintextowego archiwum
 
-Na finalnym replacement host preferowany jest streaming decrypt bez zapisywania plaintext tar:
+Na replacement host preferowany jest streaming decrypt:
 
 ```bash
-age -d -i ~/.ssh/id_ed25519_ai_server secrets.tar.gz.age | \
+age -d -i yubikey-identity.txt secrets.tar.gz.age | \
   ssh <recovery-host> 'sudo tar -xzf - -C /'
 ```
 
-Przed wykonaniem takiego restore należy sprawdzić listę plików, docelowe owner/mode oraz zatrzymać usługi korzystające z przywracanych sekretów.
+Przed restore sprawdź listę plików, docelowe owner/mode i zatrzymaj usługi
+korzystające z przywracanych sekretów. Po restore wykonaj health check AI Bridge,
+AI Gateway, Hermes oraz dostępu do GlobalNAS.
+## Drugi YubiKey 5C
 
-Po restore wymagane jest:
-- właściciel i uprawnienia zgodne z manifestem/procedurą;
-- `systemctl daemon-reload`, jeżeli zmieniono konfigurację usług;
-- restart tylko usług wymagających przywróconych sekretów;
-- health check AI Bridge, AI Gateway, Hermes i dostępu do GlobalNAS;
-- brak sekretów w logach i historii shell.
+Każdy YubiKey ma własny niezależny klucz PIV. Nie klonujemy prywatnych kluczy.
 
-## K5
+Po dodaniu drugiego 5C:
+1. wygeneruj jego identity w odpowiednim retired slocie;
+2. dopisz publiczny recipient do `age-recipients.txt`;
+3. dodaj recipient do `ACCEPTED_YUBIKEY_RECIPIENTS` oraz aktywnej polityki w
+   `deploy/stage-k/k3_recipients.py`;
+4. uruchom testy i wykonaj decrypt tego samego testowego bundle każdym YubiKeyem.
 
-K5 ma wykonać rzeczywisty decrypt/restore drill na zewnętrznym recovery workstation lub replacement-host. Nie wykonujemy self-decrypt na produkcyjnym AI Serverze, ponieważ wymagałoby to umieszczenia tam prywatnego klucza recovery.
+`age` zaszyfruje nowe bundle do obu recipientów. Każdy z dwóch kluczy będzie mógł
+samodzielnie wykonać recovery. Stare backupy pozostają weryfikowalne według
+recipientów zapisanych w ich własnym `manifest.json`.
+## Wymagania hosta AI Server
+
+Runtime Stage K używa:
+- `/srv/ai-data/tools/age/usr/bin/age` 1.2.1;
+- `/srv/ai-data/tools/age/usr/bin/age-plugin-yubikey` 0.5.1;
+- `pcscd` + `libccid` do operacji PIV/recovery.
+
+Na tym hoście wymagane są dodatkowo dwie lokalne reguły:
+- `/etc/polkit-1/rules.d/60-pcsc-harrypotter.rules` — dostęp użytkownika `harrypotter` do PC/SC z sesji zdalnej;
+- `/etc/udev/rules.d/99-yubikey-pcsc.rules` — urządzenia Yubico smart-card otrzymują grupę `pcscd` i tryb `0660`.
+
+Brak reguły udev objawia się w `pcscd` jako `LIBUSB_ERROR_ACCESS`. Nie należy omijać tego przez globalne `MODE=0666` ani uruchamianie `pcscd` jako root.

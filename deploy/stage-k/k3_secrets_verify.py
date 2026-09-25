@@ -9,7 +9,13 @@ from pathlib import Path
 import re
 import subprocess
 
-EXPECTED_RECIPIENT_FINGERPRINT = "SHA256:BVPwRUzB0IbP/6QVNsy9/XbIxs8MxHxbvFJ6soFNUPM"
+from k3_recipients import (
+    LEGACY_SSH_RECIPIENT_FINGERPRINT,
+    RecipientError,
+    recipient_lines,
+    recipient_set_sha256,
+    validate_yubikey_recipients,
+)
 
 
 def require(condition: bool, message: str) -> None:
@@ -23,6 +29,53 @@ def sha256(path: Path) -> str:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+def verify_recipient_metadata(
+    encryption: dict[str, object], recipients: Path, schema: int
+) -> dict[str, object]:
+    recipient_type = encryption.get("recipient_type")
+
+    if recipient_type == "ssh-ed25519":
+        fingerprint = subprocess.check_output(
+            ["ssh-keygen", "-lf", str(recipients)], text=True
+        ).strip()
+        require(
+            fingerprint == encryption.get("recipient_fingerprint"),
+            "recipient fingerprint mismatch",
+        )
+        fields = fingerprint.split()
+        require(
+            len(fields) >= 2 and fields[1] == LEGACY_SSH_RECIPIENT_FINGERPRINT,
+            "recipient is not the accepted legacy recovery key",
+        )
+        return {"recipient_type": recipient_type, "recipient_evidence": fingerprint}
+
+    require(
+        recipient_type == "age-plugin-yubikey",
+        f"unexpected recipient type: {recipient_type}",
+    )
+    require(schema >= 2, "YubiKey recipient metadata requires manifest schema >= 2")
+    try:
+        lines = validate_yubikey_recipients(recipient_lines(recipients))
+    except RecipientError as exc:
+        raise RuntimeError(str(exc)) from exc
+    digest = recipient_set_sha256(lines)
+    require(
+        encryption.get("recipient_count") == len(lines),
+        "recipient count mismatch",
+    )
+    require(
+        encryption.get("recipients") == lines,
+        "recipient list mismatch",
+    )
+    require(
+        encryption.get("recipients_sha256") == digest,
+        "recipient set checksum mismatch",
+    )
+    return {
+        "recipient_type": recipient_type,
+        "recipient_count": len(lines),
+        "recipient_evidence": digest,
+    }
 
 
 def verify(directory: Path) -> dict[str, object]:
@@ -36,51 +89,56 @@ def verify(directory: Path) -> dict[str, object]:
     require(manifest_path.is_file(), "manifest.json missing")
     require(checksum_path.is_file(), "manifest.sha256 missing")
     require(recipients.is_file(), "recipients.txt missing")
-
     expected_manifest = checksum_path.read_text().split()[0]
-    require(re.fullmatch(r"[0-9a-f]{64}", expected_manifest) is not None,
-            "invalid manifest checksum")
+    require(
+        re.fullmatch(r"[0-9a-f]{64}", expected_manifest) is not None,
+        "invalid manifest checksum",
+    )
     require(sha256(manifest_path) == expected_manifest, "manifest checksum mismatch")
 
     manifest = json.loads(manifest_path.read_text())
+    schema = int(manifest.get("manifest_schema_version", 1))
     require(manifest.get("status") == "COMPLETE", "manifest status mismatch")
     require(manifest.get("domain") == "PlatformSecrets", "invalid domain")
-    require(complete.read_text().strip() == manifest.get("backup_id"),
-            "COMPLETE marker mismatch")
-    require(manifest.get("plaintext_written_to_nas") is False,
-            "manifest reports plaintext on NAS")
-    require(manifest.get("plaintext_temp_bundle_created") is False,
-            "manifest reports plaintext temp bundle")
+    require(
+        complete.read_text().strip() == manifest.get("backup_id"),
+        "COMPLETE marker mismatch",
+    )
+    require(
+        manifest.get("plaintext_written_to_nas") is False,
+        "manifest reports plaintext on NAS",
+    )
+    require(
+        manifest.get("plaintext_temp_bundle_created") is False,
+        "manifest reports plaintext temp bundle",
+    )
 
     encryption = manifest["encryption"]
     require(encryption.get("format") == "age", "unexpected encryption format")
-    require(encryption.get("recipient_type") == "ssh-ed25519",
-            "unexpected recipient type")
-    require(encryption.get("private_key_stored_on_ai_server") is False,
-            "private key must not be stored on AI Server")
-    require(encryption.get("private_key_stored_on_nas") is False,
-            "private key must not be stored on NAS")
-
+    require(
+        encryption.get("private_key_stored_on_ai_server") is False,
+        "private key must not be stored on AI Server",
+    )
+    require(
+        encryption.get("private_key_stored_on_nas") is False,
+        "private key must not be stored on NAS",
+    )
+    recipient_result = verify_recipient_metadata(encryption, recipients, schema)
     bundle_meta = manifest["bundle"]
     bundle = directory / str(bundle_meta["path"])
     require(bundle.resolve().parent == directory, "bundle path escapes set")
     require(bundle.is_file(), "encrypted bundle missing")
-    require(bundle.stat().st_size == int(bundle_meta["bytes"]),
-            "encrypted bundle size mismatch")
-    require(sha256(bundle) == bundle_meta["sha256"],
-            "encrypted bundle checksum mismatch")
+    require(
+        bundle.stat().st_size == int(bundle_meta["bytes"]),
+        "encrypted bundle size mismatch",
+    )
+    require(
+        sha256(bundle) == bundle_meta["sha256"],
+        "encrypted bundle checksum mismatch",
+    )
     with bundle.open("rb") as stream:
         first_line = stream.readline().decode("ascii", errors="replace").rstrip("\n")
     require(first_line == "age-encryption.org/v1", "invalid age bundle header")
-
-    fingerprint = subprocess.check_output(
-        ["ssh-keygen", "-lf", str(recipients)], text=True
-    ).strip()
-    require(fingerprint == encryption["recipient_fingerprint"],
-            "recipient fingerprint mismatch")
-    fields = fingerprint.split()
-    require(len(fields) >= 2 and fields[1] == EXPECTED_RECIPIENT_FINGERPRINT,
-            "recipient is not the accepted recovery key")
 
     allowed = {
         "COMPLETE",
@@ -90,33 +148,41 @@ def verify(directory: Path) -> dict[str, object]:
         "secrets.tar.gz.age",
     }
     actual = {p.name for p in directory.iterdir()}
-    require(actual == allowed, f"unexpected files in secrets set: {sorted(actual - allowed)}")
-
+    require(
+        actual == allowed,
+        f"unexpected files in secrets set: {sorted(actual - allowed)}",
+    )
     source_paths = [str(item["path"]) for item in manifest["sources"]]
-    require("/etc/ai-bridge/ai-bridge.env" in source_paths,
-            "ai-bridge secrets not represented")
-    require("/etc/ai-gateway/ai-gateway.env" in source_paths,
-            "ai-gateway secrets not represented")
-    require("/srv/ai-data/hermes/.env" in source_paths,
-            "Hermes env not represented")
-    require("/srv/ai-data/hermes/auth.json" in source_paths,
-            "Hermes auth not represented")
-    require("/etc/ai-platform/stage-k/globalnas.credentials" in source_paths,
-            "GlobalNAS credential not represented")
+    require(
+        "/etc/ai-bridge/ai-bridge.env" in source_paths,
+        "ai-bridge secrets not represented",
+    )
+    require(
+        "/etc/ai-gateway/ai-gateway.env" in source_paths,
+        "ai-gateway secrets not represented",
+    )
+    require("/srv/ai-data/hermes/.env" in source_paths, "Hermes env not represented")
+    require(
+        "/srv/ai-data/hermes/auth.json" in source_paths,
+        "Hermes auth not represented",
+    )
+    require(
+        "/etc/ai-platform/stage-k/globalnas.credentials" in source_paths,
+        "GlobalNAS credential not represented",
+    )
 
     return {
         "status": "PASS",
         "domain": manifest["domain"],
         "backup_id": manifest["backup_id"],
+        "manifest_schema_version": schema,
         "bundle_bytes": bundle.stat().st_size,
         "bundle_sha256": bundle_meta["sha256"],
-        "recipient_fingerprint": fingerprint,
+        **recipient_result,
         "source_entries": len(source_paths),
         "private_key_on_ai_server": False,
         "private_key_on_nas": False,
     }
-
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("bundle_dir", type=Path)
@@ -126,4 +192,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
