@@ -150,6 +150,16 @@ class ErsCaseRepository:
                 raise ErsCaseNotFound(str(case_id))
             return self._case_snapshot(case)
 
+    def get_case_by_legacy_code(self, legacy_case_code: str) -> ErsCaseSnapshot | None:
+        code = legacy_case_code.strip()
+        if not code:
+            raise ValueError("legacy_case_code is required")
+        with self._database.session() as session:
+            row = session.scalar(
+                select(ErsCaseModel).where(ErsCaseModel.legacy_case_code == code)
+            )
+            return None if row is None else self._case_snapshot(row)
+
     def list_events(self, case_id: UUID) -> tuple[ErsCaseEventSnapshot, ...]:
         with self._database.session() as session:
             exists = session.get(ErsCaseModel, case_id)
