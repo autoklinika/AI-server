@@ -61,8 +61,30 @@ def prune_k2(root: Path, tier: str, keep: int) -> list[str]:
         dbdir = root / "_Shared" / "PostgreSQL" / "ai_bridge" / tier / backup_id
         require((dbdir / "ai_bridge.dump").is_file(),
                 f"paired K2 PostgreSQL dump missing: {backup_id}")
+
+        knowledge_manifest = json.loads(
+            (knowledge / tier / backup_id / "manifest.json").read_text()
+        )
+        ers_required = any(
+            str(name).startswith("ers_")
+            for name in knowledge_manifest["postgres"]["table_counts"]
+        )
+        ers_case_store = (
+            root / "ERS" / "case-store" / "manifests" / tier / backup_id
+        )
+        if ers_required:
+            require(ers_case_store.is_dir(),
+                    f"paired ERS Case Store manifest missing: {backup_id}")
+        if ers_case_store.exists():
+            require(ers_case_store.is_dir(),
+                    f"ERS Case Store manifest target is not directory: {backup_id}")
+            require((ers_case_store / "COMPLETE").read_text().strip() == backup_id,
+                    f"ERS Case Store COMPLETE mismatch: {backup_id}")
+
         for domain, manifests in K2_DOMAINS:
             remove_checked(root / domain / manifests / tier / backup_id, backup_id)
+        if ers_case_store.exists():
+            remove_checked(ers_case_store, backup_id)
         remove_checked(dbdir, backup_id)
     return expired
 def prune_k3(root: Path, tier: str, keep: int) -> list[str]:

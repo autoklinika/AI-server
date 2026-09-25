@@ -20,7 +20,6 @@ import time
 from uuid import uuid4
 
 import httpx
-import psycopg
 
 from common import active_release, atomic_text, file_sha256, require, run
 from verify_backup import resolve_from_root, verify as verify_backup
@@ -120,7 +119,139 @@ def restore_objects(
     return target
 
 
+def restore_ers_objects(
+    manifest_dir: Path,
+    root: Path,
+    manifest: dict[str, object],
+) -> Path:
+    object_set = manifest["ers"]["object_set"]
+    source_pool = resolve_from_root(manifest_dir, object_set["pool_root"])
+    target = root / "ers-object-store"
+    for item in object_set["files"]:
+        source = (source_pool / item["path"]).resolve()
+        require(source_pool == source or source_pool in source.parents,
+                "ERS source object escapes pool")
+        destination = target / item["path"]
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+        require(destination.stat().st_size == int(item["bytes"]),
+                f"restored ERS object size mismatch: {item['sha256']}")
+        require(file_sha256(destination) == item["sha256"],
+                f"restored ERS object checksum mismatch: {item['sha256']}")
+    return target
+
+
+def verify_restored_ers(
+    *,
+    port: int,
+    user: str,
+    database: str,
+    object_root: Path,
+    manifest: dict[str, object],
+) -> dict[str, object]:
+    expected_counts = manifest["postgres"]["domain_table_counts"]
+    restored_counts: dict[str, int] = {}
+    with restore_conn(port, user, database) as conn:
+        with conn.cursor() as cur:
+            for table, expected in expected_counts.items():
+                require(re.fullmatch(r"ers_[a-z0-9_]+", table) is not None,
+                        f"invalid ERS table name in restore manifest: {table}")
+                cur.execute(f'SELECT count(*) FROM "{table}"')
+                actual = int(cur.fetchone()[0])
+                require(actual == int(expected),
+                        f"restored ERS row count mismatch: {table}")
+                restored_counts[table] = actual
+
+            cur.execute(
+                "SELECT c.id::text, c.row_version, count(e.id), "
+                "COALESCE(max(e.event_seq), 0), COALESCE(min(e.event_seq), 0) "
+                "FROM ers_cases c "
+                "LEFT JOIN ers_case_events e ON e.case_id=c.id "
+                "GROUP BY c.id, c.row_version ORDER BY c.id"
+            )
+            boundaries = [
+                {
+                    "case_id": str(case_id),
+                    "row_version": int(row_version),
+                    "event_count": int(event_count),
+                    "max_event_seq": int(max_seq),
+                    "min_event_seq": int(min_seq),
+                }
+                for case_id, row_version, event_count, max_seq, min_seq in cur.fetchall()
+            ]
+            require(boundaries == manifest["ers"]["case_boundaries"],
+                    "restored ERS case boundaries mismatch")
+
+            cur.execute(
+                "SELECT availability, count(*) "
+                "FROM ers_artifact_versions "
+                "GROUP BY availability ORDER BY availability"
+            )
+            availability_counts = {
+                str(availability): int(count)
+                for availability, count in cur.fetchall()
+            }
+            require(
+                availability_counts == manifest["ers"]["availability_counts"],
+                "restored ERS artifact availability counts mismatch",
+            )
+
+            cur.execute(
+                "SELECT object_sha256, byte_size, count(*) "
+                "FROM ers_artifact_versions "
+                "WHERE availability='available' "
+                "GROUP BY object_sha256, byte_size "
+                "ORDER BY object_sha256, byte_size"
+            )
+            db_objects = [
+                {
+                    "sha256": str(digest),
+                    "bytes": int(byte_size),
+                    "referenced_versions": int(refs),
+                }
+                for digest, byte_size, refs in cur.fetchall()
+            ]
+
+    expected_objects = [
+        {
+            "sha256": str(item["sha256"]),
+            "bytes": int(item["bytes"]),
+            "referenced_versions": int(item["referenced_versions"]),
+        }
+        for item in manifest["ers"]["object_set"]["files"]
+    ]
+    require(db_objects == expected_objects,
+            "restored ERS DB/object-set references mismatch")
+
+    verified = 0
+    for item in manifest["ers"]["object_set"]["files"]:
+        digest = str(item["sha256"])
+        path = object_root / "sha256" / digest[:2] / digest
+        require(path.is_file(), f"restored ERS object missing: {digest}")
+        require(path.stat().st_size == int(item["bytes"]),
+                f"restored ERS object byte size mismatch: {digest}")
+        require(file_sha256(path) == digest,
+                f"restored ERS object checksum mismatch: {digest}")
+        verified += 1
+
+    return {
+        "table_counts": restored_counts,
+        "case_count": len(boundaries),
+        "case_boundaries_verified": True,
+        "objects": verified,
+        "object_bytes": sum(
+            int(item["bytes"]) for item in manifest["ers"]["object_set"]["files"]
+        ),
+        "available_versions": int(manifest["ers"]["available_versions"]),
+        "availability_counts": availability_counts,
+        "availability_counts_verified": True,
+        "object_references_verified": True,
+    }
+
+
 def restore_conn(port: int, user: str, database: str):
+    import psycopg
+
     return psycopg.connect(
         host="127.0.0.1", port=port, user=user, dbname=database,
         autocommit=False,
@@ -444,14 +575,50 @@ def production_qdrant_points() -> int | None:
 
 
 
-def validate(backup: Path) -> Path:
+def validate(backup: Path, ers_backup: Path | None = None) -> Path:
     backup = backup.resolve()
     offline = verify_backup(backup)
     manifest = json.loads((backup / "manifest.json").read_text())
+    ers_manifest = None
+    ers_offline = None
+    has_ers_tables = any(
+        str(name).startswith("ers_")
+        for name in manifest["postgres"]["table_counts"]
+    )
+    require(
+        not has_ers_tables or ers_backup is not None,
+        "ERS Case Store manifest is required for restore of an ERS-active backup",
+    )
+    if ers_backup is not None:
+        ers_backup = ers_backup.resolve()
+        ers_offline = verify_backup(ers_backup)
+        ers_manifest = json.loads((ers_backup / "manifest.json").read_text())
+        require(ers_manifest["domain"] == "ERSCaseStore",
+                "optional ERS manifest has wrong domain")
+        require(ers_manifest["backup_id"] == manifest["backup_id"],
+                "Knowledge/ERS backup IDs differ")
+        require(
+            ers_manifest["postgres"]["dump"]["sha256"]
+            == manifest["postgres"]["dump"]["sha256"],
+            "Knowledge/ERS PostgreSQL dump checksum differs",
+        )
+        require(
+            ers_manifest["postgres"]["dump"]["path"]
+            == manifest["postgres"]["dump"]["path"],
+            "Knowledge/ERS PostgreSQL dump path differs",
+        )
+        for table, expected in ers_manifest["postgres"]["domain_table_counts"].items():
+            require(
+                int(manifest["postgres"]["table_counts"].get(table, -1))
+                == int(expected),
+                f"Knowledge/ERS table count differs: {table}",
+            )
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     evidence = RESTORE_ROOT / f"{manifest['backup_id']}-{stamp}-{os.getpid()}"
     evidence.mkdir(parents=True, mode=0o700)
     atomic_text(evidence / "source-backup.txt", str(backup) + "\n")
+    if ers_backup is not None:
+        atomic_text(evidence / "source-ers-backup.txt", str(ers_backup) + "\n")
 
     qdrant_name: str | None = None
     pgdata: str | None = None
@@ -467,6 +634,19 @@ def validate(backup: Path) -> Path:
         )
         require(restored["reset_index_jobs"] > 0,
                 "restore recovery transform reset no index jobs")
+
+        ers_restore = None
+        if ers_manifest is not None and ers_backup is not None:
+            ers_objects = restore_ers_objects(
+                ers_backup, evidence, ers_manifest
+            )
+            ers_restore = verify_restored_ers(
+                port=port,
+                user=user,
+                database=database,
+                object_root=ers_objects,
+                manifest=ers_manifest,
+            )
 
         qdrant_name, qdrant_url = start_qdrant(evidence)
         empty = httpx.get(
@@ -526,6 +706,19 @@ def validate(backup: Path) -> Path:
                 "reindex": reindex,
             },
             "knowledge_probe": probe,
+            "ers": (
+                {
+                    "offline_verification": ers_offline,
+                    "restore": ers_restore,
+                    "object_store_root": (
+                        str(evidence / "ers-object-store")
+                        if ers_restore is not None
+                        else None
+                    ),
+                }
+                if ers_manifest is not None
+                else None
+            ),
         }
         atomic_text(
             evidence / "result.json",
@@ -540,6 +733,16 @@ def validate(backup: Path) -> Path:
             "qdrant_points": points,
             "rag_claims": probe["rag_claims"],
             "rag_citations": probe["rag_citations"],
+            "ers_cases": (
+                ers_restore["case_count"]
+                if ers_restore is not None
+                else None
+            ),
+            "ers_objects": (
+                ers_restore["objects"]
+                if ers_restore is not None
+                else None
+            ),
         }, sort_keys=True))
         return evidence
     except Exception as exc:
@@ -566,8 +769,13 @@ def validate(backup: Path) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("backup_set", type=Path)
+    parser.add_argument(
+        "--ers",
+        type=Path,
+        help="optional matching ERS Case Store manifest set",
+    )
     args = parser.parse_args()
-    validate(args.backup_set)
+    validate(args.backup_set, args.ers)
 
 
 if __name__ == "__main__":

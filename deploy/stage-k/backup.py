@@ -16,7 +16,8 @@ import shutil
 import socket
 from urllib.parse import urlparse
 
-import psycopg
+from ers_dr import copy_object_set as copy_ers_object_set
+from ers_dr import fetch_snapshot_metadata as fetch_ers_snapshot_metadata
 
 from common import (
     OBJECT_ROOT,
@@ -90,6 +91,8 @@ def verify_target(root: Path, allow_local: bool) -> dict[str, object]:
 
 
 def connect_snapshot(pg: dict[str, str]):
+    import psycopg
+
     return psycopg.connect(
         host=pg["PGHOST"],
         port=int(pg["PGPORT"]),
@@ -215,7 +218,7 @@ def release_identity() -> dict[str, str]:
         if "=" in raw:
             key, value = raw.split("=", 1)
             values[key] = value
-    require(values.get("stage") == "J", "active production stage is not J")
+    require(values.get("stage") in {"J", "L"}, "active production stage is not J/L")
     require(re.fullmatch(r"[0-9a-f]{40}", values.get("source_git_sha", "")) is not None,
             "active release source SHA unavailable")
     return values
@@ -231,8 +234,9 @@ def create_backup(args) -> dict[str, Path]:
     shared_pg = root / "_Shared" / "PostgreSQL" / "ai_bridge" / args.tier / backup_id
     knowledge_final = root / "Knowledge" / "manifests" / args.tier / backup_id
     wvc_final = root / "WVC" / "manifests" / args.tier / backup_id
+    ers_final = root / "ERS" / "case-store" / "manifests" / args.tier / backup_id
     staging = root / ".incomplete" / f"{backup_id}.{os.getpid()}"
-    for path in (shared_pg, knowledge_final, wvc_final):
+    for path in (shared_pg, knowledge_final, wvc_final, ers_final):
         require(not path.exists(), "backup ID collision")
     staging.mkdir(parents=True, mode=0o700)
     dump = staging / "ai_bridge.dump"
@@ -247,6 +251,9 @@ def create_backup(args) -> dict[str, Path]:
             cur.execute("SELECT pg_export_snapshot()")
             snapshot_id = cur.fetchone()[0]
         metadata = fetch_snapshot_metadata(conn)
+        ers_snapshot = fetch_ers_snapshot_metadata(conn)
+        if ers_snapshot["active"]:
+            metadata["table_counts"].update(ers_snapshot["table_counts"])
         run([
             "pg_dump", "--format=custom", "--no-owner", "--no-privileges",
             f"--snapshot={snapshot_id}", f"--file={dump}",
@@ -256,6 +263,15 @@ def create_backup(args) -> dict[str, Path]:
 
         canonical = copy_canonical(
             metadata["versions"], root / "Knowledge" / "canonical-objects"
+        )
+        ers_objects = (
+            copy_ers_object_set(
+                ers_snapshot,
+                root / "ERS" / "object-store",
+                source_root=OBJECT_ROOT,
+            )
+            if ers_snapshot["active"]
+            else None
         )
         conn.commit()
 
@@ -331,10 +347,41 @@ def create_backup(args) -> dict[str, Path]:
         "secrets_included": False,
     }
 
-    for final, manifest in (
+    ers_manifest = None
+    if ers_snapshot["active"]:
+        ers_manifest = {
+            "manifest_schema_version": 1,
+            "status": "COMPLETE",
+            "domain": "ERSCaseStore",
+            "backup_id": backup_id,
+            "tier": args.tier,
+            "created_at": started.isoformat(),
+            "completed_at": utc_now().isoformat(),
+            "target": target_info,
+            "layout": {"root": "AI_Platform", "shared_postgres": True},
+            "source": common_source,
+            "postgres": {
+                **postgres,
+                "domain_table_counts": ers_snapshot["table_counts"],
+            },
+            "ers": {
+                "source_of_truth": "postgres+shared-object-store",
+                "availability_counts": ers_snapshot["availability_counts"],
+                "available_versions": ers_snapshot["available_versions"],
+                "case_boundaries": ers_snapshot["case_boundaries"],
+                "object_set": ers_objects,
+            },
+            "secrets_included": False,
+        }
+
+    manifest_sets = [
         (knowledge_final, knowledge_manifest),
         (wvc_final, wvc_manifest),
-    ):
+    ]
+    if ers_manifest is not None:
+        manifest_sets.append((ers_final, ers_manifest))
+
+    for final, manifest in manifest_sets:
         tmp_set = staging / final.parent.parent.parent.name
         tmp_set.mkdir(parents=True, exist_ok=True)
         manifest_path = tmp_set / "manifest.json"
@@ -355,7 +402,12 @@ def create_backup(args) -> dict[str, Path]:
         staging.parent.rmdir()
     except OSError:
         pass
-    return {"knowledge": knowledge_final, "wvc": wvc_final, "postgres": shared_pg}
+    return {
+        "knowledge": knowledge_final,
+        "wvc": wvc_final,
+        "ers": ers_final if ers_manifest is not None else None,
+        "postgres": shared_pg,
+    }
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -372,6 +424,7 @@ def main() -> None:
         "status": "PASS",
         "knowledge_set": str(result["knowledge"]),
         "wvc_set": str(result["wvc"]),
+        "ers_set": str(result["ers"]) if result["ers"] is not None else None,
         "postgres_set": str(result["postgres"]),
     }, sort_keys=True))
 

@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 
 from common import file_sha256, require, run
+from ers_dr import validate_object_set
 
 
 def platform_root(backup: Path) -> Path:
@@ -42,7 +43,7 @@ def verify(backup: Path) -> dict[str, object]:
             "manifest checksum mismatch")
     manifest = json.loads(manifest_path.read_text())
     require(manifest.get("status") == "COMPLETE", "manifest status is not COMPLETE")
-    require(manifest.get("domain") in {"Knowledge", "WVC"},
+    require(manifest.get("domain") in {"Knowledge", "WVC", "ERSCaseStore"},
             "unsupported Stage K domain manifest")
     require(complete.read_text().strip() == manifest.get("backup_id"),
             "COMPLETE marker/manifest mismatch")
@@ -76,6 +77,42 @@ def verify(backup: Path) -> dict[str, object]:
                 f"WVC table count mismatch in manifest: {table}",
             )
         result["wvc_table_counts"] = domain_counts
+        return result
+
+    if manifest["domain"] == "ERSCaseStore":
+        domain_counts = manifest["postgres"].get("domain_table_counts", {})
+        require(bool(domain_counts), "ERS manifest has no domain table counts")
+        for table, count in domain_counts.items():
+            require(table.startswith("ers_"),
+                    "ERS manifest references a non-ERS table")
+            require(
+                int(manifest["postgres"]["table_counts"][table]) == int(count),
+                f"ERS table count mismatch in manifest: {table}",
+            )
+        object_result = validate_object_set(
+            backup, manifest, resolve_from_root=resolve_from_root
+        )
+        require(
+            int(object_result["referenced_versions"])
+            == int(manifest["ers"]["available_versions"]),
+            "ERS available version/object reference mismatch",
+        )
+        for boundary in manifest["ers"]["case_boundaries"]:
+            row_version = int(boundary["row_version"])
+            event_count = int(boundary["event_count"])
+            max_seq = int(boundary["max_event_seq"])
+            min_seq = int(boundary["min_event_seq"])
+            require(row_version == event_count,
+                    "ERS case boundary event count mismatch")
+            require(
+                (event_count == 0 and min_seq == 0 and max_seq == 0)
+                or (event_count > 0 and min_seq == 1 and max_seq == row_version),
+                "ERS case boundary sequence mismatch",
+            )
+        result["ers_table_counts"] = domain_counts
+        result["ers_case_count"] = len(manifest["ers"]["case_boundaries"])
+        result["ers_object_set"] = object_result
+        result["ers_availability_counts"] = manifest["ers"]["availability_counts"]
         return result
 
     canonical = manifest["knowledge"]["canonical"]
