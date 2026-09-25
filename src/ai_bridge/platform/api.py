@@ -43,6 +43,34 @@ LOGGER = logging.getLogger(__name__)
 ID = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")]
 
 
+CONTROL_CENTER_APPS = (
+    {
+        "id": "knowledge",
+        "name": "Knowledge",
+        "route": "/apps/knowledge",
+        "status": "ready",
+        "capabilities": ("knowledge.search", "knowledge.ask", "document.read"),
+        "exposure": {"gui": True, "agent": True, "mcp": True},
+    },
+    {
+        "id": "benchmarks",
+        "name": "Benchmarks",
+        "route": "/apps/benchmarks",
+        "status": "foundation",
+        "capabilities": ("benchmark.view",),
+        "exposure": {"gui": True, "agent": False, "mcp": False},
+    },
+    {
+        "id": "ers",
+        "name": "ECU Repair Service",
+        "route": "/apps/ers",
+        "status": "foundation",
+        "capabilities": ("ers.case.read",),
+        "exposure": {"gui": True, "agent": True, "mcp": True},
+    },
+)
+
+
 class Contract(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -476,6 +504,13 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
             media_type=snapshot.document.media_type,
             filename=filename,
         )
+
+    @api.get("/apps")
+    async def apps(request: Request):
+        return envelope(request, apps=[{
+            **item,
+            "capabilities": list(item["capabilities"]),
+        } for item in CONTROL_CENTER_APPS])
 
     @api.get("/models")
     async def models(request: Request):

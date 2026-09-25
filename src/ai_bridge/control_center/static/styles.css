@@ -506,3 +506,123 @@ code { color: #b9d4ff; background: rgba(110,168,254,.08); padding: 2px 5px; bord
   .app-hero { display: block; }
   .app-logo.large { margin-bottom: 16px; }
 }
+
+/* GUI-1 Knowledge App */
+.knowledge-shell { display: grid; gap: 14px; }
+.knowledge-tabs { display: flex; gap: 6px; }
+.knowledge-tab {
+  border: 1px solid var(--border);
+  background: var(--panel-3);
+  color: var(--muted);
+  border-radius: 10px;
+  padding: 9px 13px;
+  cursor: pointer;
+}
+.knowledge-tab.active {
+  color: var(--text);
+  border-color: rgba(120,224,188,.35);
+  background: rgba(120,224,188,.08);
+}
+.knowledge-form { padding: 16px; box-shadow: none; }
+.knowledge-input-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; }
+.knowledge-input-row input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--border);
+  background: #090d12;
+  color: var(--text);
+  border-radius: 11px;
+  padding: 0 14px;
+  outline: none;
+}
+.knowledge-input-row input:focus { border-color: rgba(110,168,254,.55); box-shadow: 0 0 0 3px rgba(110,168,254,.08); }
+.primary-button {
+  min-height: 46px;
+  border: 0;
+  border-radius: 11px;
+  padding: 0 18px;
+  background: var(--accent);
+  color: #07100d;
+  font-weight: 800;
+  cursor: pointer;
+}
+.primary-button:disabled { opacity: .55; cursor: progress; }
+.knowledge-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 11px;
+  color: var(--muted-2);
+  font-size: 10px;
+}
+.knowledge-options label { display: flex; align-items: center; gap: 7px; }
+.knowledge-options select {
+  border: 1px solid var(--border);
+  background: var(--panel-3);
+  color: var(--muted);
+  border-radius: 7px;
+  padding: 4px 7px;
+}
+.knowledge-error {
+  margin-top: 12px;
+  padding: 9px 11px;
+  border: 1px solid rgba(255,123,132,.25);
+  background: rgba(255,123,132,.07);
+  color: #ffc1c5;
+  border-radius: 9px;
+  font-size: 11px;
+}
+.knowledge-results { display: grid; gap: 10px; }
+.knowledge-result-meta { color: var(--muted-2); font-size: 10px; padding: 0 2px; }
+.knowledge-result { padding: 16px; box-shadow: none; }
+.knowledge-result-head { display: flex; justify-content: space-between; color: var(--muted-2); font-size: 9px; }
+.knowledge-result-head strong { color: var(--accent); }
+.knowledge-result > p { line-height: 1.65; color: #d6dee8; }
+.knowledge-source {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 14px;
+  padding-top: 12px; border-top: 1px solid var(--border-soft);
+}
+.knowledge-source strong, .citation-card strong { display: block; font-size: 11px; }
+.knowledge-source small, .citation-card small { display: block; color: var(--muted-2); margin-top: 4px; font-size: 9px; }
+.source-link { color: var(--accent-2); font-size: 10px; white-space: nowrap; }
+.knowledge-empty { min-height: 150px; display: grid; place-content: center; text-align: center; padding: 24px; box-shadow: none; }
+.knowledge-empty h3 { margin: 0 0 7px; }
+.knowledge-empty p { margin: 0; color: var(--muted); }
+.knowledge-answer { box-shadow: none; overflow: hidden; }
+.knowledge-answer-body { padding: 18px; }
+.answer-text { font-size: 15px; line-height: 1.75; margin: 0; white-space: pre-wrap; }
+.insufficient { color: var(--warning); font-size: 11px; }
+.answer-meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 18px; }
+.answer-meta span {
+  border: 1px solid var(--border-soft); background: var(--panel-3);
+  color: var(--muted); border-radius: 8px; padding: 5px 7px; font-size: 9px;
+}
+.citations-head { display: flex; justify-content: space-between; align-items: center; margin-top: 7px; }
+.citations-head h3 { margin: 0; font-size: 13px; }
+.citations-head span { color: var(--muted-2); font-size: 10px; }
+.citation-card {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto;
+  gap: 12px;
+  align-items: start;
+  border: 1px solid var(--border);
+  background: var(--panel-3);
+  border-radius: 12px;
+  padding: 13px;
+}
+.citation-ref {
+  min-width: 30px; height: 24px; display: grid; place-items: center;
+  border-radius: 7px; background: rgba(120,224,188,.08); color: var(--accent);
+  font-size: 9px; font-weight: 800;
+}
+.citation-card p { margin: 8px 0 0; color: var(--muted); line-height: 1.5; font-size: 10px; }
+
+@media (max-width: 720px) {
+  .knowledge-input-row { grid-template-columns: 1fr; }
+  .primary-button { width: 100%; }
+  .knowledge-source { align-items: flex-start; }
+  .citation-card { grid-template-columns: auto minmax(0,1fr); }
+  .citation-card .source-link { grid-column: 2; }
+}
+

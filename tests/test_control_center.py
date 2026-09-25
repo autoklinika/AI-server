@@ -45,3 +45,15 @@ def test_control_center_client_uses_only_platform_api_boundary():
     assert "qdrant" not in javascript.text.lower()
     assert "ollama" not in javascript.text.lower()
     assert "postgres" not in javascript.text.lower()
+
+
+def test_control_center_contains_live_knowledge_workflow_and_registry_client():
+    client = TestClient(create_control_center_app())
+
+    javascript = client.get("/assets/app.js").text
+    assert 'api("/apps")' in javascript
+    assert '"/knowledge/search"' in javascript
+    assert '"/knowledge/ask"' in javascript
+    assert "/knowledge/documents/" in javascript
+    assert "localStorage" not in javascript
+
