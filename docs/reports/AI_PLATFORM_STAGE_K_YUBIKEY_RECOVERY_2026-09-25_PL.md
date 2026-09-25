@@ -63,3 +63,18 @@ Przy fizycznie odłączonym YubiKeyu wykonano rzeczywisty manualny backup K3 na 
 
 Gate automatycznego szyfrowania publicznym recipientem bez obecności tokena: PASS.
 Pozostaje finalny decrypt drill tego rzeczywistego bundle z użyciem YubiKeya.
+
+## Final recovery drill
+
+Po ponownym podłączeniu YubiKey 5C odszyfrowano dokładnie rzeczywisty bundle
+`20260925T075350Z` z GlobalNAS. Plaintext powstał wyłącznie jako plik tymczasowy
+w `/tmp`, został objęty `trap` i usunięty po teście.
+
+Wynik:
+- decrypt YubiKey + PIN: PASS;
+- wymaganie dotyku: brak (`Touch=NEVER`);
+- `gzip -t`: PASS;
+- wszystkie 6 oczekiwanych źródeł obecne: PASS;
+- końcowy marker: `REAL_YUBIKEY_RECOVERY_DRILL=PASS`.
+
+Stage K YubiKey encrypted-secrets recovery: PASS.
