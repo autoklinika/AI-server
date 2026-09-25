@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+if [[ "$EUID" -eq 0 ]]; then
+  echo "FAIL: run this installer as the normal operator user, without sudo before bash; the script invokes sudo only for root-owned install steps" >&2
+  exit 2
+fi
+
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 [[ -n "$REPO_ROOT" ]] || { echo "FAIL: run from AI-server repository" >&2; exit 2; }
 
