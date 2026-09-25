@@ -18,7 +18,13 @@ from pydantic import SecretStr
 
 _STATIC_DIR = Path(__file__).with_name("static").resolve()
 _INDEX = _STATIC_DIR / "index.html"
-_CGNAT = ipaddress.ip_network("100.64.0.0/10")
+_ALLOWED_NETWORKS = tuple(ipaddress.ip_network(value) for value in (
+    "10.0.0.0/8",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+    "100.64.0.0/10",
+    "fc00::/7",
+))
 _MAX_PROXY_BODY = 1_048_576
 _ALLOWED_RESPONSE_HEADERS = {"cache-control", "content-disposition", "content-type", "x-request-id"}
 
@@ -64,7 +70,10 @@ def _peer_allowed(request: Request) -> bool:
         address = ipaddress.ip_address(request.client.host)
     except (ValueError, AttributeError):
         return False
-    return address.is_loopback or address.is_private or address in _CGNAT
+    return address.is_loopback or any(
+        address.version == network.version and address in network
+        for network in _ALLOWED_NETWORKS
+    )
 
 
 def _api_allowed(method: str, path: str) -> bool:
