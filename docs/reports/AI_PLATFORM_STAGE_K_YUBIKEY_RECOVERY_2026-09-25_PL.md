@@ -47,3 +47,19 @@ Polityka jest przygotowana na wiele YubiKeyów. Dodanie drugiego 5C wymaga dopis
 Aktywny historyczny `/srv/ai-data/platform/recovery/stage-k/age-recipients.txt` nie został jeszcze podmieniony. Nowy recipient jest przygotowany osobno jako `age-recipients-yubikey.txt`, aby przed merge nie zepsuć starego skryptu z `main`.
 
 Następny gate: wykonać rzeczywisty `k3_secrets_backup.sh` z worktree migracji i `STAGE_K_AGE_RECIPIENTS=.../age-recipients-yubikey.txt`, najlepiej przy odłączonym YubiKeyu. Potwierdzi to, że produkcyjny backup szyfruje się wyłącznie publicznym recipientem bez obecności tokena.
+
+## Real K3 backup gate
+
+Przy fizycznie odłączonym YubiKeyu wykonano rzeczywisty manualny backup K3 na GlobalNAS:
+- backup ID: `20260925T075350Z`;
+- bundle: `Platform/secrets/manual/20260925T075350Z/secrets.tar.gz.age`;
+- YubiKey obecny podczas backupu: NIE;
+- `k3_secrets_verify.py`: PASS;
+- manifest schema: 2;
+- recipient type: `age-plugin-yubikey`;
+- recipient count: 1;
+- `plaintext_written_to_nas=false`;
+- `plaintext_temp_bundle_created=false`.
+
+Gate automatycznego szyfrowania publicznym recipientem bez obecności tokena: PASS.
+Pozostaje finalny decrypt drill tego rzeczywistego bundle z użyciem YubiKeya.
