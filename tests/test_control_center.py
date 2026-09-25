@@ -131,3 +131,30 @@ def test_control_center_proxy_uses_server_side_platform_token_only():
         assert observed["authorization"] == "Bearer server-side-token-value"
 
     asyncio.run(run())
+
+
+def test_control_center_proxy_allows_read_only_benchmark_catalog():
+    async def run():
+        seen = []
+
+        def upstream(request):
+            seen.append((request.method, request.url.path))
+            return httpx.Response(200, json={"schema_version": 1, "suites": []})
+
+        app = create_control_center_app(
+            platform_base_url="http://platform/api/v1",
+            upstream_transport=httpx.MockTransport(upstream),
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app, client=("192.168.1.44", 1234)),
+            base_url="http://control",
+        ) as http:
+            assert (await http.get("/api/v1/benchmarks")).status_code == 200
+            assert (await http.get("/api/v1/benchmarks/knowledge-retrieval/runs")).status_code == 200
+            assert (await http.post("/api/v1/benchmarks/knowledge-retrieval/runs")).status_code == 403
+        assert seen == [
+            ("GET", "/api/v1/benchmarks"),
+            ("GET", "/api/v1/benchmarks/knowledge-retrieval/runs"),
+        ]
+    asyncio.run(run())
+

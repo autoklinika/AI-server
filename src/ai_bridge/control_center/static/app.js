@@ -27,6 +27,7 @@ const state = {
   models: null,
   systems: null,
   apps: null,
+  benchmarks: { catalog: null, suite: null, runs: null, run: null, loading: false, error: null },
   knowledge: {
     tab: "search",
     query: "",
@@ -135,7 +136,8 @@ async function refreshData() {
     jobs: api("/jobs"),
     models: api("/models"),
     systems: api("/systems"),
-    apps: api("/apps")
+    apps: api("/apps"),
+    benchmarks: api("/benchmarks")
   };
 
   await Promise.all(Object.entries(requests).map(async function (entry) {
@@ -143,6 +145,7 @@ async function refreshData() {
     const promise = entry[1];
     try {
       state[key] = await promise;
+      if (key === "benchmarks") state.benchmarks.catalog = state[key];
       delete state.errors[key];
     } catch (error) {
       state.errors[key] = { status: error.status || 0, message: error.message };
@@ -564,6 +567,65 @@ function wirePageActions() {
   }
 }
 
+function benchmarksPage() {
+  const payload = state.benchmarks.catalog;
+  const suites = payload && Array.isArray(payload.suites) ? payload.suites : [];
+  const body = suites.length
+    ? '<div class="benchmark-grid">' + suites.map(function (suite) {
+        return '<a class="panel benchmark-card" href="' + controlUrl('/apps/benchmarks/' + encodeURIComponent(suite.suite_id)) + '" data-nav data-benchmark-suite="' + escapeHtml(suite.suite_id) + '">' +
+          '<div class="benchmark-card-top"><span class="badge">' + escapeHtml(suite.status) + '</span><strong>' + escapeHtml(String(suite.run_count)) + '</strong></div>' +
+          '<h3>' + escapeHtml(suite.name) + '</h3><p>' + escapeHtml(suite.category) + '</p>' +
+          '<div class="capability-list">' + (suite.capabilities || []).map(function (cap) { return '<span>' + escapeHtml(cap) + '</span>'; }).join('') + '</div>' +
+          '<span class="open-link">Open suite →</span>' +
+        '</a>';
+      }).join('') + '</div>'
+    : pendingPanel("Benchmark catalog", "Katalog benchmarków jest niedostępny.");
+  return sectionPage("Benchmarks", "Osobne laboratorium modeli i jakości. Ten etap jest read-only.", body);
+}
+
+function benchmarkSuitePage(suiteId) {
+  const catalog = state.benchmarks.catalog;
+  const suites = catalog && Array.isArray(catalog.suites) ? catalog.suites : [];
+  const suite = suites.find(function (item) { return item.suite_id === suiteId; });
+  if (!suite) return sectionPage("Benchmarks", suiteId, pendingPanel("Unknown suite", "Suite nie istnieje w registry."));
+
+  if (state.benchmarks.suite !== suiteId && !state.benchmarks.loading) {
+    queueMicrotask(function () { loadBenchmarkSuite(suiteId); });
+  }
+  const runs = state.benchmarks.suite === suiteId && Array.isArray(state.benchmarks.runs) ? state.benchmarks.runs : [];
+  const rows = runs.length ? runs.map(function (run) {
+    return '<article class="panel benchmark-run">' +
+      '<div><strong>' + escapeHtml(run.artifact || run.run_id) + '</strong><small>' +
+        escapeHtml([run.status, run.queries ? run.queries + " queries" : "", run.variant_count ? run.variant_count + " variants" : ""].filter(Boolean).join(" · ")) +
+      '</small></div>' +
+      '<span>' + (run.duration_seconds ? escapeHtml(run.duration_seconds.toFixed(1) + " s") : escapeHtml(run.format || "")) + '</span>' +
+    '</article>';
+  }).join('') : '<div class="panel knowledge-empty"><p>' + (state.benchmarks.loading ? 'Ładowanie…' : 'Brak historycznych runów.') + '</p></div>';
+
+  return sectionPage(suite.name, suite.category,
+    '<div class="benchmark-suite-head"><div class="capability-list">' + (suite.capabilities || []).map(function (cap) { return '<span>' + escapeHtml(cap) + '</span>'; }).join('') + '</div>' +
+    '<span class="badge">' + escapeHtml(suite.status) + '</span></div>' +
+    (state.benchmarks.error ? '<div class="knowledge-error">' + escapeHtml(state.benchmarks.error) + '</div>' : '') +
+    '<div class="benchmark-runs">' + rows + '</div>');
+}
+
+async function loadBenchmarkSuite(suiteId) {
+  state.benchmarks.loading = true;
+  state.benchmarks.error = null;
+  state.benchmarks.suite = suiteId;
+  state.benchmarks.runs = null;
+  render();
+  try {
+    const payload = await api('/benchmarks/' + encodeURIComponent(suiteId) + '/runs');
+    state.benchmarks.runs = payload.runs || [];
+  } catch (error) {
+    state.benchmarks.error = 'Benchmark API: ' + (error.code || error.message || 'unknown_error');
+  } finally {
+    state.benchmarks.loading = false;
+    render();
+  }
+}
+
 function placeholderApplication(title, text) {
   return sectionPage(title, text,
     '<div class="app-hero panel"><div><h2>Foundation ready</h2>' +
@@ -593,7 +655,8 @@ function pageForRoute() {
   if (path.startsWith("/jobs/")) return jobDetailPage(decodeURIComponent(path.slice("/jobs/".length)));
   if (path === "/platform/integrations") return integrationsPage();
   if (path === "/apps/knowledge") return knowledgePage();
-  if (path === "/apps/benchmarks") return placeholderApplication("Benchmarks", "Laboratorium benchmarków jako osobna aplikacja.");
+  if (path === "/apps/benchmarks") return benchmarksPage();
+  if (path.startsWith("/apps/benchmarks/")) return benchmarkSuitePage(decodeURIComponent(path.slice("/apps/benchmarks/".length)));
   if (path === "/apps/ers") return placeholderApplication("ECU Repair Service", "Domenowa aplikacja ERS jako osobny workspace.");
   if (path === "/operations/agents") return genericOperations("Agents", "Stan i kontrolowane akcje agentów.", "Agent control API nie jest jeszcze wystawione przez Platform API.");
   if (path === "/operations/backup") return genericOperations("Backup", "Backup / DR z Stage K.", "Status backupu nie ma jeszcze stabilnego kontraktu Platform API.");

@@ -18,6 +18,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException
 
+from ai_bridge.benchmarks import BenchmarkCatalog
 from ai_bridge.gateway.admission import WorkloadBinding
 from ai_bridge.gateway.jobs import JobLifecycle, JobMetadata
 from ai_bridge.gateway.priority import PriorityClass, priority_for_class
@@ -156,6 +157,7 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
     api = FastAPI(title="Platform API", version="1", docs_url=None, redoc_url=None)
     policy = policy or LocalServicePolicy(settings.platform_api_token)
     runtime_factory = knowledge_runtime_factory or (lambda: KnowledgeRuntime(settings))
+    benchmark_catalog = BenchmarkCatalog()
     metrics = PlatformRequestMetrics()
     api.state.observability = metrics
 
@@ -511,6 +513,26 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
             **item,
             "capabilities": list(item["capabilities"]),
         } for item in CONTROL_CENTER_APPS])
+
+    @api.get("/benchmarks")
+    async def benchmarks(request: Request):
+        return envelope(request, suites=benchmark_catalog.list_suites())
+
+    @api.get("/benchmarks/{suite_id}/runs")
+    async def benchmark_runs(suite_id: ID, request: Request):
+        try:
+            runs = benchmark_catalog.list_runs(suite_id)
+        except KeyError:
+            raise APIError(404, "not_found") from None
+        return envelope(request, suite_id=suite_id, runs=runs)
+
+    @api.get("/benchmarks/{suite_id}/runs/{run_id}")
+    async def benchmark_run(suite_id: ID, run_id: ID, request: Request):
+        try:
+            run = benchmark_catalog.get_run(suite_id, run_id)
+        except KeyError:
+            raise APIError(404, "not_found") from None
+        return envelope(request, suite_id=suite_id, run=run)
 
     @api.get("/models")
     async def models(request: Request):
