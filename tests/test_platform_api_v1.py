@@ -222,6 +222,9 @@ def test_observability_snapshot_is_bounded_metadata_only():
             assert data['resource_manager']['queued'] == 0
             assert data['resource_leases']['active'] == 0
             assert data['gpu_residency']['recovery_required'] is False
+            assert data['accelerators']['schema_version'] == 1
+            assert data['accelerators']['primary_accelerator_id'] == 'local-primary'
+            assert data['accelerators']['devices'][0]['residency']['state'] == data['gpu_residency']['state']
             assert data['execution'] == {
                 'provider': 'ollama-local', 'node': app.state.platform_provider.node_id,
                 'logical_model': 'reasoning-main'}
@@ -240,6 +243,7 @@ def test_observability_snapshot_is_bounded_metadata_only():
             health = (await http.get('/api/v1/health', headers=headers)).json()
             assert health['components']['resource_leases']['active'] == 0
             assert health['components']['gpu_residency']['recovery_required'] is False
+            assert health['components']['accelerators']['primary_accelerator_id'] == 'local-primary'
     asyncio.run(run())
 
 

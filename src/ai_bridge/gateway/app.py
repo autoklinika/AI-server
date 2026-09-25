@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from ai_bridge.settings import Settings, get_settings
+from ai_bridge.providers.accelerators import accelerator_state_snapshot, local_accelerator_registry
 from ai_bridge.providers.registry import local_descriptor_registry
 
 from .admission import WorkloadBinding, DIRECT_READS, external_workload, http_workload
@@ -142,6 +143,11 @@ def create_gateway_app(
     resolved = settings or get_settings()
     registry = resolved.gateway_registry or local_descriptor_registry(resolved.node_id)
     registry.validate_local_gateway(resolved.node_id)
+    accelerator_registry = (
+        resolved.gateway_accelerator_registry
+        or local_accelerator_registry(resolved.node_id)
+    )
+    accelerator_registry.validate_references(registry)
     upstream_provider = registry.provider("ollama-local")
     scheduler = PriorityScheduler(
         max_concurrency=resolved.gateway_max_concurrency,
@@ -183,6 +189,7 @@ def create_gateway_app(
             app.state.scheduler = scheduler
             app.state.resource_leases = resource_leases
             app.state.descriptor_registry = registry
+            app.state.accelerator_registry = accelerator_registry
 
             # External media workers heartbeat their reservation. Reap only idle
             # leases whose worker disappeared so a crash cannot wedge the single
@@ -426,9 +433,13 @@ def create_gateway_app(
         except httpx.RequestError:
             ollama = "unavailable"
         snapshot = await scheduler.snapshot()
+        accelerator_state = accelerator_state_snapshot(
+            accelerator_registry, resource_leases.residency.snapshot()
+        )
         return {
             "status": "ok" if ollama == "ok" and not scheduler.admission_blocked else "degraded",
             "gpu_residency": resource_leases.residency.snapshot(),
+            "accelerators": accelerator_state,
             "ollama": ollama,
             "scheduler": snapshot,
         }
@@ -437,6 +448,9 @@ def create_gateway_app(
     async def status() -> dict[str, object]:
         snapshot = await scheduler.snapshot()
         snapshot["gpu_residency"] = resource_leases.residency.snapshot()
+        snapshot["accelerators"] = accelerator_state_snapshot(
+            accelerator_registry, resource_leases.residency.snapshot()
+        )
         snapshot["resource_leases"] = await resource_leases.snapshot()
         snapshot["registry"] = registry.snapshot()
         return snapshot

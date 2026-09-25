@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "accelerators": [
+    {
+      "accelerator_id": "local-primary",
+      "node_id": "ai-node-01",
+      "kind": "integrated",
+      "backend": "unknown",
+      "memory_class": "unified",
+      "locality": "local",
+      "total_memory_bytes": null,
+      "workload_classes": ["llm", "media-generation"],
+      "enabled": true
+    },
+    {
+      "accelerator_id": "external-01",
+      "node_id": "ai-node-01",
+      "kind": "discrete",
+      "backend": "cuda",
+      "memory_class": "dedicated",
+      "locality": "local",
+      "total_memory_bytes": 51539607552,
+      "workload_classes": ["llm", "media-generation"],
+      "enabled": false
+    }
+  ],
+  "provider_bindings": [
+    {
+      "provider_id": "ollama-local",
+      "accelerator_ids": ["local-primary", "external-01"]
+    },
+    {
+      "provider_id": "comfyui-local",
+      "accelerator_ids": ["local-primary", "external-01"]
+    }
+  ]
+}
