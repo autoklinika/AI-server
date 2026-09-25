@@ -34,3 +34,6 @@ where = ["src"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+
+[tool.setuptools.package-data]
+"ai_bridge.control_center" = ["static/*"]
