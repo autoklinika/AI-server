@@ -155,6 +155,8 @@ def test_resume_and_bootstrap_require_privilege_bridge():
 
 def test_privilege_installer_uses_root_owned_helper_and_sudoers():
     text = (AUTO / "install_privilege_bridge.sh").read_text(encoding="utf-8")
+    assert '[[ "$EUID" -eq 0 ]]' in text
+    assert "run this installer as the normal operator user" in text
     assert "/usr/local/libexec/ai-platform/autopilot-root-exec" in text
     assert "/etc/sudoers.d/ai-platform-autopilot" in text
     assert "NOPASSWD" in text
