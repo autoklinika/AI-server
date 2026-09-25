@@ -654,7 +654,13 @@ def create_gateway_app(
 
     from ai_bridge.control_center.app import create_control_center_app
     from ai_bridge.platform.api import create_platform_app
-    app.mount("/control", create_control_center_app())
+    app.mount(
+        "/control",
+        create_control_center_app(
+            platform_base_url=resolved.gateway_url.rstrip("/") + "/api/v1",
+            platform_api_token=resolved.platform_api_token,
+        ),
+    )
     app.mount(
         "/api/v1",
         create_platform_app(
