@@ -5,11 +5,12 @@ DEST="${1:?usage: $0 DEST RELEASE_ID}"
 RELEASE_ID="${2:?usage: $0 DEST RELEASE_ID}"
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 STAGE="${RELEASE_STAGE:?release stage required}"
-[[ "$STAGE" =~ ^[GHIJ]$ ]] || exit 2
+[[ "$STAGE" =~ ^[GHIJL]$ ]] || exit 2
 STAGE_LC="${STAGE,,}"
 MIGRATION="${RELEASE_MIGRATION:?migration version required}"
 OBSERVABILITY_CONTRACT="${RELEASE_OBSERVABILITY_CONTRACT:-}"
 KNOWLEDGE_CONTRACT="${RELEASE_KNOWLEDGE_CONTRACT:-}"
+ERS_CONTRACT="${RELEASE_ERS_CONTRACT:-}"
 PYTHON_BIN="${PYTHON_BIN:-python3.14}"
 
 OWNER_UID="$(stat -c '%u' "$ROOT")"
@@ -156,6 +157,9 @@ if [[ -n "$OBSERVABILITY_CONTRACT" ]]; then
 fi
 if [[ -n "$KNOWLEDGE_CONTRACT" ]]; then
   printf "knowledge_service_contract_version=%s\n" "$KNOWLEDGE_CONTRACT" >> "$DEST/RELEASE"
+fi
+if [[ -n "$ERS_CONTRACT" ]]; then
+  printf "ers_domain_contract_version=%s\n" "$ERS_CONTRACT" >> "$DEST/RELEASE"
 fi
 
 python3 "$ROOT/deploy/stage-$STAGE_LC/validate_release_metadata.py" "$DEST"
