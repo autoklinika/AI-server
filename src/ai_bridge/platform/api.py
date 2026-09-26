@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException
 
 from ai_bridge.benchmarks import BenchmarkCatalog
+from ai_bridge.platform.agents import agents_snapshot
 from ai_bridge.gateway.admission import WorkloadBinding
 from ai_bridge.gateway.jobs import JobLifecycle, JobMetadata
 from ai_bridge.gateway.priority import PriorityClass, priority_for_class
@@ -727,6 +728,10 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
     @api.get("/operations")
     async def operations(request: Request):
         return envelope(request, **operations_snapshot())
+
+    @api.get("/agents")
+    async def agents(request: Request):
+        return envelope(request, **agents_snapshot())
 
     @api.get("/models")
     async def models(request: Request):
