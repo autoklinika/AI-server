@@ -1,4 +1,4 @@
-const CACHE = "ai-control-gui0-v1";
+const CACHE = "ai-control-shell-v2";
 const SHELL = [
   "/control/",
   "/control/assets/styles.css",
@@ -8,9 +8,16 @@ const SHELL = [
 ];
 
 self.addEventListener("install", function (event) {
-  event.waitUntil(caches.open(CACHE).then(function (cache) {
-    return cache.addAll(SHELL);
-  }));
+  event.waitUntil(
+    caches.open(CACHE).then(function (cache) {
+      return Promise.all(SHELL.map(function (url) {
+        return fetch(url, { cache: "reload" }).then(function (response) {
+          if (!response.ok) throw new Error("shell_fetch_failed");
+          return cache.put(url, response);
+        });
+      }));
+    })
+  );
   self.skipWaiting();
 });
 
@@ -34,29 +41,26 @@ self.addEventListener("fetch", function (event) {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Operational data must always come from Platform API, never from PWA cache.
-  if (url.pathname.startsWith("/api/")) return;
+  // Platform API data is always live and never enters the PWA cache.
+  if (url.pathname.startsWith("/control/api/") || url.pathname.startsWith("/api/")) return;
 
-  if (request.mode === "navigate" && url.pathname.startsWith("/control/")) {
-    event.respondWith(
-      fetch(request).catch(function () {
-        return caches.match("/control/");
-      })
-    );
-    return;
-  }
+  if (!url.pathname.startsWith("/control/")) return;
 
-  if (url.pathname.startsWith("/control/")) {
-    event.respondWith(
-      caches.match(request).then(function (cached) {
-        return cached || fetch(request).then(function (response) {
-          const copy = response.clone();
-          caches.open(CACHE).then(function (cache) {
-            cache.put(request, copy);
-          });
-          return response;
+  // UI shell/assets are network-first so every Stage O rollout is visible
+  // without manual cache clearing. Cached content is only an offline fallback.
+  event.respondWith(
+    fetch(request, { cache: "no-cache" }).then(function (response) {
+      if (response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE).then(function (cache) {
+          cache.put(request, copy);
         });
-      })
-    );
-  }
+      }
+      return response;
+    }).catch(function () {
+      return caches.match(request).then(function (cached) {
+        return cached || caches.match("/control/");
+      });
+    })
+  );
 });
