@@ -11,7 +11,7 @@ from pathlib import Path
 from time import monotonic
 from typing import Annotated, Literal
 from urllib.parse import urlparse
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -20,6 +20,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException
 
 from ai_bridge.benchmarks import BenchmarkCatalog
+from ai_bridge.domains.ers.storage.intake_repository import ErsIntakeRepository
+from ai_bridge.domains.ers.storage.repository import ErsCaseNotFound, ErsCaseRepository
 from ai_bridge.platform.agents import agents_snapshot
 from ai_bridge.gateway.admission import WorkloadBinding
 from ai_bridge.gateway.jobs import JobLifecycle, JobMetadata
@@ -36,6 +38,7 @@ from ai_bridge.knowledge.runtime import KnowledgeRuntime
 from ai_bridge.providers.accelerators import accelerator_state_snapshot
 from ai_bridge.providers.contracts import KnowledgeQuery, LLMRequest
 from ai_bridge.response_language import apply_polish_response_policy
+from ai_bridge.storage.database import Database
 from ai_bridge.storage.object_store import (
     FileObjectStore,
     ObjectStoreCorruption,
@@ -328,6 +331,50 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
             except Exception:
                 LOGGER.exception("Knowledge runtime close failed")
         return query, result
+
+    def ers_case_list_projection() -> list[dict]:
+        database = Database(settings.database_url)
+        try:
+            repository = ErsCaseRepository(database)
+            return [asdict(case) for case in repository.list_cases(limit=100)]
+        finally:
+            database.dispose()
+
+    def ers_case_detail_projection(case_id: UUID) -> dict:
+        database = Database(settings.database_url)
+        try:
+            cases = ErsCaseRepository(database)
+            intake = ErsIntakeRepository(database)
+            detail = intake.get_case_detail(case_id)
+            events = cases.list_events(case_id)
+            case = detail["case"]
+            return {
+                **{key: value for key, value in detail.items() if key != "case"},
+                "case": asdict(case),
+                "events": [asdict(event) for event in events],
+            }
+        finally:
+            database.dispose()
+
+    @api.get("/ers/cases")
+    async def ers_cases(request: Request):
+        try:
+            cases = await asyncio.to_thread(ers_case_list_projection)
+        except Exception:
+            LOGGER.exception("ERS case list failed")
+            raise APIError(503, "ers_unavailable", True) from None
+        return envelope(request, cases=cases, count=len(cases), limit=100)
+
+    @api.get("/ers/cases/{case_id}")
+    async def ers_case(case_id: UUID, request: Request):
+        try:
+            detail = await asyncio.to_thread(ers_case_detail_projection, case_id)
+        except ErsCaseNotFound:
+            raise APIError(404, "not_found") from None
+        except Exception:
+            LOGGER.exception("ERS case detail failed")
+            raise APIError(503, "ers_unavailable", True) from None
+        return envelope(request, **detail)
 
     @api.get("/jobs")
     async def list_jobs(request: Request):

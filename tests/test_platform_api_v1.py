@@ -5,9 +5,13 @@ from contextlib import asynccontextmanager
 import httpx
 import pytest
 
+from ai_bridge.domains.ers.storage.models import ErsCaseCounterModel
+from ai_bridge.domains.ers.storage.repository import ErsCaseRepository
 from ai_bridge.gateway.app import create_gateway_app
 from ai_bridge.providers.contracts import LLMResponse
 from ai_bridge.settings import Settings
+from ai_bridge.storage.base import Base
+from ai_bridge.storage.database import Database
 
 
 @asynccontextmanager
@@ -446,3 +450,43 @@ def test_structured_logs_are_bounded_metadata_only_and_do_not_self_record():
             assert all(item["route"] != "/logs" for item in traces)
     asyncio.run(run())
 
+
+
+def test_platform_api_exposes_read_only_ers_projection(tmp_path):
+    async def run():
+        database_url = "sqlite+pysqlite:///" + str(tmp_path / "ers-platform.sqlite")
+        database = Database(database_url)
+        Base.metadata.create_all(database.engine)
+        with database.session() as session:
+            session.add(ErsCaseCounterModel(counter_name="case", next_value=1))
+        case = ErsCaseRepository(database).create_case(
+            title="Scania EMS S6 clone",
+            actor_id="operator",
+            legacy_case_code="CASE-0002-SCANIA",
+        )
+        database.dispose()
+
+        async with client(database_url=database_url) as (http, _):
+            listing = await http.get("/api/v1/ers/cases")
+            assert listing.status_code == 200, listing.text
+            payload = listing.json()
+            assert payload["count"] == 1
+            assert payload["limit"] == 100
+            assert payload["cases"][0]["id"] == str(case.id)
+            assert payload["cases"][0]["legacy_case_code"] == "CASE-0002-SCANIA"
+
+            detail = await http.get("/api/v1/ers/cases/" + str(case.id))
+            assert detail.status_code == 200, detail.text
+            body = detail.json()
+            assert body["case"]["id"] == str(case.id)
+            assert body["events"][0]["event_type"] == "created"
+
+            missing = await http.get(
+                "/api/v1/ers/cases/11111111-1111-4111-8111-111111111111"
+            )
+            assert missing.status_code == 404
+            assert missing.json()["error"]["code"] == "not_found"
+
+            assert (await http.post("/api/v1/ers/cases", json={})).status_code == 405
+
+    asyncio.run(run())
