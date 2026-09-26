@@ -223,7 +223,7 @@ def control_center_absent() -> None:
             raise RuntimeError("Control Center unexpectedly present in rollback baseline")
 
 
-def control_center_smoke() -> dict:
+def control_center_smoke(*, require_operations: bool = True) -> dict:
     bridge = bridge_base()
     status, html, headers = text_fetch(bridge + "/control/")
     require(status == 200 and "AI Control Center" in html)
@@ -246,10 +246,20 @@ def control_center_smoke() -> dict:
 
     health = e.fetch(bridge + "/control/api/v1/health")
     require(health["readiness"] is True)
-    operations = e.fetch(bridge + "/control/api/v1/operations")
-    require(operations["release"]["stage"] == "O")
-    require(isinstance(operations["storage"], list))
-    require("backup" in operations)
+    if require_operations:
+        operations = e.fetch(bridge + "/control/api/v1/operations")
+        require(operations["release"]["stage"] == "O")
+        require(isinstance(operations["storage"], list))
+        require("backup" in operations)
+    else:
+        try:
+            operations = e.fetch(bridge + "/control/api/v1/operations")
+        except HTTPError as error:
+            require(error.code in (403, 404))
+        else:
+            require(operations["release"]["stage"] == "O")
+            require(isinstance(operations["storage"], list))
+            require("backup" in operations)
     apps = e.fetch(bridge + "/control/api/v1/apps")["apps"]
     require([item["id"] for item in apps] == ["knowledge", "benchmarks", "ers"])
 
@@ -313,7 +323,11 @@ def smoke(
     active = target == candidate
     has_control_center = active or baseline["rollback_stage"] == "O"
     platform_smoke(has_control_center)
-    evidence = control_center_smoke() if has_control_center else {"status": "ABSENT"}
+    evidence = (
+        control_center_smoke(require_operations=active)
+        if has_control_center
+        else {"status": "ABSENT"}
+    )
     if not has_control_center:
         control_center_absent()
     e.hermes_state()
