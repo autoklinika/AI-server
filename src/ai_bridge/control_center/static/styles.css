@@ -645,3 +645,21 @@ code { color: #b9d4ff; background: rgba(110,168,254,.08); padding: 2px 5px; bord
   .benchmark-run { align-items:flex-start; }
 }
 
+.benchmark-run-summary {
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:18px;
+  padding:18px;
+  margin-bottom:14px;
+  box-shadow:none;
+}
+.benchmark-run-summary h2 { margin:4px 0 6px; font-size:20px; }
+.benchmark-run-summary p { margin:0; color:var(--muted); font-size:10px; }
+.benchmark-detail-table table { min-width:980px; }
+.benchmark-detail-table td strong { display:block; color:var(--text); }
+.benchmark-detail-table td small { display:block; margin-top:4px; color:var(--muted-2); font-size:9px; }
+@media (max-width:720px) {
+  .benchmark-run-summary { align-items:flex-start; flex-direction:column; }
+}
+
