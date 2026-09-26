@@ -97,7 +97,7 @@ ai_gateway:
 
 hermes:
   source_git_sha: 79445a496c86a19332ad786494b8384d2167e2d0
-  integration: ai-platform-messaging-1.0.0
+  integration: ai-platform-messaging-1.1.0
 
 provider_model_config:
   llm_provider: OllamaAdapter

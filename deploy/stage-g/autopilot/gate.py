@@ -132,7 +132,9 @@ def smoke_body(phase, target, candidate, state, baseline):
                 completed = subprocess.run([str(a) for a in command], stdout=log, stderr=subprocess.STDOUT, timeout=10800)
             require(completed.returncode == 0)
             evidence = e.read(output)
-            require(evidence['status'] == 'PASS' and len(evidence['media']) == 4)
+            require(evidence['status'] == 'PASS' and len(evidence['media']) == 2)
+            require(evidence['discord_technical_rag']['status'] == 'PASS')
+            require(evidence['discord_technical_rag']['general_agent_bypassed'] is True)
             require(evidence['external_transport'] == 'DEFERRED/NOT TESTED')
             e.write_once(evidence_dir / 'internal.json', evidence)
     finally:
