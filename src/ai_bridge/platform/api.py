@@ -78,6 +78,14 @@ CONTROL_CENTER_APPS = (
         "capabilities": ("observability.trace.read",),
         "exposure": {"gui": True, "agent": True, "mcp": False},
     },
+    {
+        "id": "system-map",
+        "name": "System Map",
+        "route": "/apps/system-map",
+        "status": "ready",
+        "capabilities": ("platform.topology.read",),
+        "exposure": {"gui": True, "agent": True, "mcp": False},
+    },
 )
 
 
@@ -639,6 +647,83 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                           "terminal_limit": gateway.state.scheduler.history_limit},
             "process": runtime_resources(),
         }
+
+    @api.get("/system-map")
+    async def system_map(request: Request):
+        snapshot = await operational_snapshot()
+        recent = metrics.traces(64)
+        all_jobs = await jobs()
+        enriched = [trace_payload(trace, all_jobs) for trace in recent]
+        knowledge_activity = sum(
+            1 for trace in enriched
+            if trace["kind"] in ("knowledge-search", "knowledge-rag", "knowledge-document")
+        )
+        execution_activity = sum(1 for trace in enriched if trace.get("job") is not None)
+        try:
+            async with asyncio.timeout(settings.gateway_health_timeout_seconds):
+                inference_ready = await gateway.state.platform_provider.ready()
+        except Exception:
+            inference_ready = False
+
+        rm = snapshot["resource_manager"]
+        nodes = [
+            {"id": "control-center", "label": "Control Center", "kind": "ui",
+             "status": "ready", "activity": len(recent)},
+            {"id": "ai-gateway", "label": "AI Gateway", "kind": "platform",
+             "status": "blocked" if rm["admission_blocked"] else "ready",
+             "activity": rm["active"] + rm["queued"]},
+            {"id": "platform-api", "label": "Platform API", "kind": "platform",
+             "status": "ready", "activity": len(recent)},
+            {"id": "resource-manager", "label": "Resource Manager", "kind": "service",
+             "status": "blocked" if rm["admission_blocked"] else "ready",
+             "activity": rm["active"] + rm["queued"]},
+            {"id": "knowledge", "label": "Knowledge Service", "kind": "service",
+             "status": "configured", "activity": knowledge_activity},
+            {"id": "reasoning-main", "label": "reasoning-main", "kind": "model",
+             "status": "ready" if inference_ready else "unavailable",
+             "activity": execution_activity},
+        ]
+        for system in (
+            {"id": "telegram", "label": "Telegram"},
+            {"id": "discord", "label": "Discord"},
+            {"id": "wvc", "label": "WVC"},
+            {"id": "media", "label": "Media"},
+        ):
+            nodes.append({**system, "kind": "integration", "status": "configured", "activity": None})
+
+        edges = [
+            {"source": "control-center", "target": "platform-api", "kind": "api",
+             "status": "ready", "activity": len(recent)},
+            {"source": "platform-api", "target": "knowledge", "kind": "retrieval",
+             "status": "ready", "activity": knowledge_activity},
+            {"source": "platform-api", "target": "resource-manager", "kind": "admission",
+             "status": "ready", "activity": execution_activity},
+            {"source": "resource-manager", "target": "reasoning-main", "kind": "execution",
+             "status": "ready" if inference_ready else "unavailable", "activity": execution_activity},
+            {"source": "telegram", "target": "ai-gateway", "kind": "integration",
+             "status": "configured", "activity": None},
+            {"source": "discord", "target": "ai-gateway", "kind": "integration",
+             "status": "configured", "activity": None},
+            {"source": "wvc", "target": "ai-gateway", "kind": "integration",
+             "status": "configured", "activity": None},
+            {"source": "media", "target": "ai-gateway", "kind": "integration",
+             "status": "configured", "activity": None},
+            {"source": "ai-gateway", "target": "platform-api", "kind": "boundary",
+             "status": "ready", "activity": rm["active"] + rm["queued"]},
+        ]
+        return envelope(
+            request,
+            nodes=nodes,
+            edges=edges,
+            activity={
+                "recent_trace_count": len(recent),
+                "knowledge_requests": knowledge_activity,
+                "execution_requests": execution_activity,
+                "active_jobs": rm["active"],
+                "queued_jobs": rm["queued"],
+            },
+            retention={"persistent": False, "trace_sample_limit": 64},
+        )
 
     @api.get("/observability")
     async def observability(request: Request):

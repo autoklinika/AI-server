@@ -199,3 +199,31 @@ def test_control_center_flight_recorder_ui_has_deep_links_and_no_payload_renderi
     assert "messages" not in recorder
     assert "content" not in recorder
 
+def test_control_center_system_map_is_read_only_and_rendered():
+    async def run():
+        seen = []
+        def upstream(request):
+            seen.append((request.method, request.url.path))
+            return httpx.Response(200, json={
+                "schema_version": 1, "nodes": [], "edges": [], "activity": {},
+                "retention": {"persistent": False, "trace_sample_limit": 64},
+            })
+        app = create_control_center_app(
+            platform_base_url="http://platform/api/v1",
+            upstream_transport=httpx.MockTransport(upstream),
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app, client=("192.168.1.44", 1234)),
+            base_url="http://control",
+        ) as http:
+            assert (await http.get("/api/v1/system-map")).status_code == 200
+            assert (await http.post("/api/v1/system-map")).status_code == 403
+        assert seen == [("GET", "/api/v1/system-map")]
+
+    asyncio.run(run())
+
+    javascript = TestClient(create_control_center_app()).get("/assets/app.js").text
+    assert 'api("/system-map")' in javascript
+    assert "function systemMapPage()" in javascript
+    assert '"/apps/system-map"' in javascript
+

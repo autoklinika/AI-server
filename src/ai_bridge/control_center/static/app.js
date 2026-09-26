@@ -14,6 +14,7 @@ const FALLBACK_APP_REGISTRY = [
   { id: "benchmarks", group: "applications", label: "Benchmarks", route: "/apps/benchmarks", icon: "B", status: "foundation" },
   { id: "ers", group: "applications", label: "ECU Repair Service", route: "/apps/ers", icon: "E", status: "foundation" },
   { id: "observability", group: "applications", label: "Flight Recorder", route: "/apps/observability", icon: "O", status: "ready" },
+  { id: "system-map", group: "applications", label: "System Map", route: "/apps/system-map", icon: "S", status: "ready" },
 
   { id: "settings", group: "platform", label: "Settings", route: "/platform/settings", icon: "S" },
   { id: "providers", group: "platform", label: "Providers", route: "/platform/providers", icon: "P" },
@@ -29,6 +30,7 @@ const state = {
   systems: null,
   operations: null,
   traces: null,
+  systemMap: null,
   apps: null,
   benchmarks: { catalog: null, suite: null, runs: null, runKey: null, run: null, loading: false, error: null },
   knowledge: {
@@ -151,6 +153,7 @@ async function refreshData() {
     systems: api("/systems"),
     operations: api("/operations"),
     traces: api("/traces"),
+    systemMap: api("/system-map"),
     apps: api("/apps"),
     benchmarks: api("/benchmarks")
   };
@@ -358,7 +361,8 @@ function appCard(app) {
     knowledge: "Szukaj, pytaj AI i pracuj ze źródłami Knowledge Service.",
     benchmarks: "Laboratorium modeli, routerów i porównań jakości.",
     ers: "Domenowa aplikacja diagnostyki i przypadków ECU.",
-    observability: "Historia requestów Platform API z latency i korelacją z Resource Managerem."
+    observability: "Historia requestów Platform API z latency i korelacją z Resource Managerem.",
+    "system-map": "Żywa mapa przepływów między integracjami, Platform API, Knowledge i modelami."
   }[app.id] || "";
   return '<a class="app-card" href="' + controlUrl(app.route) + '" data-nav>' +
     '<div class="app-card-top"><span class="app-logo">' + escapeHtml(app.icon) + '</span>' +
@@ -869,6 +873,65 @@ function traceDetailPage(traceId) {
       '<dt>Node</dt><dd>' + escapeHtml(job.assigned_node || "—") + '</dd></dl></article>' : ''));
 }
 
+function systemMapPage() {
+  const payload = state.systemMap || {};
+  const nodes = Array.isArray(payload.nodes) ? payload.nodes : [];
+  const edges = Array.isArray(payload.edges) ? payload.edges : [];
+  const activity = payload.activity || {};
+  const byId = new Map(nodes.map(function (node) { return [node.id, node]; }));
+
+  function node(id) {
+    const item = byId.get(id);
+    if (!item) return "";
+    const activityText = typeof item.activity === "number" ? item.activity + " recent" : item.status;
+    return '<div class="map-node ' + escapeHtml(item.kind || "service") + '">' +
+      '<div class="map-node-head">' + statusDot(item.status) +
+        '<strong>' + escapeHtml(item.label || item.id) + '</strong></div>' +
+      '<small>' + escapeHtml(activityText || "configured") + '</small></div>';
+  }
+
+  function connector(label, value) {
+    return '<div class="map-connector"><span>↓</span><small>' +
+      escapeHtml(label) + (typeof value === "number" ? " · " + value : "") +
+    '</small></div>';
+  }
+
+  const integrationNodes = ["telegram", "discord", "wvc", "media"].map(node).join("");
+  const graph = '<div class="panel system-map">' +
+    '<div class="map-layer"><div class="map-layer-label">INGRESS / INTEGRATIONS</div><div class="map-row integrations">' + integrationNodes + '</div></div>' +
+    connector("compatibility / messaging", activity.active_jobs || 0) +
+    '<div class="map-layer"><div class="map-row center">' + node("ai-gateway") + '</div></div>' +
+    connector("stable boundary", activity.recent_trace_count || 0) +
+    '<div class="map-layer"><div class="map-row center">' + node("control-center") + node("platform-api") + '</div></div>' +
+    '<div class="map-branches">' +
+      '<div>' + connector("retrieval", activity.knowledge_requests || 0) + node("knowledge") + '</div>' +
+      '<div>' + connector("admission", activity.execution_requests || 0) + node("resource-manager") +
+        connector("execution", activity.execution_requests || 0) + node("reasoning-main") + '</div>' +
+    '</div></div>';
+
+  const edgeRows = edges.map(function (edge) {
+    const source = byId.get(edge.source) || { label: edge.source };
+    const target = byId.get(edge.target) || { label: edge.target };
+    return '<div class="event-row"><span>' + statusDot(edge.status) +
+      escapeHtml(source.label) + ' → ' + escapeHtml(target.label) + '</span>' +
+      '<small>' + escapeHtml(edge.kind || "flow") +
+        (typeof edge.activity === "number" ? " · " + edge.activity : "") + '</small></div>';
+  }).join("");
+
+  const summary = '<section class="metric-strip compact">' +
+    metric("Recent traces", String(activity.recent_trace_count || 0), "bounded sample", "/apps/observability") +
+    metric("Knowledge", String(activity.knowledge_requests || 0), "recent requests", "/apps/system-map") +
+    metric("Execution", String(activity.execution_requests || 0), "recent requests", "/apps/system-map") +
+    metric("Jobs", String((activity.active_jobs || 0) + (activity.queued_jobs || 0)),
+      (activity.active_jobs || 0) + " active · " + (activity.queued_jobs || 0) + " queued", "/jobs") +
+  '</section>';
+
+  return sectionPage("System Map", "Żywy widok logicznej architektury i ostatniej aktywności AI Platform.",
+    summary + graph +
+    '<section class="section-head section-spaced"><div><div class="eyebrow">EDGES</div><h2>Current topology</h2></div></section>' +
+    '<div class="panel">' + (edgeRows || '<div class="empty-state">Brak danych topologii.</div>') + '</div>');
+}
+
 function genericOperations(title, subtitle, note) {
   return sectionPage(title, subtitle, pendingPanel(title, note));
 }
@@ -899,6 +962,7 @@ function pageForRoute() {
   }
   if (path === "/apps/ers") return placeholderApplication("ECU Repair Service", "Domenowa aplikacja ERS jako osobny workspace.");
   if (path === "/apps/observability") return flightRecorderPage();
+  if (path === "/apps/system-map") return systemMapPage();
   if (path === "/operations/agents") return genericOperations("Agents", "Stan i kontrolowane akcje agentów.", "Agent control API nie jest jeszcze wystawione przez Platform API.");
   if (path === "/operations/backup") return backupPage();
   if (path === "/operations/logs") return genericOperations("Logs", "Filtrowane logi operacyjne.", "Log API nie jest jeszcze częścią Platform API v1.");
