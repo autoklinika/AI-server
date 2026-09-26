@@ -261,7 +261,18 @@ def control_center_smoke(*, require_operations: bool = True) -> dict:
             require(isinstance(operations["storage"], list))
             require("backup" in operations)
     apps = e.fetch(bridge + "/control/api/v1/apps")["apps"]
-    require([item["id"] for item in apps] == ["knowledge", "benchmarks", "ers"])
+    app_ids = [item["id"] for item in apps]
+    require(app_ids[:3] == ["knowledge", "benchmarks", "ers"])
+    if require_operations:
+        require(app_ids == ["knowledge", "benchmarks", "ers", "observability"])
+        traces = e.fetch(bridge + "/control/api/v1/traces")
+        require(traces["retention"]["persistent"] is False)
+        require(traces["retention"]["limit"] == 256)
+    else:
+        require(app_ids in (
+            ["knowledge", "benchmarks", "ers"],
+            ["knowledge", "benchmarks", "ers", "observability"],
+        ))
 
     search = e.fetch(
         bridge + "/control/api/v1/knowledge/search",
@@ -294,12 +305,22 @@ def control_center_smoke(*, require_operations: bool = True) -> dict:
     }
 
 
-def platform_smoke(active: bool) -> None:
+def platform_smoke(active: bool, *, require_observability: bool = False) -> None:
     base = e.GATEWAY + "/api/v1"
     require(e.fetch(base + "/health")["readiness"] is True)
     if active:
         apps = e.fetch(base + "/apps")["apps"]
-        require([item["id"] for item in apps] == ["knowledge", "benchmarks", "ers"])
+        app_ids = [item["id"] for item in apps]
+        require(app_ids[:3] == ["knowledge", "benchmarks", "ers"])
+        if require_observability:
+            require(app_ids == ["knowledge", "benchmarks", "ers", "observability"])
+            traces = e.fetch(base + "/traces")
+            require(traces["retention"]["limit"] == 256)
+        else:
+            require(app_ids in (
+                ["knowledge", "benchmarks", "ers"],
+                ["knowledge", "benchmarks", "ers", "observability"],
+            ))
     else:
         try:
             e.fetch(base + "/apps")
@@ -322,7 +343,7 @@ def smoke(
     require(crt_tables() == CRT_TABLES)
     active = target == candidate
     has_control_center = active or baseline["rollback_stage"] == "O"
-    platform_smoke(has_control_center)
+    platform_smoke(has_control_center, require_observability=active)
     evidence = (
         control_center_smoke(require_operations=active)
         if has_control_center
