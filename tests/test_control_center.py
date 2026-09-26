@@ -327,3 +327,41 @@ def test_control_center_proxy_allows_read_only_agents():
 
     asyncio.run(run())
 
+def test_control_center_logs_are_read_only_and_rendered():
+    async def run():
+        seen = []
+
+        def upstream(request):
+            seen.append((request.method, request.url.path))
+            return httpx.Response(200, json={
+                "schema_version": 1,
+                "logs": [],
+                "retention": {
+                    "persistent": False,
+                    "limit": 256,
+                    "raw_logs_exposed": False,
+                    "sources": ["platform-api", "resource-manager"],
+                },
+            })
+
+        app = create_control_center_app(
+            platform_base_url="http://platform/api/v1",
+            upstream_transport=httpx.MockTransport(upstream),
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app, client=("192.168.1.44", 1234)),
+            base_url="http://control",
+        ) as http:
+            assert (await http.get("/api/v1/logs")).status_code == 200
+            assert (await http.post("/api/v1/logs")).status_code == 403
+
+        assert seen == [("GET", "/api/v1/logs")]
+
+    asyncio.run(run())
+
+    javascript = TestClient(create_control_center_app()).get("/assets/app.js").text
+    assert 'api("/logs")' in javascript
+    assert "function logsPage()" in javascript
+    assert 'if (path === "/operations/logs") return logsPage();' in javascript
+    assert "Log API nie jest jeszcze częścią Platform API v1." not in javascript
+

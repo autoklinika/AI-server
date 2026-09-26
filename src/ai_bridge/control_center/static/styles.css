@@ -817,3 +817,35 @@ code { color: #b9d4ff; background: rgba(110,168,254,.08); padding: 2px 5px; bord
   letter-spacing: .06em;
 }
 
+/* Structured operational logs */
+.log-list-head,
+.log-row {
+  display: grid;
+  grid-template-columns: 150px 90px minmax(240px, 1.5fr) 140px minmax(90px, .7fr);
+  gap: 12px;
+  align-items: center;
+}
+.log-list-head {
+  padding: 0 14px 7px;
+  color: var(--muted-2);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.log-list { display: grid; gap: 7px; }
+.log-row { padding: 11px 14px; box-shadow: none; }
+a.log-row:hover { border-color: #35445a; }
+.log-time, .log-component, .log-status { color: var(--muted); font-size: 9px; }
+.log-level { display: flex; align-items: center; gap: 7px; font-size: 9px; text-transform: uppercase; }
+.log-main strong { display: block; font-size: 10px; }
+.log-main span { display: block; color: var(--muted-2); font-size: 9px; margin-top: 3px; }
+@media (max-width: 720px) {
+  .log-list-head { display: none; }
+  .log-row { grid-template-columns: 1fr auto; }
+  .log-time { grid-column: 1; }
+  .log-level { grid-column: 2; }
+  .log-main { grid-column: 1 / -1; }
+  .log-component { grid-column: 1; }
+  .log-status { grid-column: 2; text-align: right; }
+}
+

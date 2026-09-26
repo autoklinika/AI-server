@@ -705,6 +705,87 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
             },
         )
 
+    async def structured_log_values() -> list[dict]:
+        all_jobs = await jobs()
+        values = []
+        for trace in metrics.traces(256):
+            payload = trace_payload(trace, all_jobs)
+            status = int(payload["status"])
+            job = payload.get("job") or {}
+            level = "error" if status >= 500 else ("warning" if status >= 400 else "info")
+            values.append({
+                "log_id": "request:" + payload["request_id"],
+                "timestamp": payload["completed_at"],
+                "level": level,
+                "component": "platform-api",
+                "event": "request_completed",
+                "request_id": payload["request_id"],
+                "trace_id": payload["trace_id"],
+                "method": payload["method"],
+                "route": payload["route"],
+                "status": status,
+                "duration_ms": payload["duration_ms"],
+                "error_class": payload.get("error_class"),
+                "job_id": job.get("job_id"),
+                "capability": job.get("capability"),
+                "provider": job.get("assigned_provider"),
+                "node": job.get("assigned_node"),
+            })
+
+        for raw_job in all_jobs:
+            job = public_job(raw_job)
+            state = str(job["state"])
+            timestamp = (
+                job.get("finished_at")
+                or job.get("started_at")
+                or job.get("admitted_at")
+                or job.get("queued_at")
+                or job.get("created_at")
+            )
+            if not timestamp:
+                continue
+            if state in ("failed", "expired"):
+                level = "error"
+            elif state == "cancelled":
+                level = "warning"
+            else:
+                level = "info"
+            values.append({
+                "log_id": "job:" + job["job_id"],
+                "timestamp": timestamp,
+                "level": level,
+                "component": "resource-manager",
+                "event": "job_" + state,
+                "request_id": job.get("request_id"),
+                "trace_id": job.get("request_id"),
+                "method": None,
+                "route": None,
+                "status": None,
+                "duration_ms": None,
+                "error_class": None,
+                "job_id": job["job_id"],
+                "capability": job.get("capability"),
+                "provider": job.get("assigned_provider"),
+                "node": job.get("assigned_node"),
+            })
+
+        values.sort(key=lambda item: str(item["timestamp"]), reverse=True)
+        return values[:256]
+
+    @api.get("/logs")
+    async def structured_logs(request: Request):
+        values = await structured_log_values()
+        return envelope(
+            request,
+            logs=values,
+            retention={
+                "persistent": False,
+                "limit": 256,
+                "raw_logs_exposed": False,
+                "sources": ["platform-api", "resource-manager"],
+            },
+        )
+
     @api.get("/benchmarks")
     async def benchmarks(request: Request):
         return envelope(request, suites=benchmark_catalog.list_suites())
