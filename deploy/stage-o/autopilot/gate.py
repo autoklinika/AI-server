@@ -245,6 +245,10 @@ def control_center_smoke(*, require_operations: bool = True) -> dict:
         # contract, not against features introduced by the new candidate.
         require("function knowledgeSourceModal()" in javascript)
         require("function openKnowledgeSource(kind, index)" in javascript)
+        require('data-knowledge-tab="history"' in javascript)
+        require("function knowledgeHistoryResults()" in javascript)
+        require("function loadKnowledgeHistory()" in javascript)
+        require("function openKnowledgeHistory(historyId)" in javascript)
         require("knowledge-source-target" in javascript)
         require("scrollIntoView" in javascript)
         require("/content" not in javascript)
@@ -290,6 +294,21 @@ def control_center_smoke(*, require_operations: bool = True) -> dict:
         require(isinstance(logs["logs"], list))
         require(logs["retention"]["raw_logs_exposed"] is False)
         require(logs["retention"]["limit"] == 256)
+        history = e.fetch(bridge + "/control/api/v1/knowledge/history")
+        require(isinstance(history["history"], list))
+        require(len(history["history"]) <= 10)
+        require(history["retention"] == {
+            "persistent": False,
+            "limit": 10,
+            "scope": "platform-runtime",
+        })
+        if history["history"]:
+            history_id = history["history"][0]["history_id"]
+            history_detail = e.fetch(
+                bridge + "/control/api/v1/knowledge/history/" + history_id
+            )
+            require(history_detail["item"]["history_id"] == history_id)
+            require("response" in history_detail["item"])
         ers = e.fetch(bridge + "/control/api/v1/ers/cases")
         require(isinstance(ers["cases"], list))
         require(ers["count"] == len(ers["cases"]))

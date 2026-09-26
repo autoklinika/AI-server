@@ -27,6 +27,7 @@ _TRACE_IGNORED_ROUTES = frozenset({
     "/health", "/observability", "/operations", "/jobs", "/models", "/systems",
     "/apps", "/benchmarks", "/traces", "/traces/{request_id}", "/system-map",
     "/incidents", "/incidents/{incident_id}", "/agents", "/logs",
+    "/knowledge/history", "/knowledge/history/{history_id}",
 })
 
 

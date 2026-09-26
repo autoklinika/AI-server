@@ -60,6 +60,12 @@ def test_control_center_contains_live_knowledge_workflow_and_registry_client():
     assert 'api("/apps")' in javascript
     assert '"/knowledge/search"' in javascript
     assert '"/knowledge/ask"' in javascript
+    assert 'data-knowledge-tab="history"' in javascript
+    assert 'api("/knowledge/history")' in javascript
+    assert 'api("/knowledge/history/" + encodeURIComponent(historyId))' in javascript
+    assert "function knowledgeHistoryResults()" in javascript
+    assert "function loadKnowledgeHistory()" in javascript
+    assert "function openKnowledgeHistory(historyId)" in javascript
     assert "/knowledge/documents/" in javascript
     assert "function knowledgeSourceModal()" in javascript
     assert "function openKnowledgeSource(kind, index)" in javascript
@@ -458,5 +464,59 @@ def test_control_center_proxy_allows_read_only_knowledge_document_metadata_for_m
             assert (await http.post("/api/v1/knowledge/documents/kdoc_test", json={})).status_code == 403
 
         assert seen == [("GET", "/api/v1/knowledge/documents/kdoc_test")]
+
+    asyncio.run(run())
+
+
+def test_control_center_proxy_allows_read_only_knowledge_history():
+    async def run():
+        seen = []
+        history_id = "kh_0123456789abcdef0123456789abcdef"
+
+        def upstream(request):
+            seen.append((request.method, request.url.path))
+            if request.url.path.endswith("/" + history_id):
+                return httpx.Response(200, json={
+                    "schema_version": 1,
+                    "item": {
+                        "history_id": history_id,
+                        "created_at": "2026-09-26T20:00:00+00:00",
+                        "query": "Co było przyczyną?",
+                        "domain": "ecu-repair",
+                        "mode": "hybrid",
+                        "response": {
+                            "answer": "Uszkodzony przewód.",
+                            "claims": [],
+                            "insufficient_context": False,
+                            "insufficiency_reason": None,
+                            "citations": [],
+                            "retrieval": {"mode": "hybrid", "backend": "knowledge-primary", "result_count": 1, "duration_ms": 1.0},
+                            "execution": {"model": "reasoning-main", "queue_wait_ms": 0.0, "duration_ms": 2.0},
+                        },
+                    },
+                })
+            return httpx.Response(200, json={
+                "schema_version": 1,
+                "history": [],
+                "retention": {"persistent": False, "limit": 10, "scope": "platform-runtime"},
+            })
+
+        app = create_control_center_app(
+            platform_base_url="http://platform/api/v1",
+            upstream_transport=httpx.MockTransport(upstream),
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app, client=("192.168.1.44", 1234)),
+            base_url="http://control",
+        ) as http:
+            assert (await http.get("/api/v1/knowledge/history")).status_code == 200
+            assert (await http.get(f"/api/v1/knowledge/history/{history_id}")).status_code == 200
+            assert (await http.post("/api/v1/knowledge/history", json={})).status_code == 403
+            assert (await http.get("/api/v1/knowledge/history/bad/id")).status_code == 403
+
+        assert seen == [
+            ("GET", "/api/v1/knowledge/history"),
+            ("GET", f"/api/v1/knowledge/history/{history_id}"),
+        ]
 
     asyncio.run(run())
