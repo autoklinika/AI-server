@@ -1009,7 +1009,7 @@ window.setInterval(function () {
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {
-    navigator.serviceWorker.register("/control/sw.js", { scope: "/control/" }).catch(function () {
+    navigator.serviceWorker.register("/control/sw.js", { scope: "/control/", updateViaCache: "none" }).then(function (registration) {\n      registration.update().catch(function () {});\n    }).catch(function () {
       // PWA is an enhancement. Control Center stays usable without a worker.
     });
   });
