@@ -315,6 +315,7 @@ def test_flight_recorder_ignores_dashboard_polling_and_never_stores_bodies():
                 '/api/v1/health', '/api/v1/observability', '/api/v1/operations',
                 '/api/v1/jobs', '/api/v1/models', '/api/v1/systems', '/api/v1/apps',
                 '/api/v1/benchmarks', '/api/v1/system-map', '/api/v1/incidents',
+                '/api/v1/agents',
             ):
                 assert (await http.get(path)).status_code == 200
             before = (await http.get('/api/v1/traces')).json()
@@ -385,5 +386,19 @@ def test_incident_timeline_reconstructs_errors_without_payloads():
             traces = (await http.get("/api/v1/traces")).json()["traces"]
             assert all(item["route"] != "/incidents" for item in traces)
             assert all(item["route"] != "/system-map" for item in traces)
+    asyncio.run(run())
+
+def test_agents_endpoint_is_read_only_and_does_not_expose_raw_logs():
+    async def run():
+        async with client() as (http, _):
+            response = await http.get("/api/v1/agents")
+            assert response.status_code == 200
+            data = response.json()
+            assert isinstance(data["agents"], list)
+            assert data["retention"]["raw_logs_exposed"] is False
+            serialized = response.text.lower()
+            assert "implement.prompt" not in serialized
+            assert "review.prompt" not in serialized
+            assert "bot_token" not in serialized
     asyncio.run(run())
 

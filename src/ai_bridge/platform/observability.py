@@ -26,7 +26,7 @@ _TRACE_LIMIT = 256
 _TRACE_IGNORED_ROUTES = frozenset({
     "/health", "/observability", "/operations", "/jobs", "/models", "/systems",
     "/apps", "/benchmarks", "/traces", "/traces/{request_id}", "/system-map",
-    "/incidents", "/incidents/{incident_id}",
+    "/incidents", "/incidents/{incident_id}", "/agents",
 })
 
 

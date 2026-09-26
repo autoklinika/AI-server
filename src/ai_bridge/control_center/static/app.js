@@ -26,6 +26,7 @@ const FALLBACK_APP_REGISTRY = [
 const state = {
   health: null,
   observability: null,
+  agents: null,
   jobs: null,
   models: null,
   systems: null,
@@ -51,12 +52,18 @@ const state = {
 };
 
 function registry() {
-  return state.apps && Array.isArray(state.apps.apps)
-    ? state.apps.apps.map(function (remote) {
-        const fallback = FALLBACK_APP_REGISTRY.find(function (item) { return item.id === remote.id; }) || {};
-        return { ...fallback, ...remote };
-      })
-    : FALLBACK_APP_REGISTRY;
+  if (!state.apps || !Array.isArray(state.apps.apps)) return FALLBACK_APP_REGISTRY;
+  const remoteById = new Map(state.apps.apps.map(function (item) { return [item.id, item]; }));
+  const merged = FALLBACK_APP_REGISTRY.map(function (fallback) {
+    const remote = remoteById.get(fallback.id);
+    if (!remote) return fallback;
+    remoteById.delete(fallback.id);
+    return { ...fallback, ...remote };
+  });
+  remoteById.forEach(function (remote) {
+    merged.push({ group: "applications", icon: "A", ...remote });
+  });
+  return merged;
 }
 
 function escapeHtml(value) {
@@ -151,6 +158,7 @@ async function refreshData() {
   const requests = {
     health: api("/health"),
     observability: api("/observability"),
+    agents: api("/agents"),
     jobs: api("/jobs"),
     models: api("/models"),
     systems: api("/systems"),
@@ -380,6 +388,40 @@ function appCard(app) {
 function sectionPage(title, subtitle, body) {
   return '<section class="page-head"><div class="eyebrow">AI CONTROL CENTER</div><h1>' + escapeHtml(title) + '</h1>' +
     '<p>' + escapeHtml(subtitle) + '</p></section>' + body;
+}
+
+function agentsPage() {
+  const payload = state.agents || {};
+  const agents = Array.isArray(payload.agents) ? payload.agents : [];
+  const recent = agents.filter(function (item) { return item.freshness === "recent"; }).length;
+  const blocked = agents.filter(function (item) { return String(item.state).startsWith("BLOCKED"); }).length;
+  const complete = agents.filter(function (item) { return item.state === "COMPLETE"; }).length;
+
+  const summary = '<section class="metric-strip compact">' +
+    metric("Known agents", String(agents.length), "bounded status sources", "/operations/agents") +
+    metric("Recent", String(recent), "updated <= 1h", "/operations/agents") +
+    metric("Blocked", String(blocked), "last known state", "/operations/agents") +
+    metric("Complete", String(complete), "terminal", "/operations/agents") +
+  '</section>';
+
+  const cards = agents.length ? agents.map(function (agent) {
+    const stateClass = String(agent.state).startsWith("BLOCKED") ? "failed" :
+      (agent.state === "COMPLETE" ? "ready" : "active");
+    return '<article class="panel detail-card agent-card">' +
+      '<div class="panel-head"><h3>' + escapeHtml(agent.label || agent.agent_id) + '</h3>' +
+        '<span class="agent-state">' + statusDot(stateClass) + escapeHtml(agent.state || "UNKNOWN") + '</span></div>' +
+      '<dl><dt>Kind</dt><dd>' + escapeHtml(agent.kind || "—") + '</dd>' +
+      '<dt>Stage</dt><dd>' + escapeHtml(agent.stage || "—") + '</dd>' +
+      '<dt>Step</dt><dd>' + escapeHtml(agent.step || "—") + '</dd>' +
+      '<dt>Updated</dt><dd>' + escapeHtml(humanDate(agent.updated_at)) + '</dd>' +
+      '<dt>Freshness</dt><dd>' + escapeHtml(agent.freshness || "—") + '</dd></dl>' +
+    '</article>';
+  }).join("") :
+    '<div class="panel knowledge-empty"><h3>Brak stanu agentów</h3><p>Nie znaleziono żadnego z allowlistowanych plików statusowych.</p></div>';
+
+  return sectionPage("Agents",
+    "Read-only widok ostatniego znanego stanu autopilota i produkcyjnych agentów.", summary +
+    (agents.length ? '<div class="cards">' + cards + '</div>' : cards));
 }
 
 function modelsPage() {
@@ -1079,7 +1121,7 @@ function pageForRoute() {
   if (path === "/apps/observability") return flightRecorderPage();
   if (path === "/apps/system-map") return systemMapPage();
   if (path === "/apps/incidents") return incidentTimelinePage();
-  if (path === "/operations/agents") return genericOperations("Agents", "Stan i kontrolowane akcje agentów.", "Agent control API nie jest jeszcze wystawione przez Platform API.");
+  if (path === "/operations/agents") return agentsPage();
   if (path === "/operations/backup") return backupPage();
   if (path === "/operations/logs") return genericOperations("Logs", "Filtrowane logi operacyjne.", "Log API nie jest jeszcze częścią Platform API v1.");
   if (path === "/platform/settings") return genericOperations("Settings", "Konfiguracja GUI i platformy.", "GUI-0 nie wprowadza jeszcze mutacji konfiguracji.");

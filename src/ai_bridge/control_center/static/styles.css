@@ -805,3 +805,15 @@ code { color: #b9d4ff; background: rgba(110,168,254,.08); padding: 2px 5px; bord
   .incident-detail-grid { grid-template-columns: 1fr; }
 }
 
+/* Agents */
+.agent-card { box-shadow: none; }
+.agent-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
