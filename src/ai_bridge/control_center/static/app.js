@@ -33,6 +33,7 @@ const state = {
   traces: null,
   systemMap: null,
   incidents: null,
+  incidentDetail: { id: null, incident: null, loading: false, error: null },
   apps: null,
   benchmarks: { catalog: null, suite: null, runs: null, runKey: null, run: null, loading: false, error: null },
   knowledge: {
@@ -975,13 +976,18 @@ function incidentTimelinePage() {
 }
 
 function incidentDetailPage(incidentId) {
-  const payload = state.incidents || {};
-  const incidents = Array.isArray(payload.incidents) ? payload.incidents : [];
-  const incident = incidents.find(function (item) { return item.incident_id === incidentId; });
+  const detail = state.incidentDetail;
+  if (detail.id !== incidentId && !detail.loading) {
+    queueMicrotask(function () { loadIncidentDetail(incidentId); });
+  }
+
+  const incident = detail.id === incidentId ? detail.incident : null;
   if (!incident) {
     return sectionPage("Incident", incidentId,
-      pendingPanel("Incident not in bounded history",
-        "Incident Timeline v1 korzysta z ograniczonej historii Flight Recordera."));
+      detail.error
+        ? '<div class="knowledge-error">' + escapeHtml(detail.error) + '</div>'
+        : pendingPanel("Incident Timeline",
+            detail.loading ? "Ładowanie pełnej osi czasu…" : "Pobieranie szczegółów incydentu…"));
   }
 
   const job = incident.job || {};
@@ -1019,6 +1025,26 @@ function incidentDetailPage(incidentId) {
     '</div>' +
     '<section class="section-head section-spaced"><div><div class="eyebrow">TIMELINE</div><h2>What happened</h2></div></section>' +
     '<div class="panel incident-timeline">' + eventRows + '</div>');
+}
+
+async function loadIncidentDetail(incidentId) {
+  state.incidentDetail.loading = true;
+  state.incidentDetail.error = null;
+  state.incidentDetail.id = incidentId;
+  state.incidentDetail.incident = null;
+  render();
+  try {
+    const payload = await api('/incidents/' + encodeURIComponent(incidentId));
+    state.incidentDetail.incident = payload.incident || null;
+    if (!state.incidentDetail.incident) {
+      state.incidentDetail.error = "Incident detail unavailable";
+    }
+  } catch (error) {
+    state.incidentDetail.error = 'Incident API: ' + (error.code || error.message || 'unknown_error');
+  } finally {
+    state.incidentDetail.loading = false;
+    render();
+  }
 }
 
 function genericOperations(title, subtitle, note) {
