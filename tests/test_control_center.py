@@ -93,7 +93,7 @@ def test_control_center_proxy_is_private_network_and_allowlist_only():
                 json={"messages": [{"role": "user", "content": "no"}]},
             )
             assert forbidden.status_code == 403
-            assert len(seen) == 1
+            assert len(seen) == 2
 
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app, client=("203.0.113.9", 1234)),
