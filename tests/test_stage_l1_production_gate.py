@@ -133,3 +133,9 @@ def test_stage_o_reuses_last_accepted_release_as_rollback_baseline():
     assert 'switch(rollback, candidate, cfg, baseline)' in gate
     assert 'smoke("rollback-smoke", rollback, candidate, cfg, baseline, state)' in gate
 
+def test_stage_o_rollback_smoke_tolerates_older_control_center_contract_surface():
+    gate = (ROOT / "deploy/stage-o/autopilot/gate.py").read_text()
+    assert "def control_center_smoke(*, require_operations: bool = True)" in gate
+    assert "error.code in (403, 404)" in gate
+    assert "control_center_smoke(require_operations=active)" in gate
+
