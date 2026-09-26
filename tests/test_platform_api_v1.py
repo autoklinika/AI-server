@@ -69,7 +69,7 @@ def test_v1_contract_and_provider_wire_boundary():
             assert operations['schema_version'] == 1
             assert 'release' in operations and 'storage' in operations and 'backup' in operations
             apps = (await http.get('/api/v1/apps')).json()['apps']
-            assert [item['id'] for item in apps] == ['knowledge', 'benchmarks', 'ers', 'observability']
+            assert [item['id'] for item in apps] == ['knowledge', 'benchmarks', 'ers', 'observability', 'system-map']
             assert apps[0]['capabilities'] == ['knowledge.search', 'knowledge.ask', 'document.read']
             assert apps[0]['exposure']['mcp'] is True
     asyncio.run(run())
@@ -331,5 +331,24 @@ def test_flight_recorder_ignores_dashboard_polling_and_never_stores_bodies():
             assert traces['traces'][0]['request_id'] == 'req_flight'
             assert secret not in json.dumps(traces)
             assert traces['retention'] == {'persistent': False, 'limit': 256}
+    asyncio.run(run())
+
+def test_system_map_is_metadata_only_and_uses_live_platform_state():
+    async def run():
+        async with client() as (http, _):
+            await http.post('/api/v1/ai', json=payload(context={'request_id':'req_map'}))
+            result = await http.get('/api/v1/system-map')
+            assert result.status_code == 200
+            data = result.json()
+            ids = {node['id'] for node in data['nodes']}
+            assert {'control-center', 'ai-gateway', 'platform-api', 'resource-manager',
+                    'knowledge', 'reasoning-main', 'telegram', 'discord', 'wvc', 'media'} <= ids
+            assert data['activity']['recent_trace_count'] >= 1
+            assert data['activity']['execution_requests'] >= 1
+            assert any(edge['source'] == 'resource-manager' and edge['target'] == 'reasoning-main'
+                       for edge in data['edges'])
+            serialized = result.text.lower()
+            assert 'private-prompt' not in serialized
+            assert 'authorization' not in serialized
     asyncio.run(run())
 
