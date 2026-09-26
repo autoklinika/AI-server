@@ -239,12 +239,16 @@ def control_center_smoke(*, require_operations: bool = True) -> dict:
             for word in ("qdrant", "ollama", "postgres", "localstorage")
         )
     )
-    require("function knowledgeSourceModal()" in javascript)
-    require("function openKnowledgeSource(kind, index)" in javascript)
-    require("knowledge-source-target" in javascript)
-    require("scrollIntoView" in javascript)
-    require("/content" not in javascript)
-    require('target="_blank"' not in javascript)
+    if require_operations:
+        # Candidate-only GUI surface. A rollback baseline is an older accepted
+        # Stage O release and must be validated against its own compatible
+        # contract, not against features introduced by the new candidate.
+        require("function knowledgeSourceModal()" in javascript)
+        require("function openKnowledgeSource(kind, index)" in javascript)
+        require("knowledge-source-target" in javascript)
+        require("scrollIntoView" in javascript)
+        require("/content" not in javascript)
+        require('target="_blank"' not in javascript)
 
     manifest = e.fetch(bridge + "/control/manifest.webmanifest")
     require(manifest["start_url"] == "/control/")
