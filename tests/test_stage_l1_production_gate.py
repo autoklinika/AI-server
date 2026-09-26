@@ -139,3 +139,10 @@ def test_stage_o_rollback_smoke_tolerates_older_control_center_contract_surface(
     assert "error.code in (403, 404)" in gate
     assert "control_center_smoke(require_operations=active)" in gate
 
+def test_stage_o_smoke_is_backward_compatible_with_pre_observability_gui():
+    gate = (ROOT / "deploy/stage-o/autopilot/gate.py").read_text()
+    assert 'app_ids[:3] == ["knowledge", "benchmarks", "ers"]' in gate
+    assert '["knowledge", "benchmarks", "ers", "observability"]' in gate
+    assert 'traces["retention"]["limit"] == 256' in gate
+    assert "require_observability=active" in gate
+
