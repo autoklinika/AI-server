@@ -87,13 +87,15 @@ def test_control_center_proxy_is_private_network_and_allowlist_only():
             assert health.headers["x-request-id"] == "req_proxy"
             operations = await http.get("/api/v1/operations")
             assert operations.status_code == 200
+            traces = await http.get("/api/v1/traces")
+            assert traces.status_code == 200
 
             forbidden = await http.post(
                 "/api/v1/ai",
                 json={"messages": [{"role": "user", "content": "no"}]},
             )
             assert forbidden.status_code == 403
-            assert len(seen) == 2
+            assert len(seen) == 3
 
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app, client=("203.0.113.9", 1234)),
@@ -184,3 +186,16 @@ def test_control_center_operations_ui_is_live_not_placeholder():
     assert "function backupPage()" in javascript
     assert 'metric("Storage", storageValue' in javascript
     assert "Status backupu nie ma jeszcze stabilnego kontraktu" not in javascript
+
+def test_control_center_flight_recorder_ui_has_deep_links_and_no_payload_rendering():
+    client = TestClient(create_control_center_app())
+    javascript = client.get("/assets/app.js").text
+
+    assert 'api("/traces")' in javascript
+    assert "function flightRecorderPage()" in javascript
+    assert "function traceDetailPage(traceId)" in javascript
+    assert 'controlUrl("/traces/" + encodeURIComponent(trace.trace_id))' in javascript
+    recorder = javascript[javascript.index("function flightRecorderPage()"):javascript.index("function traceDetailPage(traceId)")]
+    assert "messages" not in recorder
+    assert "content" not in recorder
+
