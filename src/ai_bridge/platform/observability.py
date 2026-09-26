@@ -6,9 +6,9 @@ bounded Resource Manager history rather than creating a second job database.
 """
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, deque
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import os
 import resource
@@ -21,6 +21,32 @@ _ALLOWED_ERRORS = frozenset({
     "deadline_exceeded", "provider_unavailable", "capability_unavailable",
     "internal_error", "client_error", "server_error",
 })
+
+_TRACE_LIMIT = 256
+_TRACE_IGNORED_ROUTES = frozenset({
+    "/health", "/observability", "/operations", "/jobs", "/models", "/systems",
+    "/apps", "/benchmarks", "/traces", "/traces/{request_id}",
+})
+
+
+def _trace_kind(route: str) -> str:
+    if route == "/ai":
+        return "ai"
+    if route == "/knowledge/ask":
+        return "knowledge-rag"
+    if route == "/knowledge/search":
+        return "knowledge-search"
+    if route.startswith("/knowledge/documents/"):
+        return "knowledge-document"
+    if route.startswith("/benchmarks/"):
+        return "benchmark"
+    if route.startswith("/jobs/"):
+        return "job"
+    return "platform"
+
+
+def _record_trace(route: str) -> bool:
+    return route not in _TRACE_IGNORED_ROUTES and route != "unmatched"
 
 
 def _milliseconds(start: str | None, end: str | None) -> float | None:
@@ -49,7 +75,7 @@ def _rss_bytes() -> int | None:
 
 @dataclass(slots=True)
 class PlatformRequestMetrics:
-    """Low-cardinality in-process counters for the stable Platform API boundary."""
+    """Low-cardinality counters plus bounded metadata-only request traces."""
 
     started_monotonic: float = field(default_factory=monotonic)
     total: int = 0
@@ -58,6 +84,7 @@ class PlatformRequestMetrics:
     duration_ms_max: float = 0.0
     status_classes: Counter = field(default_factory=Counter)
     errors: Counter = field(default_factory=Counter)
+    recent: deque = field(default_factory=lambda: deque(maxlen=_TRACE_LIMIT))
     _lock: Lock = field(default_factory=Lock, repr=False)
 
     def begin(self) -> float:
@@ -66,7 +93,16 @@ class PlatformRequestMetrics:
             self.in_flight += 1
         return monotonic()
 
-    def finish(self, started: float, status: int, error_code: str | None = None) -> float:
+    def finish(
+        self,
+        started: float,
+        status: int,
+        error_code: str | None = None,
+        *,
+        request_id: str | None = None,
+        method: str | None = None,
+        route: str | None = None,
+    ) -> float:
         elapsed = max(0.0, (monotonic() - started) * 1000)
         category = f"{max(1, min(5, status // 100))}xx"
         with self._lock:
@@ -76,6 +112,18 @@ class PlatformRequestMetrics:
             self.status_classes[category] += 1
             if error_code:
                 self.errors[error_code if error_code in _ALLOWED_ERRORS else "internal_error"] += 1
+            if request_id and method and route and _record_trace(route):
+                self.recent.append({
+                    "trace_id": request_id,
+                    "request_id": request_id,
+                    "kind": _trace_kind(route),
+                    "method": method,
+                    "route": route,
+                    "status": status,
+                    "duration_ms": round(elapsed, 3),
+                    "error_class": error_code,
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                })
         return elapsed
 
     def snapshot(self) -> dict[str, object]:
@@ -95,6 +143,17 @@ class PlatformRequestMetrics:
                 "uptime_seconds": round(monotonic() - self.started_monotonic, 3),
             }
 
+    def traces(self, limit: int = 100) -> list[dict[str, object]]:
+        bounded = max(1, min(_TRACE_LIMIT, limit))
+        with self._lock:
+            return [dict(item) for item in list(self.recent)[-bounded:]][::-1]
+
+    def trace(self, request_id: str) -> dict[str, object] | None:
+        with self._lock:
+            for item in reversed(self.recent):
+                if item["request_id"] == request_id:
+                    return dict(item)
+        return None
 
 def runtime_resources() -> dict[str, object]:
     usage = resource.getrusage(resource.RUSAGE_SELF)
