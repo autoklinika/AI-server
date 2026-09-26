@@ -365,3 +365,58 @@ def test_control_center_logs_are_read_only_and_rendered():
     assert 'if (path === "/operations/logs") return logsPage();' in javascript
     assert "Log API nie jest jeszcze częścią Platform API v1." not in javascript
 
+
+
+def test_control_center_ers_workspace_is_read_only_and_deep_linked():
+    async def run():
+        seen = []
+        case_id = "11111111-1111-4111-8111-111111111111"
+
+        def upstream(request):
+            seen.append((request.method, request.url.path))
+            if request.url.path.endswith("/" + case_id):
+                return httpx.Response(200, json={
+                    "schema_version": 1,
+                    "case": {"id": case_id, "case_code": "CASE-000001", "title": "Scania EMS S6"},
+                    "assets": [], "asset_revisions": [], "ecus": [],
+                    "ecu_identity_observations": [], "ecu_software_observations": [],
+                    "symptoms": [], "dtcs": [], "measurements": [],
+                    "diagnostic_steps": [], "events": [],
+                })
+            return httpx.Response(200, json={
+                "schema_version": 1,
+                "cases": [{"id": case_id, "case_code": "CASE-000001", "title": "Scania EMS S6"}],
+                "count": 1,
+                "limit": 100,
+            })
+
+        app = create_control_center_app(
+            platform_base_url="http://platform/api/v1",
+            upstream_transport=httpx.MockTransport(upstream),
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app, client=("192.168.1.44", 1234)),
+            base_url="http://control",
+        ) as http:
+            assert (await http.get("/api/v1/ecu-repair/cases")).status_code == 200
+            assert (await http.get(f"/api/v1/ecu-repair/cases/{case_id}")).status_code == 200
+            assert (await http.post("/api/v1/ecu-repair/cases", json={})).status_code == 403
+            assert (await http.patch(f"/api/v1/ecu-repair/cases/{case_id}", json={})).status_code == 405
+            assert (await http.get("/api/v1/ecu-repair/cases/not-a-uuid")).status_code == 403
+
+        assert seen == [
+            ("GET", "/api/v1/ecu-repair/cases"),
+            ("GET", f"/api/v1/ecu-repair/cases/{case_id}"),
+        ]
+
+    asyncio.run(run())
+
+    javascript = TestClient(create_control_center_app()).get("/assets/app.js").text
+    assert 'api("/ecu-repair/cases")' in javascript
+    assert "function ersCasesPage()" in javascript
+    assert "function ersCaseDetailPage(caseId)" in javascript
+    assert 'controlUrl("/apps/ers/cases/" + encodeURIComponent(item.id))' in javascript
+    assert 'api("/ecu-repair/cases/" + encodeURIComponent(caseId))' in javascript
+    assert 'if (path === "/apps/ers") return ersCasesPage();' in javascript
+    assert 'path.startsWith("/apps/ers/cases/")' in javascript
+    assert "Domenowa aplikacja ERS jako osobny workspace." not in javascript

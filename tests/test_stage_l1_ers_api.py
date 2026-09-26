@@ -96,6 +96,31 @@ def test_case_create_get_patch_etag_and_stale_conflict(tmp_path):
         close_client(client)
 
 
+def test_case_list_is_bounded_and_newest_first(tmp_path):
+    _app, client = setup_client(tmp_path)
+    try:
+        first = create_case(client, legacy="CASE-LIST-1").json()["case"]
+        second = create_case(client, legacy="CASE-LIST-2").json()["case"]
+
+        updated = client.patch(
+            f"/api/v1/ecu-repair/cases/{first['id']}",
+            headers={"If-Match": 'W/"1"'},
+            json={"actor_id": "operator", "work_state": "diagnosing"},
+        )
+        assert updated.status_code == 200, updated.text
+
+        response = client.get("/api/v1/ecu-repair/cases")
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload["schema_version"] == 1
+        assert payload["count"] == 2
+        assert payload["limit"] == 100
+        assert [item["id"] for item in payload["cases"]] == [first["id"], second["id"]]
+        assert payload["cases"][0]["work_state"] == "diagnosing"
+    finally:
+        close_client(client)
+
+
 def test_lifecycle_requires_valid_transition_and_explicit_reopen(tmp_path):
     _app, client = setup_client(tmp_path)
     try:
