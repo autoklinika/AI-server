@@ -85,13 +85,15 @@ def test_control_center_proxy_is_private_network_and_allowlist_only():
             health = await http.get("/api/v1/health")
             assert health.status_code == 200
             assert health.headers["x-request-id"] == "req_proxy"
+            operations = await http.get("/api/v1/operations")
+            assert operations.status_code == 200
 
             forbidden = await http.post(
                 "/api/v1/ai",
                 json={"messages": [{"role": "user", "content": "no"}]},
             )
             assert forbidden.status_code == 403
-            assert len(seen) == 1
+            assert len(seen) == 2
 
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app, client=("203.0.113.9", 1234)),
@@ -173,3 +175,12 @@ def test_control_center_benchmark_ui_has_run_deep_links_and_metrics():
     assert "latency.search_avg" in javascript
     assert "latency.query_embedding_total" in javascript
 
+
+
+def test_control_center_operations_ui_is_live_not_placeholder():
+    client = TestClient(create_control_center_app())
+    javascript = client.get("/assets/app.js").text
+    assert 'api("/operations")' in javascript
+    assert "function backupPage()" in javascript
+    assert 'metric("Storage", storageValue' in javascript
+    assert "Status backupu nie ma jeszcze stabilnego kontraktu" not in javascript

@@ -26,6 +26,7 @@ const state = {
   jobs: null,
   models: null,
   systems: null,
+  operations: null,
   apps: null,
   benchmarks: { catalog: null, suite: null, runs: null, runKey: null, run: null, loading: false, error: null },
   knowledge: {
@@ -89,9 +90,19 @@ function humanDurationMs(value) {
   return (value / 1000).toFixed(2) + " s";
 }
 
+function humanDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("pl-PL", {
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit"
+  });
+}
+
 function statusClass(status) {
   const value = String(status || "").toLowerCase();
-  if (["ready", "ok", "active", "completed", "healthy", "configured"].includes(value)) return "ok";
+  if (["ready", "ok", "pass", "active", "completed", "healthy", "configured"].includes(value)) return "ok";
   if (["running", "queued", "loading"].includes(value)) return "active";
   if (["degraded", "blocked", "warning", "unavailable", "failed", "expired"].includes(value)) return "bad";
   return "muted";
@@ -136,6 +147,7 @@ async function refreshData() {
     jobs: api("/jobs"),
     models: api("/models"),
     systems: api("/systems"),
+    operations: api("/operations"),
     apps: api("/apps"),
     benchmarks: api("/benchmarks")
   };
@@ -192,6 +204,8 @@ function connectionBanner() {
 
 function shell(content) {
   const healthStatus = state.health ? state.health.status : (state.loading ? "loading" : "unavailable");
+  const release = state.operations && state.operations.release ? state.operations.release : {};
+  const releaseLabel = release.release_id || "Control Center";
   const refresh = state.lastRefresh
     ? state.lastRefresh.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
     : "—";
@@ -199,7 +213,7 @@ function shell(content) {
   return '<aside class="sidebar">' +
       '<a class="brand" href="' + controlUrl("/") + '" data-nav>' +
         '<span class="brand-mark">AI</span>' +
-        '<span><strong>Control Center</strong><small>GUI-0 foundation</small></span>' +
+        '<span><strong>Control Center</strong><small>' + escapeHtml(releaseLabel) + '</small></span>' +
       '</a>' +
       '<nav>' +
         navGroup("operations", "OPERATIONS") +
@@ -228,6 +242,11 @@ function shell(content) {
 function dashboard() {
   const health = state.health || {};
   const obs = state.observability || {};
+  const operations = state.operations || {};
+  const backup = operations.backup || {};
+  const monitor = backup.monitor || {};
+  const storage = Array.isArray(operations.storage) ? operations.storage : [];
+  const dataDisk = storage.find(function (item) { return item.id === "data"; }) || {};
   const jobs = state.jobs && Array.isArray(state.jobs.jobs) ? state.jobs.jobs : [];
   const rm = obs.resource_manager || (health.components && health.components.resource_manager) || {};
   const process = obs.process || {};
@@ -247,11 +266,14 @@ function dashboard() {
   }).slice(0, 4);
 
   const current = activeJobs[0];
-  const alertCount = health.status && health.status !== "ready" ? 1 : 0;
+  let alertCount = health.status && health.status !== "ready" ? 1 : 0;
+  if (monitor.status && monitor.status !== "PASS") alertCount += Math.max(1, Number(monitor.issue_count || 0));
   const accelValue = primary
     ? (primary.total_memory_bytes ? humanBytes(primary.total_memory_bytes) : (primary.memory_class || "configured"))
     : "—";
   const accelMeta = primary ? [primary.backend, primary.kind].filter(Boolean).join(" · ") : "API pending";
+  const storageValue = typeof dataDisk.used_percent === "number" ? Math.round(dataDisk.used_percent) + "%" : "—";
+  const storageMeta = dataDisk.status === "ready" ? humanBytes(dataDisk.free_bytes) + " free" : "unavailable";
 
   return '<section class="hero">' +
       '<div><div class="eyebrow">AI PLATFORM</div><h1>Control Center</h1>' +
@@ -264,9 +286,9 @@ function dashboard() {
     '<section class="metric-strip">' +
       metric("GPU / UMA", accelValue, accelMeta, "/operations/resources") +
       metric("AI process", humanBytes(process.rss_bytes), "RSS", "/operations/resources") +
-      metric("Storage", "—", "API pending", "/operations/resources") +
+      metric("Storage", storageValue, storageMeta, "/operations/resources") +
       metric("Jobs", String((rm.active || 0) + (rm.queued || 0)), (rm.active || 0) + " active · " + (rm.queued || 0) + " queued", "/jobs") +
-      metric("Alerts", String(alertCount), alertCount ? "attention" : "none", "/") +
+      metric("Alerts", String(alertCount), alertCount ? "attention" : "none", "/operations/backup") +
     '</section>' +
 
     '<section class="service-row">' +
@@ -274,6 +296,7 @@ function dashboard() {
       serviceChip("Inference", health.components && health.components.inference ? health.components.inference.status : "unknown") +
       serviceChip("GPU residency", health.components && health.components.gpu_residency ? health.components.gpu_residency.state : "unknown") +
       serviceChip("Knowledge API", state.errors.health ? "unknown" : "ready") +
+      serviceChip("Backup / DR", monitor.status || "unknown") +
     '</section>' +
 
     '<div class="dashboard-grid">' +
@@ -361,11 +384,13 @@ function modelsPage() {
 
 function resourcesPage() {
   const obs = state.observability || {};
+  const operations = state.operations || {};
   const rm = obs.resource_manager || {};
   const leases = obs.resource_leases || {};
   const accelerators = obs.accelerators || {};
   const devices = Array.isArray(accelerators.devices) ? accelerators.devices : [];
-  let deviceHtml = devices.map(function (device) {
+  const storage = Array.isArray(operations.storage) ? operations.storage : [];
+  const deviceHtml = devices.map(function (device) {
     const residency = device.residency || {};
     return '<article class="panel detail-card">' + panelHeader(device.accelerator_id, residency.state || "unknown") +
       '<dl><dt>Kind</dt><dd>' + escapeHtml(device.kind || "—") + '</dd>' +
@@ -374,14 +399,27 @@ function resourcesPage() {
       '<dt>Total memory</dt><dd>' + escapeHtml(humanBytes(device.total_memory_bytes)) + '</dd>' +
       '<dt>Residency</dt><dd>' + escapeHtml(residency.state || "—") + '</dd></dl></article>';
   }).join("");
+  const storageHtml = storage.map(function (disk) {
+    const percent = typeof disk.used_percent === "number" ? disk.used_percent : null;
+    return '<article class="panel detail-card">' + panelHeader(disk.label || disk.id, disk.status || "unknown") +
+      '<dl><dt>Used</dt><dd>' + escapeHtml(percent === null ? "—" : percent + "%") + '</dd>' +
+      '<dt>Used bytes</dt><dd>' + escapeHtml(humanBytes(disk.used_bytes)) + '</dd>' +
+      '<dt>Free</dt><dd>' + escapeHtml(humanBytes(disk.free_bytes)) + '</dd>' +
+      '<dt>Total</dt><dd>' + escapeHtml(humanBytes(disk.total_bytes)) + '</dd></dl>' +
+      (percent === null ? "" : '<div class="usage-track"><span style="width:' + Math.min(100, Math.max(0, percent)) + '%"></span></div>') +
+    '</article>';
+  }).join("");
   const summary = '<section class="metric-strip compact">' +
     metric("Active", String(rm.active || 0), "jobs", "/jobs") +
     metric("Queued", String(rm.queued || 0), "jobs", "/jobs") +
     metric("Leases", String(leases.active || 0), "active", "/operations/resources") +
     metric("Concurrency", String(rm.max_concurrency || "—"), "max", "/operations/resources") +
   '</section>';
-  return sectionPage("Resources", "Resource Manager, leases i inventory akceleratorów.", summary +
-    (deviceHtml ? '<div class="cards">' + deviceHtml + '</div>' : pendingPanel("Accelerators", "Brak danych inventory.")));
+  return sectionPage("Resources", "Resource Manager, akceleratory i wykorzystanie storage.", summary +
+    '<section class="section-head"><div><div class="eyebrow">COMPUTE</div><h2>Accelerators</h2></div></section>' +
+    (deviceHtml ? '<div class="cards">' + deviceHtml + '</div>' : pendingPanel("Accelerators", "Brak danych inventory.")) +
+    '<section class="section-head section-spaced"><div><div class="eyebrow">STORAGE</div><h2>Volumes</h2></div></section>' +
+    (storageHtml ? '<div class="cards">' + storageHtml + '</div>' : pendingPanel("Storage", "Brak danych storage.")));
 }
 
 function jobsPage() {
@@ -715,6 +753,54 @@ function pendingPanel(title, text) {
   return '<div class="panel pending"><div class="pending-icon">…</div><div><h3>' + escapeHtml(title) + '</h3><p>' + escapeHtml(text) + '</p></div></div>';
 }
 
+
+function backupPage() {
+  const operations = state.operations || {};
+  const backup = operations.backup || {};
+  const monitor = backup.monitor || {};
+  const daily = backup.daily || {};
+  const weekly = backup.weekly || {};
+  const release = operations.release || {};
+
+  const summary = '<section class="metric-strip compact">' +
+    metric("Monitor", monitor.status || "—", "Stage K", "/operations/backup") +
+    metric("Backup age", typeof monitor.freshest_backup_age_hours === "number" ? monitor.freshest_backup_age_hours.toFixed(1) + " h" : "—", "freshest", "/operations/backup") +
+    metric("Weekly age", typeof monitor.weekly_age_hours === "number" ? monitor.weekly_age_hours.toFixed(1) + " h" : "—", "restore baseline", "/operations/backup") +
+    metric("NAS free", humanBytes(monitor.nas_free_bytes), "GlobalNAS", "/operations/backup") +
+  '</section>';
+
+  const cards = '<div class="cards">' +
+    '<article class="panel detail-card">' + panelHeader("DR monitor", monitor.status || "UNKNOWN") +
+      '<dl><dt>Checked</dt><dd>' + escapeHtml(humanDate(monitor.checked_at)) + '</dd>' +
+      '<dt>Issues</dt><dd>' + escapeHtml(String(monitor.issue_count || 0)) + '</dd>' +
+      '<dt>GlobalNAS free</dt><dd>' + escapeHtml(humanBytes(monitor.nas_free_bytes)) + '</dd></dl></article>' +
+    '<article class="panel detail-card">' + panelHeader("Daily", daily.status || "UNKNOWN") +
+      '<dl><dt>Completed</dt><dd>' + escapeHtml(humanDate(daily.completed_at)) + '</dd>' +
+      '<dt>Duration</dt><dd>' + escapeHtml(typeof daily.duration_seconds === "number" ? daily.duration_seconds.toFixed(1) + " s" : "—") + '</dd>' +
+      '<dt>Knowledge</dt><dd>' + escapeHtml(daily.knowledge_status || "—") + '</dd>' +
+      '<dt>ERS case store</dt><dd>' + escapeHtml(daily.ers_case_store_status || "—") + '</dd>' +
+      '<dt>WVC</dt><dd>' + escapeHtml(daily.wvc_status || "—") + '</dd>' +
+      '<dt>Retention</dt><dd>' + escapeHtml(daily.retention_status || "—") + '</dd></dl></article>' +
+    '<article class="panel detail-card">' + panelHeader("Weekly + restore", weekly.status || "UNKNOWN") +
+      '<dl><dt>Completed</dt><dd>' + escapeHtml(humanDate(weekly.completed_at)) + '</dd>' +
+      '<dt>Knowledge restore</dt><dd>' + escapeHtml(weekly.restore_knowledge_status || "—") + '</dd>' +
+      '<dt>Domain restore</dt><dd>' + escapeHtml(weekly.restore_domains_status || "—") + '</dd>' +
+      '<dt>Retention</dt><dd>' + escapeHtml(weekly.retention_status || "—") + '</dd>' +
+      '<dt>Secrets automation</dt><dd>' + escapeHtml(weekly.secrets_automation || "—") + '</dd></dl></article>' +
+  '</div>';
+
+  const releaseCard = '<section class="section-head section-spaced"><div><div class="eyebrow">RUNTIME</div><h2>Accepted release</h2></div></section>' +
+    '<article class="panel detail-card wide"><dl>' +
+      '<dt>Release</dt><dd>' + escapeHtml(release.release_id || "—") + '</dd>' +
+      '<dt>Stage</dt><dd>' + escapeHtml(release.stage || "—") + '</dd>' +
+      '<dt>Source SHA</dt><dd>' + escapeHtml(release.source_git_sha || "—") + '</dd>' +
+      '<dt>Migration</dt><dd>' + escapeHtml(release.migration_version || "—") + '</dd>' +
+      '<dt>Control Center contract</dt><dd>' + escapeHtml(release.control_center_contract_version || "—") + '</dd>' +
+    '</dl></article>';
+
+  return sectionPage("Backup / DR", "Stan Stage K, GlobalNAS i ostatnich walidacji restore.", summary + cards + releaseCard);
+}
+
 function genericOperations(title, subtitle, note) {
   return sectionPage(title, subtitle, pendingPanel(title, note));
 }
@@ -745,7 +831,7 @@ function pageForRoute() {
   }
   if (path === "/apps/ers") return placeholderApplication("ECU Repair Service", "Domenowa aplikacja ERS jako osobny workspace.");
   if (path === "/operations/agents") return genericOperations("Agents", "Stan i kontrolowane akcje agentów.", "Agent control API nie jest jeszcze wystawione przez Platform API.");
-  if (path === "/operations/backup") return genericOperations("Backup", "Backup / DR z Stage K.", "Status backupu nie ma jeszcze stabilnego kontraktu Platform API.");
+  if (path === "/operations/backup") return backupPage();
   if (path === "/operations/logs") return genericOperations("Logs", "Filtrowane logi operacyjne.", "Log API nie jest jeszcze częścią Platform API v1.");
   if (path === "/platform/settings") return genericOperations("Settings", "Konfiguracja GUI i platformy.", "GUI-0 nie wprowadza jeszcze mutacji konfiguracji.");
   if (path === "/platform/providers") return modelsPage();

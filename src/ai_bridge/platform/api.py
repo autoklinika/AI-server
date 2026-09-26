@@ -39,6 +39,7 @@ from ai_bridge.storage.object_store import (
     ObjectStoreNotFound,
 )
 from ai_bridge.platform.observability import PlatformRequestMetrics, job_metrics, runtime_resources
+from ai_bridge.platform.operations import operations_snapshot
 
 LOGGER = logging.getLogger(__name__)
 ID = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")]
@@ -533,6 +534,10 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
         except KeyError:
             raise APIError(404, "not_found") from None
         return envelope(request, suite_id=suite_id, run=run)
+
+    @api.get("/operations")
+    async def operations(request: Request):
+        return envelope(request, **operations_snapshot())
 
     @api.get("/models")
     async def models(request: Request):

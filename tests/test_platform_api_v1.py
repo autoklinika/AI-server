@@ -57,6 +57,9 @@ def test_v1_contract_and_provider_wire_boundary():
             assert (await app.state.scheduler.snapshot())['active_count'] == 0
             assert (await http.get('/api/v1/models')).json()['models'][0]['logical_id'] == 'reasoning-main'
             assert (await http.get('/api/v1/systems')).status_code == 200
+            operations = (await http.get('/api/v1/operations')).json()
+            assert operations['schema_version'] == 1
+            assert 'release' in operations and 'storage' in operations and 'backup' in operations
             apps = (await http.get('/api/v1/apps')).json()['apps']
             assert [item['id'] for item in apps] == ['knowledge', 'benchmarks', 'ers']
             assert apps[0]['capabilities'] == ['knowledge.search', 'knowledge.ask', 'document.read']

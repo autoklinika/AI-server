@@ -662,4 +662,18 @@ code { color: #b9d4ff; background: rgba(110,168,254,.08); padding: 2px 5px; bord
 @media (max-width:720px) {
   .benchmark-run-summary { align-items:flex-start; flex-direction:column; }
 }
+.section-spaced { margin-top: 30px; }
+.usage-track {
+  height: 5px;
+  margin: 0 16px 16px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--panel-3);
+  border: 1px solid var(--border-soft);
+}
+.usage-track span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
 
