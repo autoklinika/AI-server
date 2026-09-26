@@ -312,14 +312,16 @@ asyncio.run(recover())
 
 
 def messaging_boundary_smoke(model):
+    technical_discord = e.discord_technical_policy_active()
+    general_count = 2 if technical_discord else 3
     ids = []
-    for source in ('telegram-synthetic-a', 'telegram-synthetic-b', 'discord-synthetic'):
+    for _index in range(general_count):
         result, headers = e.fetch(e.GATEWAY + '/clients/hermes/v1/chat/completions',
             {'model': model, 'messages': [{'role': 'user', 'content': 'Return OK.'}],
              'stream': False, 'max_tokens': 32, 'reasoning_effort': 'none'}, with_headers=True)
         require(bool(result['choices'][0]['message']['content'].strip()))
         ids.append(headers['X-AI-Job-Id'])
-    require(len(set(ids)) == 3)
+    require(len(set(ids)) == general_count)
     name, uid, home = e.hermes_account()
     for platform in ('telegram', e.discord_smoke_target()):
         delivery = json.loads(run(['runuser', '-u', name, '--', 'env', f'HOME={home}',
@@ -431,7 +433,9 @@ def _smoke(phase, target, candidate, state, baseline):
                     completed = subprocess.run([str(a) for a in command], stdout=log, stderr=subprocess.STDOUT, timeout=10800)
                 require(completed.returncode == 0)
                 evidence = e.read(output)
-                require(evidence['status'] == 'PASS' and len(evidence['media']) == 4)
+                require(evidence['status'] == 'PASS' and len(evidence['media']) == 2)
+                require(evidence['discord_technical_rag']['status'] == 'PASS')
+                require(evidence['discord_technical_rag']['general_agent_bypassed'] is True)
                 require(evidence['external_transport'] == 'DEFERRED/NOT TESTED')
                 e.write_once(evidence_dir / 'internal.json', evidence)
         finally:

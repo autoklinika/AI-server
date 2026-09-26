@@ -309,8 +309,11 @@ def test_stage_e_smoke_has_fresh_hermes_and_real_media_checks():
     assert "HERMES_HOME=/srv/ai-data/hermes" in text
     assert "job.get('capability') == 'chat'" in text
     assert 'def messaging_boundary_smoke' in text
+    assert 'def discord_technical_policy_active' in text
+    assert "version: 1.1.0" in text
+    assert "discord-technical-only" in text
     assert "telegram-synthetic-a" in text
-    assert "discord-synthetic" in text
+    assert "discord-synthetic" in text  # legacy rollback fallback only
     assert "'send', '--to', platform, '--quiet'" in text
     assert 'def real_media_smoke' in text
     assert "deploy/stage-e/validate_media_runtime.sh" in text
@@ -438,6 +441,7 @@ def test_messaging_smoke_requires_actual_outbound_delivery(monkeypatch, delivery
          'assigned_provider': 'ollama-local'} for i in range(1, 4)]})
     monkeypatch.setattr(gate, 'hermes_account', lambda: ('test', 1000, '/home/test'))
     monkeypatch.setattr(gate, 'discord_smoke_target', lambda: 'discord:123')
+    monkeypatch.setattr(gate, 'discord_technical_policy_active', lambda: False)
     monkeypatch.setattr(gate, 'run', lambda args, **kw:
                         json.dumps(delivery) if 'send' in args else 'model')
     if passes:
@@ -547,3 +551,43 @@ def test_cgroup_absence_must_be_proven(tmp_path):
     gate.require_empty_cgroup(tmp_path / 'removed')
     with pytest.raises(FileNotFoundError):
         gate.require_empty_cgroup(tmp_path)  # exists, but events file missing
+
+
+def test_messaging_smoke_excludes_discord_from_general_llm_when_policy_active(monkeypatch):
+    import io
+    import json
+    gate = module()
+    count = 0
+
+    class Response(io.BytesIO):
+        def __init__(self, index):
+            super().__init__(b'{}')
+            self.headers = {
+                'X-AI-Request-Id': f'req_{index}',
+                'X-AI-Job-Id': f'job_{index}',
+            }
+
+    def open_request(*args, **kwargs):
+        nonlocal count
+        count += 1
+        return Response(count)
+
+    monkeypatch.setattr(gate, 'urlopen', open_request)
+    monkeypatch.setattr(gate, 'fetch', lambda *args: {'recent_jobs': [
+        {'job_id': f'job_{i}', 'domain': 'shared', 'state': 'completed',
+         'assigned_provider': 'ollama-local'} for i in range(1, 3)
+    ]})
+    monkeypatch.setattr(gate, 'hermes_account', lambda: ('test', 1000, '/home/test'))
+    monkeypatch.setattr(gate, 'discord_smoke_target', lambda: 'discord:123')
+    monkeypatch.setattr(gate, 'discord_technical_policy_active', lambda: True)
+    monkeypatch.setattr(
+        gate,
+        'run',
+        lambda args, **kw: (
+            json.dumps({'success': True, 'skipped': False, 'error': None})
+            if 'send' in args else 'model'
+        ),
+    )
+
+    gate.messaging_boundary_smoke()
+    assert count == 2

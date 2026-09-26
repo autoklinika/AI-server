@@ -69,7 +69,9 @@ def media_child(command, payload, worker=False):
         base, resource = module.stage30.base, module.resource
     sink = Path(os.environ['AI_INTERNAL_SINK'])
     def record(target, message, **_):
-        assert target.startswith(('telegram:synthetic-', 'discord:synthetic-'))
+        # Production media E2E is Telegram-only. Discord media is blocked
+        # before command dispatch by the technical-only policy.
+        assert target.startswith('telegram:synthetic-')
         item = {'target': target, 'kind': 'media' if message.startswith('MEDIA:') else 'notice'}
         if item['kind'] == 'media':
             artifact = Path(message[6:])
@@ -133,12 +135,45 @@ async def exercise(output, media_enabled):
     os.environ['HERMES_RESOURCE_QUEUE_NOTICE_AFTER'] = '0'
     os.environ['HERMES_RESOURCE_POLL_SECONDS'] = '0.1'
     runner = GatewayInboundMixin()
-    runner.adapters = {}
     runner._draining = False
     runner._hm_quick_commands = lambda: {}
-    sources = [SessionSource(platform=p, chat_id=f'synthetic-{i}', user_id=f'synthetic-user-{i}',
-                             thread_id=f'{100+i}')
-               for i, p in enumerate((Platform.TELEGRAM, Platform.TELEGRAM, Platform.DISCORD, Platform.DISCORD))]
+    # The pre-dispatch policy reuses Hermes' live authorization seam. The
+    # synthetic harness explicitly authorizes its own non-external principals.
+    runner._is_user_authorized_for_source = lambda _source: True
+
+    telegram_sources = [
+        SessionSource(
+            platform=Platform.TELEGRAM,
+            chat_id=f'synthetic-{i}',
+            user_id=f'synthetic-user-{i}',
+            thread_id=f'{100+i}',
+        )
+        for i in range(2)
+    ]
+    discord_source = SessionSource(
+        platform=Platform.DISCORD,
+        chat_id='synthetic-discord-technical',
+        user_id='synthetic-discord-user',
+        thread_id='777',
+    )
+    discord_messages = []
+
+    class InternalDiscordAdapter:
+        def max_message_length_for_chat(self, _chat_id):
+            return 2000
+
+        async def send_typing(self, *_args, **_kwargs):
+            return None
+
+        async def send(self, chat_id, content, reply_to=None, metadata=None):
+            assert str(chat_id) == discord_source.chat_id
+            discord_messages.append(str(content))
+            return SimpleNamespace(success=True)
+
+        def _should_auto_tts_for_chat(self, _chat_id):
+            return False
+
+    runner.adapters = {Platform.DISCORD: InternalDiscordAdapter()}
     model = configured_hermes_model(Path('/srv/ai-data/hermes/config.yaml'))
 
     records = []
@@ -153,51 +188,99 @@ async def exercise(output, media_enabled):
                 'job_kind': 'resource reservation'})
         return lease
     helper.acquire_resource = tracked_acquire
-    async def chat(source):
+
+    async def telegram_chat(source):
         event = MessageEvent(text='Return the word OK.', source=source)
         assert runner._hm_pre_gateway_dispatch_hook(event, source) is event
-        tokens = set_session_vars(platform=source.platform.value, chat_id=source.chat_id,
-                                  thread_id=source.thread_id, user_id=source.user_id)
+        tokens = set_session_vars(
+            platform=source.platform.value,
+            chat_id=source.chat_id,
+            thread_id=source.thread_id,
+            user_id=source.user_id,
+        )
         try:
             def conversation():
                 from run_agent import AIAgent
-                agent = AIAgent(model=model, base_url=GATEWAY + '/clients/hermes/v1',
-                    api_key='local', provider='custom', api_mode='chat_completions',
-                    max_iterations=1, max_tokens=32, reasoning_config={'enabled': False},
-                    enabled_toolsets=[], quiet_mode=True, skip_context_files=True,
-                    skip_memory=True, skip_background_review=True,
-                    platform=source.platform.value, chat_id=source.chat_id,
-                    session_id='stage-f-' + uuid4().hex)
+                agent = AIAgent(
+                    model=model,
+                    base_url=GATEWAY + '/clients/hermes/v1',
+                    api_key='local',
+                    provider='custom',
+                    api_mode='chat_completions',
+                    max_iterations=1,
+                    max_tokens=32,
+                    reasoning_config={'enabled': False},
+                    enabled_toolsets=[],
+                    quiet_mode=True,
+                    skip_context_files=True,
+                    skip_memory=True,
+                    skip_background_review=True,
+                    platform=source.platform.value,
+                    chat_id=source.chat_id,
+                    session_id='stage-f-' + uuid4().hex,
+                )
                 try:
-                    result = agent.run_conversation('Return the word OK.', system_message='Reply briefly. Do not call tools.')
+                    result = agent.run_conversation(
+                        'Return the word OK.',
+                        system_message='Reply briefly. Do not call tools.',
+                    )
                     assert result.get('final_response', '').strip()
                 finally:
                     agent.close()
             await asyncio.to_thread(conversation)
         finally:
             clear_session_vars(tokens)
+
     idle()
-    blocker = await asyncio.to_thread(helper.acquire_resource, target=None, source='internal-e2e-blocker', workload='llm')
-    tasks = [asyncio.create_task(chat(source)) for source in sources]
+    blocker = await asyncio.to_thread(
+        helper.acquire_resource,
+        target=None,
+        source='internal-e2e-blocker',
+        workload='llm',
+    )
+    tasks = [asyncio.create_task(telegram_chat(source)) for source in telegram_sources]
     try:
         deadline = time.monotonic() + 30
-        while len(notices) < len(sources):
-            assert time.monotonic() < deadline, 'all contexts must reach WAIT'
+        while len(notices) < len(telegram_sources):
+            assert time.monotonic() < deadline, 'all Telegram contexts must reach WAIT'
             if any(task.done() and task.exception() for task in tasks):
                 await asyncio.gather(*tasks)
             await asyncio.sleep(.1)
     finally:
         blocker.release()
     await asyncio.gather(*tasks)
-    assert len(records) == 4
-    assert len({r['request_id'] for r in records}) == len({r['job_id'] for r in records}) == 4
-    for source in sources:
+
+    assert len(records) == 2
+    assert len({r['request_id'] for r in records}) == len({r['job_id'] for r in records}) == 2
+    for source in telegram_sources:
         route = plugin.route(source)
         messages = [message for target, message in notices if target == route]
         assert len(messages) == 2 and messages[0].startswith('⏳') and messages[1].startswith('▶️')
     for record in records:
         job, _ = fetch('/api/v1/jobs/' + record['job_id'])
-        assert job['job']['request_id'] == record['request_id'] and job['job']['state'] == 'completed'
+        assert job['job']['request_id'] == record['request_id']
+        assert job['job']['state'] == 'completed'
+
+    # Discord is no longer a general Hermes-agent context. The installed plugin
+    # must hard-intercept it, call real Knowledge /knowledge/ask and emit cited
+    # technical output into the internal sink.
+    discord_event = MessageEvent(
+        text='Jaki SPN był przy naprawie Hatz?',
+        source=discord_source,
+    )
+    assert runner._hm_pre_gateway_dispatch_hook(discord_event, discord_source) is None
+    deadline = time.monotonic() + 180
+    while plugin._discord_tasks:
+        assert time.monotonic() < deadline, 'Discord Knowledge technical turn timeout'
+        await asyncio.sleep(.1)
+    assert discord_messages
+    discord_text = '\n'.join(discord_messages)
+    assert 'SPN' in discord_text
+    assert '**Źródła:**' in discord_text
+    assert '[S' in discord_text
+    # The technical route never invokes the general llm_execution middleware,
+    # so it must not create a plugin RM reservation target for Discord.
+    assert all(not item['target'].startswith('discord:') for item in records)
     idle()
     # A failing provider call must release its reservation and heartbeat.
     tokens = set_session_vars(platform='telegram', chat_id='synthetic-failure')
@@ -232,8 +315,9 @@ async def exercise(output, media_enabled):
             return process
         asyncio.create_subprocess_exec = spawn
         try:
-            # Both platforms exercise both commands using independent origins.
-            for index, source in enumerate(sources):
+            # Telegram keeps both production media paths. Discord media is
+            # intentionally blocked by the technical-only pre-dispatch policy.
+            for index, source in enumerate(telegram_sources):
                 command = 'foto' if index % 2 == 0 else 'wideo'
                 prompt = 'A small metal gear on a clean workbench.'
                 args = prompt if command == 'foto' else '1s ' + prompt
@@ -276,7 +360,10 @@ async def exercise(output, media_enabled):
                         await asyncio.sleep(1)
             deliveries = [json.loads(line) for line in (root / 'deliveries.jsonl').read_text().splitlines()]
             artifacts = [d for d in deliveries if d['kind'] == 'media']
-            assert len(artifacts) == 4 and {d['target'] for d in artifacts} == {plugin.route(s) for s in sources}
+            assert len(artifacts) == 2
+            assert {d['target'] for d in artifacts} == {
+                plugin.route(s) for s in telegram_sources
+            }
             # Only generated artifacts evidenced in this controlled run are removed.
             for artifact in artifacts:
                 path = Path(artifact.pop('path'))
@@ -313,7 +400,15 @@ async def exercise(output, media_enabled):
     idle()
     evidence = {'evidence_class': 'SYNTHETIC/INTERNAL E2E', 'external_transport': 'DEFERRED/NOT TESTED',
                 'status': 'PASS', 'plugin_discovery': 'installed bytes; normal Hermes discovery',
-                'chat_execution': 'AIAgent.run_conversation; real streaming provider path', 'chat_contexts': records, 'queue_wait_start': 'PASS',
+                'chat_execution': 'Telegram=AIAgent general path; Discord=Knowledge-only pre-dispatch RAG',
+                'chat_contexts': records,
+                'discord_technical_rag': {
+                    'status': 'PASS',
+                    'query': 'Jaki SPN był przy naprawie Hatz?',
+                    'citations_present': True,
+                    'general_agent_bypassed': True,
+                },
+                'queue_wait_start': 'PASS',
                 'provider_failure_cleanup': 'PASS', 'idle_recovery': 'PASS',
                 'media': artifacts if media_enabled else 'NOT RUN',
                 'delivery': 'internal recording sink; no external send or inbound update',

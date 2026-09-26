@@ -352,14 +352,46 @@ def discord_smoke_target():
     ])
 
 
+DISCORD_POLICY_PLUGIN = Path(
+    '/srv/ai-data/hermes/plugins/ai-platform-messaging/__init__.py'
+)
+DISCORD_POLICY_MANIFEST = DISCORD_POLICY_PLUGIN.with_name('plugin.yaml')
+
+
+def discord_technical_policy_active():
+    """True only for the explicit Discord Knowledge-only plugin contract."""
+    if not DISCORD_POLICY_PLUGIN.is_file() or not DISCORD_POLICY_MANIFEST.is_file():
+        return False
+    try:
+        source = DISCORD_POLICY_PLUGIN.read_text(encoding='utf-8')
+        manifest = DISCORD_POLICY_MANIFEST.read_text(encoding='utf-8')
+    except OSError:
+        return False
+    return (
+        'version: 1.1.0' in manifest
+        and 'discord-technical-only' in source
+        and '/api/v1/knowledge/ask' in source
+        and 'general Hermes agent' in source
+        and 'Foto, wideo i pozostałe załączniki są wyłączone' in source
+        and 'if _safe_command(event) == "voice"' in source
+    )
+
+
 def messaging_boundary_smoke():
     model = run([
         CURRENT / 'services/ai-bridge/.venv/bin/python', '-c',
         'from ai_bridge.settings import Settings; '
         'print(Settings(_env_file="/etc/ai-bridge/ai-bridge.env").ollama_model)',
     ])
+    technical_discord = discord_technical_policy_active()
+    general_sources = ['telegram-synthetic-a', 'telegram-synthetic-b']
+    # Historical Stage E/D rollback has no Discord policy plugin and retains the
+    # old symmetric general-chat compatibility contract.
+    if not technical_discord:
+        general_sources.append('discord-synthetic')
+
     observed = []
-    for source in ('telegram-synthetic-a', 'telegram-synthetic-b', 'discord-synthetic'):
+    for source in general_sources:
         payload = {
             'model': model,
             'messages': [{'role': 'user', 'content': 'Return the word OK.'}],
@@ -376,14 +408,14 @@ def messaging_boundary_smoke():
                 response.headers['X-AI-Request-Id'],
                 response.headers['X-AI-Job-Id'],
             ))
-    require(len(observed) == 3)
-    require(len({item[0] for item in observed}) == 3)
-    require(len({item[1] for item in observed}) == 3)
+    require(len(observed) == len(general_sources))
+    require(len({item[0] for item in observed}) == len(general_sources))
+    require(len({item[1] for item in observed}) == len(general_sources))
 
     recent = fetch(GATEWAY + '/status').get('recent_jobs', [])
     ids = {item[1] for item in observed}
     matched = [job for job in recent if job.get('job_id') in ids]
-    require(len(matched) == 3)
+    require(len(matched) == len(general_sources))
     require(all(
         job.get('domain') == 'shared'
         and job.get('state') == 'completed'
