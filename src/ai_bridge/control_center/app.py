@@ -29,8 +29,9 @@ _MAX_PROXY_BODY = 1_048_576
 _ALLOWED_RESPONSE_HEADERS = {"cache-control", "content-disposition", "content-type", "x-request-id"}
 
 _GET = (
-    re.compile(r"^(?:health|observability|operations|jobs|models|systems|apps|benchmarks)$"),
+    re.compile(r"^(?:health|observability|operations|jobs|models|systems|apps|benchmarks|traces)$"),
     re.compile(r"^jobs/[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"),
+    re.compile(r"^traces/[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"),
     re.compile(r"^benchmarks/[A-Za-z0-9][A-Za-z0-9_.-]{0,127}/runs(?:/[A-Za-z0-9][A-Za-z0-9_.-]{0,127})?$"),
     re.compile(
         r"^knowledge/documents/[A-Za-z0-9][A-Za-z0-9_.-]{0,127}"

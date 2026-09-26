@@ -55,13 +55,21 @@ def test_v1_contract_and_provider_wire_boundary():
             assert job['assigned_provider'] == 'ollama-local'
             assert 'private-prompt' not in (await http.get('/api/v1/jobs')).text
             assert (await app.state.scheduler.snapshot())['active_count'] == 0
+            traces = (await http.get('/api/v1/traces')).json()
+            trace = next(item for item in traces['traces'] if item['request_id'] == 'req_test')
+            assert trace['route'] == '/ai' and trace['kind'] == 'ai'
+            assert trace['job']['job_id'] == data['job_id']
+            assert trace['flow'] == ['platform-api', 'resource-manager', 'provider', 'response']
+            detail = (await http.get('/api/v1/traces/req_test')).json()['trace']
+            assert detail['trace_id'] == 'req_test'
+            assert 'private-prompt' not in json.dumps(traces)
             assert (await http.get('/api/v1/models')).json()['models'][0]['logical_id'] == 'reasoning-main'
             assert (await http.get('/api/v1/systems')).status_code == 200
             operations = (await http.get('/api/v1/operations')).json()
             assert operations['schema_version'] == 1
             assert 'release' in operations and 'storage' in operations and 'backup' in operations
             apps = (await http.get('/api/v1/apps')).json()['apps']
-            assert [item['id'] for item in apps] == ['knowledge', 'benchmarks', 'ers']
+            assert [item['id'] for item in apps] == ['knowledge', 'benchmarks', 'ers', 'observability']
             assert apps[0]['capabilities'] == ['knowledge.search', 'knowledge.ask', 'document.read']
             assert apps[0]['exposure']['mcp'] is True
     asyncio.run(run())
@@ -298,5 +306,30 @@ def test_benchmark_catalog_contract_is_read_only_and_stable():
             assert isinstance(runs.json()["runs"], list)
             missing = await http.get("/api/v1/benchmarks/not-a-suite/runs")
             assert missing.status_code == 404
+    asyncio.run(run())
+
+def test_flight_recorder_ignores_dashboard_polling_and_never_stores_bodies():
+    async def run():
+        async with client() as (http, _):
+            for path in (
+                '/api/v1/health', '/api/v1/observability', '/api/v1/operations',
+                '/api/v1/jobs', '/api/v1/models', '/api/v1/systems', '/api/v1/apps',
+                '/api/v1/benchmarks',
+            ):
+                assert (await http.get(path)).status_code == 200
+            before = (await http.get('/api/v1/traces')).json()
+            assert before['traces'] == []
+
+            secret = 'private-flight-recorder-prompt'
+            r = await http.post('/api/v1/ai', json={
+                'messages': [{'role': 'user', 'content': secret}],
+                'context': {'request_id': 'req_flight'},
+            })
+            assert r.status_code == 200
+            traces = (await http.get('/api/v1/traces')).json()
+            assert len(traces['traces']) == 1
+            assert traces['traces'][0]['request_id'] == 'req_flight'
+            assert secret not in json.dumps(traces)
+            assert traces['retention'] == {'persistent': False, 'limit': 256}
     asyncio.run(run())
 
