@@ -120,3 +120,16 @@ def test_stage_o_gate_is_case_insensitive_and_recovers_failed_smoke():
     assert 'require((state / "20_cutover.json").is_file())' in gate
     assert 'STAGE_O_RECOVERY_ROLLBACK=PASS' in gate
 
+
+def test_stage_o_reuses_last_accepted_release_as_rollback_baseline():
+    gate = (ROOT / "deploy/stage-o/autopilot/gate.py").read_text()
+    assert "active_rollback_baseline" in gate
+    assert "accepted_stage_o" in gate
+    assert "baseline_release" in gate
+    assert '"rollback_stage": rollback_stamp["stage"]' in gate
+    assert 'has_control_center = active or baseline["rollback_stage"] == "O"' in gate
+    assert "e.D6 = current" in gate
+    assert "e.D6 = rollback" in gate
+    assert 'switch(rollback, candidate, cfg, baseline)' in gate
+    assert 'smoke("rollback-smoke", rollback, candidate, cfg, baseline, state)' in gate
+

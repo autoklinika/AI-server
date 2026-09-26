@@ -4,9 +4,12 @@ Stage O is a runtime-only production release for AI Control Center.
 It preserves the accepted Stage M database/schema contract 0005_crt_projection
 and does not run Alembic migrations or mutate Knowledge/ERS/CRT data.
 
-Production baseline is pinned to stage-m-8e6d21eff33d and source
-8e6d21eff33de73d84fdfbff43b952dd34db838c. A different active baseline
-fails closed and requires an explicit reviewed update.
+The first production baseline is pinned to stage-m-8e6d21eff33d. After a
+Stage O release is accepted, the next Stage O patch uses that accepted release
+as its rollback baseline. An active Stage O release is trusted only when its
+immutable release metadata and matching accepted.json evidence agree. Unaccepted
+or unknown active releases fail closed, except for the explicit recovery rollback
+path after a failed smoke.
 
 Gate sequence: preflight, immutable build, cutover, smoke, rollback,
 rollback smoke, reactivation, final smoke and finalize.
