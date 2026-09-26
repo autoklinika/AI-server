@@ -281,4 +281,6 @@ def test_control_center_incident_timeline_is_read_only_and_deep_linked():
     assert "function incidentTimelinePage()" in javascript
     assert "function incidentDetailPage(incidentId)" in javascript
     assert 'controlUrl("/incidents/" + encodeURIComponent(incident.incident_id))' in javascript
+    assert "function loadIncidentDetail(incidentId)" in javascript
+    assert "api('/incidents/' + encodeURIComponent(incidentId))" in javascript
 
