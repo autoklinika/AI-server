@@ -253,6 +253,17 @@ def control_center_smoke(*, require_operations: bool = True) -> dict:
         require("scrollIntoView" in javascript)
         require("function sourceOriginalPanel(viewer)" in javascript)
         require("function sourceMetadataPanel(viewer)" in javascript)
+        require("function toggleKnowledgeSourceFullscreen()" in javascript)
+        require("data-source-fullscreen" in javascript)
+        require("Wyjdź z pełnego ekranu" in javascript)
+        require("state.knowledge.viewer.fullscreen" in javascript)
+        status, styles, _style_headers = text_fetch(
+            bridge + "/control/assets/styles.css"
+        )
+        require(status == 200)
+        require(".source-modal.fullscreen" in styles)
+        require("width: 100vw" in styles)
+        require("height: 100dvh" in styles)
         require("/provenance" in javascript)
         require("/original" in javascript)
         require("/ers/artifacts/" in javascript)
