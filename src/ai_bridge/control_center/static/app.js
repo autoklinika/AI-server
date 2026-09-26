@@ -58,6 +58,7 @@ const state = {
       open: false,
       loading: false,
       error: null,
+      fullscreen: false,
       tab: "original",
       selectedOriginalIndex: null,
       documentId: null,
@@ -1118,12 +1119,25 @@ function knowledgeSourceModal() {
     ? viewer.document.document.title
     : "Źródło Knowledge";
 
+  const fullscreenLabel = viewer.fullscreen
+    ? "Wyjdź z pełnego ekranu"
+    : "Pełny ekran";
+
   return '<div class="source-modal-backdrop" data-source-close>' +
-    '<section class="source-modal" role="dialog" aria-modal="true" aria-labelledby="source-modal-title" data-source-modal>' +
+    '<section class="source-modal' + (viewer.fullscreen ? ' fullscreen' : '') +
+      '" role="dialog" aria-modal="true" aria-labelledby="source-modal-title" data-source-modal>' +
       '<header class="source-modal-head">' +
         '<div><span class="eyebrow">KNOWLEDGE SOURCE</span><h2 id="source-modal-title">' +
           escapeHtml(title || "Źródło Knowledge") + '</h2></div>' +
-        '<button type="button" class="source-modal-close" data-source-close aria-label="Zamknij">×</button>' +
+        '<div class="source-modal-actions">' +
+          '<button type="button" class="source-modal-fullscreen" data-source-fullscreen aria-pressed="' +
+            (viewer.fullscreen ? "true" : "false") + '" aria-label="' + fullscreenLabel +
+            '" title="' + fullscreenLabel + '">' +
+            '<span class="source-modal-fullscreen-icon">⛶</span><span class="source-modal-fullscreen-label">' +
+              fullscreenLabel + '</span>' +
+          '</button>' +
+          '<button type="button" class="source-modal-close" data-source-close aria-label="Zamknij">×</button>' +
+        '</div>' +
       '</header>' +
       '<div class="source-modal-body">' + body + '</div>' +
     '</section>' +
@@ -1145,6 +1159,7 @@ async function openKnowledgeSource(kind, index) {
     open: true,
     loading: true,
     error: null,
+    fullscreen: false,
     tab: "original",
     selectedOriginalIndex: null,
     documentId: target.documentId,
@@ -1175,10 +1190,29 @@ async function openKnowledgeSource(kind, index) {
   }
 }
 
+function toggleKnowledgeSourceFullscreen() {
+  const viewer = state.knowledge.viewer;
+  viewer.fullscreen = !viewer.fullscreen;
+
+  const modal = document.querySelector("[data-source-modal]");
+  if (modal) modal.classList.toggle("fullscreen", viewer.fullscreen);
+
+  const button = document.querySelector("[data-source-fullscreen]");
+  if (button) {
+    const label = viewer.fullscreen ? "Wyjdź z pełnego ekranu" : "Pełny ekran";
+    button.setAttribute("aria-pressed", viewer.fullscreen ? "true" : "false");
+    button.setAttribute("aria-label", label);
+    button.setAttribute("title", label);
+    const text = button.querySelector(".source-modal-fullscreen-label");
+    if (text) text.textContent = label;
+  }
+}
+
 function closeKnowledgeSource() {
   state.knowledge.viewer.open = false;
   state.knowledge.viewer.loading = false;
   state.knowledge.viewer.error = null;
+  state.knowledge.viewer.fullscreen = false;
   render();
 }
 
@@ -1289,6 +1323,13 @@ function wirePageActions() {
     originalReset.addEventListener("click", function () {
       state.knowledge.viewer.selectedOriginalIndex = null;
       render();
+    });
+  }
+
+  const sourceFullscreen = document.querySelector("[data-source-fullscreen]");
+  if (sourceFullscreen) {
+    sourceFullscreen.addEventListener("click", function () {
+      toggleKnowledgeSourceFullscreen();
     });
   }
 
@@ -2037,9 +2078,12 @@ document.addEventListener("click", function (event) {
 window.addEventListener("popstate", render);
 
 document.addEventListener("keydown", function (event) {
-  if (event.key === "Escape" && state.knowledge.viewer.open) {
-    closeKnowledgeSource();
+  if (event.key !== "Escape" || !state.knowledge.viewer.open) return;
+  if (state.knowledge.viewer.fullscreen) {
+    toggleKnowledgeSourceFullscreen();
+    return;
   }
+  closeKnowledgeSource();
 });
 
 document.addEventListener("visibilitychange", function () {

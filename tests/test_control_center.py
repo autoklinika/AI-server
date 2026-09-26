@@ -74,6 +74,14 @@ def test_control_center_contains_live_knowledge_workflow_and_registry_client():
     assert 'scrollIntoView({ block: "center", behavior: "smooth" })' in javascript
     assert "function sourceOriginalPanel(viewer)" in javascript
     assert "function sourceMetadataPanel(viewer)" in javascript
+    assert "function toggleKnowledgeSourceFullscreen()" in javascript
+    assert 'data-source-fullscreen' in javascript
+    assert 'viewer.fullscreen ? "Wyjdź z pełnego ekranu"' in javascript
+    assert 'if (state.knowledge.viewer.fullscreen)' in javascript
+    styles = client.get("/assets/styles.css").text
+    assert ".source-modal.fullscreen" in styles
+    assert "width: 100vw" in styles
+    assert "height: 100dvh" in styles
     assert "/provenance" in javascript
     assert "/original" in javascript
     assert "/ers/artifacts/" in javascript
