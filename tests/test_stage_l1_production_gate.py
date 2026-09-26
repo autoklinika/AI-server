@@ -108,3 +108,15 @@ def test_default_bridge_composition_exposes_ers_only_in_new_source():
     app_source = (ROOT / "src/ai_bridge/api/app.py").read_text()
     assert "from ai_bridge.domains.ers.adapter import ERSAdapter" in app_source
     assert "(WVCAdapter(), ERSAdapter()) if domains is None" in app_source
+
+
+def test_stage_o_gate_is_case_insensitive_and_recovers_failed_smoke():
+    gate = (ROOT / "deploy/stage-o/autopilot/gate.py").read_text()
+    assert '{key.lower(): value for key, value in response.headers.items()}' in gate
+    assert 'headers.get("content-security-policy", "")' in gate
+    assert "recover_active_unaccepted_candidate" in gate
+    assert 'require((prior_state / "20_cutover.json").is_file())' in gate
+    assert 'require(not (prior_state / "accepted.json").exists())' in gate
+    assert 'require((state / "20_cutover.json").is_file())' in gate
+    assert 'STAGE_O_RECOVERY_ROLLBACK=PASS' in gate
+
