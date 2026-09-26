@@ -315,7 +315,7 @@ def test_flight_recorder_ignores_dashboard_polling_and_never_stores_bodies():
                 '/api/v1/health', '/api/v1/observability', '/api/v1/operations',
                 '/api/v1/jobs', '/api/v1/models', '/api/v1/systems', '/api/v1/apps',
                 '/api/v1/benchmarks', '/api/v1/system-map', '/api/v1/incidents',
-                '/api/v1/agents',
+                '/api/v1/agents', '/api/v1/logs',
             ):
                 assert (await http.get(path)).status_code == 200
             before = (await http.get('/api/v1/traces')).json()
@@ -400,5 +400,46 @@ def test_agents_endpoint_is_read_only_and_does_not_expose_raw_logs():
             assert "implement.prompt" not in serialized
             assert "review.prompt" not in serialized
             assert "bot_token" not in serialized
+    asyncio.run(run())
+
+def test_structured_logs_are_bounded_metadata_only_and_do_not_self_record():
+    async def run():
+        async with client() as (http, _):
+            secret = "private-log-prompt"
+            ok = await http.post("/api/v1/ai", json={
+                "messages": [{"role": "user", "content": secret}],
+                "context": {"request_id": "req_log_ok"},
+            })
+            assert ok.status_code == 200
+
+            failed = await http.post("/api/v1/ai", json={
+                "capability": "video-generation",
+                "messages": [{"role": "user", "content": secret}],
+                "context": {"request_id": "req_log_fail"},
+            })
+            assert failed.status_code == 503
+
+            response = await http.get("/api/v1/logs")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["retention"] == {
+                "persistent": False,
+                "limit": 256,
+                "raw_logs_exposed": False,
+                "sources": ["platform-api", "resource-manager"],
+            }
+            assert len(data["logs"]) >= 3
+            failed_entry = next(
+                item for item in data["logs"]
+                if item["log_id"] == "request:req_log_fail"
+            )
+            assert failed_entry["level"] == "error"
+            assert failed_entry["route"] == "/ai"
+            assert failed_entry["status"] == 503
+            assert secret not in response.text
+            assert "authorization" not in response.text.lower()
+
+            traces = (await http.get("/api/v1/traces")).json()["traces"]
+            assert all(item["route"] != "/logs" for item in traces)
     asyncio.run(run())
 

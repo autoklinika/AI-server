@@ -27,6 +27,7 @@ const state = {
   health: null,
   observability: null,
   agents: null,
+  logs: null,
   jobs: null,
   models: null,
   systems: null,
@@ -159,6 +160,7 @@ async function refreshData() {
     health: api("/health"),
     observability: api("/observability"),
     agents: api("/agents"),
+    logs: api("/logs"),
     jobs: api("/jobs"),
     models: api("/models"),
     systems: api("/systems"),
@@ -422,6 +424,49 @@ function agentsPage() {
   return sectionPage("Agents",
     "Read-only widok ostatniego znanego stanu autopilota i produkcyjnych agentów.", summary +
     (agents.length ? '<div class="cards">' + cards + '</div>' : cards));
+}
+
+function logsPage() {
+  const payload = state.logs || {};
+  const logs = Array.isArray(payload.logs) ? payload.logs : [];
+  const errors = logs.filter(function (item) { return item.level === "error"; }).length;
+  const warnings = logs.filter(function (item) { return item.level === "warning"; }).length;
+  const platform = logs.filter(function (item) { return item.component === "platform-api"; }).length;
+  const jobs = logs.filter(function (item) { return item.component === "resource-manager"; }).length;
+
+  const summary = '<section class="metric-strip compact">' +
+    metric("Events", String(logs.length), "bounded structured feed", "/operations/logs") +
+    metric("Errors", String(errors), "structured", "/apps/incidents") +
+    metric("Warnings", String(warnings), "structured", "/operations/logs") +
+    metric("Sources", String((platform ? 1 : 0) + (jobs ? 1 : 0)),
+      platform + " API · " + jobs + " RM", "/operations/logs") +
+  '</section>';
+
+  const rows = logs.length ? logs.map(function (item) {
+    const context = item.component === "platform-api"
+      ? ((item.method || "") + " " + (item.route || ""))
+      : ((item.capability || "job") + (item.provider ? " · " + item.provider : ""));
+    const target = item.trace_id
+      ? controlUrl("/traces/" + encodeURIComponent(item.trace_id))
+      : (item.job_id ? controlUrl("/jobs/" + encodeURIComponent(item.job_id)) : null);
+    const content = '<div class="log-time">' + escapeHtml(humanDate(item.timestamp)) + '</div>' +
+      '<div class="log-level">' + statusDot(item.level === "error" ? "failed" :
+        (item.level === "warning" ? "warning" : "ready")) + escapeHtml(item.level || "info") + '</div>' +
+      '<div class="log-main"><strong>' + escapeHtml(item.event || "event") + '</strong>' +
+        '<span>' + escapeHtml(context.trim() || item.component || "platform") + '</span></div>' +
+      '<div class="log-component">' + escapeHtml(item.component || "—") + '</div>' +
+      '<div class="log-status">' + escapeHtml(item.status == null ? (item.job_id || "—") : String(item.status)) + '</div>';
+    return target
+      ? '<a class="log-row panel" href="' + target + '" data-nav>' + content + '</a>'
+      : '<div class="log-row panel">' + content + '</div>';
+  }).join("") :
+    '<div class="panel knowledge-empty"><h3>Brak zdarzeń</h3><p>Structured runtime log jest obecnie pusty.</p></div>';
+
+  return sectionPage("Logs",
+    "Sanityzowany, read-only strumień zdarzeń Platform API i Resource Managera.",
+    summary +
+    '<div class="log-list-head"><span>Time</span><span>Level</span><span>Event</span><span>Component</span><span>Status / ID</span></div>' +
+    '<div class="log-list">' + rows + '</div>');
 }
 
 function modelsPage() {
@@ -1123,7 +1168,7 @@ function pageForRoute() {
   if (path === "/apps/incidents") return incidentTimelinePage();
   if (path === "/operations/agents") return agentsPage();
   if (path === "/operations/backup") return backupPage();
-  if (path === "/operations/logs") return genericOperations("Logs", "Filtrowane logi operacyjne.", "Log API nie jest jeszcze częścią Platform API v1.");
+  if (path === "/operations/logs") return logsPage();
   if (path === "/platform/settings") return genericOperations("Settings", "Konfiguracja GUI i platformy.", "GUI-0 nie wprowadza jeszcze mutacji konfiguracji.");
   if (path === "/platform/providers") return modelsPage();
   if (path === "/platform/security") return genericOperations("Security", "Polityki dostępu Control Center.", "Autoryzacja sesyjna GUI jest osobnym kontraktem; token Platform API nie będzie osadzany w frontendzie.");

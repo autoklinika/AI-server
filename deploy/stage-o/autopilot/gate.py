@@ -276,6 +276,10 @@ def control_center_smoke(*, require_operations: bool = True) -> dict:
         agents = e.fetch(bridge + "/control/api/v1/agents")
         require(isinstance(agents["agents"], list))
         require(agents["retention"]["raw_logs_exposed"] is False)
+        logs = e.fetch(bridge + "/control/api/v1/logs")
+        require(isinstance(logs["logs"], list))
+        require(logs["retention"]["raw_logs_exposed"] is False)
+        require(logs["retention"]["limit"] == 256)
     else:
         require(app_ids in (
             ["knowledge", "benchmarks", "ers"],
@@ -333,6 +337,10 @@ def platform_smoke(active: bool, *, require_observability: bool = False) -> None
             agents = e.fetch(base + "/agents")
             require(isinstance(agents["agents"], list))
             require(agents["retention"]["raw_logs_exposed"] is False)
+            logs = e.fetch(base + "/logs")
+            require(isinstance(logs["logs"], list))
+            require(logs["retention"]["raw_logs_exposed"] is False)
+            require(logs["retention"]["limit"] == 256)
         else:
             require(app_ids in (
                 ["knowledge", "benchmarks", "ers"],
