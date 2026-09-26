@@ -111,3 +111,29 @@ def test_all_gate_recovers_baseline_when_candidate_smoke_fails(monkeypatch):
         "recover",
         "rollback-smoke",
     ]
+
+
+def test_replace_tree_needs_write_only_inside_live_plugin_dir(monkeypatch, tmp_path):
+    gate = gate_module()
+    plugins = tmp_path / "plugins"
+    live = plugins / "ai-platform-messaging"
+    source = tmp_path / "candidate"
+    live.mkdir(parents=True)
+    source.mkdir()
+
+    (live / "__init__.py").write_text("old-python")
+    (live / "plugin.yaml").write_text("old-yaml")
+    (source / "__init__.py").write_text("new-python")
+    (source / "plugin.yaml").write_text("new-yaml")
+    live.chmod(0o775)
+    plugins.chmod(0o555)
+
+    monkeypatch.setattr(gate, "LIVE", live)
+    try:
+        gate.replace_tree(source)
+    finally:
+        plugins.chmod(0o755)
+
+    assert (live / "__init__.py").read_text() == "new-python"
+    assert (live / "plugin.yaml").read_text() == "new-yaml"
+    assert not list(live.glob(".*.tmp"))

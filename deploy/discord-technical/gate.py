@@ -170,32 +170,44 @@ def start_gateway(previous_pid=None):
 
 
 def replace_tree(source):
+    """Atomically replace plugin files inside the existing user-owned directory.
+
+    /srv/ai-data/hermes/plugins is root-owned (0755), while the live plugin
+    directory itself is owned by the Hermes user. The gateway is stopped during
+    transitions, so replacing each file with an os.replace() from a temporary
+    sibling inside LIVE is both safe and does not require sudo.
+    """
     source = Path(source)
     require(all((source / name).is_file() for name in FILES), "plugin source incomplete")
-    LIVE.parent.mkdir(parents=True, exist_ok=True)
-    staging = LIVE.with_name(".ai-platform-messaging-" + uuid4().hex)
-    old = LIVE.with_name(".ai-platform-messaging-old-" + uuid4().hex)
-    shutil.copytree(source, staging)
-    moved_old = False
+    require(LIVE.is_dir(), "live plugin directory missing")
+    require(os.access(LIVE, os.W_OK), "live plugin directory is not writable")
+
+    staged = []
     try:
-        if LIVE.exists():
-            os.replace(LIVE, old)
-            moved_old = True
-        os.replace(staging, LIVE)
-    except Exception:
-        if LIVE.exists() and not moved_old:
-            shutil.rmtree(LIVE, ignore_errors=True)
-        if moved_old and old.exists() and not LIVE.exists():
-            os.replace(old, LIVE)
-        raise
+        for name in FILES:
+            target = LIVE / name
+            temporary = LIVE / f".{name}.{uuid4().hex}.tmp"
+            with temporary.open("xb") as stream:
+                stream.write((source / name).read_bytes())
+                stream.flush()
+                os.fsync(stream.fileno())
+            temporary.chmod(0o664)
+            staged.append((temporary, target))
+
+        for temporary, target in staged:
+            os.replace(temporary, target)
+
+        # Persist directory-entry replacements before Hermes is restarted.
+        directory_fd = os.open(LIVE, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
     finally:
-        if staging.exists():
-            shutil.rmtree(staging, ignore_errors=True)
-    if old.exists():
-        shutil.rmtree(old)
+        for temporary, _target in staged:
+            temporary.unlink(missing_ok=True)
+
     LIVE.chmod(0o775)
-    for name in FILES:
-        (LIVE / name).chmod(0o664)
 
 
 def candidate_contract():
