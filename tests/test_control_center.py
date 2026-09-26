@@ -158,3 +158,18 @@ def test_control_center_proxy_allows_read_only_benchmark_catalog():
         ]
     asyncio.run(run())
 
+
+def test_control_center_benchmark_ui_has_run_deep_links_and_metrics():
+    client = TestClient(create_control_center_app())
+    javascript = client.get("/assets/app.js").text
+
+    assert "benchmarkRunPage" in javascript
+    assert "loadBenchmarkRun" in javascript
+    assert "'/runs/' + encodeURIComponent(run.run_id)" in javascript
+    assert "recall_at_1" in javascript
+    assert "recall_at_3" in javascript
+    assert "recall_at_5" in javascript
+    assert "metrics.mrr" in javascript
+    assert "latency.search_avg" in javascript
+    assert "latency.query_embedding_total" in javascript
+

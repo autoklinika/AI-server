@@ -27,7 +27,7 @@ const state = {
   models: null,
   systems: null,
   apps: null,
-  benchmarks: { catalog: null, suite: null, runs: null, run: null, loading: false, error: null },
+  benchmarks: { catalog: null, suite: null, runs: null, runKey: null, run: null, loading: false, error: null },
   knowledge: {
     tab: "search",
     query: "",
@@ -594,12 +594,13 @@ function benchmarkSuitePage(suiteId) {
   }
   const runs = state.benchmarks.suite === suiteId && Array.isArray(state.benchmarks.runs) ? state.benchmarks.runs : [];
   const rows = runs.length ? runs.map(function (run) {
-    return '<article class="panel benchmark-run">' +
+    const href = controlUrl('/apps/benchmarks/' + encodeURIComponent(suiteId) + '/runs/' + encodeURIComponent(run.run_id));
+    return '<a class="panel benchmark-run" href="' + href + '" data-nav>' +
       '<div><strong>' + escapeHtml(run.artifact || run.run_id) + '</strong><small>' +
         escapeHtml([run.status, run.queries ? run.queries + " queries" : "", run.variant_count ? run.variant_count + " variants" : ""].filter(Boolean).join(" · ")) +
       '</small></div>' +
-      '<span>' + (run.duration_seconds ? escapeHtml(run.duration_seconds.toFixed(1) + " s") : escapeHtml(run.format || "")) + '</span>' +
-    '</article>';
+      '<span>' + (run.duration_seconds ? escapeHtml(run.duration_seconds.toFixed(1) + " s") : escapeHtml(run.format || "")) + ' →</span>' +
+    '</a>';
   }).join('') : '<div class="panel knowledge-empty"><p>' + (state.benchmarks.loading ? 'Ładowanie…' : 'Brak historycznych runów.') + '</p></div>';
 
   return sectionPage(suite.name, suite.category,
@@ -618,6 +619,84 @@ async function loadBenchmarkSuite(suiteId) {
   try {
     const payload = await api('/benchmarks/' + encodeURIComponent(suiteId) + '/runs');
     state.benchmarks.runs = payload.runs || [];
+  } catch (error) {
+    state.benchmarks.error = 'Benchmark API: ' + (error.code || error.message || 'unknown_error');
+  } finally {
+    state.benchmarks.loading = false;
+    render();
+  }
+}
+
+function benchmarkMetric(value) {
+  return typeof value === "number" && Number.isFinite(value) ? (value * 100).toFixed(1) + "%" : "—";
+}
+
+function benchmarkRunPage(suiteId, runId) {
+  const catalog = state.benchmarks.catalog;
+  const suites = catalog && Array.isArray(catalog.suites) ? catalog.suites : [];
+  const suite = suites.find(function (item) { return item.suite_id === suiteId; });
+  if (!suite) return sectionPage("Benchmarks", suiteId, pendingPanel("Unknown suite", "Suite nie istnieje w registry."));
+
+  const key = suiteId + "|" + runId;
+  if (state.benchmarks.runKey !== key && !state.benchmarks.loading) {
+    queueMicrotask(function () { loadBenchmarkRun(suiteId, runId); });
+  }
+
+  const run = state.benchmarks.runKey === key ? state.benchmarks.run : null;
+  if (!run) {
+    return sectionPage(suite.name, runId,
+      state.benchmarks.error
+        ? '<div class="knowledge-error">' + escapeHtml(state.benchmarks.error) + '</div>'
+        : pendingPanel("Benchmark run", state.benchmarks.loading ? "Ładowanie wyniku…" : "Wynik nie jest jeszcze załadowany."));
+  }
+
+  const variants = Array.isArray(run.variants) ? run.variants : [];
+  const summary = '<div class="benchmark-run-summary panel">' +
+    '<div><span class="eyebrow">RUN</span><h2>' + escapeHtml(run.artifact || run.run_id) + '</h2>' +
+    '<p>' + escapeHtml([run.status, run.queries ? run.queries + " queries" : "", run.duration_seconds ? run.duration_seconds.toFixed(1) + " s" : ""].filter(Boolean).join(" · ")) + '</p></div>' +
+    '<div class="capability-list"><span>' + escapeHtml(suite.category) + '</span><span>' + escapeHtml(run.format || "result") + '</span></div>' +
+  '</div>';
+
+  if (!variants.length) {
+    return sectionPage(suite.name, "Historyczny wynik benchmarku.", summary +
+      '<article class="panel detail-card wide">' + panelHeader("Artifact", run.status || "historical") +
+      '<dl><dt>Run ID</dt><dd>' + escapeHtml(run.run_id) + '</dd>' +
+      '<dt>Artifact</dt><dd>' + escapeHtml(run.artifact || "—") + '</dd>' +
+      '<dt>Format</dt><dd>' + escapeHtml(run.format || "—") + '</dd></dl></article>');
+  }
+
+  const rows = variants.map(function (variant) {
+    const metrics = variant.metrics || {};
+    const latency = variant.latency_ms || {};
+    return '<tr>' +
+      '<td><strong>' + escapeHtml(variant.model || "—") + '</strong><small>' + escapeHtml(String(variant.chunk_max_chars || "—")) + ' chars</small></td>' +
+      '<td>' + escapeHtml(String(variant.documents ?? "—")) + '</td>' +
+      '<td>' + escapeHtml(String(variant.chunks ?? "—")) + '</td>' +
+      '<td>' + benchmarkMetric(metrics.recall_at_1) + '</td>' +
+      '<td>' + benchmarkMetric(metrics.recall_at_3) + '</td>' +
+      '<td>' + benchmarkMetric(metrics.recall_at_5) + '</td>' +
+      '<td>' + benchmarkMetric(metrics.mrr) + '</td>' +
+      '<td>' + humanDurationMs(latency.search_avg) + '</td>' +
+      '<td>' + humanDurationMs(latency.query_embedding_total) + '</td>' +
+    '</tr>';
+  }).join("");
+
+  return sectionPage(suite.name, "Porównanie wariantów historycznego runu.", summary +
+    '<div class="table-wrap benchmark-detail-table"><table><thead><tr>' +
+    '<th>Model / chunk</th><th>Docs</th><th>Chunks</th><th>R@1</th><th>R@3</th><th>R@5</th><th>MRR</th><th>Search</th><th>Embedding</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table></div>');
+}
+
+async function loadBenchmarkRun(suiteId, runId) {
+  const key = suiteId + "|" + runId;
+  state.benchmarks.loading = true;
+  state.benchmarks.error = null;
+  state.benchmarks.runKey = key;
+  state.benchmarks.run = null;
+  render();
+  try {
+    const payload = await api('/benchmarks/' + encodeURIComponent(suiteId) + '/runs/' + encodeURIComponent(runId));
+    state.benchmarks.run = payload.run || null;
   } catch (error) {
     state.benchmarks.error = 'Benchmark API: ' + (error.code || error.message || 'unknown_error');
   } finally {
@@ -656,7 +735,14 @@ function pageForRoute() {
   if (path === "/platform/integrations") return integrationsPage();
   if (path === "/apps/knowledge") return knowledgePage();
   if (path === "/apps/benchmarks") return benchmarksPage();
-  if (path.startsWith("/apps/benchmarks/")) return benchmarkSuitePage(decodeURIComponent(path.slice("/apps/benchmarks/".length)));
+  if (path.startsWith("/apps/benchmarks/")) {
+    const rest = path.slice("/apps/benchmarks/".length);
+    const parts = rest.split("/");
+    if (parts.length === 3 && parts[1] === "runs") {
+      return benchmarkRunPage(decodeURIComponent(parts[0]), decodeURIComponent(parts[2]));
+    }
+    return benchmarkSuitePage(decodeURIComponent(rest));
+  }
   if (path === "/apps/ers") return placeholderApplication("ECU Repair Service", "Domenowa aplikacja ERS jako osobny workspace.");
   if (path === "/operations/agents") return genericOperations("Agents", "Stan i kontrolowane akcje agentów.", "Agent control API nie jest jeszcze wystawione przez Platform API.");
   if (path === "/operations/backup") return genericOperations("Backup", "Backup / DR z Stage K.", "Status backupu nie ma jeszcze stabilnego kontraktu Platform API.");
