@@ -72,7 +72,12 @@ def test_control_center_contains_live_knowledge_workflow_and_registry_client():
     assert 'api("/knowledge/documents/" + encodeURIComponent(target.documentId))' in javascript
     assert 'id="knowledge-source-target"' in javascript
     assert 'scrollIntoView({ block: "center", behavior: "smooth" })' in javascript
-    assert "/content" not in javascript
+    assert "function sourceOriginalPanel(viewer)" in javascript
+    assert "function sourceMetadataPanel(viewer)" in javascript
+    assert "/provenance" in javascript
+    assert "/original" in javascript
+    assert "/ers/artifacts/" in javascript
+    assert javascript.count('"/content"') == 1
     assert 'target="_blank"' not in javascript
     assert "localStorage" not in javascript
 
@@ -517,6 +522,89 @@ def test_control_center_proxy_allows_read_only_knowledge_history():
         assert seen == [
             ("GET", "/api/v1/knowledge/history"),
             ("GET", f"/api/v1/knowledge/history/{history_id}"),
+        ]
+
+    asyncio.run(run())
+
+
+def test_control_center_proxy_embeds_only_allowlisted_original_source_content():
+    async def run():
+        seen = []
+        version_id = "11111111-1111-4111-8111-111111111111"
+
+        def upstream(request):
+            seen.append((request.method, request.url.path))
+            if request.url.path.endswith("/provenance"):
+                return httpx.Response(200, json={
+                    "schema_version": 1,
+                    "provenance": {
+                        "document_id": "kdoc_test",
+                        "direct_original": {"media_kind": "pdf"},
+                        "related_originals": [],
+                    },
+                })
+            if request.url.path.endswith("/original"):
+                return httpx.Response(
+                    200,
+                    content=b"%PDF-1.7 fake",
+                    headers={
+                        "content-type": "application/pdf",
+                        "content-disposition": "inline; filename*=UTF-8''test.pdf",
+                    },
+                )
+            if request.url.path.endswith("/content"):
+                return httpx.Response(
+                    200,
+                    content=b"\xff\xd8\xffphoto",
+                    headers={
+                        "content-type": "image/jpeg",
+                        "content-disposition": "inline; filename*=UTF-8''photo.jpg",
+                    },
+                )
+            raise AssertionError(request.url.path)
+
+        app = create_control_center_app(
+            platform_base_url="http://platform/api/v1",
+            upstream_transport=httpx.MockTransport(upstream),
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app, client=("192.168.1.44", 1234)),
+            base_url="http://control",
+        ) as http:
+            provenance = await http.get(
+                "/api/v1/knowledge/documents/kdoc_test/provenance"
+            )
+            assert provenance.status_code == 200
+            assert "frame-ancestors 'none'" in provenance.headers["content-security-policy"]
+
+            original = await http.get(
+                "/api/v1/knowledge/documents/kdoc_test/original"
+            )
+            assert original.status_code == 200
+            assert original.content.startswith(b"%PDF")
+            assert original.headers["content-type"].startswith("application/pdf")
+            assert "frame-ancestors 'self'" in original.headers["content-security-policy"]
+            assert "script-src 'none'" in original.headers["content-security-policy"]
+
+            photo = await http.get(
+                f"/api/v1/ers/artifacts/{version_id}/content"
+            )
+            assert photo.status_code == 200
+            assert photo.content.startswith(b"\xff\xd8\xff")
+            assert photo.headers["content-type"].startswith("image/jpeg")
+            assert "frame-ancestors 'self'" in photo.headers["content-security-policy"]
+
+            assert (await http.post(
+                "/api/v1/knowledge/documents/kdoc_test/original", json={}
+            )).status_code == 403
+            assert (await http.get(
+                "/api/v1/ers/artifacts/not-a-uuid/content"
+            )).status_code == 403
+
+        assert seen == [
+            ("GET", "/api/v1/knowledge/documents/kdoc_test/provenance"),
+            ("GET", "/api/v1/knowledge/documents/kdoc_test/original"),
+            ("GET", f"/api/v1/ers/artifacts/{version_id}/content"),
         ]
 
     asyncio.run(run())

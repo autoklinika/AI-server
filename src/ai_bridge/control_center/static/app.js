@@ -58,11 +58,14 @@ const state = {
       open: false,
       loading: false,
       error: null,
+      tab: "original",
+      selectedOriginalIndex: null,
       documentId: null,
       chunkId: null,
       snippet: null,
       ref: null,
-      document: null
+      document: null,
+      provenance: null
     }
   },
   errors: {},
@@ -831,62 +834,284 @@ function knowledgeEvidenceHtml(text, snippet, highlight) {
     escapeHtml(value.slice(index + needle.length));
 }
 
+function sourceViewerTarget(viewer) {
+  const payload = viewer.document || {};
+  const chunks = Array.isArray(payload.chunks) ? payload.chunks : [];
+  let targetIndex = chunks.findIndex(function (chunk) {
+    return viewer.chunkId && chunk.chunk_id === viewer.chunkId;
+  });
+  if (targetIndex < 0 && viewer.snippet) {
+    targetIndex = chunks.findIndex(function (chunk) {
+      return String(chunk.text || "").includes(String(viewer.snippet));
+    });
+  }
+  return {
+    index: targetIndex,
+    chunk: targetIndex >= 0 ? chunks[targetIndex] : null,
+    chunks: chunks
+  };
+}
+
+function sourceRoleLabel(role) {
+  return ({
+    original_document: "Oryginalny dokument",
+    original_image: "Oryginalne zdjęcie",
+    workshop_note: "Notatka warsztatowa",
+    source_note: "Notatka źródłowa",
+    source_file: "Plik źródłowy"
+  })[role] || "Źródło";
+}
+
+function sourceMediaLabel(kind) {
+  return ({
+    pdf: "PDF",
+    image: "Zdjęcie",
+    text: "Notatka / tekst",
+    binary: "Plik binarny"
+  })[kind] || "Plik";
+}
+
+function sourceDirectUrl(viewer) {
+  const page = sourceViewerTarget(viewer).chunk;
+  const locator = page && page.locator ? page.locator : {};
+  const fragment = locator.page != null ? "#page=" + encodeURIComponent(String(locator.page)) : "";
+  return API_BASE + "/knowledge/documents/" + encodeURIComponent(viewer.documentId) + "/original" + fragment;
+}
+
+function sourceArtifactUrl(versionId) {
+  return API_BASE + "/ers/artifacts/" + encodeURIComponent(versionId) + "/content";
+}
+
+function sourcePreview(mediaKind, url, title, filename) {
+  if (mediaKind === "image") {
+    return '<div class="source-original-preview image-preview">' +
+      '<img src="' + url + '" alt="' + escapeHtml(title || filename || "Oryginalne zdjęcie") + '">' +
+    '</div>';
+  }
+  if (mediaKind === "pdf") {
+    return '<iframe class="source-original-frame" src="' + url + '" title="' +
+      escapeHtml(title || filename || "Oryginalny PDF") + '"></iframe>';
+  }
+  if (mediaKind === "text") {
+    return '<iframe class="source-original-frame text-frame" src="' + url + '" title="' +
+      escapeHtml(title || filename || "Oryginalna notatka") + '"></iframe>';
+  }
+  return '<div class="source-binary-preview">' +
+    '<strong>' + escapeHtml(filename || title || "Plik binarny") + '</strong>' +
+    '<p>Ten typ pliku nie jest renderowany w przeglądarce. Możesz pobrać dokładny oryginał z object store.</p>' +
+    '<a class="source-original-download" href="' + url + '" download>Pobierz oryginał</a>' +
+  '</div>';
+}
+
+function sourceOriginalPanel(viewer) {
+  const provenance = viewer.provenance || {};
+  const direct = provenance.direct_original || {};
+  const related = Array.isArray(provenance.related_originals) ? provenance.related_originals : [];
+  const selectedIndex = Number.isInteger(viewer.selectedOriginalIndex)
+    ? viewer.selectedOriginalIndex : null;
+  const selected = selectedIndex != null ? related[selectedIndex] : null;
+  const target = sourceViewerTarget(viewer);
+  const payload = viewer.document || {};
+  const documentInfo = payload.document || {};
+  const caseInfo = provenance.case || null;
+
+  let preview = "";
+  let header = "";
+  let relationship = "";
+
+  if (selected) {
+    const url = sourceArtifactUrl(selected.version_id);
+    preview = sourcePreview(
+      selected.media_kind,
+      url,
+      selected.title,
+      selected.filename
+    );
+    header = '<div class="source-original-current-head">' +
+      '<div><span class="eyebrow">ORYGINAŁ ERS</span><h3>' +
+        escapeHtml(selected.title || selected.filename || "Oryginał") + '</h3></div>' +
+      '<button type="button" class="source-original-reset" data-source-original-reset>Wróć do źródła cytowania</button>' +
+    '</div>';
+    relationship = '<div class="source-original-relation related">' +
+      'Materiał oryginalny powiązany z ' +
+      escapeHtml(caseInfo ? caseInfo.case_code : "tym samym case") +
+      '. Nie jest automatycznie oznaczany jako dokładny dowód tego cytowania.' +
+    '</div>';
+  } else {
+    const url = sourceDirectUrl(viewer);
+    preview = sourcePreview(
+      direct.media_kind,
+      url,
+      documentInfo.title,
+      direct.filename
+    );
+    header = '<div class="source-original-current-head">' +
+      '<div><span class="eyebrow">DOKŁADNE ŹRÓDŁO</span><h3>' +
+        escapeHtml(documentInfo.title || direct.filename || "Źródło") + '</h3></div>' +
+      '<span class="badge">' + escapeHtml(sourceRoleLabel(direct.role)) + '</span>' +
+    '</div>';
+    relationship = '<div class="source-original-relation exact">' +
+      'To jest checksumowany oryginalny obiekt kanoniczny, z którego powstał dokument Knowledge użyty przez retrieval/RAG.' +
+      (target.chunk && target.chunk.locator && target.chunk.locator.page != null
+        ? ' PDF został otwarty na stronie ' + escapeHtml(String(target.chunk.locator.page)) + '.'
+        : '') +
+    '</div>';
+  }
+
+  let relatedHtml = "";
+  if (related.length) {
+    relatedHtml = '<section class="source-related-originals">' +
+      '<div class="source-related-head"><div><span class="eyebrow">ORYGINAŁY POWIĄZANE</span><h3>' +
+        escapeHtml(caseInfo ? caseInfo.case_code : "Materiały warsztatowe") +
+      '</h3></div><small>' + related.length + ' plików</small></div>' +
+      '<div class="source-original-grid">' +
+        related.map(function (item, index) {
+          const active = selectedIndex === index;
+          const url = sourceArtifactUrl(item.version_id);
+          const thumb = item.media_kind === "image"
+            ? '<img loading="lazy" src="' + url + '" alt="' +
+              escapeHtml(item.title || item.filename || "Zdjęcie") + '">'
+            : '<div class="source-original-file-icon">' +
+              escapeHtml(sourceMediaLabel(item.media_kind)) + '</div>';
+          return '<button type="button" class="source-original-card' + (active ? ' active' : '') +
+            '" data-source-original-index="' + index + '">' +
+              '<div class="source-original-thumb">' + thumb + '</div>' +
+              '<div class="source-original-card-copy"><strong>' +
+                escapeHtml(item.title || item.filename || "Oryginał") + '</strong>' +
+                '<small>' + escapeHtml([
+                  item.role || "",
+                  sourceMediaLabel(item.media_kind),
+                  item.filename || ""
+                ].filter(Boolean).join(" · ")) + '</small></div>' +
+            '</button>';
+        }).join("") +
+      '</div>' +
+    '</section>';
+  } else if (caseInfo) {
+    relatedHtml = '<div class="source-related-empty">Brak dodatkowych lokalnych oryginałów powiązanych z tym case.</div>';
+  }
+
+  return '<div class="source-original-panel">' +
+    header + relationship +
+    '<div class="source-original-stage">' + preview + '</div>' +
+    relatedHtml +
+  '</div>';
+}
+
+function sourceFragmentPanel(viewer) {
+  const payload = viewer.document || {};
+  const chunks = Array.isArray(payload.chunks) ? payload.chunks : [];
+  const target = sourceViewerTarget(viewer);
+  const locationStatus = target.index >= 0
+    ? '<span class="source-viewer-locator-ok">Zaznaczono fragment użyty przez AI</span>'
+    : '<span class="source-viewer-locator-warning">Nie znaleziono dokładnego fragmentu w bieżącej wersji dokumentu</span>';
+
+  const chunksHtml = chunks.map(function (chunk, index) {
+    const isTarget = index === target.index;
+    const locator = knowledgeChunkLocator(chunk);
+    return '<section class="source-viewer-chunk' + (isTarget ? ' source-target' : '') + '"' +
+      (isTarget ? ' id="knowledge-source-target"' : '') + '>' +
+      '<div class="source-viewer-chunk-head">' +
+        '<span>' + escapeHtml(locator || ("fragment " + (index + 1))) + '</span>' +
+        (isTarget ? '<strong>ŹRÓDŁO ODPOWIEDZI</strong>' : '') +
+      '</div>' +
+      '<div class="source-viewer-text">' +
+        knowledgeEvidenceHtml(chunk.text || "", viewer.snippet, isTarget) +
+      '</div>' +
+    '</section>';
+  }).join("");
+
+  return '<div class="source-viewer-location-status">' + locationStatus + '</div>' +
+    '<div class="source-viewer-document">' +
+      (chunksHtml || '<div class="source-viewer-loading">Dokument nie zawiera fragmentów tekstowych.</div>') +
+    '</div>';
+}
+
+function sourceMetadataPanel(viewer) {
+  const payload = viewer.document || {};
+  const source = payload.source || {};
+  const documentInfo = payload.document || {};
+  const version = payload.version || {};
+  const provenance = viewer.provenance || {};
+  const direct = provenance.direct_original || {};
+  const caseInfo = provenance.case || null;
+  const exactArtifact = provenance.exact_ers_artifact || null;
+  const policy = provenance.provenance_policy || {};
+
+  return '<div class="source-metadata-grid">' +
+    '<article class="panel detail-card">' +
+      '<div class="panel-head"><h3>Knowledge</h3><span class="badge">CANONICAL</span></div>' +
+      '<dl>' +
+        '<dt>Document ID</dt><dd>' + escapeHtml(documentInfo.document_id || viewer.documentId || "—") + '</dd>' +
+        '<dt>Version ID</dt><dd>' + escapeHtml(version.version_id || "—") + '</dd>' +
+        '<dt>Media type</dt><dd>' + escapeHtml(documentInfo.media_type || "—") + '</dd>' +
+        '<dt>Source type</dt><dd>' + escapeHtml(source.type || direct.source_type || "—") + '</dd>' +
+        '<dt>Source URI</dt><dd>' + escapeHtml(source.uri || direct.source_uri || "—") + '</dd>' +
+        '<dt>Repository path</dt><dd>' + escapeHtml(direct.repository_path || "—") + '</dd>' +
+        '<dt>SHA-256</dt><dd>' + escapeHtml(version.content_sha256 || direct.content_sha256 || "—") + '</dd>' +
+      '</dl>' +
+    '</article>' +
+    '<article class="panel detail-card">' +
+      '<div class="panel-head"><h3>Provenance</h3><span class="badge">EXACT</span></div>' +
+      '<dl>' +
+        '<dt>Rola źródła</dt><dd>' + escapeHtml(sourceRoleLabel(direct.role)) + '</dd>' +
+        '<dt>Relacja</dt><dd>' + escapeHtml(direct.relationship || "—") + '</dd>' +
+        '<dt>Case</dt><dd>' + escapeHtml(caseInfo ? (caseInfo.case_code + " · " + (caseInfo.title || "")) : "—") + '</dd>' +
+        '<dt>ERS exact match</dt><dd>' + escapeHtml(exactArtifact
+          ? ((exactArtifact.filename || exactArtifact.title || exactArtifact.artifact_id) +
+             (exactArtifact.same_bytes_as_document ? " · checksum zgodny" : ""))
+          : "—") + '</dd>' +
+        '<dt>Powiązane oryginały</dt><dd>' +
+          escapeHtml(String(Array.isArray(provenance.related_originals) ? provenance.related_originals.length : 0)) +
+        '</dd>' +
+        '<dt>Polityka</dt><dd>' + escapeHtml(
+          policy.case_related_originals_are_not_claimed_as_exact_evidence
+            ? "Powiązane pliki nie są automatycznie uznawane za dokładny dowód."
+            : "—"
+        ) + '</dd>' +
+      '</dl>' +
+    '</article>' +
+  '</div>';
+}
+
 function knowledgeSourceModal() {
   const viewer = state.knowledge.viewer;
   if (!viewer.open) return "";
 
   let body = "";
   if (viewer.loading) {
-    body = '<div class="source-viewer-loading">Ładowanie dokumentu…</div>';
+    body = '<div class="source-viewer-loading">Ładowanie źródła i provenance…</div>';
   } else if (viewer.error) {
     body = '<div class="knowledge-error source-viewer-error">' + escapeHtml(viewer.error) + '</div>';
-  } else if (viewer.document) {
+  } else if (viewer.document && viewer.provenance) {
     const payload = viewer.document;
     const documentInfo = payload.document || {};
     const source = payload.source || {};
     const version = payload.version || {};
-    const chunks = Array.isArray(payload.chunks) ? payload.chunks : [];
 
-    let targetIndex = chunks.findIndex(function (chunk) {
-      return viewer.chunkId && chunk.chunk_id === viewer.chunkId;
-    });
-    if (targetIndex < 0 && viewer.snippet) {
-      targetIndex = chunks.findIndex(function (chunk) {
-        return String(chunk.text || "").includes(String(viewer.snippet));
-      });
-    }
+    const meta = '<div class="source-viewer-meta">' +
+      '<div><span>Dokument</span><strong>' + escapeHtml(documentInfo.title || source.title || viewer.documentId || "Źródło") + '</strong></div>' +
+      '<div><span>Typ</span><strong>' + escapeHtml(documentInfo.media_type || source.type || "—") + '</strong></div>' +
+      '<div><span>Wersja</span><strong>' + escapeHtml(version.version_id || "—") + '</strong></div>' +
+      '<div><span>Źródło</span><strong>' + escapeHtml(viewer.ref || "—") + '</strong></div>' +
+    '</div>';
 
-    const locationStatus = targetIndex >= 0
-      ? '<span class="source-viewer-locator-ok">Zaznaczono fragment użyty przez AI</span>'
-      : '<span class="source-viewer-locator-warning">Nie znaleziono dokładnego fragmentu w bieżącej wersji dokumentu</span>';
+    const tabs = '<div class="source-viewer-tabs" role="tablist">' +
+      '<button type="button" class="source-viewer-tab' + (viewer.tab === "original" ? " active" : "") +
+        '" data-source-viewer-tab="original">Oryginał</button>' +
+      '<button type="button" class="source-viewer-tab' + (viewer.tab === "fragment" ? " active" : "") +
+        '" data-source-viewer-tab="fragment">Fragment użyty przez AI</button>' +
+      '<button type="button" class="source-viewer-tab' + (viewer.tab === "metadata" ? " active" : "") +
+        '" data-source-viewer-tab="metadata">Metadane</button>' +
+    '</div>';
 
-    const chunksHtml = chunks.map(function (chunk, index) {
-      const target = index === targetIndex;
-      const locator = knowledgeChunkLocator(chunk);
-      return '<section class="source-viewer-chunk' + (target ? ' source-target' : '') + '"' +
-        (target ? ' id="knowledge-source-target"' : '') + '>' +
-        '<div class="source-viewer-chunk-head">' +
-          '<span>' + escapeHtml(locator || ("fragment " + (index + 1))) + '</span>' +
-          (target ? '<strong>ŹRÓDŁO ODPOWIEDZI</strong>' : '') +
-        '</div>' +
-        '<div class="source-viewer-text">' +
-          knowledgeEvidenceHtml(chunk.text || "", viewer.snippet, target) +
-        '</div>' +
-      '</section>';
-    }).join("");
+    const panel = viewer.tab === "fragment"
+      ? sourceFragmentPanel(viewer)
+      : (viewer.tab === "metadata" ? sourceMetadataPanel(viewer) : sourceOriginalPanel(viewer));
 
-    body = '<div class="source-viewer-meta">' +
-        '<div><span>Dokument</span><strong>' + escapeHtml(documentInfo.title || source.title || viewer.documentId || "Źródło") + '</strong></div>' +
-        '<div><span>Typ</span><strong>' + escapeHtml(documentInfo.media_type || source.type || "—") + '</strong></div>' +
-        '<div><span>Wersja</span><strong>' + escapeHtml(version.version_id || "—") + '</strong></div>' +
-        '<div><span>Źródło</span><strong>' + escapeHtml(viewer.ref || "—") + '</strong></div>' +
-      '</div>' +
-      '<div class="source-viewer-location-status">' + locationStatus + '</div>' +
-      '<div class="source-viewer-document">' +
-        (chunksHtml || '<div class="source-viewer-loading">Dokument nie zawiera fragmentów tekstowych.</div>') +
-      '</div>';
+    body = meta + tabs + '<div class="source-viewer-tab-panel">' + panel + '</div>';
   } else {
-    body = '<div class="source-viewer-loading">Brak dokumentu do wyświetlenia.</div>';
+    body = '<div class="source-viewer-loading">Brak źródła do wyświetlenia.</div>';
   }
 
   const title = viewer.document && viewer.document.document
@@ -905,6 +1130,13 @@ function knowledgeSourceModal() {
   '</div>';
 }
 
+function scrollKnowledgeSourceTarget() {
+  window.requestAnimationFrame(function () {
+    const targetNode = document.getElementById("knowledge-source-target");
+    if (targetNode) targetNode.scrollIntoView({ block: "center", behavior: "smooth" });
+  });
+}
+
 async function openKnowledgeSource(kind, index) {
   const target = knowledgeSourceTarget(kind, index);
   if (!target || !target.documentId) return;
@@ -913,28 +1145,32 @@ async function openKnowledgeSource(kind, index) {
     open: true,
     loading: true,
     error: null,
+    tab: "original",
+    selectedOriginalIndex: null,
     documentId: target.documentId,
     chunkId: target.chunkId,
     snippet: target.snippet,
     ref: target.ref,
-    document: null
+    document: null,
+    provenance: null
   };
   render();
 
   try {
-    const payload = await api("/knowledge/documents/" + encodeURIComponent(target.documentId));
-    if (!state.knowledge.viewer.open || state.knowledge.viewer.documentId !== target.documentId) return;
-    state.knowledge.viewer.document = payload;
+    const responses = await Promise.all([
+      api("/knowledge/documents/" + encodeURIComponent(target.documentId)),
+      api("/knowledge/documents/" + encodeURIComponent(target.documentId) + "/provenance")
+    ]);
+    if (!state.knowledge.viewer.open ||
+        state.knowledge.viewer.documentId !== target.documentId) return;
+    state.knowledge.viewer.document = responses[0];
+    state.knowledge.viewer.provenance = responses[1].provenance || null;
   } catch (error) {
     state.knowledge.viewer.error = "Knowledge API: " + (error.code || error.message || "unknown_error");
   } finally {
     if (state.knowledge.viewer.documentId === target.documentId) {
       state.knowledge.viewer.loading = false;
       render();
-      window.requestAnimationFrame(function () {
-        const targetNode = document.getElementById("knowledge-source-target");
-        if (targetNode) targetNode.scrollIntoView({ block: "center", behavior: "smooth" });
-      });
     }
   }
 }
@@ -1030,6 +1266,31 @@ function wirePageActions() {
       openKnowledgeSource(button.dataset.knowledgeSourceKind, index);
     });
   });
+
+  document.querySelectorAll("[data-source-viewer-tab]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      state.knowledge.viewer.tab = button.dataset.sourceViewerTab;
+      render();
+      if (state.knowledge.viewer.tab === "fragment") scrollKnowledgeSourceTarget();
+    });
+  });
+
+  document.querySelectorAll("[data-source-original-index]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      const index = Number(button.dataset.sourceOriginalIndex);
+      if (!Number.isInteger(index) || index < 0) return;
+      state.knowledge.viewer.selectedOriginalIndex = index;
+      render();
+    });
+  });
+
+  const originalReset = document.querySelector("[data-source-original-reset]");
+  if (originalReset) {
+    originalReset.addEventListener("click", function () {
+      state.knowledge.viewer.selectedOriginalIndex = null;
+      render();
+    });
+  }
 
   document.querySelectorAll("[data-source-close]").forEach(function (element) {
     element.addEventListener("click", function (event) {

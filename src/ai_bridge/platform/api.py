@@ -7,10 +7,10 @@ import logging
 import re
 from dataclasses import asdict
 from datetime import datetime, timedelta
-from pathlib import Path
+from pathlib import Path, PurePath
 from time import monotonic
 from typing import Annotated, Literal
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, Request
@@ -21,6 +21,10 @@ from starlette.exceptions import HTTPException
 
 from ai_bridge.benchmarks import BenchmarkCatalog
 from ai_bridge.domains.ers.storage.intake_repository import ErsIntakeRepository
+from ai_bridge.domains.ers.storage.artifact_repository import (
+    ErsArtifactNotFound,
+    ErsArtifactRepository,
+)
 from ai_bridge.domains.ers.storage.repository import ErsCaseNotFound, ErsCaseRepository
 from ai_bridge.platform.agents import agents_snapshot
 from ai_bridge.platform.knowledge_history import KnowledgeAskHistory
@@ -47,6 +51,7 @@ from ai_bridge.storage.object_store import (
 )
 from ai_bridge.platform.observability import PlatformRequestMetrics, job_metrics, runtime_resources
 from ai_bridge.platform.operations import operations_snapshot
+from ai_bridge.platform.source_provenance import resolve_source_provenance
 
 LOGGER = logging.getLogger(__name__)
 ID = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")]
@@ -543,6 +548,70 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
             raise APIError(404, "not_found") from None
         return envelope(request, item=item)
 
+    def safe_inline_media(media_type: str | None) -> bool:
+        value = (media_type or "").lower()
+        return (
+            value == "application/pdf"
+            or value.startswith("image/")
+            or value in {
+                "text/plain",
+                "text/markdown",
+                "text/csv",
+                "application/json",
+                "application/xml",
+            }
+        )
+
+    def content_disposition(filename: str, *, inline: bool) -> str:
+        disposition = "inline" if inline else "attachment"
+        return f"{disposition}; filename*=UTF-8''{quote(filename, safe='')}"
+
+    async def current_knowledge_snapshot(document_id: str, *, operation: str):
+        runtime = runtime_factory()
+        try:
+            return await asyncio.to_thread(runtime.get_document, document_id)
+        except KeyError:
+            raise APIError(404, "not_found") from None
+        except Exception:
+            LOGGER.exception("%s failed", operation)
+            raise APIError(503, "knowledge_unavailable", True) from None
+        finally:
+            try:
+                runtime.close()
+            except Exception:
+                LOGGER.exception("Knowledge runtime close failed")
+
+    def source_provenance_projection(snapshot):
+        database = Database(settings.database_url)
+        try:
+            return resolve_source_provenance(database, snapshot)
+        finally:
+            database.dispose()
+
+    def artifact_content_projection(version_id: UUID):
+        database = Database(settings.database_url)
+        try:
+            repository = ErsArtifactRepository(database)
+            version = repository.get_version(version_id)
+            artifact = repository.get_artifact(version.artifact_id)
+        finally:
+            database.dispose()
+
+        if version.availability != "available" or version.object_sha256 is None:
+            raise KeyError(str(version_id))
+
+        store = FileObjectStore(settings.knowledge_object_store_dir)
+        stored = store.verify(version.object_sha256)
+        if stored.byte_size != version.byte_size:
+            raise ObjectStoreCorruption(
+                "ERS artifact size differs from version metadata"
+            )
+        path = Path(urlparse(stored.uri).path)
+        filename = artifact.original_filename or artifact.title or str(version.id)
+        media_type = version.media_type or "application/octet-stream"
+        inline = safe_inline_media(media_type)
+        return path, filename, media_type, inline
+
     @api.get("/knowledge/documents/{document_id}")
     async def knowledge_document(document_id: str, request: Request):
         runtime = runtime_factory()
@@ -587,6 +656,83 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                 "text": chunk.text,
                 "locator": dict(chunk.locator),
             } for chunk in snapshot.chunks],
+        )
+
+    @api.get("/knowledge/documents/{document_id}/provenance")
+    async def knowledge_document_provenance(document_id: str, request: Request):
+        snapshot = await current_knowledge_snapshot(
+            document_id,
+            operation="Knowledge provenance lookup",
+        )
+        try:
+            provenance = await asyncio.to_thread(
+                source_provenance_projection,
+                snapshot,
+            )
+        except Exception:
+            LOGGER.exception("Knowledge provenance resolution failed")
+            raise APIError(503, "knowledge_unavailable", True) from None
+        return envelope(request, provenance=provenance)
+
+    @api.get("/knowledge/documents/{document_id}/original")
+    async def knowledge_document_original(document_id: str, request: Request):
+        snapshot = await current_knowledge_snapshot(
+            document_id,
+            operation="Knowledge original lookup",
+        )
+        store = FileObjectStore(settings.knowledge_object_store_dir)
+        try:
+            stored = await asyncio.to_thread(
+                store.verify_uri,
+                snapshot.version.storage_uri,
+                snapshot.version.content_sha256,
+            )
+        except ObjectStoreNotFound:
+            raise APIError(404, "not_found") from None
+        except (ObjectStoreCorruption, ValueError):
+            raise APIError(503, "knowledge_content_unavailable", True) from None
+
+        content_path = Path(urlparse(stored.uri).path)
+        repository_path = snapshot.document.metadata.get("repository_path")
+        filename = (
+            PurePath(str(repository_path)).name
+            if isinstance(repository_path, str) and repository_path
+            else Path(urlparse(snapshot.document.uri).path).name
+        ) or document_id
+        return FileResponse(
+            content_path,
+            media_type=snapshot.document.media_type,
+            headers={
+                "Content-Disposition": content_disposition(
+                    filename,
+                    inline=safe_inline_media(snapshot.document.media_type),
+                ),
+                "Cache-Control": "private, no-store",
+            },
+        )
+
+    @api.get("/ers/artifacts/{version_id}/content")
+    async def ers_artifact_content(version_id: UUID, request: Request):
+        try:
+            path, filename, media_type, inline = await asyncio.to_thread(
+                artifact_content_projection,
+                version_id,
+            )
+        except (ErsArtifactNotFound, KeyError, ObjectStoreNotFound):
+            raise APIError(404, "not_found") from None
+        except (ObjectStoreCorruption, ValueError):
+            raise APIError(503, "ers_content_unavailable", True) from None
+        except Exception:
+            LOGGER.exception("ERS artifact content lookup failed")
+            raise APIError(503, "ers_unavailable", True) from None
+
+        return FileResponse(
+            path,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": content_disposition(filename, inline=inline),
+                "Cache-Control": "private, no-store",
+            },
         )
 
     @api.get("/knowledge/documents/{document_id}/content")

@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 import httpx
 import pytest
 
+from ai_bridge.domains.ers.artifacts import ErsArtifactService
+from ai_bridge.domains.ers.storage.artifact_repository import ErsArtifactRepository
 from ai_bridge.domains.ers.storage.models import ErsCaseCounterModel
 from ai_bridge.domains.ers.storage.repository import ErsCaseRepository
 from ai_bridge.gateway.app import create_gateway_app
@@ -12,6 +14,7 @@ from ai_bridge.providers.contracts import LLMResponse
 from ai_bridge.settings import Settings
 from ai_bridge.storage.base import Base
 from ai_bridge.storage.database import Database
+from ai_bridge.storage.object_store import FileObjectStore
 
 
 @asynccontextmanager
@@ -488,5 +491,55 @@ def test_platform_api_exposes_read_only_ers_projection(tmp_path):
             assert missing.json()["error"]["code"] == "not_found"
 
             assert (await http.post("/api/v1/ers/cases", json={})).status_code == 405
+
+    asyncio.run(run())
+
+
+def test_platform_api_serves_real_ers_artifact_bytes_inline(tmp_path):
+    async def run():
+        database_url = "sqlite+pysqlite:///" + str(tmp_path / "ers-artifact.sqlite")
+        object_root = tmp_path / "objects"
+        database = Database(database_url)
+        Base.metadata.create_all(database.engine)
+        with database.session() as session:
+            session.add(ErsCaseCounterModel(counter_name="case", next_value=1))
+        case = ErsCaseRepository(database).create_case(
+            title="Artifact content test",
+            actor_id="operator",
+            legacy_case_code="CASE-ARTIFACT-TEST",
+        )
+        service = ErsArtifactService(
+            repository=ErsArtifactRepository(database),
+            object_store=FileObjectStore(object_root),
+        )
+        raw = b"\xff\xd8\xff\xe0real-photo-bytes"
+        stored = service.ingest_bytes(
+            case_id=case.id,
+            artifact_kind="photo",
+            created_by="operator",
+            content=raw,
+            media_type="image/jpeg",
+            title="root_cause_photo",
+            role="root_cause",
+            original_filename="root-cause.jpg",
+            artifact_metadata={
+                "legacy_source_kind": "local_original",
+                "legacy_source_path": "local-originals/root-cause.jpg",
+            },
+        )
+        database.dispose()
+
+        async with client(
+            database_url=database_url,
+            knowledge_object_store_dir=object_root,
+        ) as (http, _):
+            response = await http.get(
+                "/api/v1/ers/artifacts/" + str(stored.version.id) + "/content"
+            )
+            assert response.status_code == 200, response.text
+            assert response.content == raw
+            assert response.headers["content-type"].startswith("image/jpeg")
+            assert response.headers["content-disposition"].startswith("inline;")
+            assert response.headers["cache-control"] == "private, no-store"
 
     asyncio.run(run())

@@ -251,7 +251,12 @@ def control_center_smoke(*, require_operations: bool = True) -> dict:
         require("function openKnowledgeHistory(historyId)" in javascript)
         require("knowledge-source-target" in javascript)
         require("scrollIntoView" in javascript)
-        require("/content" not in javascript)
+        require("function sourceOriginalPanel(viewer)" in javascript)
+        require("function sourceMetadataPanel(viewer)" in javascript)
+        require("/provenance" in javascript)
+        require("/original" in javascript)
+        require("/ers/artifacts/" in javascript)
+        require(javascript.count('"/content"') == 1)
         require('target="_blank"' not in javascript)
 
     manifest = e.fetch(bridge + "/control/manifest.webmanifest")
