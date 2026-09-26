@@ -250,3 +250,50 @@ def test_ask_rejects_unknown_citation_and_skips_llm_when_no_sources(tmp_path):
             assert empty.json()["citations"] == []
             assert provider.calls == []
     asyncio.run(run())
+
+
+def test_ask_history_keeps_last_ten_and_reopens_full_response(tmp_path):
+    async def run():
+        async with api_client(tmp_path) as (http, _runtimes, provider, _snapshot):
+            for index in range(12):
+                response = await http.post("/api/v1/knowledge/ask", json={
+                    "query": f"Pytanie historyczne {index}",
+                    "mode": "hybrid",
+                    "context": {"domain": "ecu-repair"},
+                })
+                assert response.status_code == 200, response.text
+
+            history = await http.get("/api/v1/knowledge/history")
+            assert history.status_code == 200, history.text
+            payload = history.json()
+            assert payload["retention"] == {
+                "persistent": False,
+                "limit": 10,
+                "scope": "platform-runtime",
+            }
+            assert len(payload["history"]) == 10
+            assert payload["history"][0]["query"] == "Pytanie historyczne 11"
+            assert payload["history"][-1]["query"] == "Pytanie historyczne 2"
+            assert payload["history"][0]["citation_count"] == 1
+            assert payload["history"][0]["domain"] == "ecu-repair"
+
+            history_id = payload["history"][0]["history_id"]
+            detail = await http.get(f"/api/v1/knowledge/history/{history_id}")
+            assert detail.status_code == 200, detail.text
+            item = detail.json()["item"]
+            assert item["query"] == "Pytanie historyczne 11"
+            assert item["response"]["answer"] == "Przyczyną był uszkodzony przewód."
+            assert item["response"]["citations"][0]["ref"] == "S1"
+
+            missing = await http.get("/api/v1/knowledge/history/kh_missing")
+            assert missing.status_code == 404
+            assert missing.json()["error"]["code"] == "not_found"
+
+            traces = (await http.get("/api/v1/traces")).json()["traces"]
+            assert all(item["route"] not in {
+                "/knowledge/history",
+                "/knowledge/history/{history_id}",
+            } for item in traces)
+            assert len(provider.calls) == 12
+
+    asyncio.run(run())

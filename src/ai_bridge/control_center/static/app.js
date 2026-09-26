@@ -48,6 +48,12 @@ const state = {
     error: null,
     search: null,
     ask: null,
+    history: {
+      items: null,
+      selected: null,
+      loading: false,
+      error: null
+    },
     viewer: {
       open: false,
       loading: false,
@@ -582,33 +588,125 @@ function integrationsPage() {
 
 function knowledgePage() {
   const k = state.knowledge;
-  const activeResult = k.tab === "search" ? knowledgeSearchResults(k.search) : knowledgeAskResult(k.ask);
+  const historyMode = k.tab === "history";
+  const activeResult = k.tab === "search"
+    ? knowledgeSearchResults(k.search)
+    : (k.tab === "ask" ? knowledgeAskResult(k.ask) : knowledgeHistoryResults());
+  const form = historyMode ? "" :
+    '<form id="knowledge-form" class="knowledge-form panel">' +
+      '<div class="knowledge-input-row">' +
+        '<input id="knowledge-query" name="query" required maxlength="8192" autocomplete="off" ' +
+          'placeholder="' + (k.tab === "search" ? "np. MPC555 reset architecture" : "np. Dlaczego BDM może być niedostępne w tym ECU?") + '" ' +
+          'value="' + escapeHtml(k.query) + '">' +
+        '<button type="submit" class="primary-button"' + (k.loading ? " disabled" : "") + '>' +
+          (k.loading ? "Pracuję…" : (k.tab === "search" ? "Szukaj" : "Zapytaj")) +
+        '</button>' +
+      '</div>' +
+      '<div class="knowledge-options">' +
+        '<label>Domena <select id="knowledge-domain" name="domain">' +
+          '<option value="shared"' + (k.domain === "shared" ? " selected" : "") + '>shared</option>' +
+          '<option value="ecu-repair"' + (k.domain === "ecu-repair" ? " selected" : "") + '>ecu-repair</option>' +
+        '</select></label>' +
+        '<span>Tryb: hybrid</span><span>Źródła przez Platform API</span>' +
+      '</div>' +
+      (k.error ? '<div class="knowledge-error">' + escapeHtml(k.error) + '</div>' : '') +
+    '</form>';
+
   return sectionPage("Knowledge", "Szukaj bezpośrednio w źródłach albo pytaj AI z cytowaniami.",
     '<div class="knowledge-shell">' +
       '<div class="knowledge-tabs" role="tablist">' +
         '<button class="knowledge-tab' + (k.tab === "search" ? " active" : "") + '" data-knowledge-tab="search">Szukaj</button>' +
         '<button class="knowledge-tab' + (k.tab === "ask" ? " active" : "") + '" data-knowledge-tab="ask">Zapytaj AI</button>' +
+        '<button class="knowledge-tab' + (k.tab === "history" ? " active" : "") + '" data-knowledge-tab="history">Historia</button>' +
       '</div>' +
-      '<form id="knowledge-form" class="knowledge-form panel">' +
-        '<div class="knowledge-input-row">' +
-          '<input id="knowledge-query" name="query" required maxlength="8192" autocomplete="off" ' +
-            'placeholder="' + (k.tab === "search" ? "np. MPC555 reset architecture" : "np. Dlaczego BDM może być niedostępne w tym ECU?") + '" ' +
-            'value="' + escapeHtml(k.query) + '">' +
-          '<button type="submit" class="primary-button"' + (k.loading ? " disabled" : "") + '>' +
-            (k.loading ? "Pracuję…" : (k.tab === "search" ? "Szukaj" : "Zapytaj")) +
-          '</button>' +
-        '</div>' +
-        '<div class="knowledge-options">' +
-          '<label>Domena <select id="knowledge-domain" name="domain">' +
-            '<option value="shared"' + (k.domain === "shared" ? " selected" : "") + '>shared</option>' +
-            '<option value="ecu-repair"' + (k.domain === "ecu-repair" ? " selected" : "") + '>ecu-repair</option>' +
-          '</select></label>' +
-          '<span>Tryb: hybrid</span><span>Źródła przez Platform API</span>' +
-        '</div>' +
-        (k.error ? '<div class="knowledge-error">' + escapeHtml(k.error) + '</div>' : '') +
-      '</form>' +
+      form +
       '<div class="knowledge-results">' + activeResult + '</div>' +
     '</div>');
+}
+
+function knowledgeHistoryResults() {
+  const history = state.knowledge.history;
+
+  if (history.selected) {
+    const item = history.selected;
+    const response = item.response || {};
+    return '<div class="knowledge-history-detail">' +
+      '<button type="button" class="knowledge-history-back" data-knowledge-history-back>← Wróć do historii</button>' +
+      '<article class="panel knowledge-history-question">' +
+        '<div class="knowledge-history-question-head">' +
+          '<span class="badge">' + escapeHtml(item.domain || "shared") + '</span>' +
+          '<time>' + escapeHtml(humanDate(item.created_at)) + '</time>' +
+        '</div>' +
+        '<h3>' + escapeHtml(item.query || "—") + '</h3>' +
+      '</article>' +
+      knowledgeAskResult(response, "history-citation") +
+    '</div>';
+  }
+
+  if (history.loading && history.items == null) {
+    return '<div class="panel knowledge-empty"><h3>Historia</h3><p>Ładowanie ostatnich zapytań…</p></div>';
+  }
+  if (history.error) {
+    return '<div class="knowledge-error">' + escapeHtml(history.error) + '</div>';
+  }
+
+  const items = Array.isArray(history.items) ? history.items : [];
+  if (!items.length) {
+    return '<div class="panel knowledge-empty"><h3>Brak historii</h3>' +
+      '<p>Po użyciu „Zapytaj AI” pojawi się tutaj do 10 ostatnich odpowiedzi.</p></div>';
+  }
+
+  return '<div class="knowledge-history-head">' +
+      '<span>Ostatnie zapytania</span><small>' + items.length + ' / 10 · pamięć bieżącego runtime</small>' +
+    '</div>' +
+    '<div class="knowledge-history-list">' +
+      items.map(function (item) {
+        return '<button type="button" class="panel knowledge-history-row" data-knowledge-history-id="' +
+          escapeHtml(item.history_id) + '">' +
+          '<div class="knowledge-history-row-main">' +
+            '<strong>' + escapeHtml(item.query || "—") + '</strong>' +
+            '<p>' + escapeHtml(item.answer_preview || "") + '</p>' +
+          '</div>' +
+          '<div class="knowledge-history-row-meta">' +
+            '<span class="badge">' + escapeHtml(item.domain || "shared") + '</span>' +
+            '<span>' + escapeHtml(String(item.citation_count || 0)) + ' źródeł</span>' +
+            '<time>' + escapeHtml(humanDate(item.created_at)) + '</time>' +
+          '</div>' +
+        '</button>';
+      }).join("") +
+    '</div>';
+}
+
+async function loadKnowledgeHistory() {
+  const history = state.knowledge.history;
+  history.loading = true;
+  history.error = null;
+  render();
+  try {
+    const payload = await api("/knowledge/history");
+    history.items = Array.isArray(payload.history) ? payload.history : [];
+  } catch (error) {
+    history.error = "Knowledge History API: " + (error.code || error.message || "unknown_error");
+  } finally {
+    history.loading = false;
+    render();
+  }
+}
+
+async function openKnowledgeHistory(historyId) {
+  const history = state.knowledge.history;
+  history.loading = true;
+  history.error = null;
+  render();
+  try {
+    const payload = await api("/knowledge/history/" + encodeURIComponent(historyId));
+    history.selected = payload.item || null;
+  } catch (error) {
+    history.error = "Knowledge History API: " + (error.code || error.message || "unknown_error");
+  } finally {
+    history.loading = false;
+    render();
+  }
 }
 
 function knowledgeSearchResults(payload) {
@@ -640,17 +738,19 @@ function knowledgeSearchResults(payload) {
     }).join("");
 }
 
-function knowledgeAskResult(payload) {
+function knowledgeAskResult(payload, citationKind) {
   if (!payload) {
     return '<div class="panel knowledge-empty"><h3>RAG z cytowaniami</h3><p>Odpowiedź będzie oparta wyłącznie na wynikach Knowledge Service i pokaże użyte źródła.</p></div>';
   }
   const citations = Array.isArray(payload.citations) ? payload.citations : [];
   const retrieval = payload.retrieval || {};
   const execution = payload.execution || {};
+  const sourceKind = citationKind || "citation";
   let citationsHtml = citations.map(function (citation, index) {
     const source = citation.source || {};
     const open = citation.document_id
-      ? '<button type="button" class="source-link source-open" data-knowledge-source-kind="citation" data-knowledge-source-index="' +
+      ? '<button type="button" class="source-link source-open" data-knowledge-source-kind="' +
+        escapeHtml(sourceKind) + '" data-knowledge-source-index="' +
         index + '">Otwórz</button>'
       : '';
     return '<article class="citation-card">' +
@@ -689,9 +789,11 @@ function knowledgeSourceTarget(kind, index) {
     };
   }
 
-  if (kind === "citation") {
-    const citations = state.knowledge.ask && Array.isArray(state.knowledge.ask.citations)
-      ? state.knowledge.ask.citations : [];
+  if (kind === "citation" || kind === "history-citation") {
+    const payload = kind === "history-citation"
+      ? (state.knowledge.history.selected && state.knowledge.history.selected.response)
+      : state.knowledge.ask;
+    const citations = payload && Array.isArray(payload.citations) ? payload.citations : [];
     const citation = citations[index];
     if (!citation) return null;
     return {
@@ -866,8 +968,13 @@ async function runKnowledge(form) {
         context: { domain: domain }
       }
     });
-    if (state.knowledge.tab === "search") state.knowledge.search = payload;
-    else state.knowledge.ask = payload;
+    if (state.knowledge.tab === "search") {
+      state.knowledge.search = payload;
+    } else {
+      state.knowledge.ask = payload;
+      state.knowledge.history.items = null;
+      state.knowledge.history.selected = null;
+    }
   } catch (error) {
     state.knowledge.error = "Knowledge API: " + (error.code || error.message || "unknown_error");
   } finally {
@@ -879,9 +986,18 @@ async function runKnowledge(form) {
 function wirePageActions() {
   document.querySelectorAll("[data-knowledge-tab]").forEach(function (button) {
     button.addEventListener("click", function () {
-      state.knowledge.tab = button.dataset.knowledgeTab;
+      const nextTab = button.dataset.knowledgeTab;
+      state.knowledge.tab = nextTab;
       state.knowledge.error = null;
+      if (nextTab === "history") {
+        state.knowledge.history.selected = null;
+      }
       render();
+      if (nextTab === "history" &&
+          state.knowledge.history.items == null &&
+          !state.knowledge.history.loading) {
+        loadKnowledgeHistory();
+      }
     });
   });
   const form = document.getElementById("knowledge-form");
@@ -889,6 +1005,21 @@ function wirePageActions() {
     form.addEventListener("submit", function (event) {
       event.preventDefault();
       runKnowledge(form);
+    });
+  }
+
+  document.querySelectorAll("[data-knowledge-history-id]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      openKnowledgeHistory(button.dataset.knowledgeHistoryId);
+    });
+  });
+
+  const historyBack = document.querySelector("[data-knowledge-history-back]");
+  if (historyBack) {
+    historyBack.addEventListener("click", function () {
+      state.knowledge.history.selected = null;
+      state.knowledge.history.error = null;
+      render();
     });
   }
 

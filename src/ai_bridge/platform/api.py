@@ -23,6 +23,7 @@ from ai_bridge.benchmarks import BenchmarkCatalog
 from ai_bridge.domains.ers.storage.intake_repository import ErsIntakeRepository
 from ai_bridge.domains.ers.storage.repository import ErsCaseNotFound, ErsCaseRepository
 from ai_bridge.platform.agents import agents_snapshot
+from ai_bridge.platform.knowledge_history import KnowledgeAskHistory
 from ai_bridge.gateway.admission import WorkloadBinding
 from ai_bridge.gateway.jobs import JobLifecycle, JobMetadata
 from ai_bridge.gateway.priority import PriorityClass, priority_for_class
@@ -57,7 +58,7 @@ CONTROL_CENTER_APPS = (
         "name": "Knowledge",
         "route": "/apps/knowledge",
         "status": "ready",
-        "capabilities": ("knowledge.search", "knowledge.ask", "document.read"),
+        "capabilities": ("knowledge.search", "knowledge.ask", "knowledge.history.read", "document.read"),
         "exposure": {"gui": True, "agent": True, "mcp": True},
     },
     {
@@ -190,7 +191,9 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
     runtime_factory = knowledge_runtime_factory or (lambda: KnowledgeRuntime(settings))
     benchmark_catalog = BenchmarkCatalog()
     metrics = PlatformRequestMetrics()
+    knowledge_history = KnowledgeAskHistory(limit=10)
     api.state.observability = metrics
+    api.state.knowledge_history = knowledge_history
 
     def error(request, status, code, retryable=False):
         request.state.error_code = code
@@ -403,21 +406,27 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
     async def knowledge_ask(body: KnowledgeAskRequest, request: Request):
         query, retrieval = await run_knowledge_search(body, request)
         if not retrieval.results:
-            return envelope(
-                request,
-                answer="Brak wystarczającej wiedzy w wybranym zakresie.",
-                claims=[],
-                insufficient_context=True,
-                insufficiency_reason="Brak wyników retrieval w wybranym zakresie.",
-                citations=[],
-                retrieval={
+            result_payload = {
+                "answer": "Brak wystarczającej wiedzy w wybranym zakresie.",
+                "claims": [],
+                "insufficient_context": True,
+                "insufficiency_reason": "Brak wyników retrieval w wybranym zakresie.",
+                "citations": [],
+                "retrieval": {
                     "mode": body.mode,
                     "backend": retrieval.backend,
                     "result_count": 0,
                     "duration_ms": retrieval.duration_ms,
                 },
-                execution=None,
+                "execution": None,
+            }
+            knowledge_history.add(
+                query=body.query,
+                domain=body.context.domain,
+                mode=body.mode,
+                response=result_payload,
             )
+            return envelope(request, **result_payload)
 
         prompt = build_rag_prompt(
             question=body.query,
@@ -486,26 +495,53 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
             if ticket is not None:
                 await scheduler.release(ticket, state=outcome)
 
-        return envelope(
-            request,
-            answer=parsed.answer,
-            claims=claim_payload(parsed),
-            insufficient_context=parsed.insufficient_context,
-            insufficiency_reason=parsed.insufficiency_reason,
-            citations=citation_payload(prompt, referenced_source_refs(parsed)),
-            retrieval={
+        result_payload = {
+            "answer": parsed.answer,
+            "claims": claim_payload(parsed),
+            "insufficient_context": parsed.insufficient_context,
+            "insufficiency_reason": parsed.insufficiency_reason,
+            "citations": citation_payload(prompt, referenced_source_refs(parsed)),
+            "retrieval": {
                 "mode": body.mode,
                 "backend": retrieval.backend,
                 "result_count": len(retrieval.results),
                 "duration_ms": retrieval.duration_ms,
                 "reranker": retrieval.backend_metadata.get("reranker"),
             },
-            execution={
+            "execution": {
                 "model": "reasoning-main",
                 "queue_wait_ms": round(ticket.wait_ms, 3),
                 "duration_ms": round((monotonic() - started) * 1000, 3),
             },
+        }
+        knowledge_history.add(
+            query=body.query,
+            domain=body.context.domain,
+            mode=body.mode,
+            response=result_payload,
         )
+        return envelope(request, **result_payload)
+
+    @api.get("/knowledge/history")
+    async def knowledge_history_list(request: Request):
+        items = knowledge_history.list()
+        return envelope(
+            request,
+            history=items,
+            retention={
+                "persistent": False,
+                "limit": knowledge_history.limit,
+                "scope": "platform-runtime",
+            },
+        )
+
+    @api.get("/knowledge/history/{history_id}")
+    async def knowledge_history_detail(history_id: ID, request: Request):
+        try:
+            item = knowledge_history.get(history_id)
+        except KeyError:
+            raise APIError(404, "not_found") from None
+        return envelope(request, item=item)
 
     @api.get("/knowledge/documents/{document_id}")
     async def knowledge_document(document_id: str, request: Request):
