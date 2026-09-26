@@ -273,6 +273,9 @@ def control_center_smoke(*, require_operations: bool = True) -> dict:
         require(any(node["id"] == "platform-api" for node in system_map["nodes"]))
         incidents = e.fetch(bridge + "/control/api/v1/incidents")
         require(incidents["retention"]["source"] == "flight-recorder")
+        agents = e.fetch(bridge + "/control/api/v1/agents")
+        require(isinstance(agents["agents"], list))
+        require(agents["retention"]["raw_logs_exposed"] is False)
     else:
         require(app_ids in (
             ["knowledge", "benchmarks", "ers"],
@@ -327,6 +330,9 @@ def platform_smoke(active: bool, *, require_observability: bool = False) -> None
             require(system_map["retention"]["trace_sample_limit"] == 64)
             incidents = e.fetch(base + "/incidents")
             require(incidents["retention"]["source"] == "flight-recorder")
+            agents = e.fetch(base + "/agents")
+            require(isinstance(agents["agents"], list))
+            require(agents["retention"]["raw_logs_exposed"] is False)
         else:
             require(app_ids in (
                 ["knowledge", "benchmarks", "ers"],
