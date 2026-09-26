@@ -170,7 +170,7 @@ async function refreshData() {
     traces: api("/traces"),
     systemMap: api("/system-map"),
     incidents: api("/incidents"),
-    ersCases: api("/ecu-repair/cases"),
+    ersCases: api("/ers/cases"),
     apps: api("/apps"),
     benchmarks: api("/benchmarks")
   };
@@ -941,7 +941,7 @@ async function loadErsCaseDetail(caseId) {
   state.ersDetail.detail = null;
   render();
   try {
-    state.ersDetail.detail = await api("/ecu-repair/cases/" + encodeURIComponent(caseId));
+    state.ersDetail.detail = await api("/ers/cases/" + encodeURIComponent(caseId));
   } catch (error) {
     state.ersDetail.error = "ERS API: " + (error.code || error.message || "unknown_error");
   } finally {

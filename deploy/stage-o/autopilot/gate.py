@@ -280,13 +280,13 @@ def control_center_smoke(*, require_operations: bool = True) -> dict:
         require(isinstance(logs["logs"], list))
         require(logs["retention"]["raw_logs_exposed"] is False)
         require(logs["retention"]["limit"] == 256)
-        ers = e.fetch(bridge + "/control/api/v1/ecu-repair/cases")
+        ers = e.fetch(bridge + "/control/api/v1/ers/cases")
         require(isinstance(ers["cases"], list))
         require(ers["count"] == len(ers["cases"]))
         require(ers["limit"] == 100)
         if ers["cases"]:
             case_id = ers["cases"][0]["id"]
-            detail = e.fetch(bridge + "/control/api/v1/ecu-repair/cases/" + case_id)
+            detail = e.fetch(bridge + "/control/api/v1/ers/cases/" + case_id)
             require(detail["case"]["id"] == case_id)
             require(isinstance(detail["events"], list))
     else:

@@ -398,25 +398,26 @@ def test_control_center_ers_workspace_is_read_only_and_deep_linked():
             transport=httpx.ASGITransport(app, client=("192.168.1.44", 1234)),
             base_url="http://control",
         ) as http:
-            assert (await http.get("/api/v1/ecu-repair/cases")).status_code == 200
-            assert (await http.get(f"/api/v1/ecu-repair/cases/{case_id}")).status_code == 200
-            assert (await http.post("/api/v1/ecu-repair/cases", json={})).status_code == 403
-            assert (await http.patch(f"/api/v1/ecu-repair/cases/{case_id}", json={})).status_code == 405
-            assert (await http.get("/api/v1/ecu-repair/cases/not-a-uuid")).status_code == 403
+            assert (await http.get("/api/v1/ers/cases")).status_code == 200
+            assert (await http.get(f"/api/v1/ers/cases/{case_id}")).status_code == 200
+            assert (await http.post("/api/v1/ers/cases", json={})).status_code == 403
+            assert (await http.patch(f"/api/v1/ers/cases/{case_id}", json={})).status_code == 405
+            assert (await http.get("/api/v1/ers/cases/not-a-uuid")).status_code == 403
+            assert (await http.get("/api/v1/ecu-repair/cases")).status_code == 403
 
         assert seen == [
-            ("GET", "/api/v1/ecu-repair/cases"),
-            ("GET", f"/api/v1/ecu-repair/cases/{case_id}"),
+            ("GET", "/api/v1/ers/cases"),
+            ("GET", f"/api/v1/ers/cases/{case_id}"),
         ]
 
     asyncio.run(run())
 
     javascript = TestClient(create_control_center_app()).get("/assets/app.js").text
-    assert 'api("/ecu-repair/cases")' in javascript
+    assert 'api("/ers/cases")' in javascript
     assert "function ersCasesPage()" in javascript
     assert "function ersCaseDetailPage(caseId)" in javascript
     assert 'controlUrl("/apps/ers/cases/" + encodeURIComponent(item.id))' in javascript
-    assert 'api("/ecu-repair/cases/" + encodeURIComponent(caseId))' in javascript
+    assert 'api("/ers/cases/" + encodeURIComponent(caseId))' in javascript
     assert 'if (path === "/apps/ers") return ersCasesPage();' in javascript
     assert 'path.startsWith("/apps/ers/cases/")' in javascript
     assert "Domenowa aplikacja ERS jako osobny workspace." not in javascript
