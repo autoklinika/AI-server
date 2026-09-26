@@ -70,6 +70,14 @@ CONTROL_CENTER_APPS = (
         "capabilities": ("ers.case.read",),
         "exposure": {"gui": True, "agent": True, "mcp": True},
     },
+    {
+        "id": "observability",
+        "name": "Flight Recorder",
+        "route": "/apps/observability",
+        "status": "ready",
+        "capabilities": ("observability.trace.read",),
+        "exposure": {"gui": True, "agent": True, "mcp": False},
+    },
 )
 
 
@@ -193,8 +201,13 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                 code = "server_error"
             elif code is None and status >= 400:
                 code = "client_error"
-            elapsed = metrics.finish(started, status, code)
             route = getattr(request.scope.get("route"), "path", "unmatched")
+            elapsed = metrics.finish(
+                started, status, code,
+                request_id=request.state.request_id,
+                method=request.method,
+                route=route,
+            )
             LOGGER.info("PLATFORM_REQUEST %s", json.dumps({
                 "request_id": request.state.request_id, "method": request.method,
                 "route": route, "status": status, "duration_ms": round(elapsed, 3),
@@ -514,6 +527,45 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
             **item,
             "capabilities": list(item["capabilities"]),
         } for item in CONTROL_CENTER_APPS])
+
+    async def trace_payload(trace: dict) -> dict:
+        all_jobs = await jobs()
+        matched = [
+            public_job(job)
+            for job in all_jobs
+            if job.get("request_id") == trace["request_id"]
+        ]
+        job = matched[0] if matched else None
+        flow = ["platform-api"]
+        if trace["kind"] == "knowledge-search":
+            flow += ["knowledge-retrieval", "response"]
+        elif trace["kind"] == "knowledge-rag":
+            flow += ["knowledge-retrieval", "resource-manager", "provider", "response"]
+        elif job is not None:
+            flow += ["resource-manager", "provider", "response"]
+        else:
+            flow += ["response"]
+        return {**trace, "job": job, "flow": flow}
+
+    @api.get("/traces")
+    async def traces(request: Request):
+        values = [await trace_payload(trace) for trace in metrics.traces()]
+        return envelope(
+            request,
+            traces=values,
+            retention={"persistent": False, "limit": 256},
+        )
+
+    @api.get("/traces/{request_id}")
+    async def trace_detail(request_id: ID, request: Request):
+        trace = metrics.trace(request_id)
+        if trace is None:
+            raise APIError(404, "not_found")
+        return envelope(
+            request,
+            trace=await trace_payload(trace),
+            retention={"persistent": False, "limit": 256},
+        )
 
     @api.get("/benchmarks")
     async def benchmarks(request: Request):
