@@ -284,3 +284,46 @@ def test_control_center_incident_timeline_is_read_only_and_deep_linked():
     assert "function loadIncidentDetail(incidentId)" in javascript
     assert "api('/incidents/' + encodeURIComponent(incidentId))" in javascript
 
+def test_control_center_agents_ui_is_live_and_registry_keeps_operations():
+    client = TestClient(create_control_center_app())
+    javascript = client.get("/assets/app.js").text
+
+    assert 'api("/agents")' in javascript
+    assert "function agentsPage()" in javascript
+    assert 'if (path === "/operations/agents") return agentsPage();' in javascript
+    assert "Agent control API nie jest jeszcze wystawione" not in javascript
+    assert "FALLBACK_APP_REGISTRY.map" in javascript
+    assert 'group: "applications"' in javascript
+
+
+def test_control_center_proxy_allows_read_only_agents():
+    async def run():
+        seen = []
+
+        def upstream(request):
+            seen.append((request.method, request.url.path))
+            return httpx.Response(200, json={
+                "schema_version": 1,
+                "agents": [],
+                "retention": {
+                    "persistent": True,
+                    "source": "bounded-status-files",
+                    "raw_logs_exposed": False,
+                },
+            })
+
+        app = create_control_center_app(
+            platform_base_url="http://platform/api/v1",
+            upstream_transport=httpx.MockTransport(upstream),
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app, client=("192.168.1.44", 1234)),
+            base_url="http://control",
+        ) as http:
+            assert (await http.get("/api/v1/agents")).status_code == 200
+            assert (await http.post("/api/v1/agents")).status_code == 403
+
+        assert seen == [("GET", "/api/v1/agents")]
+
+    asyncio.run(run())
+
