@@ -264,18 +264,21 @@ def control_center_smoke(*, require_operations: bool = True) -> dict:
     app_ids = [item["id"] for item in apps]
     require(app_ids[:3] == ["knowledge", "benchmarks", "ers"])
     if require_operations:
-        require(app_ids == ["knowledge", "benchmarks", "ers", "observability", "system-map"])
+        require(app_ids == ["knowledge", "benchmarks", "ers", "observability", "system-map", "incidents"])
         traces = e.fetch(bridge + "/control/api/v1/traces")
         require(traces["retention"]["persistent"] is False)
         require(traces["retention"]["limit"] == 256)
         system_map = e.fetch(bridge + "/control/api/v1/system-map")
         require(system_map["retention"]["trace_sample_limit"] == 64)
         require(any(node["id"] == "platform-api" for node in system_map["nodes"]))
+        incidents = e.fetch(bridge + "/control/api/v1/incidents")
+        require(incidents["retention"]["source"] == "flight-recorder")
     else:
         require(app_ids in (
             ["knowledge", "benchmarks", "ers"],
             ["knowledge", "benchmarks", "ers", "observability"],
             ["knowledge", "benchmarks", "ers", "observability", "system-map"],
+            ["knowledge", "benchmarks", "ers", "observability", "system-map", "incidents"],
         ))
 
     search = e.fetch(
@@ -317,16 +320,19 @@ def platform_smoke(active: bool, *, require_observability: bool = False) -> None
         app_ids = [item["id"] for item in apps]
         require(app_ids[:3] == ["knowledge", "benchmarks", "ers"])
         if require_observability:
-            require(app_ids == ["knowledge", "benchmarks", "ers", "observability", "system-map"])
+            require(app_ids == ["knowledge", "benchmarks", "ers", "observability", "system-map", "incidents"])
             traces = e.fetch(base + "/traces")
             require(traces["retention"]["limit"] == 256)
             system_map = e.fetch(base + "/system-map")
             require(system_map["retention"]["trace_sample_limit"] == 64)
+            incidents = e.fetch(base + "/incidents")
+            require(incidents["retention"]["source"] == "flight-recorder")
         else:
             require(app_ids in (
                 ["knowledge", "benchmarks", "ers"],
                 ["knowledge", "benchmarks", "ers", "observability"],
                 ["knowledge", "benchmarks", "ers", "observability", "system-map"],
+                ["knowledge", "benchmarks", "ers", "observability", "system-map", "incidents"],
             ))
     else:
         try:
