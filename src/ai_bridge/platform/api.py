@@ -35,6 +35,7 @@ from ai_bridge.knowledge.rag import (
 from ai_bridge.knowledge.runtime import KnowledgeRuntime
 from ai_bridge.providers.accelerators import accelerator_state_snapshot
 from ai_bridge.providers.contracts import KnowledgeQuery, LLMRequest
+from ai_bridge.response_language import apply_polish_response_policy
 from ai_bridge.storage.object_store import (
     FileObjectStore,
     ObjectStoreCorruption,
@@ -994,7 +995,9 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                                              node=provider.node_id)
                 result = await provider.generate(LLMRequest(
                     request_id=metadata.request_id, capability=body.capability,
-                    messages=[item.model_dump() for item in body.messages],
+                    messages=apply_polish_response_policy(
+                        [item.model_dump() for item in body.messages]
+                    ),
                     response_schema=body.response_schema, temperature=body.temperature,
                     context=body.context.model_dump(exclude_none=True)))
                 outcome = JobLifecycle.COMPLETED

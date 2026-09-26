@@ -176,6 +176,8 @@ def test_structured_generation_and_closed_unconfigured_boundary(client):
     assert finding["context_hash"] == content_hash(payload["context"])
     req = provider.requests[0]
     assert req.capability == "structured-generation" and req.tools == []
+    assert "Odpowiadaj użytkownikowi po polsku" in req.messages[0]["content"]
+    assert "Zaproponuj wyłącznie doradczą hipotezę" in req.messages[0]["content"]
     assert req.response_schema["additionalProperties"] is False
     assert req.context == {"domain": "ecu-repair", "context_ref": content_hash(payload["context"]),
                            "session_id": url.rsplit("/", 1)[1]}
@@ -233,7 +235,8 @@ def test_direct_wire_context_and_untrusted_payload(client):
     response = client.post(url + "/signal-hypothesis", json=ctx)
     assert response.status_code == 201, response.text
     assert response.json()["payload"]["context"] == ctx
-    assert "untrusted" in provider.requests[0].messages[0]["content"]
+    assert "untrusted" not in provider.requests[0].messages[0]["content"]
+    assert "untrusted" in provider.requests[0].messages[1]["content"]
 
 
 def test_all_file_and_artifact_provenance_preserved(client):

@@ -47,6 +47,9 @@ def test_v1_contract_and_provider_wire_boundary():
             assert data['execution']['model'] == 'reasoning-main'
             assert 'private-model' not in r.text and 'backend_private' not in r.text
             assert seen[0]['model'] == 'private-model'
+            assert seen[0]['messages'][0]['role'] == 'system'
+            assert 'Odpowiadaj użytkownikowi po polsku' in seen[0]['messages'][0]['content']
+            assert seen[0]['messages'][1] == {'role': 'user', 'content': 'private-prompt'}
             assert 'context' not in seen[0]
             job = (await http.get('/api/v1/jobs/' + data['job_id'])).json()['job']
             assert job['state'] == 'completed'
