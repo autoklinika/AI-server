@@ -26,6 +26,8 @@ jobs:
           bash -n tools/local_video/hermes-video-dispatch
       - name: Compile Python sources
         run: python -m compileall -q src tools/local_image tools/local_video integrations deploy/stage-e deploy/stage-f deploy/stage-g deploy/stage-h deploy/stage-i deploy/stage-j deploy/stage-j4 deploy/stage-l deploy/stage-m deploy/stage-o deploy/runtime deploy/autopilot
+      - name: Validate Control Center JavaScript
+        run: node --check src/ai_bridge/control_center/static/app.js
       - name: Provider and contract tests
         run: |
           pytest tests/test_provider_contracts.py tests/test_agent_provider_contracts.py tests/test_media_provider_contracts.py tests/test_embedding_knowledge_contracts.py
