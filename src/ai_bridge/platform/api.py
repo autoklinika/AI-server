@@ -528,8 +528,7 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
             "capabilities": list(item["capabilities"]),
         } for item in CONTROL_CENTER_APPS])
 
-    async def trace_payload(trace: dict) -> dict:
-        all_jobs = await jobs()
+    def trace_payload(trace: dict, all_jobs: list[dict]) -> dict:
         matched = [
             public_job(job)
             for job in all_jobs
@@ -538,18 +537,20 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
         job = matched[0] if matched else None
         flow = ["platform-api"]
         if trace["kind"] == "knowledge-search":
-            flow += ["knowledge-retrieval", "response"]
+            flow += ["knowledge-retrieval"]
         elif trace["kind"] == "knowledge-rag":
-            flow += ["knowledge-retrieval", "resource-manager", "provider", "response"]
+            flow += ["knowledge-retrieval"]
+            if job is not None:
+                flow += ["resource-manager", "provider"]
         elif job is not None:
-            flow += ["resource-manager", "provider", "response"]
-        else:
-            flow += ["response"]
+            flow += ["resource-manager", "provider"]
+        flow += ["response"]
         return {**trace, "job": job, "flow": flow}
 
     @api.get("/traces")
     async def traces(request: Request):
-        values = [await trace_payload(trace) for trace in metrics.traces()]
+        all_jobs = await jobs()
+        values = [trace_payload(trace, all_jobs) for trace in metrics.traces()]
         return envelope(
             request,
             traces=values,
@@ -563,7 +564,7 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
             raise APIError(404, "not_found")
         return envelope(
             request,
-            trace=await trace_payload(trace),
+            trace=trace_payload(trace, await jobs()),
             retention={"persistent": False, "limit": 256},
         )
 
