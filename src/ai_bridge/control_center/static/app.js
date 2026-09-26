@@ -13,6 +13,7 @@ const FALLBACK_APP_REGISTRY = [
   { id: "knowledge", group: "applications", label: "Knowledge", route: "/apps/knowledge", icon: "K", status: "live" },
   { id: "benchmarks", group: "applications", label: "Benchmarks", route: "/apps/benchmarks", icon: "B", status: "foundation" },
   { id: "ers", group: "applications", label: "ECU Repair Service", route: "/apps/ers", icon: "E", status: "foundation" },
+  { id: "observability", group: "applications", label: "Flight Recorder", route: "/apps/observability", icon: "O", status: "ready" },
 
   { id: "settings", group: "platform", label: "Settings", route: "/platform/settings", icon: "S" },
   { id: "providers", group: "platform", label: "Providers", route: "/platform/providers", icon: "P" },
@@ -27,6 +28,7 @@ const state = {
   models: null,
   systems: null,
   operations: null,
+  traces: null,
   apps: null,
   benchmarks: { catalog: null, suite: null, runs: null, runKey: null, run: null, loading: false, error: null },
   knowledge: {
@@ -148,6 +150,7 @@ async function refreshData() {
     models: api("/models"),
     systems: api("/systems"),
     operations: api("/operations"),
+    traces: api("/traces"),
     apps: api("/apps"),
     benchmarks: api("/benchmarks")
   };
@@ -354,7 +357,8 @@ function appCard(app) {
   const copy = {
     knowledge: "Szukaj, pytaj AI i pracuj ze źródłami Knowledge Service.",
     benchmarks: "Laboratorium modeli, routerów i porównań jakości.",
-    ers: "Domenowa aplikacja diagnostyki i przypadków ECU."
+    ers: "Domenowa aplikacja diagnostyki i przypadków ECU.",
+    observability: "Historia requestów Platform API z latency i korelacją z Resource Managerem."
   }[app.id] || "";
   return '<a class="app-card" href="' + controlUrl(app.route) + '" data-nav>' +
     '<div class="app-card-top"><span class="app-logo">' + escapeHtml(app.icon) + '</span>' +
@@ -801,6 +805,70 @@ function backupPage() {
   return sectionPage("Backup / DR", "Stan Stage K, GlobalNAS i ostatnich walidacji restore.", summary + cards + releaseCard);
 }
 
+
+function flightRecorderPage() {
+  const payload = state.traces || {};
+  const traces = Array.isArray(payload.traces) ? payload.traces : [];
+  const retention = payload.retention || {};
+  const latest = traces[0];
+
+  const summary = '<section class="metric-strip compact">' +
+    metric("Retained", String(traces.length), "recent traces", "/apps/observability") +
+    metric("Persistent", retention.persistent ? "YES" : "NO", "v1 in-memory", "/apps/observability") +
+    metric("Limit", String(retention.limit || 256), "bounded", "/apps/observability") +
+    metric("Latest", latest ? humanDurationMs(latest.duration_ms) : "—", latest ? latest.kind : "no activity", "/apps/observability") +
+  '</section>';
+
+  const rows = traces.length ? traces.map(function (trace) {
+    const job = trace.job || {};
+    return '<a class="trace-row panel" href="' + controlUrl("/traces/" + encodeURIComponent(trace.trace_id)) + '" data-nav>' +
+      '<div class="trace-time">' + escapeHtml(humanDate(trace.completed_at)) + '</div>' +
+      '<div class="trace-main"><strong>' + escapeHtml(trace.kind || "platform") + '</strong>' +
+        '<span>' + escapeHtml(trace.method + " " + trace.route) + '</span></div>' +
+      '<div class="trace-job">' + escapeHtml(job.capability || "—") + '<small>' + escapeHtml(job.assigned_provider || "") + '</small></div>' +
+      '<div class="trace-latency">' + escapeHtml(humanDurationMs(trace.duration_ms)) + '</div>' +
+      '<div class="trace-status">' + statusDot(trace.status >= 400 ? "failed" : "ready") + escapeHtml(String(trace.status)) + '</div>' +
+    '</a>';
+  }).join("") : '<div class="panel knowledge-empty"><h3>Brak śladów</h3><p>Wykonaj zapytanie Knowledge lub AI. Polling dashboardu jest celowo pomijany.</p></div>';
+
+  return sectionPage("Flight Recorder", "Bounded metadata-only historia rzeczywistych requestów Platform API.", summary +
+    '<div class="trace-list-head"><span>Completed</span><span>Request</span><span>Job</span><span>Latency</span><span>Status</span></div>' +
+    '<div class="trace-list">' + rows + '</div>');
+}
+
+function traceDetailPage(traceId) {
+  const payload = state.traces || {};
+  const traces = Array.isArray(payload.traces) ? payload.traces : [];
+  const trace = traces.find(function (item) { return item.trace_id === traceId; });
+  if (!trace) {
+    return sectionPage("Trace", traceId,
+      pendingPanel("Trace not in bounded history", "Flight Recorder v1 trzyma ostatnie requesty tylko w pamięci Gatewaya."));
+  }
+  const job = trace.job || {};
+  const flow = Array.isArray(trace.flow) ? trace.flow : [];
+  const flowHtml = flow.map(function (step, index) {
+    return '<span class="flow-step">' + escapeHtml(step) + '</span>' +
+      (index < flow.length - 1 ? '<span class="flow-arrow">→</span>' : '');
+  }).join("");
+
+  return sectionPage("Trace " + trace.trace_id, trace.kind || "Platform request",
+    '<article class="panel detail-card wide">' + panelHeader("Request", trace.status >= 400 ? "ERROR" : "COMPLETED") +
+      '<dl><dt>Request ID</dt><dd>' + escapeHtml(trace.request_id) + '</dd>' +
+      '<dt>Route</dt><dd>' + escapeHtml(trace.method + " " + trace.route) + '</dd>' +
+      '<dt>Completed</dt><dd>' + escapeHtml(humanDate(trace.completed_at)) + '</dd>' +
+      '<dt>Duration</dt><dd>' + escapeHtml(humanDurationMs(trace.duration_ms)) + '</dd>' +
+      '<dt>Status</dt><dd>' + escapeHtml(String(trace.status)) + '</dd>' +
+      '<dt>Error class</dt><dd>' + escapeHtml(trace.error_class || "—") + '</dd></dl></article>' +
+    '<section class="section-head section-spaced"><div><div class="eyebrow">FLOW</div><h2>Execution path</h2></div></section>' +
+    '<div class="panel trace-flow">' + flowHtml + '</div>' +
+    (job.job_id ? '<section class="section-head section-spaced"><div><div class="eyebrow">RESOURCE MANAGER</div><h2>Correlated job</h2></div></section>' +
+      '<article class="panel detail-card wide"><dl><dt>Job</dt><dd><a class="source-link" href="' + controlUrl("/jobs/" + encodeURIComponent(job.job_id)) + '" data-nav>' + escapeHtml(job.job_id) + '</a></dd>' +
+      '<dt>Capability</dt><dd>' + escapeHtml(job.capability || "—") + '</dd>' +
+      '<dt>State</dt><dd>' + escapeHtml(job.state || "—") + '</dd>' +
+      '<dt>Provider</dt><dd>' + escapeHtml(job.assigned_provider || "—") + '</dd>' +
+      '<dt>Node</dt><dd>' + escapeHtml(job.assigned_node || "—") + '</dd></dl></article>' : ''));
+}
+
 function genericOperations(title, subtitle, note) {
   return sectionPage(title, subtitle, pendingPanel(title, note));
 }
@@ -830,13 +898,14 @@ function pageForRoute() {
     return benchmarkSuitePage(decodeURIComponent(rest));
   }
   if (path === "/apps/ers") return placeholderApplication("ECU Repair Service", "Domenowa aplikacja ERS jako osobny workspace.");
+  if (path === "/apps/observability") return flightRecorderPage();
   if (path === "/operations/agents") return genericOperations("Agents", "Stan i kontrolowane akcje agentów.", "Agent control API nie jest jeszcze wystawione przez Platform API.");
   if (path === "/operations/backup") return backupPage();
   if (path === "/operations/logs") return genericOperations("Logs", "Filtrowane logi operacyjne.", "Log API nie jest jeszcze częścią Platform API v1.");
   if (path === "/platform/settings") return genericOperations("Settings", "Konfiguracja GUI i platformy.", "GUI-0 nie wprowadza jeszcze mutacji konfiguracji.");
   if (path === "/platform/providers") return modelsPage();
   if (path === "/platform/security") return genericOperations("Security", "Polityki dostępu Control Center.", "Autoryzacja sesyjna GUI jest osobnym kontraktem; token Platform API nie będzie osadzany w frontendzie.");
-  if (path.startsWith("/traces/")) return genericOperations("Trace", path.slice("/traces/".length), "Flight Recorder zostanie dodany w fazie observability.");
+  if (path.startsWith("/traces/")) return traceDetailPage(decodeURIComponent(path.slice("/traces/".length)));
   if (path.startsWith("/incidents/")) return genericOperations("Incident", path.slice("/incidents/".length), "Incident Timeline zostanie dodany w fazie observability.");
   if (path.startsWith("/models/")) return modelsPage();
   return notFoundPage(path);
