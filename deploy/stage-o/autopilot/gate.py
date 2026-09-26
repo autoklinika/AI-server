@@ -239,6 +239,12 @@ def control_center_smoke(*, require_operations: bool = True) -> dict:
             for word in ("qdrant", "ollama", "postgres", "localstorage")
         )
     )
+    require("function knowledgeSourceModal()" in javascript)
+    require("function openKnowledgeSource(kind, index)" in javascript)
+    require("knowledge-source-target" in javascript)
+    require("scrollIntoView" in javascript)
+    require("/content" not in javascript)
+    require('target="_blank"' not in javascript)
 
     manifest = e.fetch(bridge + "/control/manifest.webmanifest")
     require(manifest["start_url"] == "/control/")

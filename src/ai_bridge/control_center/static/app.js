@@ -47,7 +47,17 @@ const state = {
     loading: false,
     error: null,
     search: null,
-    ask: null
+    ask: null,
+    viewer: {
+      open: false,
+      loading: false,
+      error: null,
+      documentId: null,
+      chunkId: null,
+      snippet: null,
+      ref: null,
+      document: null
+    }
   },
   errors: {},
   lastRefresh: null,
@@ -190,7 +200,8 @@ async function refreshData() {
   state.loading = false;
   state.lastRefresh = new Date();
   const focused = document.activeElement;
-  if (!focused || !["INPUT", "TEXTAREA", "SELECT"].includes(focused.tagName)) {
+  if ((!focused || !["INPUT", "TEXTAREA", "SELECT"].includes(focused.tagName)) &&
+      !state.knowledge.viewer.open) {
     render();
   }
 }
@@ -260,7 +271,8 @@ function shell(content) {
         '<a href="' + controlUrl("/apps/knowledge") + '" data-nav>Apps</a>' +
         '<a href="' + controlUrl("/platform/integrations") + '" data-nav>Platform</a>' +
       '</nav>' +
-    '</main>';
+    '</main>' +
+    knowledgeSourceModal();
 }
 
 function dashboard() {
@@ -615,7 +627,8 @@ function knowledgeSearchResults(payload) {
       const locator = meta.page ? "str. " + meta.page : (meta.section || "");
       const docId = meta.document_id;
       const open = docId
-        ? '<a class="source-link" href="' + API_BASE + '/knowledge/documents/' + encodeURIComponent(docId) + '/content" target="_blank" rel="noopener">Otwórz źródło ↗</a>'
+        ? '<button type="button" class="source-link source-open" data-knowledge-source-kind="search" data-knowledge-source-index="' +
+          index + '">Otwórz źródło</button>'
         : '';
       return '<article class="panel knowledge-result">' +
         '<div class="knowledge-result-head"><span>#' + (index + 1) + '</span><strong>' +
@@ -634,10 +647,11 @@ function knowledgeAskResult(payload) {
   const citations = Array.isArray(payload.citations) ? payload.citations : [];
   const retrieval = payload.retrieval || {};
   const execution = payload.execution || {};
-  let citationsHtml = citations.map(function (citation) {
+  let citationsHtml = citations.map(function (citation, index) {
     const source = citation.source || {};
     const open = citation.document_id
-      ? '<a class="source-link" href="' + API_BASE + '/knowledge/documents/' + encodeURIComponent(citation.document_id) + '/content" target="_blank" rel="noopener">Otwórz ↗</a>'
+      ? '<button type="button" class="source-link source-open" data-knowledge-source-kind="citation" data-knowledge-source-index="' +
+        index + '">Otwórz</button>'
       : '';
     return '<article class="citation-card">' +
       '<div class="citation-ref">' + escapeHtml(citation.ref || "source") + '</div>' +
@@ -658,6 +672,176 @@ function knowledgeAskResult(payload) {
     '</div></article>' +
     '<div class="citations-head"><h3>Źródła</h3><span>' + citations.length + '</span></div>' +
     (citationsHtml || '<div class="panel knowledge-empty"><p>Brak cytowań.</p></div>');
+}
+
+function knowledgeSourceTarget(kind, index) {
+  if (kind === "search") {
+    const results = state.knowledge.search && Array.isArray(state.knowledge.search.results)
+      ? state.knowledge.search.results : [];
+    const result = results[index];
+    if (!result) return null;
+    const meta = result.metadata || {};
+    return {
+      documentId: meta.document_id || null,
+      chunkId: meta.chunk_id || result.result_id || null,
+      snippet: result.text || "",
+      ref: "#" + (index + 1)
+    };
+  }
+
+  if (kind === "citation") {
+    const citations = state.knowledge.ask && Array.isArray(state.knowledge.ask.citations)
+      ? state.knowledge.ask.citations : [];
+    const citation = citations[index];
+    if (!citation) return null;
+    return {
+      documentId: citation.document_id || null,
+      chunkId: citation.chunk_id || null,
+      snippet: citation.snippet || "",
+      ref: citation.ref || "source"
+    };
+  }
+  return null;
+}
+
+function knowledgeChunkLocator(chunk) {
+  const locator = chunk && chunk.locator ? chunk.locator : {};
+  const parts = [];
+  if (locator.page != null) parts.push("str. " + locator.page);
+  if (locator.section) parts.push(locator.section);
+  if (!parts.length && chunk && chunk.ordinal != null) {
+    parts.push("fragment " + (Number(chunk.ordinal) + 1));
+  }
+  return parts.join(" · ");
+}
+
+function knowledgeEvidenceHtml(text, snippet, highlight) {
+  const value = String(text || "");
+  if (!highlight) return escapeHtml(value);
+  const needle = String(snippet || "");
+  if (!needle) return '<mark class="source-evidence">' + escapeHtml(value) + '</mark>';
+
+  const index = value.indexOf(needle);
+  if (index < 0) return '<mark class="source-evidence">' + escapeHtml(value) + '</mark>';
+
+  return escapeHtml(value.slice(0, index)) +
+    '<mark class="source-evidence">' + escapeHtml(needle) + '</mark>' +
+    escapeHtml(value.slice(index + needle.length));
+}
+
+function knowledgeSourceModal() {
+  const viewer = state.knowledge.viewer;
+  if (!viewer.open) return "";
+
+  let body = "";
+  if (viewer.loading) {
+    body = '<div class="source-viewer-loading">Ładowanie dokumentu…</div>';
+  } else if (viewer.error) {
+    body = '<div class="knowledge-error source-viewer-error">' + escapeHtml(viewer.error) + '</div>';
+  } else if (viewer.document) {
+    const payload = viewer.document;
+    const documentInfo = payload.document || {};
+    const source = payload.source || {};
+    const version = payload.version || {};
+    const chunks = Array.isArray(payload.chunks) ? payload.chunks : [];
+
+    let targetIndex = chunks.findIndex(function (chunk) {
+      return viewer.chunkId && chunk.chunk_id === viewer.chunkId;
+    });
+    if (targetIndex < 0 && viewer.snippet) {
+      targetIndex = chunks.findIndex(function (chunk) {
+        return String(chunk.text || "").includes(String(viewer.snippet));
+      });
+    }
+
+    const locationStatus = targetIndex >= 0
+      ? '<span class="source-viewer-locator-ok">Zaznaczono fragment użyty przez AI</span>'
+      : '<span class="source-viewer-locator-warning">Nie znaleziono dokładnego fragmentu w bieżącej wersji dokumentu</span>';
+
+    const chunksHtml = chunks.map(function (chunk, index) {
+      const target = index === targetIndex;
+      const locator = knowledgeChunkLocator(chunk);
+      return '<section class="source-viewer-chunk' + (target ? ' source-target' : '') + '"' +
+        (target ? ' id="knowledge-source-target"' : '') + '>' +
+        '<div class="source-viewer-chunk-head">' +
+          '<span>' + escapeHtml(locator || ("fragment " + (index + 1))) + '</span>' +
+          (target ? '<strong>ŹRÓDŁO ODPOWIEDZI</strong>' : '') +
+        '</div>' +
+        '<div class="source-viewer-text">' +
+          knowledgeEvidenceHtml(chunk.text || "", viewer.snippet, target) +
+        '</div>' +
+      '</section>';
+    }).join("");
+
+    body = '<div class="source-viewer-meta">' +
+        '<div><span>Dokument</span><strong>' + escapeHtml(documentInfo.title || source.title || viewer.documentId || "Źródło") + '</strong></div>' +
+        '<div><span>Typ</span><strong>' + escapeHtml(documentInfo.media_type || source.type || "—") + '</strong></div>' +
+        '<div><span>Wersja</span><strong>' + escapeHtml(version.version_id || "—") + '</strong></div>' +
+        '<div><span>Źródło</span><strong>' + escapeHtml(viewer.ref || "—") + '</strong></div>' +
+      '</div>' +
+      '<div class="source-viewer-location-status">' + locationStatus + '</div>' +
+      '<div class="source-viewer-document">' +
+        (chunksHtml || '<div class="source-viewer-loading">Dokument nie zawiera fragmentów tekstowych.</div>') +
+      '</div>';
+  } else {
+    body = '<div class="source-viewer-loading">Brak dokumentu do wyświetlenia.</div>';
+  }
+
+  const title = viewer.document && viewer.document.document
+    ? viewer.document.document.title
+    : "Źródło Knowledge";
+
+  return '<div class="source-modal-backdrop" data-source-close>' +
+    '<section class="source-modal" role="dialog" aria-modal="true" aria-labelledby="source-modal-title" data-source-modal>' +
+      '<header class="source-modal-head">' +
+        '<div><span class="eyebrow">KNOWLEDGE SOURCE</span><h2 id="source-modal-title">' +
+          escapeHtml(title || "Źródło Knowledge") + '</h2></div>' +
+        '<button type="button" class="source-modal-close" data-source-close aria-label="Zamknij">×</button>' +
+      '</header>' +
+      '<div class="source-modal-body">' + body + '</div>' +
+    '</section>' +
+  '</div>';
+}
+
+async function openKnowledgeSource(kind, index) {
+  const target = knowledgeSourceTarget(kind, index);
+  if (!target || !target.documentId) return;
+
+  state.knowledge.viewer = {
+    open: true,
+    loading: true,
+    error: null,
+    documentId: target.documentId,
+    chunkId: target.chunkId,
+    snippet: target.snippet,
+    ref: target.ref,
+    document: null
+  };
+  render();
+
+  try {
+    const payload = await api("/knowledge/documents/" + encodeURIComponent(target.documentId));
+    if (!state.knowledge.viewer.open || state.knowledge.viewer.documentId !== target.documentId) return;
+    state.knowledge.viewer.document = payload;
+  } catch (error) {
+    state.knowledge.viewer.error = "Knowledge API: " + (error.code || error.message || "unknown_error");
+  } finally {
+    if (state.knowledge.viewer.documentId === target.documentId) {
+      state.knowledge.viewer.loading = false;
+      render();
+      window.requestAnimationFrame(function () {
+        const targetNode = document.getElementById("knowledge-source-target");
+        if (targetNode) targetNode.scrollIntoView({ block: "center", behavior: "smooth" });
+      });
+    }
+  }
+}
+
+function closeKnowledgeSource() {
+  state.knowledge.viewer.open = false;
+  state.knowledge.viewer.loading = false;
+  state.knowledge.viewer.error = null;
+  render();
 }
 
 async function runKnowledge(form) {
@@ -707,6 +891,21 @@ function wirePageActions() {
       runKnowledge(form);
     });
   }
+
+  document.querySelectorAll("[data-knowledge-source-kind]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      const index = Number(button.dataset.knowledgeSourceIndex);
+      if (!Number.isInteger(index) || index < 0) return;
+      openKnowledgeSource(button.dataset.knowledgeSourceKind, index);
+    });
+  });
+
+  document.querySelectorAll("[data-source-close]").forEach(function (element) {
+    element.addEventListener("click", function (event) {
+      if (element.classList.contains("source-modal-backdrop") && event.target !== element) return;
+      closeKnowledgeSource();
+    });
+  });
 }
 
 
@@ -1444,6 +1643,12 @@ document.addEventListener("click", function (event) {
 });
 
 window.addEventListener("popstate", render);
+
+document.addEventListener("keydown", function (event) {
+  if (event.key === "Escape" && state.knowledge.viewer.open) {
+    closeKnowledgeSource();
+  }
+});
 
 document.addEventListener("visibilitychange", function () {
   if (!document.hidden) refreshData();

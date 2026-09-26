@@ -61,6 +61,13 @@ def test_control_center_contains_live_knowledge_workflow_and_registry_client():
     assert '"/knowledge/search"' in javascript
     assert '"/knowledge/ask"' in javascript
     assert "/knowledge/documents/" in javascript
+    assert "function knowledgeSourceModal()" in javascript
+    assert "function openKnowledgeSource(kind, index)" in javascript
+    assert 'api("/knowledge/documents/" + encodeURIComponent(target.documentId))' in javascript
+    assert 'id="knowledge-source-target"' in javascript
+    assert 'scrollIntoView({ block: "center", behavior: "smooth" })' in javascript
+    assert "/content" not in javascript
+    assert 'target="_blank"' not in javascript
     assert "localStorage" not in javascript
 
 
@@ -421,3 +428,35 @@ def test_control_center_ers_workspace_is_read_only_and_deep_linked():
     assert 'if (path === "/apps/ers") return ersCasesPage();' in javascript
     assert 'path.startsWith("/apps/ers/cases/")' in javascript
     assert "Domenowa aplikacja ERS jako osobny workspace." not in javascript
+
+
+def test_control_center_proxy_allows_read_only_knowledge_document_metadata_for_modal():
+    async def run():
+        seen = []
+
+        def upstream(request):
+            seen.append((request.method, request.url.path))
+            return httpx.Response(200, json={
+                "schema_version": 1,
+                "document": {"document_id": "kdoc_test", "title": "Test document", "media_type": "text/markdown"},
+                "source": {"title": "Test source", "type": "documentation"},
+                "version": {"version_id": "kver_test"},
+                "chunks": [{"chunk_id": "kchk_test", "ordinal": 0, "text": "Evidence text", "locator": {"section": "Root cause"}}],
+            })
+
+        app = create_control_center_app(
+            platform_base_url="http://platform/api/v1",
+            upstream_transport=httpx.MockTransport(upstream),
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app, client=("192.168.1.44", 1234)),
+            base_url="http://control",
+        ) as http:
+            response = await http.get("/api/v1/knowledge/documents/kdoc_test")
+            assert response.status_code == 200
+            assert response.json()["chunks"][0]["chunk_id"] == "kchk_test"
+            assert (await http.post("/api/v1/knowledge/documents/kdoc_test", json={})).status_code == 403
+
+        assert seen == [("GET", "/api/v1/knowledge/documents/kdoc_test")]
+
+    asyncio.run(run())
