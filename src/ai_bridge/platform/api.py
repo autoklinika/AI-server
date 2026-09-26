@@ -69,8 +69,8 @@ CONTROL_CENTER_APPS = (
         "id": "ers",
         "name": "ECU Repair Service",
         "route": "/apps/ers",
-        "status": "foundation",
-        "capabilities": ("ers.case.read",),
+        "status": "ready",
+        "capabilities": ("ers.case.list", "ers.case.read"),
         "exposure": {"gui": True, "agent": True, "mcp": True},
     },
     {

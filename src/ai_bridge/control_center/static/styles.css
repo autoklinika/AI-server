@@ -849,3 +849,73 @@ a.log-row:hover { border-color: #35445a; }
   .log-status { grid-column: 2; text-align: right; }
 }
 
+
+/* ECU Repair Service */
+.ers-case-list { display:grid; gap:8px; }
+.ers-case-row {
+  display:grid;
+  grid-template-columns:150px minmax(0,1fr) 130px 145px;
+  gap:16px;
+  align-items:center;
+  min-height:76px;
+  padding:13px 16px;
+  box-shadow:none;
+  transition:border-color .15s ease, transform .15s ease;
+}
+.ers-case-row:hover { border-color:#35445a; transform:translateY(-1px); }
+.ers-case-code small, .ers-case-main small {
+  display:block;
+  margin-top:6px;
+  color:var(--muted-2);
+  font-size:9px;
+}
+.ers-case-main strong { display:block; font-size:12px; }
+.ers-case-status { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:10px; }
+.ers-case-updated { color:var(--muted-2); font-size:10px; text-align:right; }
+.ers-back { display:inline-flex; margin:-8px 0 4px; color:var(--accent-2); font-size:10px; }
+.ers-overview { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.ers-detail-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; }
+.ers-note-row { min-height:58px; padding:12px 16px; border-bottom:1px solid var(--border-soft); }
+.ers-note-row:last-child { border-bottom:0; }
+.ers-note-row strong { display:block; font-size:11px; line-height:1.5; }
+.ers-note-row small { display:block; margin-top:5px; color:var(--muted-2); font-size:9px; }
+.ers-events { max-height:340px; overflow:auto; }
+.ers-event-row {
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  gap:10px;
+  align-items:center;
+  min-height:54px;
+  padding:9px 14px;
+  border-bottom:1px solid var(--border-soft);
+}
+.ers-event-row:last-child { border-bottom:0; }
+.ers-event-row strong, .ers-event-row small { display:block; }
+.ers-event-row strong { font-size:10px; }
+.ers-event-row small { margin-top:4px; color:var(--muted-2); font-size:9px; }
+.ers-event-row time { color:var(--muted-2); font-size:9px; white-space:nowrap; }
+.ers-steps { display:grid; gap:8px; }
+.ers-step { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:14px; padding:15px; box-shadow:none; }
+.ers-step-seq { color:var(--accent); font-size:11px; font-weight:800; }
+.ers-step strong { font-size:11px; }
+.ers-step p { margin:6px 0 0; color:var(--muted); line-height:1.5; font-size:10px; }
+.ers-step p span { color:var(--text); }
+.ers-step > small { color:var(--muted-2); font-size:9px; white-space:nowrap; }
+.table-wrap td strong { display:block; color:var(--text); }
+.table-wrap td small { display:block; margin-top:4px; color:var(--muted-2); font-size:9px; }
+
+@media (max-width: 900px) {
+  .ers-case-row { grid-template-columns:120px minmax(0,1fr) 110px; }
+  .ers-case-updated { display:none; }
+}
+@media (max-width: 720px) {
+  .ers-case-row { grid-template-columns:1fr auto; gap:10px; }
+  .ers-case-code { grid-column:1; }
+  .ers-case-main { grid-column:1 / -1; }
+  .ers-case-status { grid-column:2; grid-row:1; }
+  .ers-detail-grid, .ers-overview { grid-template-columns:1fr; }
+  .ers-event-row { grid-template-columns:auto minmax(0,1fr); }
+  .ers-event-row time { grid-column:2; }
+  .ers-step { grid-template-columns:auto minmax(0,1fr); }
+  .ers-step > small { grid-column:2; }
+}

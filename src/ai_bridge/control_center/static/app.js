@@ -12,7 +12,7 @@ const FALLBACK_APP_REGISTRY = [
 
   { id: "knowledge", group: "applications", label: "Knowledge", route: "/apps/knowledge", icon: "K", status: "live" },
   { id: "benchmarks", group: "applications", label: "Benchmarks", route: "/apps/benchmarks", icon: "B", status: "foundation" },
-  { id: "ers", group: "applications", label: "ECU Repair Service", route: "/apps/ers", icon: "E", status: "foundation" },
+  { id: "ers", group: "applications", label: "ECU Repair Service", route: "/apps/ers", icon: "E", status: "ready" },
   { id: "observability", group: "applications", label: "Flight Recorder", route: "/apps/observability", icon: "O", status: "ready" },
   { id: "system-map", group: "applications", label: "System Map", route: "/apps/system-map", icon: "S", status: "ready" },
   { id: "incidents", group: "applications", label: "Incidents", route: "/apps/incidents", icon: "I", status: "ready" },
@@ -36,6 +36,8 @@ const state = {
   systemMap: null,
   incidents: null,
   incidentDetail: { id: null, incident: null, loading: false, error: null },
+  ersCases: null,
+  ersDetail: { id: null, detail: null, loading: false, error: null },
   apps: null,
   benchmarks: { catalog: null, suite: null, runs: null, runKey: null, run: null, loading: false, error: null },
   knowledge: {
@@ -168,6 +170,7 @@ async function refreshData() {
     traces: api("/traces"),
     systemMap: api("/system-map"),
     incidents: api("/incidents"),
+    ersCases: api("/ecu-repair/cases"),
     apps: api("/apps"),
     benchmarks: api("/benchmarks")
   };
@@ -194,6 +197,7 @@ async function refreshData() {
 
 function appStatus(app) {
   if (app.id === "knowledge" && state.errors.health) return "unknown";
+  if (app.id === "ers" && state.errors.ersCases) return "unknown";
   return app.status || null;
 }
 
@@ -705,6 +709,247 @@ function wirePageActions() {
   }
 }
 
+
+function ersStatusLabel(value) {
+  return ({
+    draft: "Szkic",
+    open: "Otwarty",
+    resolved: "Rozwiązany",
+    closed: "Zamknięty",
+    cancelled: "Anulowany"
+  })[value] || value || "—";
+}
+
+function ersWorkStateLabel(value) {
+  return ({
+    intake: "Przyjęcie",
+    diagnosing: "Diagnostyka",
+    awaiting_measurement: "Oczekiwanie na pomiar",
+    awaiting_parts: "Oczekiwanie na części",
+    repairing: "Naprawa",
+    verifying: "Weryfikacja",
+    none: "Brak"
+  })[value] || value || "—";
+}
+
+function ersCasesPage() {
+  const payload = state.ersCases || {};
+  const cases = Array.isArray(payload.cases) ? payload.cases : [];
+  const open = cases.filter(function (item) { return item.status === "open"; }).length;
+  const diagnosing = cases.filter(function (item) { return item.work_state === "diagnosing"; }).length;
+  const resolved = cases.filter(function (item) {
+    return item.status === "resolved" || item.status === "closed";
+  }).length;
+
+  const summary = '<section class="metric-strip compact">' +
+    metric("Przypadki", String(cases.length), "ostatnio aktualizowane", "/apps/ers") +
+    metric("Otwarte", String(open), "status open", "/apps/ers") +
+    metric("Diagnostyka", String(diagnosing), "aktywny work state", "/apps/ers") +
+    metric("Rozwiązane", String(resolved), "resolved + closed", "/apps/ers") +
+  '</section>';
+
+  let body = "";
+  if (state.errors.ersCases) {
+    body = '<div class="knowledge-error">ERS API: ' +
+      escapeHtml(state.errors.ersCases.message || "niedostępne") + '</div>';
+  } else if (!cases.length) {
+    body = '<div class="panel knowledge-empty"><h3>Brak przypadków</h3>' +
+      '<p>Repozytorium ERS nie zawiera jeszcze przypadków dostępnych przez Platform API.</p></div>';
+  } else {
+    body = '<div class="ers-case-list">' + cases.map(function (item) {
+      const href = controlUrl("/apps/ers/cases/" + encodeURIComponent(item.id));
+      return '<a class="panel ers-case-row" href="' + href + '" data-nav>' +
+        '<div class="ers-case-code"><span class="badge">' + escapeHtml(item.case_code) + '</span>' +
+          (item.legacy_case_code ? '<small>' + escapeHtml(item.legacy_case_code) + '</small>' : '') + '</div>' +
+        '<div class="ers-case-main"><strong>' + escapeHtml(item.title) + '</strong>' +
+          '<small>' + escapeHtml(ersWorkStateLabel(item.work_state)) + ' · v' +
+          escapeHtml(String(item.row_version)) + '</small></div>' +
+        '<div class="ers-case-status">' + statusDot(item.status === "cancelled" ? "failed" :
+          (item.status === "open" ? "active" : "ready")) +
+          '<span>' + escapeHtml(ersStatusLabel(item.status)) + '</span></div>' +
+        '<div class="ers-case-updated">' + escapeHtml(humanDate(item.updated_at)) + '</div>' +
+      '</a>';
+    }).join("") + '</div>';
+  }
+
+  return sectionPage(
+    "ECU Repair Service",
+    "Przypadki diagnostyczne i naprawcze ERS. Widok Stage O jest read-only i korzysta wyłącznie ze stabilnego Platform API.",
+    summary + body
+  );
+}
+
+function ersLatestFor(items, key, id) {
+  const matches = (items || []).filter(function (item) { return item[key] === id; });
+  return matches.length ? matches[matches.length - 1] : {};
+}
+
+function ersDtcName(item) {
+  if (item.code) return item.code;
+  if (item.spn != null) return "SPN " + item.spn + (item.fmi != null ? " FMI " + item.fmi : "");
+  return "DTC";
+}
+
+function ersCaseDetailPage(caseId) {
+  if (state.ersDetail.id !== caseId && !state.ersDetail.loading) {
+    queueMicrotask(function () { loadErsCaseDetail(caseId); });
+  }
+
+  const detail = state.ersDetail.id === caseId ? state.ersDetail.detail : null;
+  if (!detail) {
+    return sectionPage(
+      "ECU Repair Service",
+      "Przypadek " + caseId,
+      state.ersDetail.error && state.ersDetail.id === caseId
+        ? '<div class="knowledge-error">' + escapeHtml(state.ersDetail.error) + '</div>'
+        : pendingPanel("Ładowanie przypadku", "Pobieram dane ERS przez Platform API.")
+    );
+  }
+
+  const item = detail.case || {};
+  const assets = Array.isArray(detail.assets) ? detail.assets : [];
+  const assetRevisions = Array.isArray(detail.asset_revisions) ? detail.asset_revisions : [];
+  const ecus = Array.isArray(detail.ecus) ? detail.ecus : [];
+  const identities = Array.isArray(detail.ecu_identity_observations) ? detail.ecu_identity_observations : [];
+  const software = Array.isArray(detail.ecu_software_observations) ? detail.ecu_software_observations : [];
+  const symptoms = Array.isArray(detail.symptoms) ? detail.symptoms : [];
+  const dtcs = Array.isArray(detail.dtcs) ? detail.dtcs : [];
+  const measurements = Array.isArray(detail.measurements) ? detail.measurements : [];
+  const steps = Array.isArray(detail.diagnostic_steps) ? detail.diagnostic_steps : [];
+  const events = Array.isArray(detail.events) ? detail.events : [];
+
+  const summary = '<section class="metric-strip compact">' +
+    metric("ECU", String(ecus.length), "powiązane sterowniki", "/apps/ers/cases/" + caseId) +
+    metric("DTC", String(dtcs.length), "zarejestrowane kody", "/apps/ers/cases/" + caseId) +
+    metric("Pomiary", String(measurements.length), "dowody pomiarowe", "/apps/ers/cases/" + caseId) +
+    metric("Kroki", String(steps.length), "diagnostyka", "/apps/ers/cases/" + caseId) +
+  '</section>';
+
+  const overview = '<div class="cards ers-overview">' +
+    '<article class="panel detail-card">' + panelHeader("Przypadek", ersStatusLabel(item.status)) +
+      '<dl><dt>Kod</dt><dd>' + escapeHtml(item.case_code || "—") + '</dd>' +
+      '<dt>Tytuł</dt><dd>' + escapeHtml(item.title || "—") + '</dd>' +
+      '<dt>Status pracy</dt><dd>' + escapeHtml(ersWorkStateLabel(item.work_state)) + '</dd>' +
+      '<dt>Legacy</dt><dd>' + escapeHtml(item.legacy_case_code || "—") + '</dd>' +
+      '<dt>Wersja</dt><dd>' + escapeHtml(String(item.row_version || "—")) + '</dd>' +
+      '<dt>Aktualizacja</dt><dd>' + escapeHtml(humanDate(item.updated_at)) + '</dd></dl></article>' +
+    '<article class="panel detail-card">' + panelHeader("Zakres danych", "READ-ONLY") +
+      '<dl><dt>Pojazdy / obiekty</dt><dd>' + assets.length + '</dd>' +
+      '<dt>Objawy</dt><dd>' + symptoms.length + '</dd>' +
+      '<dt>Zdarzenia</dt><dd>' + events.length + '</dd>' +
+      '<dt>Utworzył</dt><dd>' + escapeHtml(item.created_by || "—") + '</dd>' +
+      '<dt>Ostatnio zmienił</dt><dd>' + escapeHtml(item.updated_by || "—") + '</dd></dl></article>' +
+  '</div>';
+
+  const assetCards = assets.length ? assets.map(function (asset) {
+    const revision = ersLatestFor(assetRevisions, "asset_id", asset.asset_id);
+    const engine = revision.engine_identity || {};
+    return '<article class="panel detail-card">' + panelHeader(
+      (revision.manufacturer || "Obiekt") + (revision.model ? " " + revision.model : ""),
+      asset.role || asset.asset_kind || "asset"
+    ) + '<dl><dt>Typ</dt><dd>' + escapeHtml(asset.asset_kind || "—") + '</dd>' +
+      '<dt>VIN</dt><dd>' + escapeHtml(revision.vin || "—") + '</dd>' +
+      '<dt>Numer seryjny</dt><dd>' + escapeHtml(revision.serial_number || "—") + '</dd>' +
+      '<dt>Silnik</dt><dd>' + escapeHtml(engine.engine || engine.model || "—") + '</dd></dl></article>';
+  }).join("") : '<div class="panel knowledge-empty"><p>Brak obiektów lub pojazdów.</p></div>';
+
+  const ecuCards = ecus.length ? ecus.map(function (ecu) {
+    const identity = ersLatestFor(identities, "ecu_id", ecu.ecu_id);
+    const sw = ersLatestFor(software, "ecu_id", ecu.ecu_id);
+    const title = [identity.manufacturer, identity.family || identity.model].filter(Boolean).join(" ") || "ECU";
+    return '<article class="panel detail-card">' + panelHeader(title, ecu.role || "ECU") +
+      '<dl><dt>HW</dt><dd>' + escapeHtml(identity.hardware_number || "—") + '</dd>' +
+      '<dt>HW rev</dt><dd>' + escapeHtml(identity.hardware_revision || "—") + '</dd>' +
+      '<dt>Assembly PN</dt><dd>' + escapeHtml(identity.assembly_part_number || "—") + '</dd>' +
+      '<dt>MCU</dt><dd>' + escapeHtml(identity.mcu_marking || "—") + '</dd>' +
+      '<dt>S/N</dt><dd>' + escapeHtml(identity.serial_number || "—") + '</dd>' +
+      '<dt>Software</dt><dd>' + escapeHtml(sw.software_number || "—") + '</dd>' +
+      '<dt>Kalibracja</dt><dd>' + escapeHtml(sw.calibration_number || "—") + '</dd></dl></article>';
+  }).join("") : '<div class="panel knowledge-empty"><p>Brak powiązanych ECU.</p></div>';
+
+  const symptomRows = symptoms.length ? symptoms.map(function (symptom) {
+    return '<div class="ers-note-row"><div><strong>' + escapeHtml(symptom.description) + '</strong>' +
+      '<small>' + escapeHtml(humanDate(symptom.observed_at)) + '</small></div></div>';
+  }).join("") : '<div class="empty-state">Brak zapisanych objawów.</div>';
+
+  const dtcRows = dtcs.length ? dtcs.map(function (dtc) {
+    return '<tr><td><strong>' + escapeHtml(ersDtcName(dtc)) + '</strong></td>' +
+      '<td>' + escapeHtml(dtc.protocol || "—") + '</td>' +
+      '<td>' + escapeHtml(dtc.status || "—") + '</td>' +
+      '<td>' + escapeHtml(dtc.occurrence_count == null ? "—" : String(dtc.occurrence_count)) + '</td>' +
+      '<td>' + escapeHtml(humanDate(dtc.observed_at)) + '</td></tr>';
+  }).join("") : '<tr><td colspan="5">Brak zapisanych DTC.</td></tr>';
+
+  const measurementRows = measurements.length ? measurements.map(function (measurement) {
+    const value = measurement.value_numeric != null
+      ? String(measurement.value_numeric)
+      : (measurement.value_text != null ? measurement.value_text : "wartość strukturalna");
+    return '<tr><td><strong>' + escapeHtml(measurement.measurement_type || "pomiar") + '</strong>' +
+      '<small>' + escapeHtml(measurement.channel || "") + '</small></td>' +
+      '<td>' + escapeHtml(value) + '</td><td>' + escapeHtml(measurement.unit || "—") + '</td>' +
+      '<td>' + escapeHtml(measurement.method || "—") + '</td>' +
+      '<td>' + escapeHtml(humanDate(measurement.captured_at)) + '</td></tr>';
+  }).join("") : '<tr><td colspan="5">Brak zapisanych pomiarów.</td></tr>';
+
+  const stepRows = steps.length ? steps.map(function (step) {
+    return '<article class="panel ers-step">' +
+      '<div class="ers-step-seq">#' + escapeHtml(String(step.step_seq)) + '</div>' +
+      '<div><strong>' + escapeHtml(step.step_type || "krok") + '</strong>' +
+      (step.observation ? '<p><span>Obserwacja:</span> ' + escapeHtml(step.observation) + '</p>' : '') +
+      (step.test ? '<p><span>Test:</span> ' + escapeHtml(step.test) + '</p>' : '') +
+      (step.result ? '<p><span>Wynik:</span> ' + escapeHtml(step.result) + '</p>' : '') +
+      (step.next_step ? '<p><span>Następny krok:</span> ' + escapeHtml(step.next_step) + '</p>' : '') +
+      '</div><small>' + escapeHtml(humanDate(step.occurred_at)) + '</small></article>';
+  }).join("") : '<div class="panel knowledge-empty"><p>Brak kroków diagnostycznych.</p></div>';
+
+  const eventRows = events.length ? events.slice().reverse().map(function (event) {
+    const change = [event.previous_status, event.new_status].filter(Boolean).join(" → ");
+    return '<div class="ers-event-row"><span class="badge">#' + escapeHtml(String(event.event_seq)) + '</span>' +
+      '<div><strong>' + escapeHtml(event.event_type || "event") + '</strong>' +
+      '<small>' + escapeHtml(change || event.new_work_state || "") + '</small></div>' +
+      '<time>' + escapeHtml(humanDate(event.occurred_at)) + '</time></div>';
+  }).join("") : '<div class="empty-state">Brak historii zdarzeń.</div>';
+
+  return sectionPage(
+    item.case_code || "Przypadek ERS",
+    item.title || "Szczegóły przypadku",
+    '<a class="ers-back" href="' + controlUrl("/apps/ers") + '" data-nav>← Wszystkie przypadki</a>' +
+    summary + overview +
+    '<section class="section-head section-spaced"><div><div class="eyebrow">ASSET</div><h2>Pojazd / obiekt</h2></div></section>' +
+    '<div class="cards">' + assetCards + '</div>' +
+    '<section class="section-head section-spaced"><div><div class="eyebrow">ECU</div><h2>Sterowniki</h2></div></section>' +
+    '<div class="cards">' + ecuCards + '</div>' +
+    '<div class="ers-detail-grid section-spaced">' +
+      '<section class="panel">' + panelHeader("Objawy", String(symptoms.length)) + symptomRows + '</section>' +
+      '<section class="panel">' + panelHeader("Historia case", String(events.length)) + '<div class="ers-events">' + eventRows + '</div></section>' +
+    '</div>' +
+    '<section class="section-head section-spaced"><div><div class="eyebrow">DTC</div><h2>Kody usterek</h2></div></section>' +
+    '<div class="table-wrap"><table><thead><tr><th>Kod</th><th>Protokół</th><th>Status</th><th>Wystąpienia</th><th>Czas</th></tr></thead>' +
+      '<tbody>' + dtcRows + '</tbody></table></div>' +
+    '<section class="section-head section-spaced"><div><div class="eyebrow">MEASUREMENTS</div><h2>Pomiary</h2></div></section>' +
+    '<div class="table-wrap"><table><thead><tr><th>Typ / kanał</th><th>Wartość</th><th>Jednostka</th><th>Metoda</th><th>Czas</th></tr></thead>' +
+      '<tbody>' + measurementRows + '</tbody></table></div>' +
+    '<section class="section-head section-spaced"><div><div class="eyebrow">DIAGNOSTICS</div><h2>Kroki diagnostyczne</h2></div></section>' +
+    '<div class="ers-steps">' + stepRows + '</div>'
+  );
+}
+
+async function loadErsCaseDetail(caseId) {
+  state.ersDetail.loading = true;
+  state.ersDetail.error = null;
+  state.ersDetail.id = caseId;
+  state.ersDetail.detail = null;
+  render();
+  try {
+    state.ersDetail.detail = await api("/ecu-repair/cases/" + encodeURIComponent(caseId));
+  } catch (error) {
+    state.ersDetail.error = "ERS API: " + (error.code || error.message || "unknown_error");
+  } finally {
+    state.ersDetail.loading = false;
+    render();
+  }
+}
+
 function benchmarksPage() {
   const payload = state.benchmarks.catalog;
   const suites = payload && Array.isArray(payload.suites) ? payload.suites : [];
@@ -1162,7 +1407,8 @@ function pageForRoute() {
     }
     return benchmarkSuitePage(decodeURIComponent(rest));
   }
-  if (path === "/apps/ers") return placeholderApplication("ECU Repair Service", "Domenowa aplikacja ERS jako osobny workspace.");
+  if (path === "/apps/ers") return ersCasesPage();
+  if (path.startsWith("/apps/ers/cases/")) return ersCaseDetailPage(decodeURIComponent(path.slice("/apps/ers/cases/".length)));
   if (path === "/apps/observability") return flightRecorderPage();
   if (path === "/apps/system-map") return systemMapPage();
   if (path === "/apps/incidents") return incidentTimelinePage();

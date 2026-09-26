@@ -150,6 +150,17 @@ class ErsCaseRepository:
                 raise ErsCaseNotFound(str(case_id))
             return self._case_snapshot(case)
 
+    def list_cases(self, *, limit: int = 100) -> tuple[ErsCaseSnapshot, ...]:
+        if limit < 1 or limit > 100:
+            raise ValueError("limit must be between 1 and 100")
+        with self._database.session() as session:
+            rows = session.scalars(
+                select(ErsCaseModel)
+                .order_by(ErsCaseModel.updated_at.desc(), ErsCaseModel.case_code.desc())
+                .limit(limit)
+            ).all()
+            return tuple(self._case_snapshot(row) for row in rows)
+
     def get_case_by_legacy_code(self, legacy_case_code: str) -> ErsCaseSnapshot | None:
         code = legacy_case_code.strip()
         if not code:

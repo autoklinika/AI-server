@@ -85,6 +85,17 @@ def create_case(
     return {"schema_version": 1, "case": _case_payload(case)}
 
 
+@router.get("/cases")
+def list_cases(request: Request):
+    cases = request.app.state.ers_case_repository.list_cases(limit=100)
+    return {
+        "schema_version": 1,
+        "cases": [_case_payload(case) for case in cases],
+        "count": len(cases),
+        "limit": 100,
+    }
+
+
 @router.get("/cases/{case_id}")
 def get_case(case_id: UUID, request: Request, response: Response):
     detail = request.app.state.ers_intake_repository.get_case_detail(case_id)

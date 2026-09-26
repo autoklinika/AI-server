@@ -33,6 +33,8 @@ _GET = (
     re.compile(r"^jobs/[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"),
     re.compile(r"^traces/[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"),
     re.compile(r"^incidents/[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"),
+    re.compile(r"^ecu-repair/cases$"),
+    re.compile(r"^ecu-repair/cases/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"),
     re.compile(r"^benchmarks/[A-Za-z0-9][A-Za-z0-9_.-]{0,127}/runs(?:/[A-Za-z0-9][A-Za-z0-9_.-]{0,127})?$"),
     re.compile(
         r"^knowledge/documents/[A-Za-z0-9][A-Za-z0-9_.-]{0,127}"
