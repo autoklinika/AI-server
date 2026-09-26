@@ -6,6 +6,7 @@ import json
 import logging
 import re
 from dataclasses import asdict
+from datetime import datetime, timedelta
 from pathlib import Path
 from time import monotonic
 from typing import Annotated, Literal
@@ -84,6 +85,14 @@ CONTROL_CENTER_APPS = (
         "route": "/apps/system-map",
         "status": "ready",
         "capabilities": ("platform.topology.read",),
+        "exposure": {"gui": True, "agent": True, "mcp": False},
+    },
+    {
+        "id": "incidents",
+        "name": "Incident Timeline",
+        "route": "/apps/incidents",
+        "status": "ready",
+        "capabilities": ("observability.incident.read",),
         "exposure": {"gui": True, "agent": True, "mcp": False},
     },
 )
@@ -574,6 +583,125 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
             request,
             trace=trace_payload(trace, await jobs()),
             retention={"persistent": False, "limit": 256},
+        )
+
+    def incident_payload(trace: dict, all_jobs: list[dict]) -> dict | None:
+        payload = trace_payload(trace, all_jobs)
+        job = payload.get("job")
+        job_state = (job or {}).get("state")
+        status = int(payload["status"])
+        if status < 400 and job_state not in ("failed", "cancelled", "expired"):
+            return None
+
+        severity = (
+            "error"
+            if status >= 500 or job_state in ("failed", "expired")
+            else "warning"
+        )
+        timeline = []
+
+        def add_event(
+            timestamp: str | None,
+            event: str,
+            component: str,
+            state: str,
+        ) -> None:
+            if timestamp:
+                timeline.append({
+                    "time": timestamp,
+                    "event": event,
+                    "component": component,
+                    "state": state,
+                })
+
+        started_at = None
+        try:
+            completed = datetime.fromisoformat(str(payload["completed_at"]))
+            started_at = (
+                completed - timedelta(milliseconds=float(payload["duration_ms"]))
+            ).isoformat()
+        except (TypeError, ValueError):
+            pass
+
+        add_event(started_at, "request_started", "platform-api", "active")
+        if job is not None:
+            add_event(job.get("queued_at"), "job_queued", "resource-manager", "queued")
+            add_event(job.get("admitted_at"), "job_admitted", "resource-manager", "admitted")
+            add_event(job.get("started_at"), "execution_started", "provider", "running")
+            add_event(
+                job.get("finished_at"),
+                "execution_finished",
+                "provider",
+                str(job.get("state") or "finished"),
+            )
+        add_event(
+            payload.get("completed_at"),
+            "response_completed",
+            "platform-api",
+            "error" if status >= 400 else "completed",
+        )
+        timeline.sort(key=lambda item: item["time"])
+
+        return {
+            "incident_id": payload["request_id"],
+            "trace_id": payload["trace_id"],
+            "severity": severity,
+            "kind": payload["kind"],
+            "method": payload["method"],
+            "route": payload["route"],
+            "status": status,
+            "error_class": payload.get("error_class"),
+            "completed_at": payload["completed_at"],
+            "duration_ms": payload["duration_ms"],
+            "job": job,
+            "timeline": timeline,
+            "components": list(dict.fromkeys(item["component"] for item in timeline)),
+        }
+
+    async def incident_values() -> list[dict]:
+        all_jobs = await jobs()
+        values = []
+        for trace in metrics.traces(256):
+            incident = incident_payload(trace, all_jobs)
+            if incident is not None:
+                values.append(incident)
+        return values
+
+    @api.get("/incidents")
+    async def incidents(request: Request):
+        values = await incident_values()
+        return envelope(
+            request,
+            incidents=[{
+                key: value
+                for key, value in incident.items()
+                if key != "timeline"
+            } | {"timeline_event_count": len(incident["timeline"])}
+            for incident in values],
+            retention={
+                "persistent": False,
+                "source": "flight-recorder",
+                "trace_limit": 256,
+            },
+        )
+
+    @api.get("/incidents/{incident_id}")
+    async def incident_detail(incident_id: ID, request: Request):
+        values = await incident_values()
+        incident = next(
+            (item for item in values if item["incident_id"] == incident_id),
+            None,
+        )
+        if incident is None:
+            raise APIError(404, "not_found")
+        return envelope(
+            request,
+            incident=incident,
+            retention={
+                "persistent": False,
+                "source": "flight-recorder",
+                "trace_limit": 256,
+            },
         )
 
     @api.get("/benchmarks")

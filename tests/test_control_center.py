@@ -244,3 +244,41 @@ def test_control_center_assets_revalidate_and_service_worker_does_not_pin_old_gu
     assert "caches.match(request).then" in worker
     assert "fetch(request, { cache: \"no-cache\" })" in worker
     assert 'ai-control-gui0-v1' not in worker
+
+def test_control_center_incident_timeline_is_read_only_and_deep_linked():
+    async def run():
+        seen = []
+
+        def upstream(request):
+            seen.append((request.method, request.url.path))
+            return httpx.Response(200, json={
+                "schema_version": 1,
+                "incidents": [],
+                "retention": {"persistent": False, "source": "flight-recorder", "trace_limit": 256},
+            })
+
+        app = create_control_center_app(
+            platform_base_url="http://platform/api/v1",
+            upstream_transport=httpx.MockTransport(upstream),
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app, client=("192.168.1.44", 1234)),
+            base_url="http://control",
+        ) as http:
+            assert (await http.get("/api/v1/incidents")).status_code == 200
+            assert (await http.get("/api/v1/incidents/req_test")).status_code == 200
+            assert (await http.post("/api/v1/incidents")).status_code == 403
+
+        assert seen == [
+            ("GET", "/api/v1/incidents"),
+            ("GET", "/api/v1/incidents/req_test"),
+        ]
+
+    asyncio.run(run())
+
+    javascript = TestClient(create_control_center_app()).get("/assets/app.js").text
+    assert 'api("/incidents")' in javascript
+    assert "function incidentTimelinePage()" in javascript
+    assert "function incidentDetailPage(incidentId)" in javascript
+    assert 'controlUrl("/incidents/" + encodeURIComponent(incident.incident_id))' in javascript
+

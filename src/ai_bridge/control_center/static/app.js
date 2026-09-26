@@ -15,6 +15,7 @@ const FALLBACK_APP_REGISTRY = [
   { id: "ers", group: "applications", label: "ECU Repair Service", route: "/apps/ers", icon: "E", status: "foundation" },
   { id: "observability", group: "applications", label: "Flight Recorder", route: "/apps/observability", icon: "O", status: "ready" },
   { id: "system-map", group: "applications", label: "System Map", route: "/apps/system-map", icon: "S", status: "ready" },
+  { id: "incidents", group: "applications", label: "Incidents", route: "/apps/incidents", icon: "I", status: "ready" },
 
   { id: "settings", group: "platform", label: "Settings", route: "/platform/settings", icon: "S" },
   { id: "providers", group: "platform", label: "Providers", route: "/platform/providers", icon: "P" },
@@ -31,6 +32,7 @@ const state = {
   operations: null,
   traces: null,
   systemMap: null,
+  incidents: null,
   apps: null,
   benchmarks: { catalog: null, suite: null, runs: null, runKey: null, run: null, loading: false, error: null },
   knowledge: {
@@ -154,6 +156,7 @@ async function refreshData() {
     operations: api("/operations"),
     traces: api("/traces"),
     systemMap: api("/system-map"),
+    incidents: api("/incidents"),
     apps: api("/apps"),
     benchmarks: api("/benchmarks")
   };
@@ -362,7 +365,8 @@ function appCard(app) {
     benchmarks: "Laboratorium modeli, routerów i porównań jakości.",
     ers: "Domenowa aplikacja diagnostyki i przypadków ECU.",
     observability: "Historia requestów Platform API z latency i korelacją z Resource Managerem.",
-    "system-map": "Żywa mapa przepływów między integracjami, Platform API, Knowledge i modelami."
+    "system-map": "Żywa mapa przepływów między integracjami, Platform API, Knowledge i modelami.",
+    incidents: "Oś czasu błędnych requestów i nieudanych jobów z korelacją do Resource Managera."
   }[app.id] || "";
   return '<a class="app-card" href="' + controlUrl(app.route) + '" data-nav>' +
     '<div class="app-card-top"><span class="app-logo">' + escapeHtml(app.icon) + '</span>' +
@@ -932,6 +936,91 @@ function systemMapPage() {
     '<div class="panel">' + (edgeRows || '<div class="empty-state">Brak danych topologii.</div>') + '</div>');
 }
 
+function incidentTimelinePage() {
+  const payload = state.incidents || {};
+  const incidents = Array.isArray(payload.incidents) ? payload.incidents : [];
+  const errors = incidents.filter(function (item) { return item.severity === "error"; }).length;
+  const warnings = incidents.filter(function (item) { return item.severity === "warning"; }).length;
+  const latest = incidents[0];
+
+  const summary = '<section class="metric-strip compact">' +
+    metric("Incidents", String(incidents.length), "bounded history", "/apps/incidents") +
+    metric("Errors", String(errors), "5xx / failed / expired", "/apps/incidents") +
+    metric("Warnings", String(warnings), "4xx / cancelled", "/apps/incidents") +
+    metric("Latest", latest ? humanDurationMs(latest.duration_ms) : "—",
+      latest ? latest.kind : "no incidents", "/apps/incidents") +
+  '</section>';
+
+  const rows = incidents.length ? incidents.map(function (incident) {
+    const job = incident.job || {};
+    return '<a class="incident-row panel" href="' +
+      controlUrl("/incidents/" + encodeURIComponent(incident.incident_id)) + '" data-nav>' +
+      '<div class="incident-severity">' + statusDot(incident.severity === "error" ? "failed" : "warning") +
+        '<strong>' + escapeHtml(incident.severity || "warning") + '</strong></div>' +
+      '<div class="incident-main"><strong>' + escapeHtml(incident.kind || "platform") + '</strong>' +
+        '<span>' + escapeHtml(incident.method + " " + incident.route) + '</span></div>' +
+      '<div class="incident-job">' + escapeHtml(job.capability || "—") +
+        '<small>' + escapeHtml(job.assigned_provider || "") + '</small></div>' +
+      '<div class="incident-latency">' + escapeHtml(humanDurationMs(incident.duration_ms)) + '</div>' +
+      '<div class="incident-status">' + escapeHtml(String(incident.status)) + '</div>' +
+    '</a>';
+  }).join("") :
+    '<div class="panel knowledge-empty"><h3>Brak incydentów</h3>' +
+      '<p>Flight Recorder nie ma obecnie błędnych requestów ani nieudanych jobów.</p></div>';
+
+  return sectionPage("Incident Timeline",
+    "Bounded, metadata-only rekonstrukcja błędów i nieudanych wykonań.", summary +
+    '<div class="incident-list-head"><span>Severity</span><span>Request</span><span>Job</span><span>Latency</span><span>Status</span></div>' +
+    '<div class="incident-list">' + rows + '</div>');
+}
+
+function incidentDetailPage(incidentId) {
+  const payload = state.incidents || {};
+  const incidents = Array.isArray(payload.incidents) ? payload.incidents : [];
+  const incident = incidents.find(function (item) { return item.incident_id === incidentId; });
+  if (!incident) {
+    return sectionPage("Incident", incidentId,
+      pendingPanel("Incident not in bounded history",
+        "Incident Timeline v1 korzysta z ograniczonej historii Flight Recordera."));
+  }
+
+  const job = incident.job || {};
+  const events = Array.isArray(incident.timeline) ? incident.timeline : [];
+  const eventRows = events.length ? events.map(function (event, index) {
+    return '<div class="timeline-event">' +
+      '<div class="timeline-rail"><span class="timeline-dot"></span>' +
+        (index < events.length - 1 ? '<span class="timeline-line"></span>' : '') + '</div>' +
+      '<div class="timeline-content"><small>' + escapeHtml(humanDate(event.time)) + '</small>' +
+        '<strong>' + escapeHtml(event.event || "event") + '</strong>' +
+        '<span>' + escapeHtml((event.component || "platform") + " · " + (event.state || "unknown")) + '</span></div>' +
+    '</div>';
+  }).join("") : '<div class="empty-state">Brak zdarzeń osi czasu.</div>';
+
+  return sectionPage("Incident " + incident.incident_id,
+    (incident.kind || "platform") + " · HTTP " + incident.status,
+    '<div class="incident-detail-grid">' +
+      '<article class="panel detail-card">' + panelHeader("Incident",
+        incident.severity === "error" ? "ERROR" : "WARNING") +
+        '<dl><dt>Trace</dt><dd><a class="source-link" href="' +
+          controlUrl("/traces/" + encodeURIComponent(incident.trace_id)) + '" data-nav>' +
+          escapeHtml(incident.trace_id) + '</a></dd>' +
+        '<dt>Route</dt><dd>' + escapeHtml(incident.method + " " + incident.route) + '</dd>' +
+        '<dt>Status</dt><dd>' + escapeHtml(String(incident.status)) + '</dd>' +
+        '<dt>Error class</dt><dd>' + escapeHtml(incident.error_class || "—") + '</dd>' +
+        '<dt>Duration</dt><dd>' + escapeHtml(humanDurationMs(incident.duration_ms)) + '</dd>' +
+        '<dt>Completed</dt><dd>' + escapeHtml(humanDate(incident.completed_at)) + '</dd></dl></article>' +
+      (job.job_id ? '<article class="panel detail-card">' + panelHeader("Correlated job", job.state || "unknown") +
+        '<dl><dt>Job</dt><dd><a class="source-link" href="' +
+          controlUrl("/jobs/" + encodeURIComponent(job.job_id)) + '" data-nav>' +
+          escapeHtml(job.job_id) + '</a></dd>' +
+        '<dt>Capability</dt><dd>' + escapeHtml(job.capability || "—") + '</dd>' +
+        '<dt>Provider</dt><dd>' + escapeHtml(job.assigned_provider || "—") + '</dd>' +
+        '<dt>Node</dt><dd>' + escapeHtml(job.assigned_node || "—") + '</dd></dl></article>' : '') +
+    '</div>' +
+    '<section class="section-head section-spaced"><div><div class="eyebrow">TIMELINE</div><h2>What happened</h2></div></section>' +
+    '<div class="panel incident-timeline">' + eventRows + '</div>');
+}
+
 function genericOperations(title, subtitle, note) {
   return sectionPage(title, subtitle, pendingPanel(title, note));
 }
@@ -963,6 +1052,7 @@ function pageForRoute() {
   if (path === "/apps/ers") return placeholderApplication("ECU Repair Service", "Domenowa aplikacja ERS jako osobny workspace.");
   if (path === "/apps/observability") return flightRecorderPage();
   if (path === "/apps/system-map") return systemMapPage();
+  if (path === "/apps/incidents") return incidentTimelinePage();
   if (path === "/operations/agents") return genericOperations("Agents", "Stan i kontrolowane akcje agentów.", "Agent control API nie jest jeszcze wystawione przez Platform API.");
   if (path === "/operations/backup") return backupPage();
   if (path === "/operations/logs") return genericOperations("Logs", "Filtrowane logi operacyjne.", "Log API nie jest jeszcze częścią Platform API v1.");
@@ -970,7 +1060,7 @@ function pageForRoute() {
   if (path === "/platform/providers") return modelsPage();
   if (path === "/platform/security") return genericOperations("Security", "Polityki dostępu Control Center.", "Autoryzacja sesyjna GUI jest osobnym kontraktem; token Platform API nie będzie osadzany w frontendzie.");
   if (path.startsWith("/traces/")) return traceDetailPage(decodeURIComponent(path.slice("/traces/".length)));
-  if (path.startsWith("/incidents/")) return genericOperations("Incident", path.slice("/incidents/".length), "Incident Timeline zostanie dodany w fazie observability.");
+  if (path.startsWith("/incidents/")) return incidentDetailPage(decodeURIComponent(path.slice("/incidents/".length)));
   if (path.startsWith("/models/")) return modelsPage();
   return notFoundPage(path);
 }

@@ -69,7 +69,7 @@ def test_v1_contract_and_provider_wire_boundary():
             assert operations['schema_version'] == 1
             assert 'release' in operations and 'storage' in operations and 'backup' in operations
             apps = (await http.get('/api/v1/apps')).json()['apps']
-            assert [item['id'] for item in apps] == ['knowledge', 'benchmarks', 'ers', 'observability', 'system-map']
+            assert [item['id'] for item in apps] == ['knowledge', 'benchmarks', 'ers', 'observability', 'system-map', 'incidents']
             assert apps[0]['capabilities'] == ['knowledge.search', 'knowledge.ask', 'document.read']
             assert apps[0]['exposure']['mcp'] is True
     asyncio.run(run())
@@ -314,7 +314,7 @@ def test_flight_recorder_ignores_dashboard_polling_and_never_stores_bodies():
             for path in (
                 '/api/v1/health', '/api/v1/observability', '/api/v1/operations',
                 '/api/v1/jobs', '/api/v1/models', '/api/v1/systems', '/api/v1/apps',
-                '/api/v1/benchmarks',
+                '/api/v1/benchmarks', '/api/v1/system-map', '/api/v1/incidents',
             ):
                 assert (await http.get(path)).status_code == 200
             before = (await http.get('/api/v1/traces')).json()
@@ -350,5 +350,40 @@ def test_system_map_is_metadata_only_and_uses_live_platform_state():
             serialized = result.text.lower()
             assert 'private-prompt' not in serialized
             assert 'authorization' not in serialized
+    asyncio.run(run())
+
+def test_incident_timeline_reconstructs_errors_without_payloads():
+    async def run():
+        async with client() as (http, _):
+            secret = "private-incident-prompt"
+            failed = await http.post("/api/v1/ai", json={
+                "capability": "video-generation",
+                "messages": [{"role": "user", "content": secret}],
+                "context": {"request_id": "req_incident"},
+            })
+            assert failed.status_code == 503
+
+            incidents = await http.get("/api/v1/incidents")
+            assert incidents.status_code == 200
+            data = incidents.json()
+            assert len(data["incidents"]) == 1
+            summary = data["incidents"][0]
+            assert summary["incident_id"] == "req_incident"
+            assert summary["severity"] == "error"
+            assert summary["status"] == 503
+            assert summary["timeline_event_count"] >= 2
+            assert secret not in incidents.text
+
+            detail = await http.get("/api/v1/incidents/req_incident")
+            assert detail.status_code == 200
+            incident = detail.json()["incident"]
+            assert incident["trace_id"] == "req_incident"
+            assert incident["timeline"][0]["event"] == "request_started"
+            assert incident["timeline"][-1]["event"] == "response_completed"
+            assert secret not in detail.text
+
+            traces = (await http.get("/api/v1/traces")).json()["traces"]
+            assert all(item["route"] != "/incidents" for item in traces)
+            assert all(item["route"] != "/system-map" for item in traces)
     asyncio.run(run())
 
