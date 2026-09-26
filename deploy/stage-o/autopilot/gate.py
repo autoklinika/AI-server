@@ -246,6 +246,10 @@ def control_center_smoke() -> dict:
 
     health = e.fetch(bridge + "/control/api/v1/health")
     require(health["readiness"] is True)
+    operations = e.fetch(bridge + "/control/api/v1/operations")
+    require(operations["release"]["stage"] == "O")
+    require(isinstance(operations["storage"], list))
+    require("backup" in operations)
     apps = e.fetch(bridge + "/control/api/v1/apps")["apps"]
     require([item["id"] for item in apps] == ["knowledge", "benchmarks", "ers"])
 
