@@ -61,9 +61,11 @@ _SECURITY_HEADERS = {
 }
 
 
-def _file(path: Path, *, media_type: str | None = None, immutable: bool = False) -> FileResponse:
+def _file(path: Path, *, media_type: str | None = None) -> FileResponse:
     headers = dict(_SECURITY_HEADERS)
-    headers["Cache-Control"] = "public, max-age=86400" if immutable else "no-cache"
+    # Static filenames are intentionally stable (not content-hashed), so every
+    # UI release must revalidate instead of trusting a long browser cache.
+    headers["Cache-Control"] = "no-cache, must-revalidate"
     return FileResponse(path, media_type=media_type, headers=headers)
 
 
@@ -160,7 +162,7 @@ def create_control_center_app(
         candidate = (_STATIC_DIR / asset_path).resolve()
         if not candidate.is_relative_to(_STATIC_DIR) or not candidate.is_file():
             raise HTTPException(status_code=404, detail="asset_not_found")
-        return _file(candidate, immutable=True)
+        return _file(candidate)
 
     @app.get("/", include_in_schema=False)
     async def index() -> Response:

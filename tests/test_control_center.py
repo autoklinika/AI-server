@@ -11,6 +11,7 @@ def test_control_center_serves_shell_and_pwa_assets():
 
     shell = client.get("/")
     assert shell.status_code == 200
+    assert shell.headers["cache-control"] == "no-cache, must-revalidate"
     assert "AI Control Center" in shell.text
     assert "/control/assets/app.js" in shell.text
     assert shell.headers["content-security-policy"].startswith("default-src 'self'")
@@ -22,6 +23,8 @@ def test_control_center_serves_shell_and_pwa_assets():
     worker = client.get("/sw.js")
     assert worker.status_code == 200
     assert worker.headers["service-worker-allowed"] == "/control/"
+    assert 'ai-control-shell-v2' in worker.text
+    assert 'fetch(request, { cache: "no-cache" })' in worker.text
 
 
 def test_control_center_deep_links_resolve_to_spa_shell():
@@ -227,3 +230,17 @@ def test_control_center_system_map_is_read_only_and_rendered():
     assert "function systemMapPage()" in javascript
     assert '"/apps/system-map"' in javascript
 
+
+
+def test_control_center_assets_revalidate_and_service_worker_does_not_pin_old_gui():
+    client = TestClient(create_control_center_app())
+
+    asset = client.get("/assets/app.js")
+    assert asset.status_code == 200
+    assert asset.headers["cache-control"] == "no-cache, must-revalidate"
+    assert 'updateViaCache: "none"' in asset.text
+
+    worker = client.get("/sw.js").text
+    assert "caches.match(request).then" in worker
+    assert "fetch(request, { cache: \"no-cache\" })" in worker
+    assert 'ai-control-gui0-v1' not in worker
