@@ -20,8 +20,9 @@ spec = importlib.util.spec_from_file_location(
 e = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(e)
 
-BASE = Path("/opt/ai-platform/releases/stage-m-8e6d21eff33d")
-BASE_SHA = "8e6d21eff33de73d84fdfbff43b952dd34db838c"
+RELEASES = Path("/opt/ai-platform/releases")
+INITIAL_BASE = RELEASES / "stage-m-8e6d21eff33d"
+INITIAL_BASE_SHA = "8e6d21eff33de73d84fdfbff43b952dd34db838c"
 STATE = Path("/var/lib/ai-platform/stage-o")
 TARGET_REVISION = "0005_crt_projection"
 CRT_TABLES = {
@@ -33,7 +34,7 @@ CRT_TABLES = {
 }
 
 _original_verify = e.verify_release
-e.D6 = BASE
+e.D6 = INITIAL_BASE
 e.STATE = STATE
 
 
@@ -52,6 +53,50 @@ def verify_release(path: Path):
 
 
 e.verify_release = lambda path, _stage=None: verify_release(path)
+
+
+def accepted_stage_o(path: Path, stamp: dict | None = None) -> dict:
+    stamp = stamp or verify_release(path)
+    require(stamp["stage"] == "O")
+    source_sha = stamp["source_git_sha"]
+    require(re.fullmatch(r"[0-9a-f]{40}", source_sha) is not None)
+    require(path == candidate_identity(source_sha))
+    evidence = e.read(STATE / source_sha / "accepted.json")
+    require(evidence["status"] == "PASS")
+    require(evidence["release_id"] == path.name)
+    require(evidence["source_sha"] == source_sha)
+    require(evidence["schema"] == TARGET_REVISION)
+    require(evidence["control_center_contract_version"] == 1)
+    return evidence
+
+
+def active_rollback_baseline() -> tuple[Path, dict]:
+    current = e.CURRENT.resolve(strict=True)
+    stamp = verify_release(current)
+    if current == INITIAL_BASE:
+        require(stamp["stage"] == "M")
+        require(stamp["source_git_sha"] == INITIAL_BASE_SHA)
+    else:
+        accepted_stage_o(current, stamp)
+    e.D6 = current
+    return current, stamp
+
+
+def baseline_release(baseline: dict) -> tuple[Path, dict]:
+    name = baseline["rollback"]
+    require(re.fullmatch(r"stage-[mo]-[A-Za-z0-9_.-]+", name) is not None)
+    rollback = (RELEASES / name).resolve(strict=True)
+    require(rollback.parent == RELEASES)
+    stamp = verify_release(rollback)
+    require(stamp["source_git_sha"] == baseline["rollback_sha"])
+    require(stamp["stage"] == baseline["rollback_stage"])
+    if rollback == INITIAL_BASE:
+        require(stamp["source_git_sha"] == INITIAL_BASE_SHA)
+    else:
+        accepted_stage_o(rollback, stamp)
+    require(e.digest(rollback / "metadata/SHA256SUMS") == baseline["rollback_checksums"])
+    e.D6 = rollback
+    return rollback, stamp
 
 
 def db_scalar(sql: str) -> str:
@@ -89,10 +134,8 @@ def text_fetch(url: str) -> tuple[int, str, dict]:
         )
 
 
-def preflight(cfg: dict) -> None:
-    require(e.CURRENT.resolve(strict=True) == BASE)
-    stamp = verify_release(BASE)
-    require(stamp["source_git_sha"] == BASE_SHA)
+def preflight(cfg: dict) -> tuple[Path, dict]:
+    rollback, stamp = active_rollback_baseline()
     require(schema_version() == TARGET_REVISION)
     require(crt_tables() == CRT_TABLES)
     e.preflight_runtime(cfg)
@@ -109,17 +152,18 @@ def preflight(cfg: dict) -> None:
     )
     e.hermes_state()
     e.media_preflight()
+    return rollback, stamp
 
 
 def candidate_identity(sha: str) -> Path:
     return Path("/opt/ai-platform/releases") / ("stage-o-" + sha[:12])
 
 
-def verify_client_sources(candidate: Path) -> None:
+def verify_client_sources(candidate: Path, rollback: Path) -> None:
     for source in e.CLIENTS.values():
         require(
             (candidate / "services/ai-bridge" / source).read_bytes()
-            == (BASE / "services/ai-bridge" / source).read_bytes()
+            == (rollback / "services/ai-bridge" / source).read_bytes()
         )
 
 
@@ -130,8 +174,8 @@ def atomic_current(target: Path) -> None:
 
 
 def switch(target: Path, candidate: Path, cfg: dict, baseline: dict) -> None:
-    require(e.CURRENT.resolve(strict=False) in (BASE, candidate))
-    verify_release(BASE)
+    rollback, _stamp = baseline_release(baseline)
+    require(e.CURRENT.resolve(strict=False) in (rollback, candidate))
     verify_release(candidate)
     require(e.clients() == baseline["clients"])
     require(schema_version() == TARGET_REVISION)
@@ -140,7 +184,7 @@ def switch(target: Path, candidate: Path, cfg: dict, baseline: dict) -> None:
     mutating = False
     healthy = False
     try:
-        e.quiesce(baseline, allow_gateway_unavailable=(target == BASE))
+        e.quiesce(baseline, allow_gateway_unavailable=(target == rollback))
         e.comfy_idle()
         require(
             e.run([
@@ -263,9 +307,10 @@ def smoke(
     require(schema_version() == TARGET_REVISION)
     require(crt_tables() == CRT_TABLES)
     active = target == candidate
-    platform_smoke(active)
-    evidence = control_center_smoke() if active else {"status": "ABSENT"}
-    if not active:
+    has_control_center = active or baseline["rollback_stage"] == "O"
+    platform_smoke(has_control_center)
+    evidence = control_center_smoke() if has_control_center else {"status": "ABSENT"}
+    if not has_control_center:
         control_center_absent()
     e.hermes_state()
     e.media_preflight()
@@ -283,7 +328,7 @@ def smoke(
 def recover_active_unaccepted_candidate(cfg: dict) -> None:
     """Rollback a prior Stage O candidate whose smoke failed before acceptance."""
     active = e.CURRENT.resolve(strict=True)
-    require(active != BASE and active.name.startswith("stage-o-"))
+    require(active.name.startswith("stage-o-"))
     stamp = verify_release(active)
     source_sha = stamp["source_git_sha"]
     require(re.fullmatch(r"[0-9a-f]{40}", source_sha) is not None)
@@ -291,26 +336,25 @@ def recover_active_unaccepted_candidate(cfg: dict) -> None:
     prior_state = STATE / source_sha
     baseline = e.read(prior_state / "baseline.json")
     installed = e.read(prior_state / "installed.json")
+    rollback, _rollback_stamp = baseline_release(baseline)
     require(baseline["source_sha"] == source_sha)
     require(baseline["candidate"] == active.name)
-    require(baseline["rollback"] == BASE.name)
-    require(baseline["rollback_sha"] == BASE_SHA)
     require(baseline["schema"] == TARGET_REVISION)
     require(installed["source_sha"] == source_sha)
     require(installed["candidate"] == active.name)
     require((prior_state / "20_cutover.json").is_file())
     require(not (prior_state / "accepted.json").exists())
     require(
-        e.digest(BASE / "metadata/SHA256SUMS") == baseline["rollback_checksums"]
-    )
-    require(
         e.digest(active / "metadata/SHA256SUMS") == installed["checksums"]
     )
 
-    switch(BASE, active, cfg, baseline)
-    rollback = prior_state / "rollback.json"
-    if not rollback.exists():
-        e.write_once(rollback, {"release_id": BASE.name, "recovery": True})
+    switch(rollback, active, cfg, baseline)
+    rollback_evidence = prior_state / "rollback.json"
+    if not rollback_evidence.exists():
+        e.write_once(
+            rollback_evidence,
+            {"release_id": rollback.name, "recovery": True},
+        )
     print("STAGE_O_RECOVERY_ROLLBACK=PASS")
 
 
@@ -329,7 +373,7 @@ def main(step: str) -> None:
         current = e.CURRENT.resolve(strict=False)
         if (
             step == "40_rollback"
-            and current != BASE
+            and current != INITIAL_BASE
             and current != candidate
             and current.name.startswith("stage-o-")
         ):
@@ -341,13 +385,14 @@ def main(step: str) -> None:
             return
 
         if step == "10_build_install":
-            preflight(cfg)
+            rollback, rollback_stamp = preflight(cfg)
             require(not state.exists() and not candidate.exists())
             require(not e.git_run(["status", "--porcelain"]))
             state.mkdir(mode=0o700)
             baseline = {
-                "rollback": BASE.name,
-                "rollback_sha": BASE_SHA,
+                "rollback": rollback.name,
+                "rollback_sha": rollback_stamp["source_git_sha"],
+                "rollback_stage": rollback_stamp["stage"],
                 "candidate": candidate.name,
                 "source_sha": sha,
                 "clients": e.clients(),
@@ -359,7 +404,7 @@ def main(step: str) -> None:
                     "systemctl", "show", "ai-bridge-analysis.timer",
                     "-p", "ActiveState", "--value",
                 ]),
-                "rollback_checksums": e.digest(BASE / "metadata/SHA256SUMS"),
+                "rollback_checksums": e.digest(rollback / "metadata/SHA256SUMS"),
                 "schema": schema_version(),
             }
             require(baseline["schema"] == TARGET_REVISION)
@@ -378,8 +423,8 @@ def main(step: str) -> None:
             stamp = verify_release(candidate)
             require(stamp["source_git_sha"] == sha)
             require(stamp["control_center_contract_version"] == "1")
-            verify_client_sources(candidate)
-            e.runtime(BASE, cfg, baseline)
+            verify_client_sources(candidate, rollback)
+            e.runtime(rollback, cfg, baseline)
             e.write_once(
                 state / "installed.json",
                 {
@@ -392,12 +437,8 @@ def main(step: str) -> None:
 
         baseline = e.read(state / "baseline.json")
         require(baseline["source_sha"] == sha)
-        require(baseline["rollback"] == BASE.name)
-        require(baseline["rollback_sha"] == BASE_SHA)
         require(baseline["schema"] == TARGET_REVISION)
-        require(
-            e.digest(BASE / "metadata/SHA256SUMS") == baseline["rollback_checksums"]
-        )
+        rollback, _rollback_stamp = baseline_release(baseline)
 
         installed = e.read(state / "installed.json")
         require(installed["source_sha"] == sha)
@@ -421,13 +462,13 @@ def main(step: str) -> None:
 
         if step == "40_rollback":
             require((state / "20_cutover.json").is_file())
-            switch(BASE, candidate, cfg, baseline)
-            e.write_once(state / "rollback.json", {"release_id": BASE.name})
+            switch(rollback, candidate, cfg, baseline)
+            e.write_once(state / "rollback.json", {"release_id": rollback.name})
             return
 
         if step == "50_rollback_smoke":
             require((state / "rollback.json").is_file())
-            smoke("rollback-smoke", BASE, candidate, cfg, baseline, state)
+            smoke("rollback-smoke", rollback, candidate, cfg, baseline, state)
             return
 
         if step == "60_reactivate":
