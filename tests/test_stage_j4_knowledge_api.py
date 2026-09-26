@@ -297,3 +297,31 @@ def test_ask_history_keeps_last_ten_and_reopens_full_response(tmp_path):
             assert len(provider.calls) == 12
 
     asyncio.run(run())
+
+
+def test_document_original_and_provenance_are_openable_inline(tmp_path):
+    async def run():
+        async with api_client(tmp_path) as (http, _runtimes, _provider, snapshot):
+            doc_id = snapshot.document.document_id
+
+            provenance = await http.get(
+                f"/api/v1/knowledge/documents/{doc_id}/provenance"
+            )
+            assert provenance.status_code == 200, provenance.text
+            source = provenance.json()["provenance"]
+            assert source["document_id"] == doc_id
+            assert source["direct_original"]["relationship"] == "exact_knowledge_document"
+            assert source["direct_original"]["media_kind"] == "text"
+            assert source["related_originals"] == []
+            assert source["provenance_policy"]["exact_relationships_only"] is True
+
+            original = await http.get(
+                f"/api/v1/knowledge/documents/{doc_id}/original"
+            )
+            assert original.status_code == 200, original.text
+            assert original.content.startswith(b"# Case")
+            assert original.headers["content-type"].startswith("text/markdown")
+            assert original.headers["content-disposition"].startswith("inline;")
+            assert original.headers["cache-control"] == "private, no-store"
+
+    asyncio.run(run())

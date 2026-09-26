@@ -40,13 +40,29 @@ _GET = (
     re.compile(r"^benchmarks/[A-Za-z0-9][A-Za-z0-9_.-]{0,127}/runs(?:/[A-Za-z0-9][A-Za-z0-9_.-]{0,127})?$"),
     re.compile(
         r"^knowledge/documents/[A-Za-z0-9][A-Za-z0-9_.-]{0,127}"
-        r"(?:/content)?$"
+        r"(?:/(?:content|original|provenance))?$"
+    ),
+    re.compile(
+        r"^ers/artifacts/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-"
+        r"[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-"
+        r"[0-9a-fA-F]{12}/content$"
     ),
 )
 _POST = {
     "knowledge/search",
     "knowledge/ask",
 }
+
+_EMBEDDABLE_SOURCE = (
+    re.compile(
+        r"^knowledge/documents/[A-Za-z0-9][A-Za-z0-9_.-]{0,127}/original$"
+    ),
+    re.compile(
+        r"^ers/artifacts/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-"
+        r"[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-"
+        r"[0-9a-fA-F]{12}/content$"
+    ),
+)
 
 _SECURITY_HEADERS = {
     "Content-Security-Policy": (
@@ -60,6 +76,20 @@ _SECURITY_HEADERS = {
         "object-src 'none'; "
         "base-uri 'self'; "
         "frame-ancestors 'none'"
+    ),
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+}
+
+_SOURCE_CONTENT_SECURITY_HEADERS = {
+    "Content-Security-Policy": (
+        "default-src 'none'; "
+        "script-src 'none'; "
+        "style-src 'none'; "
+        "object-src 'none'; "
+        "base-uri 'none'; "
+        "form-action 'none'; "
+        "frame-ancestors 'self'"
     ),
     "Referrer-Policy": "no-referrer",
     "X-Content-Type-Options": "nosniff",
@@ -89,6 +119,10 @@ def _api_allowed(method: str, path: str) -> bool:
     if method == "GET":
         return any(pattern.fullmatch(path) for pattern in _GET)
     return method == "POST" and path in _POST
+
+
+def _embeddable_source(path: str) -> bool:
+    return any(pattern.fullmatch(path) for pattern in _EMBEDDABLE_SOURCE)
 
 
 def create_control_center_app(
@@ -141,7 +175,11 @@ def create_control_center_app(
             for key, value in upstream.headers.items()
             if key.lower() in _ALLOWED_RESPONSE_HEADERS
         }
-        response_headers.update(_SECURITY_HEADERS)
+        response_headers.update(
+            _SOURCE_CONTENT_SECURITY_HEADERS
+            if _embeddable_source(api_path)
+            else _SECURITY_HEADERS
+        )
         response_headers["Cache-Control"] = "no-store"
         return Response(
             content=upstream.content,
