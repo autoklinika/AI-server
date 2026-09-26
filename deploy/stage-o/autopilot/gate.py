@@ -85,7 +85,7 @@ def text_fetch(url: str) -> tuple[int, str, dict]:
         return (
             response.status,
             response.read().decode("utf-8", errors="replace"),
-            dict(response.headers),
+            {key.lower(): value for key, value in response.headers.items()},
         )
 
 
@@ -183,7 +183,7 @@ def control_center_smoke() -> dict:
     bridge = bridge_base()
     status, html, headers = text_fetch(bridge + "/control/")
     require(status == 200 and "AI Control Center" in html)
-    require("frame-ancestors 'none'" in headers.get("Content-Security-Policy", ""))
+    require("frame-ancestors 'none'" in headers.get("content-security-policy", ""))
 
     status, javascript, _headers = text_fetch(bridge + "/control/assets/app.js")
     require(status == 200)
@@ -280,6 +280,40 @@ def smoke(
     )
 
 
+def recover_active_unaccepted_candidate(cfg: dict) -> None:
+    """Rollback a prior Stage O candidate whose smoke failed before acceptance."""
+    active = e.CURRENT.resolve(strict=True)
+    require(active != BASE and active.name.startswith("stage-o-"))
+    stamp = verify_release(active)
+    source_sha = stamp["source_git_sha"]
+    require(re.fullmatch(r"[0-9a-f]{40}", source_sha) is not None)
+
+    prior_state = STATE / source_sha
+    baseline = e.read(prior_state / "baseline.json")
+    installed = e.read(prior_state / "installed.json")
+    require(baseline["source_sha"] == source_sha)
+    require(baseline["candidate"] == active.name)
+    require(baseline["rollback"] == BASE.name)
+    require(baseline["rollback_sha"] == BASE_SHA)
+    require(baseline["schema"] == TARGET_REVISION)
+    require(installed["source_sha"] == source_sha)
+    require(installed["candidate"] == active.name)
+    require((prior_state / "20_cutover.json").is_file())
+    require(not (prior_state / "accepted.json").exists())
+    require(
+        e.digest(BASE / "metadata/SHA256SUMS") == baseline["rollback_checksums"]
+    )
+    require(
+        e.digest(active / "metadata/SHA256SUMS") == installed["checksums"]
+    )
+
+    switch(BASE, active, cfg, baseline)
+    rollback = prior_state / "rollback.json"
+    if not rollback.exists():
+        e.write_once(rollback, {"release_id": BASE.name, "recovery": True})
+    print("STAGE_O_RECOVERY_ROLLBACK=PASS")
+
+
 def main(step: str) -> None:
     cfg = e.config()
     sha = e.git_run(["rev-parse", "HEAD"])
@@ -291,6 +325,16 @@ def main(step: str) -> None:
     STATE.mkdir(mode=0o700, parents=True, exist_ok=True)
     with (STATE / "executor.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+        current = e.CURRENT.resolve(strict=False)
+        if (
+            step == "40_rollback"
+            and current != BASE
+            and current != candidate
+            and current.name.startswith("stage-o-")
+        ):
+            recover_active_unaccepted_candidate(cfg)
+            return
 
         if step == "00_preflight":
             preflight(cfg)
@@ -376,7 +420,7 @@ def main(step: str) -> None:
             return
 
         if step == "40_rollback":
-            require((state / "candidate-smoke.json").is_file())
+            require((state / "20_cutover.json").is_file())
             switch(BASE, candidate, cfg, baseline)
             e.write_once(state / "rollback.json", {"release_id": BASE.name})
             return
