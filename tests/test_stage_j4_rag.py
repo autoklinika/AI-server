@@ -42,6 +42,7 @@ def test_rag_prompt_contains_only_bounded_ranked_sources():
     assert "S3" not in prompt.messages[1]["content"]
     assert "repo://case/1.md" in prompt.messages[1]["content"]
     assert prompt.response_schema["type"] == "object"
+    assert "Odpowiadaj użytkownikowi po polsku" in prompt.messages[0]["content"]
 
 
 def test_rag_response_requires_per_claim_known_citations():

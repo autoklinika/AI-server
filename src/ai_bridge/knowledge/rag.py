@@ -6,6 +6,7 @@ import json
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from ai_bridge.providers.contracts import KnowledgeResult
+from ai_bridge.response_language import apply_polish_response_policy
 
 
 class RAGClaim(BaseModel):
@@ -103,10 +104,10 @@ def build_rag_prompt(
     )
     user = f"QUESTION:\n{question.strip()}\n\nSOURCES:\n{source_text}"
     return RAGPrompt(
-        messages=[
+        messages=apply_polish_response_policy([
             {"role": "system", "content": system},
             {"role": "user", "content": user},
-        ],
+        ]),
         response_schema=RAGProviderPayload.model_json_schema(),
         sources=tuple(chosen),
     )
