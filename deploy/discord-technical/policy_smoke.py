@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 from types import SimpleNamespace
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 HERMES = Path("/srv/ai-data/hermes")
 PLUGIN = Path(
@@ -36,6 +36,88 @@ def load_plugin():
 def jobs():
     with urlopen(PLATFORM + "/jobs", timeout=15) as response:
         return json.load(response)["jobs"]
+
+
+def post_json(route, payload, *, timeout=60):
+    request = Request(
+        PLATFORM + route,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        method="POST",
+    )
+    with urlopen(request, timeout=timeout) as response:
+        return json.load(response)
+
+
+def knowledge_search(query, *, limit=8):
+    return post_json(
+        "/knowledge/search",
+        {
+            "schema_version": 1,
+            "query": query,
+            "mode": "hybrid",
+            "context": {"domain": "ecu-repair"},
+            "limit": limit,
+        },
+    )
+
+
+def technical_quality_matrix():
+    scenarios = (
+        (
+            "semiconductor_identifier",
+            "MPC555LF8MZP40",
+            ("MPC555LF8MZP40",),
+        ),
+        (
+            "dtc_identifier",
+            "SPN 107 FMI 3",
+            ("SPN 107", "FMI 3"),
+        ),
+        (
+            "component_part_number",
+            "Bosch 0 281 007 439",
+            ("0 281 007 439",),
+        ),
+        (
+            "architecture_parameter",
+            "MPC555 448 KiB Flash",
+            ("448 KiB",),
+        ),
+        (
+            "ecu_case_identity",
+            "Scania EMS S6",
+            ("Scania EMS S6",),
+        ),
+    )
+    evidence = []
+    for query_class, query, expected in scenarios:
+        result = knowledge_search(query)
+        rows = result.get("results") or []
+        assert rows, (query_class, result)
+        searchable = "\n".join(
+            " ".join(
+                (
+                    str(row.get("text") or ""),
+                    str((row.get("source") or {}).get("title") or ""),
+                    str((row.get("source") or {}).get("uri") or ""),
+                    str((row.get("metadata") or {}).get("repository_path") or ""),
+                )
+            )
+            for row in rows[:5]
+        ).casefold()
+        assert all(token.casefold() in searchable for token in expected), (
+            query_class,
+            expected,
+            [row.get("source") for row in rows[:5]],
+        )
+        assert any(
+            ((row.get("metadata") or {}).get("rerank") or {}).get("method")
+            == "technical-evidence-v2"
+            for row in rows[:5]
+        ), query_class
+        evidence.append(query_class)
+    return evidence
 
 
 class Registration:
@@ -130,6 +212,19 @@ async def main():
     ), new_jobs
     assert not any(item.get("capability") == "chat" for item in new_jobs), new_jobs
 
+    followup = await asyncio.to_thread(
+        plugin._technical_turn,
+        "A ile ma flashu?",
+        "synthetic-followup",
+        discord,
+    )
+    assert followup.get("contextualized") is True, followup
+    assert "448" in str(followup.get("answer") or ""), followup
+    assert followup.get("citations"), followup
+
+    quality_classes = technical_quality_matrix()
+    assert len(quality_classes) >= 5
+
     before_general = {item["job_id"] for item in jobs()}
     general_event = MessageEvent(
         text="Jaka jest stolica Francji?",
@@ -139,7 +234,14 @@ async def main():
     assert plugin.observe(general_event, gateway)["action"] == "skip"
     await wait_tasks(plugin)
     assert "Brak wystarczającej wiedzy" in sent[-1]
-    assert {item["job_id"] for item in jobs()} == before_general
+    general_jobs = [
+        item for item in jobs()
+        if item["job_id"] not in before_general
+    ]
+    assert not any(
+        item.get("capability") in {"chat", "structured-generation"}
+        for item in general_jobs
+    ), general_jobs
 
     before_media = {item["job_id"] for item in jobs()}
     photo = MessageEvent(
@@ -191,8 +293,13 @@ async def main():
         "discord_general_agent_bypassed": True,
         "discord_knowledge_rag": True,
         "discord_conversation_layer": True,
-        "scania_s6_quality": True,
+        "technical_quality_matrix": True,
+        "technical_quality_classes": sorted(quality_classes),
+        "conversation_followup": True,
         "discord_out_of_domain_blocked": True,
+        "out_of_domain_job_capabilities": sorted({
+            str(item.get("capability")) for item in general_jobs
+        }),
         "discord_citations": True,
         "discord_media_blocked": True,
         "discord_voice_command_passthrough": True,

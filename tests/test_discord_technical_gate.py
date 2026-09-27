@@ -41,7 +41,13 @@ def test_policy_smoke_uses_real_knowledge_and_checks_channel_contract():
     assert 'item.get("capability") == "chat"' in text
     assert "telegram_passthrough" in text
     assert "discord_conversation_layer" in text
-    assert "scania_s6_quality" in text
+    assert "technical_quality_matrix" in text
+    assert "conversation_followup" in text
+    assert "semiconductor_identifier" in text
+    assert "dtc_identifier" in text
+    assert "component_part_number" in text
+    assert "architecture_parameter" in text
+    assert "ecu_case_identity" in text
     assert "discord_out_of_domain_blocked" in text
     assert "discord_media_blocked" in text
     assert "discord_voice_command_passthrough" in text
