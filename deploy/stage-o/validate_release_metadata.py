@@ -22,6 +22,7 @@ base.VERSIONS = {
     "ers_domain_contract_version": "1",
     "crt_domain_contract_version": "1",
     "control_center_contract_version": "1",
+    "technical_conversation_contract_version": "1",
 }
 
 def validate(path: Path):

@@ -62,7 +62,7 @@ class KnowledgeRuntime(AbstractContextManager["KnowledgeRuntime"]):
             results=reranked,
             backend_metadata={
                 **result.backend_metadata,
-                "reranker": "technical-evidence-v1",
+                "reranker": "technical-evidence-v2",
             },
         )
 

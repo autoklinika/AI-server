@@ -13,6 +13,7 @@ KNOWLEDGE_CONTRACT="${RELEASE_KNOWLEDGE_CONTRACT:-}"
 ERS_CONTRACT="${RELEASE_ERS_CONTRACT:-}"
 CRT_CONTRACT="${RELEASE_CRT_CONTRACT:-}"
 CONTROL_CENTER_CONTRACT="${RELEASE_CONTROL_CENTER_CONTRACT:-}"
+TECHNICAL_CONVERSATION_CONTRACT="${RELEASE_TECHNICAL_CONVERSATION_CONTRACT:-}"
 EXTRA_REQUIREMENTS="${RELEASE_EXTRA_REQUIREMENTS:-}"
 MIGRATION_TOOLING="${RELEASE_MIGRATION_TOOLING:-}"
 PYTHON_BIN="${PYTHON_BIN:-python3.14}"
@@ -108,7 +109,7 @@ ai_gateway:
 
 hermes:
   source_git_sha: 79445a496c86a19332ad786494b8384d2167e2d0
-  integration: ai-platform-messaging-1.1.0
+  integration: ai-platform-messaging-1.2.0
 
 provider_model_config:
   llm_provider: OllamaAdapter
@@ -132,6 +133,9 @@ if [[ -n "$ERS_CONTRACT" ]]; then
 fi
 if [[ -n "$CONTROL_CENTER_CONTRACT" ]]; then
   sed -i "/    platform_api: 1/a\\    control_center: $CONTROL_CENTER_CONTRACT" "$DEST/metadata/release-manifest.yaml"
+fi
+if [[ -n "$TECHNICAL_CONVERSATION_CONTRACT" ]]; then
+  sed -i "/    platform_api: 1/a\\    technical_conversation: $TECHNICAL_CONVERSATION_CONTRACT" "$DEST/metadata/release-manifest.yaml"
 fi
 
 echo "===== AI BRIDGE VENV ====="
@@ -178,6 +182,9 @@ if [[ -n "$ERS_CONTRACT" ]]; then
 fi
 if [[ -n "$CONTROL_CENTER_CONTRACT" ]]; then
   printf "control_center_contract_version=%s\n" "$CONTROL_CENTER_CONTRACT" >> "$DEST/RELEASE"
+fi
+if [[ -n "$TECHNICAL_CONVERSATION_CONTRACT" ]]; then
+  printf "technical_conversation_contract_version=%s\n" "$TECHNICAL_CONVERSATION_CONTRACT" >> "$DEST/RELEASE"
 fi
 
 if [[ "$STAGE" == "M" || "$STAGE" == "O" ]]; then

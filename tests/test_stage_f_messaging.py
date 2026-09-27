@@ -344,12 +344,25 @@ def test_discord_authorization_error_fails_closed(plugin):
     }
 
 
-def test_discord_knowledge_payload_is_ecu_repair_hybrid(plugin):
-    payload = plugin._knowledge_payload("Jak sprawdzić SPN 107 FMI 3?", "abc")
-    assert payload["query"] == "Jak sprawdzić SPN 107 FMI 3?"
+def test_discord_conversation_payload_is_ecu_repair_hybrid(plugin):
+    event = _messaging_event(
+        "discord",
+        text="Jak sprawdzić SPN 107 FMI 3?",
+        chat_id="technical",
+        thread_id="thread-7",
+    )
+    payload = plugin._technical_payload(
+        "Jak sprawdzić SPN 107 FMI 3?",
+        "abc",
+        event.source,
+    )
+    assert payload["message"] == "Jak sprawdzić SPN 107 FMI 3?"
     assert payload["mode"] == "hybrid"
+    assert payload["client_id"] == "discord"
+    assert payload["conversation_id"].startswith("conv_discord_")
     assert payload["context"]["domain"] == "ecu-repair"
     assert payload["context"]["request_id"] == "discord_abc"
+    assert payload["context"]["session_id"] == payload["conversation_id"]
     assert payload["priority_class"] == "interactive"
 
 
@@ -413,7 +426,7 @@ def test_discord_technical_turn_uses_knowledge_and_formats_citations(plugin, mon
             ],
         }
 
-    monkeypatch.setattr(plugin, "_knowledge_ask", knowledge)
+    monkeypatch.setattr(plugin, "_technical_turn", lambda query, request_id, source: knowledge(query, request_id))
     monkeypatch.setattr(plugin, "_SOURCE_BASE_URL", "http://ai-server:8080/control")
 
     asyncio.run(plugin.discord_technical_turn(event, gateway, "req1"))
@@ -453,8 +466,8 @@ def test_discord_photo_is_blocked_without_knowledge_or_media_dispatch(plugin, mo
     event.source.platform = platform
     monkeypatch.setattr(
         plugin,
-        "_knowledge_ask",
-        lambda *a, **k: pytest.fail("Discord photo must not reach Knowledge/LLM"),
+        "_technical_turn",
+        lambda *a, **k: pytest.fail("Discord photo must not reach Technical Conversation/LLM"),
     )
 
     asyncio.run(plugin.discord_technical_turn(event, gateway, "req-photo"))
@@ -509,7 +522,7 @@ def test_discord_voice_turn_speaks_answer_but_not_source_urls(plugin, monkeypatc
 
     monkeypatch.setattr(
         plugin,
-        "_knowledge_ask",
+        "_technical_turn",
         lambda *a, **k: {
             "answer": "Kod błędu to SPN 107 FMI 3.",
             "insufficient_context": False,
@@ -559,7 +572,7 @@ def test_stage_f_contract_is_channel_specific_after_discord_technical_cutover():
     assert "discord_technical_rag" in gate
     assert "len(evidence['media']) == 2" in gate
     assert "technical_discord = e.discord_technical_policy_active()" in gate
-    assert "ai-platform-messaging-1.1.0" in runtime_builder
+    assert "ai-platform-messaging-1.2.0" in runtime_builder
 
 
 def test_discord_source_link_falls_back_to_canonical_github_document(plugin, monkeypatch):

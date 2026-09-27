@@ -1,5 +1,5 @@
 name: ai-platform-messaging
-version: 1.1.0
-description: AI Platform admission with Discord technical-only Knowledge RAG and Telegram media compatibility
+version: 1.2.0
+description: AI Platform Technical Conversation adapter for Discord with Knowledge RAG and Telegram compatibility
 hooks:
   - pre_gateway_dispatch

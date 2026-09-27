@@ -9,7 +9,7 @@ from ai_bridge.knowledge.backends import (
 from ai_bridge.knowledge.chunking import MarkdownChunker
 from ai_bridge.knowledge.content_store import FileContentStore
 from ai_bridge.knowledge.ingestion import MarkdownIngestRequest, MarkdownKnowledgeIngestor
-from ai_bridge.knowledge.storage.repository import KnowledgeRepository
+from ai_bridge.knowledge.storage.repository import CanonicalSearchChunk, KnowledgeRepository
 from ai_bridge.providers.contracts import (
     KnowledgeQuery,
     KnowledgeResult,
@@ -171,3 +171,23 @@ def test_hybrid_rrf_promotes_lexical_exact_evidence_without_exposing_backend(tmp
     assert exact.backend == "knowledge-primary"
     assert "0 281 007 439" in exact.results[0].text
     database.dispose()
+
+
+def test_lexical_rank_uses_document_title_and_repository_path():
+    case = CanonicalSearchChunk(
+        chunk_id="case",
+        text="Badane ECU mają wspólny hardware i MCU MPC555LF8MZP40.",
+        domain="ecu-repair",
+        namespace="ecu-repair",
+        source_type="github",
+        source_uri="repo://cases/CASE-0002/README.md",
+        source_title="Scania EMS S6 — wiedza warsztatowa",
+        metadata={"repository_path": "ecus/scania/EMS-S6/README.md"},
+    )
+    ranked = CanonicalLexicalKnowledgeBackend._rank(
+        "Scania S6",
+        (case,),
+        exact=False,
+    )
+    assert ranked and ranked[0][1].chunk_id == "case"
+    assert ranked[0][0] > 0

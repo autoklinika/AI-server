@@ -100,10 +100,17 @@ async def main():
         platform=Platform.DISCORD, chat_id="synthetic-discord",
         thread_id="9001", user_id="synthetic",
     )
+    assert plugin._PLATFORM_TURN_URL.endswith("/api/v1/conversation/turn")
+    conversation_id = plugin._conversation_id(discord)
+    assert conversation_id.startswith("conv_discord_")
+    payload = plugin._technical_payload("test", "synthetic", discord)
+    assert payload["conversation_id"] == conversation_id
+    assert payload["context"]["session_id"] == conversation_id
+    assert payload["client_id"] == "discord"
 
     before = {item["job_id"] for item in jobs()}
     text_event = MessageEvent(
-        text="Jaki SPN był przy naprawie Hatz?",
+        text="Jaki procesor jest w sterowniku Scania S6?",
         source=discord, message_id="synthetic-1",
     )
     assert plugin.observe(text_event, gateway) == {
@@ -111,7 +118,8 @@ async def main():
     }
     await wait_tasks(plugin)
     text_reply = "\n".join(sent)
-    assert "SPN" in text_reply and "**Źródła:**" in text_reply and "[S" in text_reply
+    assert "MPC555LF8MZP40" in text_reply
+    assert "**Źródła:**" in text_reply and "[S" in text_reply
 
     new_jobs = [item for item in jobs() if item["job_id"] not in before]
     assert any(
@@ -121,6 +129,17 @@ async def main():
         for item in new_jobs
     ), new_jobs
     assert not any(item.get("capability") == "chat" for item in new_jobs), new_jobs
+
+    before_general = {item["job_id"] for item in jobs()}
+    general_event = MessageEvent(
+        text="Jaka jest stolica Francji?",
+        source=discord,
+        message_id="synthetic-general",
+    )
+    assert plugin.observe(general_event, gateway)["action"] == "skip"
+    await wait_tasks(plugin)
+    assert "Brak wystarczającej wiedzy" in sent[-1]
+    assert {item["job_id"] for item in jobs()} == before_general
 
     before_media = {item["job_id"] for item in jobs()}
     photo = MessageEvent(
@@ -153,7 +172,7 @@ async def main():
     plugin._play_voice_text = capture_voice
     try:
         voice = MessageEvent(
-            text="Jaki był kod błędu?", source=discord,
+            text="Jaki SPN był przy naprawie Hatz?", source=discord,
             message_type=MessageType.VOICE, message_id="synthetic-5",
         )
         assert plugin.observe(voice, gateway)["action"] == "skip"
@@ -171,6 +190,9 @@ async def main():
         "telegram_passthrough": True,
         "discord_general_agent_bypassed": True,
         "discord_knowledge_rag": True,
+        "discord_conversation_layer": True,
+        "scania_s6_quality": True,
+        "discord_out_of_domain_blocked": True,
         "discord_citations": True,
         "discord_media_blocked": True,
         "discord_voice_command_passthrough": True,

@@ -7,7 +7,7 @@ It does not restart AI Gateway, AI Bridge, Ollama or ComfyUI.
 
 - Telegram remains on the existing Hermes path.
 - Authorized Discord text/voice is intercepted before the general Hermes agent.
-- Discord answers come only from Platform API `/api/v1/knowledge/ask` with
+- Discord answers come only from Platform API `/api/v1/conversation/turn`, which uses Knowledge RAG with
   `context.domain=ecu-repair`.
 - Discord photo/video/media and general Hermes commands are blocked.
 - Native `/voice` control remains available.

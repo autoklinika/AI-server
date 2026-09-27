@@ -28,6 +28,7 @@ from ai_bridge.domains.ers.storage.artifact_repository import (
 from ai_bridge.domains.ers.storage.repository import ErsCaseNotFound, ErsCaseRepository
 from ai_bridge.platform.agents import agents_snapshot
 from ai_bridge.platform.knowledge_history import KnowledgeAskHistory
+from ai_bridge.platform.technical_conversation import TechnicalConversationStore
 from ai_bridge.gateway.admission import WorkloadBinding
 from ai_bridge.gateway.jobs import JobLifecycle, JobMetadata
 from ai_bridge.gateway.priority import PriorityClass, priority_for_class
@@ -63,7 +64,7 @@ CONTROL_CENTER_APPS = (
         "name": "Knowledge",
         "route": "/apps/knowledge",
         "status": "ready",
-        "capabilities": ("knowledge.search", "knowledge.ask", "knowledge.history.read", "document.read"),
+        "capabilities": ("knowledge.search", "knowledge.ask", "knowledge.history.read", "conversation.technical.turn", "document.read"),
         "exposure": {"gui": True, "agent": True, "mcp": True},
     },
     {
@@ -158,6 +159,20 @@ class KnowledgeAskRequest(KnowledgeSearchRequest):
     priority_class: Literal["infrastructure", "interactive-high", "interactive", "normal",
                             "background", "maintenance"] = "interactive"
     timeout_seconds: float = Field(default=300, gt=0, le=600)
+    require_grounding_signal: bool = False
+
+
+class TechnicalConversationTurnRequest(Contract):
+    schema_version: Literal[1] = 1
+    context: Context = Field(default_factory=Context)
+    conversation_id: ID | None = None
+    client_id: ID = "api"
+    message: str = Field(min_length=1, max_length=8192)
+    mode: Literal["semantic", "hybrid", "auto"] = "hybrid"
+    limit: int = Field(default=8, ge=1, le=20)
+    priority_class: Literal["infrastructure", "interactive-high", "interactive", "normal",
+                            "background", "maintenance"] = "interactive"
+    timeout_seconds: float = Field(default=300, gt=0, le=600)
 
 
 class APIError(Exception):
@@ -197,7 +212,12 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
     benchmark_catalog = BenchmarkCatalog()
     metrics = PlatformRequestMetrics()
     knowledge_history = KnowledgeAskHistory(limit=10)
+    technical_conversations = TechnicalConversationStore(
+        max_sessions=128,
+        turns_per_session=12,
+    )
     api.state.observability = metrics
+    api.state.technical_conversations = technical_conversations
     api.state.knowledge_history = knowledge_history
 
     def error(request, status, code, retryable=False):
@@ -300,6 +320,19 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
             limit=body.limit,
             context=body.context.model_dump(exclude_none=True),
         )
+
+    def technical_grounding_sufficient(results) -> bool:
+        for hit in results[:8]:
+            evidence = hit.metadata.get("rerank") or {}
+            if (
+                float(evidence.get("evidence_token_coverage") or 0) >= 0.25
+                or float(evidence.get("source_token_coverage") or 0) >= 0.25
+                or float(evidence.get("identifier_coverage") or 0) > 0
+                or bool(evidence.get("phrase_match"))
+                or bool(evidence.get("source_phrase_match"))
+            ):
+                return True
+        return False
 
     def public_knowledge_result(hit):
         allowed_metadata = {
@@ -410,18 +443,29 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
     @api.post("/knowledge/ask")
     async def knowledge_ask(body: KnowledgeAskRequest, request: Request):
         query, retrieval = await run_knowledge_search(body, request)
-        if not retrieval.results:
+        grounding_rejected = (
+            body.require_grounding_signal
+            and bool(retrieval.results)
+            and not technical_grounding_sufficient(retrieval.results)
+        )
+        if not retrieval.results or grounding_rejected:
             result_payload = {
                 "answer": "Brak wystarczającej wiedzy w wybranym zakresie.",
                 "claims": [],
                 "insufficient_context": True,
-                "insufficiency_reason": "Brak wyników retrieval w wybranym zakresie.",
+                "insufficiency_reason": (
+                    "Brak wystarczająco trafnych źródeł technicznych w wybranym zakresie."
+                    if grounding_rejected
+                    else "Brak wyników retrieval w wybranym zakresie."
+                ),
                 "citations": [],
                 "retrieval": {
                     "mode": body.mode,
                     "backend": retrieval.backend,
-                    "result_count": 0,
+                    "result_count": len(retrieval.results),
                     "duration_ms": retrieval.duration_ms,
+                    "reranker": retrieval.backend_metadata.get("reranker"),
+                    "grounding_guard": "rejected" if grounding_rejected else "empty",
                 },
                 "execution": None,
             }
@@ -526,6 +570,60 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
             response=result_payload,
         )
         return envelope(request, **result_payload)
+
+    @api.post("/conversation/turn")
+    async def technical_conversation_turn(
+        body: TechnicalConversationTurnRequest,
+        request: Request,
+    ):
+        if (
+            body.conversation_id
+            and body.context.session_id
+            and body.conversation_id != body.context.session_id
+        ):
+            raise APIError(400, "invalid_request")
+        prepared = technical_conversations.prepare(
+            conversation_id=body.conversation_id or body.context.session_id,
+            message=body.message,
+        )
+        context = body.context.model_copy(update={"session_id": prepared.conversation_id})
+        response = await knowledge_ask(
+            KnowledgeAskRequest(
+                context=context,
+                query=prepared.retrieval_query,
+                mode=body.mode,
+                limit=body.limit,
+                priority_class=body.priority_class,
+                timeout_seconds=body.timeout_seconds,
+                require_grounding_signal=True,
+            ),
+            request,
+        )
+        turn = technical_conversations.add_turn(
+            conversation_id=prepared.conversation_id,
+            user_message=body.message,
+            response=response,
+            client_id=body.client_id,
+            retrieval_query=prepared.retrieval_query,
+        )
+        return {
+            **response,
+            **turn,
+            "client_id": body.client_id,
+            "contextualized": prepared.retrieval_query != body.message,
+        }
+
+    @api.get("/conversation/{conversation_id}")
+    async def technical_conversation_detail(conversation_id: ID, request: Request):
+        try:
+            conversation = technical_conversations.get(conversation_id)
+        except KeyError:
+            raise APIError(404, "not_found") from None
+        return envelope(
+            request,
+            conversation=conversation,
+            retention=technical_conversations.retention(),
+        )
 
     @api.get("/knowledge/history")
     async def knowledge_history_list(request: Request):

@@ -214,10 +214,10 @@ def candidate_contract():
     require(CANDIDATE.is_dir(), "candidate plugin missing")
     source = (CANDIDATE / "__init__.py").read_text(encoding="utf-8")
     manifest = (CANDIDATE / "plugin.yaml").read_text(encoding="utf-8")
-    require("version: 1.1.0" in manifest, "candidate manifest version mismatch")
+    require("version: 1.2.0" in manifest, "candidate manifest version mismatch")
     for marker in (
         "discord-technical-only",
-        "/api/v1/knowledge/ask",
+        "/api/v1/conversation/turn",
         "general Hermes agent",
         "Foto, wideo i pozostałe załączniki są wyłączone",
         'if _safe_command(event) == "voice"',
@@ -327,6 +327,9 @@ def run_policy_smoke(source_sha, name):
         "telegram_passthrough",
         "discord_general_agent_bypassed",
         "discord_knowledge_rag",
+        "discord_conversation_layer",
+        "scania_s6_quality",
+        "discord_out_of_domain_blocked",
         "discord_citations",
         "discord_media_blocked",
         "discord_voice_command_passthrough",
@@ -393,7 +396,7 @@ def finalize(source_sha):
     write_once(state / "accepted.json", {
         "source_sha": source_sha,
         "status": "PASS",
-        "plugin_version": "1.1.0",
+        "plugin_version": "1.2.0",
         "candidate_hashes": hashes(CANDIDATE),
         "telegram_unchanged": True,
         "discord_policy": "technical-knowledge-only",

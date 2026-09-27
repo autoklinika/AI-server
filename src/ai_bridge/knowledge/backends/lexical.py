@@ -29,6 +29,16 @@ def _tokens(text: str) -> tuple[str, ...]:
     return tuple(token.casefold() for token in _TOKEN.findall(text))
 
 
+def _source_text(item: CanonicalSearchChunk) -> str:
+    fields = (
+        item.source_title or "",
+        item.source_uri or "",
+        str(item.metadata.get("repository_path") or ""),
+        str(item.metadata.get("section") or ""),
+    )
+    return " ".join(value for value in fields if value)
+
+
 class CanonicalLexicalKnowledgeBackend:
     """Exact/keyword retrieval over current canonical chunks."""
 
@@ -59,7 +69,7 @@ class CanonicalLexicalKnowledgeBackend:
             capabilities=("exact", "keyword", "metadata-filtering", "source-attribution"),
             models=(),
             status=health.status,
-            metadata={"scoring": "bm25-canonical-v1"},
+            metadata={"scoring": "bm25-canonical-v2"},
         )
 
     def search(self, query: KnowledgeQuery) -> KnowledgeSearchResult:
@@ -90,12 +100,13 @@ class CanonicalLexicalKnowledgeBackend:
             )
             for score, item in ranked[:query.limit]
         )
+
         return KnowledgeSearchResult(
             request_id=query.request_id,
             results=results,
             backend=self.logical_backend_id,
             duration_ms=(monotonic() - started) * 1000.0,
-            backend_metadata={"scoring": "bm25-canonical-v1"},
+            backend_metadata={"scoring": "bm25-canonical-v2"},
         )
 
     @staticmethod
@@ -129,40 +140,62 @@ class CanonicalLexicalKnowledgeBackend:
             return []
 
         tokenized = [Counter(_tokens(item.text)) for item in candidates]
+        source_texts = [_source_text(item) for item in candidates]
+        source_tokenized = [Counter(_tokens(value)) for value in source_texts]
         lengths = [sum(counter.values()) for counter in tokenized]
         avgdl = sum(lengths) / max(1, len(lengths))
         document_frequency = {
-            term: sum(term in counter for counter in tokenized)
+            term: sum(
+                term in body or term in source
+                for body, source in zip(tokenized, source_tokenized, strict=True)
+            )
             for term in set(query_terms)
         }
         folded_query = " ".join(query_text.casefold().split())
         scored: list[tuple[float, CanonicalSearchChunk]] = []
 
-        for item, counts, length in zip(candidates, tokenized, lengths, strict=True):
+        for item, counts, source_counts, source_text, length in zip(
+            candidates, tokenized, source_tokenized, source_texts, lengths, strict=True
+        ):
             folded_text = " ".join(item.text.casefold().split())
+            folded_source = " ".join(source_text.casefold().split())
             phrase_match = folded_query in folded_text
+            source_phrase_match = folded_query in folded_source
             if exact and not (
-                phrase_match or all(term in counts for term in query_terms)
+                phrase_match
+                or source_phrase_match
+                or all(term in counts or term in source_counts for term in query_terms)
             ):
                 continue
 
             score = 0.0
             for term in query_terms:
                 tf = counts.get(term, 0)
-                if not tf:
+                source_tf = source_counts.get(term, 0)
+                if not tf and not source_tf:
                     continue
                 df = document_frequency[term]
                 idf = math.log(1.0 + (len(candidates) - df + 0.5) / (df + 0.5))
-                k1 = 1.2
-                b = 0.75
-                denominator = tf + k1 * (1.0 - b + b * length / max(avgdl, 1.0))
-                term_score = idf * (tf * (k1 + 1.0)) / denominator
-                if any(char.isdigit() for char in term):
-                    term_score *= 1.35
-                score += term_score
+                if tf:
+                    k1 = 1.2
+                    b = 0.75
+                    denominator = tf + k1 * (
+                        1.0 - b + b * length / max(avgdl, 1.0)
+                    )
+                    term_score = idf * (tf * (k1 + 1.0)) / denominator
+                    if any(char.isdigit() for char in term):
+                        term_score *= 1.35
+                    score += term_score
+                if source_tf:
+                    source_score = idf * min(source_tf, 3) * 1.15
+                    if any(char.isdigit() for char in term):
+                        source_score *= 1.25
+                    score += source_score
 
             if phrase_match:
                 score += 5.0 if exact else 1.5
+            if source_phrase_match:
+                score += 5.5 if exact else 2.0
             if score > 0:
                 scored.append((score, item))
 

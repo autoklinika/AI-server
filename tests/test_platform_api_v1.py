@@ -80,7 +80,7 @@ def test_v1_contract_and_provider_wire_boundary():
             assert 'release' in operations and 'storage' in operations and 'backup' in operations
             apps = (await http.get('/api/v1/apps')).json()['apps']
             assert [item['id'] for item in apps] == ['knowledge', 'benchmarks', 'ers', 'observability', 'system-map', 'incidents']
-            assert apps[0]['capabilities'] == ['knowledge.search', 'knowledge.ask', 'knowledge.history.read', 'document.read']
+            assert apps[0]['capabilities'] == ['knowledge.search', 'knowledge.ask', 'knowledge.history.read', 'conversation.technical.turn', 'document.read']
             assert apps[0]['exposure']['mcp'] is True
     asyncio.run(run())
 

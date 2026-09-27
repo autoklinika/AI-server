@@ -32,6 +32,7 @@ def _release(root: Path) -> dict:
         "platform_api_contract_version", "observability_contract_version",
         "knowledge_service_contract_version", "ers_domain_contract_version",
         "crt_domain_contract_version", "control_center_contract_version",
+        "technical_conversation_contract_version",
     }
     try:
         values = {}
