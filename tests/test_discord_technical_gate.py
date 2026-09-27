@@ -146,3 +146,138 @@ def test_replace_tree_needs_write_only_inside_live_plugin_dir(monkeypatch, tmp_p
     assert (live / "__init__.py").read_text() == "new-python"
     assert (live / "plugin.yaml").read_text() == "new-yaml"
     assert not list(live.glob(".*.tmp"))
+
+def _write_plugin(root, tag):
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "__init__.py").write_text(tag)
+    (root / "plugin.yaml").write_text(tag)
+
+
+def test_verify_accepted_detects_live_plugin_drift(monkeypatch, tmp_path):
+    gate = gate_module()
+    sha = "c" * 40
+    candidate = tmp_path / "candidate"
+    live = tmp_path / "live"
+    state_root = tmp_path / "state"
+    _write_plugin(candidate, "accepted")
+    _write_plugin(live, "drifted")
+
+    monkeypatch.setattr(gate, "CANDIDATE", candidate)
+    monkeypatch.setattr(gate, "LIVE", live)
+    monkeypatch.setattr(gate, "STATE_ROOT", state_root)
+    monkeypatch.setattr(gate, "git_sha", lambda: sha)
+    monkeypatch.setattr(gate, "candidate_contract", lambda: None)
+    monkeypatch.setattr(gate, "run", lambda *args, **kwargs: "")
+    monkeypatch.setattr(
+        gate,
+        "gateway_snapshot",
+        lambda: {
+            "pid": 123,
+            "telegram": "connected",
+            "discord": "connected",
+            "api_server": "connected",
+        },
+    )
+
+    accepted = state_root / sha / "accepted.json"
+    accepted.parent.mkdir(parents=True)
+    accepted.write_text(
+        __import__("json").dumps({
+            "source_sha": sha,
+            "status": "PASS",
+            "plugin_version": "1.2.0",
+            "candidate_hashes": gate.hashes(candidate),
+        })
+    )
+
+    with pytest.raises(RuntimeError, match="live plugin drift"):
+        gate.verify_accepted(sha)
+
+
+def test_all_gate_reconciles_already_accepted_live_drift(monkeypatch, tmp_path):
+    gate = gate_module()
+    sha = "d" * 40
+    candidate = tmp_path / "candidate"
+    live = tmp_path / "live"
+    state_root = tmp_path / "state"
+    _write_plugin(candidate, "accepted")
+    _write_plugin(live, "drifted")
+
+    monkeypatch.setattr(gate, "CANDIDATE", candidate)
+    monkeypatch.setattr(gate, "LIVE", live)
+    monkeypatch.setattr(gate, "STATE_ROOT", state_root)
+    monkeypatch.setattr(gate, "candidate_contract", lambda: None)
+
+    accepted = state_root / sha / "accepted.json"
+    accepted.parent.mkdir(parents=True)
+    accepted.write_text(
+        __import__("json").dumps({
+            "source_sha": sha,
+            "status": "PASS",
+            "plugin_version": "1.2.0",
+            "candidate_hashes": gate.hashes(candidate),
+        })
+    )
+
+    actions = []
+    monkeypatch.setattr(
+        gate,
+        "reconcile_accepted",
+        lambda source_sha: actions.append(("reconcile", source_sha)) or {},
+    )
+    monkeypatch.setattr(
+        gate,
+        "verify_accepted",
+        lambda source_sha: actions.append(("verify", source_sha)) or {},
+    )
+    monkeypatch.setattr(
+        gate,
+        "preflight",
+        lambda source_sha: pytest.fail("accepted candidate must not start a fresh gate"),
+    )
+
+    gate.all_gate(sha)
+
+    assert actions == [("reconcile", sha)]
+
+
+def test_all_gate_verifies_already_accepted_matching_live(monkeypatch, tmp_path):
+    gate = gate_module()
+    sha = "e" * 40
+    candidate = tmp_path / "candidate"
+    live = tmp_path / "live"
+    state_root = tmp_path / "state"
+    _write_plugin(candidate, "accepted")
+    _write_plugin(live, "accepted")
+
+    monkeypatch.setattr(gate, "CANDIDATE", candidate)
+    monkeypatch.setattr(gate, "LIVE", live)
+    monkeypatch.setattr(gate, "STATE_ROOT", state_root)
+    monkeypatch.setattr(gate, "candidate_contract", lambda: None)
+
+    accepted = state_root / sha / "accepted.json"
+    accepted.parent.mkdir(parents=True)
+    accepted.write_text(
+        __import__("json").dumps({
+            "source_sha": sha,
+            "status": "PASS",
+            "plugin_version": "1.2.0",
+            "candidate_hashes": gate.hashes(candidate),
+        })
+    )
+
+    actions = []
+    monkeypatch.setattr(
+        gate,
+        "verify_accepted",
+        lambda source_sha: actions.append(("verify", source_sha)) or {},
+    )
+    monkeypatch.setattr(
+        gate,
+        "reconcile_accepted",
+        lambda source_sha: actions.append(("reconcile", source_sha)) or {},
+    )
+
+    gate.all_gate(sha)
+
+    assert actions == [("verify", sha)]

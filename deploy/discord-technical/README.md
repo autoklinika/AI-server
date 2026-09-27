@@ -30,3 +30,25 @@ It does not restart AI Gateway, AI Bridge, Ollama or ComfyUI.
 On candidate smoke failure the baseline plugin is automatically restored.
 The gate runs as the Hermes owner and uses the user's systemd bus; no sudo is
 required.
+
+## Post-acceptance drift guard
+
+Accepted evidence is not treated as proof that the live Hermes filesystem still
+matches the accepted plugin. Operators can verify the live invariant without a
+restart:
+
+`gate.py verify <accepted-source-sha>`
+
+The command fails closed when live plugin hashes differ from the immutable
+accepted candidate or when Hermes/Discord/Telegram/API connectivity is not healthy.
+A newer clean gate worktree may verify an older accepted source SHA only when the
+candidate plugin hashes still exactly match that accepted immutable evidence.
+
+To repair drift deliberately:
+
+`gate.py reconcile <accepted-source-sha>`
+
+Reconcile reinstalls the accepted candidate, restarts only Hermes, runs the full
+technical quality policy smoke and writes immutable reconciliation evidence.
+Re-running `gate.py all <accepted-source-sha>` is idempotent: it verifies an
+already matching live plugin or automatically reconciles detected plugin drift.
