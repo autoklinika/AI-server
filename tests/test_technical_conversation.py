@@ -1,4 +1,9 @@
+from pathlib import Path
+
 from ai_bridge.platform.technical_conversation import TechnicalConversationStore
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def response(answer="ok"):
@@ -14,13 +19,13 @@ def test_platform_owned_conversation_contextualizes_real_followups_only():
 
     first = store.prepare(
         conversation_id="conv_test",
-        message="Jaki procesor jest w sterowniku Scania S6?",
+        message="Jaki procesor ma sterownik ZX900?",
     )
-    assert first.retrieval_query == "Jaki procesor jest w sterowniku Scania S6?"
+    assert first.retrieval_query == "Jaki procesor ma sterownik ZX900?"
     store.add_turn(
         conversation_id=first.conversation_id,
-        user_message="Jaki procesor jest w sterowniku Scania S6?",
-        response=response("MPC555LF8MZP40"),
+        user_message="Jaki procesor ma sterownik ZX900?",
+        response=response("MCU-1234"),
         client_id="discord",
         retrieval_query=first.retrieval_query,
     )
@@ -29,15 +34,15 @@ def test_platform_owned_conversation_contextualizes_real_followups_only():
         conversation_id="conv_test",
         message="A ile ma flashu?",
     )
-    assert followup.previous_user_query == "Jaki procesor jest w sterowniku Scania S6?"
+    assert followup.previous_user_query == "Jaki procesor ma sterownik ZX900?"
     assert "Kontekst poprzedniego pytania" in followup.retrieval_query
-    assert "Scania S6" in followup.retrieval_query
+    assert "ZX900" in followup.retrieval_query
 
     standalone = store.prepare(
         conversation_id="conv_test",
-        message="Jaki SPN był przy naprawie Hatz?",
+        message="Jaki DTC był przy naprawie modułu RX7?",
     )
-    assert standalone.retrieval_query == "Jaki SPN był przy naprawie Hatz?"
+    assert standalone.retrieval_query == "Jaki DTC był przy naprawie modułu RX7?"
 
 
 def test_conversation_history_is_platform_scoped_and_bounded():
@@ -69,3 +74,20 @@ def test_conversation_history_is_platform_scoped_and_bounded():
         pass
     else:
         raise AssertionError("oldest conversation should be evicted")
+
+def test_technical_runtime_is_corpus_agnostic():
+    runtime_files = (
+        ROOT / "src/ai_bridge/platform/technical_conversation.py",
+        ROOT / "src/ai_bridge/platform/api.py",
+        ROOT / "src/ai_bridge/knowledge/backends/lexical.py",
+        ROOT / "src/ai_bridge/knowledge/rerank.py",
+    )
+    combined = "\n".join(path.read_text(encoding="utf-8") for path in runtime_files)
+    for fixture_specific in (
+        "Scania",
+        "Hatz",
+        "MPC555LF8MZP40",
+        "SPN 107",
+        "0 281 007 439",
+    ):
+        assert fixture_specific not in combined

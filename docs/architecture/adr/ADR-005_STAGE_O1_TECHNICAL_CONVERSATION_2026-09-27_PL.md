@@ -88,14 +88,33 @@ StackChan nie jest wdrażany fizycznie w Stage O.1. Następny klient ma używać
 tego samego kontraktu Conversation Layer i może współdzielić `conversation_id`
 z innym interfejsem, bez bezpośredniego dostępu do Knowledge backendu.
 
+## Uniwersalność
+
+Logika produkcyjna Conversation Layer, lexical retrieval i rerankera jest
+**corpus-agnostic**. Nie wolno kodować reguł dla konkretnego producenta, modelu,
+ECU, numeru części ani DTC.
+
+Nazwy takie jak Scania, Hatz czy MPC555 mogą występować w danych Knowledge oraz
+w testach regresyjnych, ale nie mogą wpływać na algorytm przez specjalne wyjątki
+lub ręczne mapowania. Nowy producent lub nowy przypadek ma korzystać z tej samej
+ścieżki bez zmiany kodu runtime.
+
 ## Kryteria jakości Stage O.1
 
-Gate ma potwierdzać co najmniej:
+Gate ma sprawdzać klasy problemów technicznych, wykorzystując aktualny korpus jako
+fixture regresyjny:
 
-- Scania EMS S6 -> `MPC555LF8MZP40`,
-- Hatz -> poprawny retrieval CASE-0001,
-- cytowania Knowledge,
+- identyfikator półprzewodnika / MCU,
+- DTC / kod diagnostyczny,
+- numer części lub komponentu,
+- parametr architektury / dokumentacji technicznej,
+- identyfikację ECU/case przez nazwę i metadane źródła,
+- kontekstowe pytanie uzupełniające w tej samej rozmowie,
+- cytowania i provenance,
 - brak general-agent fallbacku,
 - blokadę Discord media,
 - voice RAG/TTS,
-- pytanie bez oparcia w domenie -> fail-closed przed LLM.
+- pytanie bez oparcia w domenie -> fail-closed przed generatywnym LLM.
+
+Scania EMS S6 i Hatz CASE-0001 są tylko dwoma fixture'ami regresyjnymi z obecnego
+korpusu, a nie specjalnymi przypadkami logiki.
