@@ -4,7 +4,7 @@ Telegram keeps the existing Hermes agent/media behavior.
 
 Discord is intentionally technical-only:
 - authorized text and voice turns are intercepted before the general Hermes agent,
-- the query is answered only through AI Platform Knowledge /knowledge/ask,
+- the query is answered only through AI Platform Technical Conversation /conversation/turn,
 - responses include Knowledge citations,
 - voice input keeps Hermes STT and receives TTS output,
 - only /voice gateway control is allowed,
@@ -15,6 +15,7 @@ No source patching or process-global session mutation.
 import asyncio
 from contextvars import ContextVar
 from dataclasses import dataclass
+import hashlib
 import importlib.util
 import json
 import logging
@@ -36,12 +37,12 @@ _helper_lock = threading.Lock()
 _discord_tasks = set()
 
 _DISCORD_DOMAIN = os.getenv("AI_PLATFORM_DISCORD_KNOWLEDGE_DOMAIN", "ecu-repair").strip() or "ecu-repair"
-_PLATFORM_ASK_URL = (
+_PLATFORM_TURN_URL = (
     os.getenv(
-        "AI_PLATFORM_DISCORD_KNOWLEDGE_URL",
-        "http://127.0.0.1:11435/api/v1/knowledge/ask",
+        "AI_PLATFORM_DISCORD_CONVERSATION_URL",
+        "http://127.0.0.1:11435/api/v1/conversation/turn",
     ).strip()
-    or "http://127.0.0.1:11435/api/v1/knowledge/ask"
+    or "http://127.0.0.1:11435/api/v1/conversation/turn"
 )
 _SOURCE_BASE_URL = os.getenv("AI_PLATFORM_DISCORD_SOURCE_BASE_URL", "").strip().rstrip("/")
 _MAX_QUERY_CHARS = 8192
@@ -343,14 +344,23 @@ async def _send_typing(adapter, event):
         LOGGER.debug("Discord typing indicator failed", exc_info=True)
 
 
-def _knowledge_payload(query, request_id):
+def _conversation_id(source):
+    digest = hashlib.sha256(route(source).encode("utf-8")).hexdigest()[:24]
+    return "conv_discord_" + digest
+
+
+def _technical_payload(query, request_id, source):
+    conversation_id = _conversation_id(source)
     return {
         "schema_version": 1,
-        "query": query,
+        "message": query,
+        "conversation_id": conversation_id,
+        "client_id": "discord",
         "mode": "hybrid",
         "context": {
             "domain": _DISCORD_DOMAIN,
             "request_id": "discord_" + request_id,
+            "session_id": conversation_id,
         },
         "limit": 8,
         "priority_class": "interactive",
@@ -358,9 +368,9 @@ def _knowledge_payload(query, request_id):
     }
 
 
-def _knowledge_ask(query, request_id):
+def _technical_turn(query, request_id, source):
     payload = json.dumps(
-        _knowledge_payload(query, request_id),
+        _technical_payload(query, request_id, source),
         ensure_ascii=False,
     ).encode("utf-8")
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
@@ -368,7 +378,7 @@ def _knowledge_ask(query, request_id):
     if token:
         headers["Authorization"] = "Bearer " + token
     request = Request(
-        _PLATFORM_ASK_URL,
+        _PLATFORM_TURN_URL,
         data=payload,
         headers=headers,
         method="POST",
@@ -378,12 +388,12 @@ def _knowledge_ask(query, request_id):
             body = response.read()
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:800]
-        raise RuntimeError(f"Knowledge API HTTP {exc.code}: {detail}") from exc
+        raise RuntimeError(f"Technical Conversation API HTTP {exc.code}: {detail}") from exc
     except (URLError, TimeoutError) as exc:
-        raise RuntimeError(f"Knowledge API unavailable: {exc}") from exc
+        raise RuntimeError(f"Technical Conversation API unavailable: {exc}") from exc
     result = json.loads(body.decode("utf-8"))
-    if not isinstance(result, dict) or "answer" not in result:
-        raise RuntimeError("Knowledge API returned invalid payload")
+    if not isinstance(result, dict) or "answer" not in result or "conversation_id" not in result:
+        raise RuntimeError("Technical Conversation API returned invalid payload")
     return result
 
 
@@ -574,7 +584,7 @@ async def discord_technical_turn(event, gateway, request_id):
 
     await _send_typing(adapter, event)
     try:
-        result = await asyncio.to_thread(_knowledge_ask, query, request_id)
+        result = await asyncio.to_thread(_technical_turn, query, request_id, source)
         response_text = _format_discord_response(result)
         await _send_text(adapter, gateway, event, response_text)
         if _should_voice_reply(adapter, event):

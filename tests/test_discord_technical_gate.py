@@ -36,10 +36,13 @@ def test_discord_gate_is_hermes_only_and_has_planned_rollback_contract():
 
 def test_policy_smoke_uses_real_knowledge_and_checks_channel_contract():
     text = (ROOT / "deploy/discord-technical/policy_smoke.py").read_text()
-    assert "Jaki SPN był przy naprawie Hatz?" in text
+    assert "Jaki procesor jest w sterowniku Scania S6?" in text
     assert "structured-generation" in text
     assert 'item.get("capability") == "chat"' in text
     assert "telegram_passthrough" in text
+    assert "discord_conversation_layer" in text
+    assert "scania_s6_quality" in text
+    assert "discord_out_of_domain_blocked" in text
     assert "discord_media_blocked" in text
     assert "discord_voice_command_passthrough" in text
     assert "discord_voice_rag" in text

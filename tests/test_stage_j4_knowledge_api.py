@@ -37,7 +37,7 @@ class FakeRuntime:
             results=self.results[:query.limit],
             backend="knowledge-primary",
             duration_ms=4.2,
-            backend_metadata={"reranker": "technical-evidence-v1"},
+            backend_metadata={"reranker": "technical-evidence-v2"},
         )
 
     def get_document(self, document_id):
@@ -129,7 +129,14 @@ def fixture_data(tmp_path: Path):
             "version_id": version.version_id,
             "chunk_id": chunk.chunk_id,
             "section": "Root cause",
-            "rerank": {"method": "technical-evidence-v1"},
+            "rerank": {
+                "method": "technical-evidence-v2",
+                "evidence_token_coverage": 1.0,
+                "source_token_coverage": 0.0,
+                "identifier_coverage": 1.0,
+                "phrase_match": False,
+                "source_phrase_match": False,
+            },
         },
     )
     return root, snapshot, (result,)
@@ -323,5 +330,101 @@ def test_document_original_and_provenance_are_openable_inline(tmp_path):
             assert original.headers["content-type"].startswith("text/markdown")
             assert original.headers["content-disposition"].startswith("inline;")
             assert original.headers["cache-control"] == "private, no-store"
+
+    asyncio.run(run())
+
+
+def test_technical_conversation_turn_owns_session_context(tmp_path):
+    async def run():
+        async with api_client(tmp_path) as (http, runtimes, _provider, _snapshot):
+            first = await http.post("/api/v1/conversation/turn", json={
+                "message": "Co było przyczyną SPN 107 FMI 3?",
+                "client_id": "discord",
+                "context": {"domain": "ecu-repair"},
+            })
+            assert first.status_code == 200, first.text
+            data = first.json()
+            conversation_id = data["conversation_id"]
+            assert conversation_id.startswith("conv_")
+            assert data["client_id"] == "discord"
+            assert data["contextualized"] is False
+            assert data["answer"] == "Przyczyną był uszkodzony przewód."
+
+            second = await http.post("/api/v1/conversation/turn", json={
+                "conversation_id": conversation_id,
+                "message": "A gdzie dokładnie?",
+                "client_id": "stackchan",
+                "context": {"domain": "ecu-repair"},
+            })
+            assert second.status_code == 200, second.text
+            assert second.json()["conversation_id"] == conversation_id
+            assert second.json()["contextualized"] is True
+            assert "Kontekst poprzedniego pytania" in runtimes[-1].queries[-1].query
+            assert "SPN 107 FMI 3" in runtimes[-1].queries[-1].query
+
+            history = await http.get(f"/api/v1/conversation/{conversation_id}")
+            assert history.status_code == 200
+            turns = history.json()["conversation"]["turns"]
+            assert [turn["role"] for turn in turns] == [
+                "user", "assistant", "user", "assistant"
+            ]
+            assert turns[0]["client_id"] == "discord"
+            assert turns[2]["client_id"] == "stackchan"
+            assert history.json()["retention"]["scope"] == "platform-runtime"
+
+            conflict = await http.post("/api/v1/conversation/turn", json={
+                "conversation_id": conversation_id,
+                "message": "Konflikt",
+                "context": {"domain": "ecu-repair", "session_id": "other_session"},
+            })
+            assert conflict.status_code == 400
+            assert conflict.json()["error"]["code"] == "invalid_request"
+
+    asyncio.run(run())
+
+
+def test_technical_conversation_rejects_unrelated_retrieval_before_llm(tmp_path):
+    unrelated = KnowledgeResult(
+        result_id="noise",
+        text="Ogólna notatka warsztatowa bez odpowiedzi na pytanie.",
+        source=KnowledgeSource(
+            type="github",
+            uri="repo://docs/noise.md",
+            title="Notatki warsztatowe",
+        ),
+        score=0.9,
+        metadata={
+            "chunk_id": "noise",
+            "document_id": "kdoc_noise",
+            "rerank": {
+                "method": "technical-evidence-v2",
+                "evidence_token_coverage": 0.0,
+                "source_token_coverage": 0.0,
+                "identifier_coverage": 0.0,
+                "phrase_match": False,
+                "source_phrase_match": False,
+            },
+        },
+    )
+
+    async def run():
+        provider = FakeProvider()
+        async with api_client(
+            tmp_path,
+            provider=provider,
+            results=(unrelated,),
+        ) as (http, _runtimes, _provider, _snapshot):
+            result = await http.post("/api/v1/conversation/turn", json={
+                "message": "Jaka jest stolica Francji?",
+                "client_id": "discord",
+                "context": {"domain": "ecu-repair"},
+            })
+            assert result.status_code == 200, result.text
+            data = result.json()
+            assert data["insufficient_context"] is True
+            assert data["citations"] == []
+            assert data["execution"] is None
+            assert data["retrieval"]["grounding_guard"] == "rejected"
+            assert provider.calls == []
 
     asyncio.run(run())

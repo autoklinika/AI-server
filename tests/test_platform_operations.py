@@ -14,6 +14,7 @@ def test_operations_snapshot_is_bounded_and_useful(tmp_path: Path):
             "source_git_sha=" + "a" * 40,
             "migration_version=crt-projection-v1",
             "control_center_contract_version=1",
+            "technical_conversation_contract_version=1",
             "private_secret=must-not-leak",
         ]),
         encoding="utf-8",
@@ -59,6 +60,7 @@ def test_operations_snapshot_is_bounded_and_useful(tmp_path: Path):
 
     assert snapshot["release"]["release_id"] == "stage-o-test"
     assert snapshot["release"]["stage"] == "O"
+    assert snapshot["release"]["technical_conversation_contract_version"] == "1"
     assert snapshot["storage"][0]["status"] == "ready"
     assert snapshot["backup"]["monitor"]["status"] == "PASS"
     assert snapshot["backup"]["daily"]["knowledge_status"] == "PASS"

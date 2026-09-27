@@ -20,3 +20,14 @@ Platform API. Arbitrary /ai, shell, sudo and infrastructure backends are not exp
 
 Before production use, install the updated privilege bridge once so Stage O
 is authorized from the dedicated agent/stage-o worktree.
+
+Stage O.1 adds Technical Conversation Layer v1 without a database migration.
+The channel-neutral Platform API owns bounded conversation context and grounded
+Knowledge RAG. Discord is an adapter of this contract; future thin clients such
+as StackChan use the same boundary instead of calling Knowledge backends directly.
+The release records `technical_conversation_contract_version=1`.
+
+Technical Conversation uses technical-evidence-v2 and a fail-closed grounding
+guard. Low-evidence queries do not fall back to the general model. Discord's
+separate Hermes-only policy gate validates Scania S6 retrieval, citations,
+out-of-domain rejection, media blocking, voice RAG/TTS and Telegram passthrough.

@@ -36,6 +36,8 @@ def _trace_kind(route: str) -> str:
         return "ai"
     if route == "/knowledge/ask":
         return "knowledge-rag"
+    if route == "/conversation/turn":
+        return "technical-conversation"
     if route == "/knowledge/search":
         return "knowledge-search"
     if route.startswith("/knowledge/documents/"):
