@@ -71,3 +71,67 @@ def test_candidate_smoke_requires_current_source_viewer_surface(monkeypatch: pyt
 
     with pytest.raises(RuntimeError, match="gate condition failed"):
         gate.control_center_smoke(require_operations=True)
+
+def test_rollback_metadata_uses_legacy_compatible_validator(monkeypatch, tmp_path):
+    release = tmp_path / "stage-o-legacy"
+    release.mkdir()
+    (release / "RELEASE").write_text(
+        "stage=O\nsource_git_sha=" + ("a" * 40) + "\n",
+        encoding="utf-8",
+    )
+
+    calls = []
+
+    class Validator:
+        @staticmethod
+        def validate_rollback_compatible(path):
+            calls.append(Path(path))
+
+    monkeypatch.setattr(gate.e, "load_module", lambda *args, **kwargs: Validator)
+    monkeypatch.setattr(
+        gate,
+        "_original_verify",
+        lambda *args, **kwargs: pytest.fail(
+            "legacy rollback baseline must not use strict current validator"
+        ),
+    )
+
+    import sys
+    from types import SimpleNamespace
+
+    monkeypatch.setitem(
+        sys.modules,
+        "validate_rollback_readiness",
+        SimpleNamespace(verify_checksums=lambda path: None),
+    )
+
+    stamp = gate.verify_release(release, rollback_compatible=True)
+
+    assert stamp["stage"] == "O"
+    assert stamp["source_git_sha"] == "a" * 40
+    assert calls == [release]
+
+
+def test_candidate_metadata_remains_strict(monkeypatch, tmp_path):
+    release = tmp_path / "stage-o-current"
+    release.mkdir()
+    (release / "RELEASE").write_text(
+        "stage=O\nsource_git_sha=" + ("b" * 40) + "\n",
+        encoding="utf-8",
+    )
+
+    calls = []
+
+    def strict(path, stage):
+        calls.append((Path(path), stage))
+        raise ValueError("RELEASE contract mismatch: technical_conversation_contract_version")
+
+    monkeypatch.setattr(gate, "_original_verify", strict)
+
+    with pytest.raises(
+        ValueError,
+        match="technical_conversation_contract_version",
+    ):
+        gate.verify_release(release)
+
+    assert calls == [(release, "o")]

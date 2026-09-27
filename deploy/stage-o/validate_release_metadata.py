@@ -10,7 +10,7 @@ spec = importlib.util.spec_from_file_location(
 )
 base = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base)
-base.VERSIONS = {
+STAGE_O_VERSIONS = {
     **base.VERSIONS,
     "stage": "O",
     "phase": "O",
@@ -24,9 +24,21 @@ base.VERSIONS = {
     "control_center_contract_version": "1",
     "technical_conversation_contract_version": "1",
 }
+LEGACY_STAGE_O_VERSIONS = {
+    key: value
+    for key, value in STAGE_O_VERSIONS.items()
+    if key != "technical_conversation_contract_version"
+}
+base.VERSIONS = dict(STAGE_O_VERSIONS)
 
-def validate(path: Path):
-    result = base.validate(path)
+
+def _validate_with_versions(path: Path, versions: dict[str, str]):
+    previous = base.VERSIONS
+    base.VERSIONS = dict(versions)
+    try:
+        result = base.validate(path)
+    finally:
+        base.VERSIONS = previous
     marker = path / "services/ai-bridge/src/ai_bridge/stage_m_enabled"
     if not marker.is_file() or marker.read_bytes() != b"":
         raise ValueError("Stage O must preserve Stage M composition")
@@ -43,6 +55,30 @@ def validate(path: Path):
         if forbidden in lowered:
             raise ValueError("Control Center bypasses Platform API")
     return result
+
+
+def validate(path: Path):
+    return _validate_with_versions(path, STAGE_O_VERSIONS)
+
+
+def validate_rollback_compatible(path: Path):
+    stamp = dict(
+        line.split("=", 1)
+        for line in (path / "RELEASE").read_text(encoding="utf-8").splitlines()
+    )
+    manifest = base.manifest_scalars(
+        (path / "metadata/release-manifest.yaml").read_text(encoding="utf-8")
+    )
+    stamp_value = stamp.get("technical_conversation_contract_version")
+    manifest_value = manifest.get(
+        ("release", "contract_versions", "technical_conversation")
+    )
+    if stamp_value is None and manifest_value is None:
+        return _validate_with_versions(path, LEGACY_STAGE_O_VERSIONS)
+    if stamp_value == "1" and manifest_value == "1":
+        return validate(path)
+    raise ValueError("technical conversation contract mismatch")
+
 
 if __name__ == "__main__":
     try:
