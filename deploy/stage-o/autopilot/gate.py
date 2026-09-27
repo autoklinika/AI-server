@@ -42,13 +42,23 @@ def require(condition: bool) -> None:
     e.require(condition)
 
 
-def verify_release(path: Path):
+def verify_release(path: Path, *, rollback_compatible: bool = False):
     stamp = dict(
         line.split("=", 1)
         for line in (path / "RELEASE").read_text(encoding="utf-8").splitlines()
     )
     stage = stamp["stage"].lower()
     require(stage in ("m", "o"))
+    if stage == "o" and rollback_compatible:
+        validator = e.load_module(
+            "stage_o_metadata_rollback",
+            ROOT / "deploy/stage-o/validate_release_metadata.py",
+        )
+        validator.validate_rollback_compatible(path)
+        sys.path.insert(0, str(ROOT / "deploy/stage-d"))
+        from validate_rollback_readiness import verify_checksums
+        verify_checksums(path)
+        return stamp
     return _original_verify(path, stage)
 
 
@@ -67,12 +77,14 @@ def accepted_stage_o(path: Path, stamp: dict | None = None) -> dict:
     require(evidence["source_sha"] == source_sha)
     require(evidence["schema"] == TARGET_REVISION)
     require(evidence["control_center_contract_version"] == 1)
+    if stamp.get("technical_conversation_contract_version") == "1":
+        require(evidence.get("technical_conversation_contract_version") == 1)
     return evidence
 
 
 def active_rollback_baseline() -> tuple[Path, dict]:
     current = e.CURRENT.resolve(strict=True)
-    stamp = verify_release(current)
+    stamp = verify_release(current, rollback_compatible=True)
     if current == INITIAL_BASE:
         require(stamp["stage"] == "M")
         require(stamp["source_git_sha"] == INITIAL_BASE_SHA)
@@ -87,7 +99,7 @@ def baseline_release(baseline: dict) -> tuple[Path, dict]:
     require(re.fullmatch(r"stage-[mo]-[A-Za-z0-9_.-]+", name) is not None)
     rollback = (RELEASES / name).resolve(strict=True)
     require(rollback.parent == RELEASES)
-    stamp = verify_release(rollback)
+    stamp = verify_release(rollback, rollback_compatible=True)
     require(stamp["source_git_sha"] == baseline["rollback_sha"])
     require(stamp["stage"] == baseline["rollback_stage"])
     if rollback == INITIAL_BASE:
@@ -543,6 +555,7 @@ def main(step: str) -> None:
             stamp = verify_release(candidate)
             require(stamp["source_git_sha"] == sha)
             require(stamp["control_center_contract_version"] == "1")
+            require(stamp["technical_conversation_contract_version"] == "1")
             verify_client_sources(candidate, rollback)
             e.runtime(rollback, cfg, baseline)
             e.write_once(
@@ -617,6 +630,7 @@ def main(step: str) -> None:
                 "source_sha": sha,
                 "schema": TARGET_REVISION,
                 "control_center_contract_version": 1,
+                "technical_conversation_contract_version": 1,
                 "time": int(time.time()),
             }
             if not (state / "accepted.json").exists():
