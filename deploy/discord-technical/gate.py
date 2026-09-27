@@ -236,6 +236,85 @@ def state_dir(source_sha):
     return STATE_ROOT / source_sha
 
 
+def accepted_evidence(source_sha):
+    path = state_dir(source_sha) / "accepted.json"
+    require(path.is_file(), "candidate is not accepted")
+    evidence = read_json(path)
+    require(evidence.get("status") == "PASS", "accepted evidence is not PASS")
+    require(evidence.get("source_sha") == source_sha, "accepted source SHA mismatch")
+    require(evidence.get("plugin_version") == "1.2.0", "accepted plugin version mismatch")
+    expected = hashes(CANDIDATE)
+    require(
+        evidence.get("candidate_hashes") == expected,
+        "accepted candidate hashes do not match source candidate",
+    )
+    return evidence
+
+
+def verify_accepted(source_sha):
+    tooling_sha = git_sha()
+    require(
+        run(["git", "-C", ROOT, "status", "--porcelain"]) == "",
+        "worktree must be clean",
+    )
+    candidate_contract()
+    evidence = accepted_evidence(source_sha)
+    require(LIVE.is_dir(), "live plugin missing")
+    live_hashes = hashes(LIVE)
+    require(
+        live_hashes == evidence["candidate_hashes"],
+        "live plugin drift from accepted candidate",
+    )
+    gateway = gateway_snapshot()
+    return {
+        "source_sha": source_sha,
+        "tooling_sha": tooling_sha,
+        "status": "PASS",
+        "plugin_version": evidence["plugin_version"],
+        "candidate_hashes": evidence["candidate_hashes"],
+        "live_hashes": live_hashes,
+        "gateway": gateway,
+    }
+
+
+def reconcile_accepted(source_sha):
+    tooling_sha = git_sha()
+    require(
+        run(["git", "-C", ROOT, "status", "--porcelain"]) == "",
+        "worktree must be clean",
+    )
+    candidate_contract()
+    evidence = accepted_evidence(source_sha)
+    require(LIVE.is_dir(), "live plugin missing")
+    before_hashes = hashes(LIVE)
+    platform_idle()
+    gateway_snapshot()
+
+    transition = install_and_restart(CANDIDATE)
+    installed_candidate()
+    suffix = f"{int(time.time())}-{uuid4().hex[:8]}"
+    smoke_name = "reconcile-smoke-" + suffix
+    run_policy_smoke(source_sha, smoke_name)
+    installed_candidate()
+    after = gateway_snapshot()
+    payload = {
+        "source_sha": source_sha,
+        "tooling_sha": tooling_sha,
+        "status": "PASS",
+        "plugin_version": evidence["plugin_version"],
+        "drift_detected": before_hashes != evidence["candidate_hashes"],
+        "before_hashes": before_hashes,
+        "candidate_hashes": evidence["candidate_hashes"],
+        "after_hashes": hashes(LIVE),
+        "gateway_transition": transition,
+        "gateway": after,
+        "policy_smoke": smoke_name + ".json",
+        "time": int(time.time()),
+    }
+    write_once(state_dir(source_sha) / ("reconcile-" + suffix + ".json"), payload)
+    return payload
+
+
 def preflight(source_sha):
     require(source_sha == git_sha(), "source SHA does not match worktree HEAD")
     require(len(source_sha) == 40, "invalid source SHA")
@@ -428,6 +507,18 @@ def recover_to_baseline(source_sha):
 
 
 def all_gate(source_sha):
+    accepted = state_dir(source_sha) / "accepted.json"
+    if accepted.is_file():
+        candidate_contract()
+        evidence = accepted_evidence(source_sha)
+        if LIVE.is_dir() and hashes(LIVE) == evidence["candidate_hashes"]:
+            verify_accepted(source_sha)
+            print("DISCORD_TECHNICAL_ACCEPTED_LIVE_VERIFY=PASS", flush=True)
+            return
+        reconcile_accepted(source_sha)
+        print("DISCORD_TECHNICAL_ACCEPTED_RECONCILE=PASS", flush=True)
+        return
+
     evidence = preflight(source_sha)
     print("DISCORD_TECHNICAL_PREFLIGHT=PASS", flush=True)
     try:
@@ -463,10 +554,22 @@ def all_gate(source_sha):
 
 
 def main():
-    require(len(sys.argv) == 3 and sys.argv[1] == "all",
-            "usage: gate.py all <source-sha>")
-    source_sha = sys.argv[2]
-    all_gate(source_sha)
+    require(
+        len(sys.argv) == 3 and sys.argv[1] in {"all", "verify", "reconcile"},
+        "usage: gate.py {all|verify|reconcile} <source-sha>",
+    )
+    mode, source_sha = sys.argv[1], sys.argv[2]
+    if mode == "all":
+        all_gate(source_sha)
+        return
+    if mode == "verify":
+        result = verify_accepted(source_sha)
+        print(json.dumps(result, sort_keys=True))
+        print("DISCORD_TECHNICAL_LIVE_VERIFY=PASS")
+        return
+    result = reconcile_accepted(source_sha)
+    print(json.dumps(result, sort_keys=True))
+    print("DISCORD_TECHNICAL_LIVE_RECONCILE=PASS")
 
 
 if __name__ == "__main__":
