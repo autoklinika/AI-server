@@ -36,6 +36,7 @@ class LLMRequest:
     context: dict[str, Any] = field(default_factory=dict)
     provider_hint: str | None = None
     model_hint: str | None = None
+    max_output_tokens: int | None = None
 
 
 @dataclass(frozen=True)

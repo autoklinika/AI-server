@@ -26,9 +26,14 @@ class GatewayLLMAdapter:
         self.health_timeout = health_timeout
 
     async def generate(self, request: LLMRequest) -> LLMResponse:
+        options = {"temperature": request.temperature}
+        if request.max_output_tokens is not None:
+            if request.max_output_tokens <= 0:
+                raise ValueError("max_output_tokens must be positive")
+            options["num_predict"] = request.max_output_tokens
         payload = {"model": self.model, "messages": request.messages,
                    "stream": False, "think": False,
-                   "options": {"temperature": request.temperature}}
+                   "options": options}
         if request.response_schema is not None:
             payload["format"] = request.response_schema
         response = await self.client.post("/api/chat", json=payload)

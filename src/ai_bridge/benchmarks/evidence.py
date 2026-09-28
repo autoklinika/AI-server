@@ -1,6 +1,7 @@
 """Resolve fixed benchmark evidence without using retrieval."""
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from dataclasses import dataclass
@@ -67,7 +68,17 @@ def _resolve_locator(locator: str, roots: tuple[Path, ...]) -> str | None:
     for root in roots:
         path = root / path_part
         if path.is_file():
-            text = path.read_text(encoding="utf-8")
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                payload = path.read_bytes()
+                digest = hashlib.sha256(payload).hexdigest()
+                return (
+                    "[BINARY EVIDENCE NOT EMBEDDED]\n"
+                    f"filename: {path.name}\n"
+                    f"byte_size: {len(payload)}\n"
+                    f"sha256: {digest}"
+                )
             return _markdown_section(text, anchor or None)
     return None
 

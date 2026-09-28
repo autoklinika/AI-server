@@ -18,6 +18,7 @@ from ai_bridge.benchmarks.runner import (
     CaseExecution,
     RetrievedHitArtifact,
 )
+from ai_bridge.benchmarks.resources import ResourcePoint, SystemResourceUsage
 
 
 def _case():
@@ -112,6 +113,16 @@ def _artifact(path: Path):
                 repository_path=None,
                 text="Value is 42.",
             )],
+            throughput_tps=12.5,
+            resource_usage=SystemResourceUsage(
+                baseline=ResourcePoint(ram_used_bytes=100, vram_used_bytes=200),
+                peak=ResourcePoint(ram_used_bytes=150, vram_used_bytes=260),
+                final=ResourcePoint(ram_used_bytes=120, vram_used_bytes=230),
+                peak_delta_ram_bytes=50,
+                peak_delta_vram_bytes=60,
+                sample_count=3,
+                interval_ms=50.0,
+            ),
         )],
     )
 
@@ -127,6 +138,9 @@ def test_deterministic_bundle_maps_locator_to_expected_fact(tmp_path):
         artifact, dataset, bundle, dataset_path=path
     )
     assert result["aggregate"]["metrics"]["evidence_recall_at_1"] == 1.0
+    assert result["aggregate"]["resources"]["peak_ram_bytes"]["max"] == 50
+    assert result["aggregate"]["resources"]["peak_vram_bytes"]["max"] == 60
+    assert result["aggregate"]["resources"]["throughput_tps"]["mean"] == 12.5
 
 
 def test_evaluation_bundle_cannot_reference_unknown_result(tmp_path):

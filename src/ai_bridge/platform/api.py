@@ -58,6 +58,46 @@ LOGGER = logging.getLogger(__name__)
 ID = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")]
 
 
+async def _wait_for_client_disconnect(request: Request) -> None:
+    # FastAPI has consumed the request body before the endpoint runs. From this
+    # point the ASGI receive channel is the authoritative client-lifetime
+    # signal. Avoid Starlette Request.is_disconnected() polling here: its
+    # pre-cancelled AnyIO scope can miss an already-queued http.disconnect on
+    # the asyncio backend.
+    while True:
+        message = await request.receive()
+        if message.get("type") == "http.disconnect":
+            return
+        if message.get("type") == "http.request":
+            continue
+
+
+async def _generate_until_disconnect(provider, llm_request, request: Request):
+    generation = asyncio.create_task(provider.generate(llm_request))
+    disconnect = asyncio.create_task(_wait_for_client_disconnect(request))
+    try:
+        done, _pending = await asyncio.wait(
+            {generation, disconnect},
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        if generation in done:
+            return await generation
+
+        generation.cancel()
+        try:
+            await generation
+        except asyncio.CancelledError:
+            pass
+        raise asyncio.CancelledError
+    finally:
+        if not disconnect.done():
+            disconnect.cancel()
+        try:
+            await disconnect
+        except asyncio.CancelledError:
+            pass
+
+
 CONTROL_CENTER_APPS = (
     {
         "id": "knowledge",
@@ -517,7 +557,7 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                     provider=provider.provider_id,
                     node=provider.node_id,
                 )
-                generated = await provider.generate(LLMRequest(
+                llm_request = LLMRequest(
                     request_id=request.state.request_id,
                     capability="structured-generation",
                     messages=prompt.messages,
@@ -528,7 +568,13 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                         **body.context.model_dump(exclude_none=True),
                         "knowledge_mode": body.mode,
                     },
-                ))
+                    max_output_tokens=settings.knowledge_rag_max_output_tokens,
+                )
+                generated = await _generate_until_disconnect(
+                    provider,
+                    llm_request,
+                    request,
+                )
                 parsed = parse_rag_response(generated.content, prompt)
                 outcome = JobLifecycle.COMPLETED
         except SchedulerQueueFull:
@@ -566,6 +612,7 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                 "queue_wait_ms": round(ticket.wait_ms, 3),
                 "duration_ms": round((monotonic() - started) * 1000, 3),
             },
+            "usage": asdict(generated.usage),
         }
         knowledge_history.add(
             query=body.query,
