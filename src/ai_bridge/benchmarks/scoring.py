@@ -9,9 +9,19 @@ from pydantic import Field
 from .contracts import GoldenCase, GoldenDataset, StrictModel, Target
 
 
+class ObservedEvidenceHit(StrictModel):
+    rank: int = Field(ge=1)
+    supports_fact_ids: list[str] = Field(min_length=1)
+    result_id: str | None = None
+
+
 class BenchmarkObservation(StrictModel):
     case_id: str
     matched_fact_ids: list[str] = Field(default_factory=list)
+    evidence_hits: list[ObservedEvidenceHit] = Field(default_factory=list)
+    citation_supported_fact_ids: list[str] = Field(default_factory=list)
+    citation_count: int | None = Field(default=None, ge=0)
+    unsupported_citation_count: int | None = Field(default=None, ge=0)
     cited_source_ids: list[str] = Field(default_factory=list)
     forbidden_claims_triggered: list[str] = Field(default_factory=list)
     route: str | None = None
@@ -42,59 +52,162 @@ def _ndcg_at_k(ranked: list[str], relevant: set[str], k: int) -> float:
     return dcg / idcg if idcg else 1.0
 
 
+def _evidence_fact_coverage(
+    obs: BenchmarkObservation,
+    required_facts: set[str],
+    k: int,
+) -> float:
+    covered = {
+        fact_id
+        for hit in obs.evidence_hits
+        if hit.rank <= k
+        for fact_id in hit.supports_fact_ids
+    }
+    return _ratio(covered, required_facts)
+
+
+def _evidence_fact_ndcg(
+    obs: BenchmarkObservation,
+    required_facts: set[str],
+    k: int,
+) -> float:
+    if not required_facts:
+        return 1.0
+    seen: set[str] = set()
+    dcg = 0.0
+    for hit in sorted(obs.evidence_hits, key=lambda item: item.rank):
+        if hit.rank > k:
+            continue
+        new = (set(hit.supports_fact_ids) & required_facts) - seen
+        if new:
+            gain = len(new) / len(required_facts)
+            dcg += gain / math.log2(hit.rank + 1)
+            seen.update(new)
+    return min(1.0, dcg)
+
+
 def score_observation(case: GoldenCase, obs: BenchmarkObservation) -> dict[str, float]:
     required_facts = {fact.fact_id for fact in case.expected_facts if fact.required}
     expected_sources = {evidence.source_id for evidence in case.expected_evidence}
     expected_tools = set(case.expected_routing.expected_tools)
     ranked = obs.ranked_source_ids
-    first_rank = next(
-        (index for index, source in enumerate(ranked, 1) if source in expected_sources),
-        None,
-    )
+
+    if obs.evidence_hits:
+        first_rank = min(hit.rank for hit in obs.evidence_hits)
+        evidence_at_1 = _evidence_fact_coverage(obs, required_facts, 1)
+        evidence_at_3 = _evidence_fact_coverage(obs, required_facts, 3)
+        evidence_at_5 = _evidence_fact_coverage(obs, required_facts, 5)
+        ndcg_at_5 = _evidence_fact_ndcg(obs, required_facts, 5)
+        relevant_ranks = {hit.rank for hit in obs.evidence_hits}
+        denominator = len(ranked) or max(relevant_ranks)
+        source_precision = len(relevant_ranks) / denominator if denominator else 0.0
+    else:
+        first_rank = next(
+            (index for index, source in enumerate(ranked, 1) if source in expected_sources),
+            None,
+        )
+        evidence_at_1 = _ratio(set(ranked[:1]), expected_sources)
+        evidence_at_3 = _ratio(set(ranked[:3]), expected_sources)
+        evidence_at_5 = _ratio(set(ranked[:5]), expected_sources)
+        ndcg_at_5 = _ndcg_at_k(ranked, expected_sources, 5)
+        relevant = sum(source in expected_sources for source in ranked)
+        source_precision = relevant / len(ranked) if ranked else 0.0
+
+    if obs.citation_count is not None:
+        unsupported = min(
+            obs.unsupported_citation_count or 0,
+            obs.citation_count,
+        )
+        citation_precision = (
+            (obs.citation_count - unsupported) / obs.citation_count
+            if obs.citation_count
+            else (0.0 if case.grounding.must_cite else 1.0)
+        )
+        citation_recall = _ratio(
+            set(obs.citation_supported_fact_ids),
+            required_facts,
+        )
+    else:
+        cited = set(obs.cited_source_ids)
+        supported = cited & expected_sources
+        citation_precision = (
+            len(supported) / len(cited)
+            if cited else (0.0 if case.grounding.must_cite else 1.0)
+        )
+        citation_recall = _ratio(supported, expected_sources)
 
     metrics = {
         "fact_recall": _ratio(set(obs.matched_fact_ids), required_facts),
         "forbidden_claim_rate": 1.0 if obs.forbidden_claims_triggered else 0.0,
-        "citation_recall": _ratio(set(obs.cited_source_ids), expected_sources),
+        "citation_precision": citation_precision,
+        "citation_recall": citation_recall,
+        "grounding_coverage": citation_recall,
         "route_accuracy": 1.0 if obs.route == case.expected_routing.primary else 0.0,
         "tool_selection_recall": _ratio(set(obs.selected_tools), expected_tools),
-        "evidence_recall_at_1": _ratio(set(ranked[:1]), expected_sources),
-        "evidence_recall_at_3": _ratio(set(ranked[:3]), expected_sources),
-        "evidence_recall_at_5": _ratio(set(ranked[:5]), expected_sources),
+        "evidence_recall_at_1": evidence_at_1,
+        "evidence_recall_at_3": evidence_at_3,
+        "evidence_recall_at_5": evidence_at_5,
+        "source_precision": source_precision,
         "mrr": 0.0 if first_rank is None else 1.0 / first_rank,
-        "ndcg_at_5": _ndcg_at_k(ranked, expected_sources, 5),
+        "ndcg_at_5": ndcg_at_5,
     }
     if "fail-closed" in case.tags:
         metrics["fail_closed_accuracy"] = 1.0 if obs.fail_closed else 0.0
     return metrics
 
 
+DEFAULT_METRICS: dict[Target, set[str]] = {
+    "llm": {
+        "fact_recall", "forbidden_claim_rate", "citation_precision",
+        "citation_recall", "grounding_coverage", "fail_closed_accuracy",
+    },
+    "router": {"route_accuracy", "tool_selection_recall"},
+    "retrieval_rag": {
+        "evidence_recall_at_1", "evidence_recall_at_3", "evidence_recall_at_5",
+        "source_precision", "mrr", "ndcg_at_5",
+    },
+}
+
+
 def aggregate(
     dataset: GoldenDataset,
     observations: list[BenchmarkObservation],
     target: Target,
+    *,
+    case_ids: set[str] | None = None,
+    metric_names: set[str] | None = None,
 ) -> dict:
     by_id = {obs.case_id: obs for obs in observations}
-    cases = [case for case in dataset.cases if target in case.targets]
+    cases = [
+        case for case in dataset.cases
+        if target in case.targets and (not case_ids or case.case_id in case_ids)
+    ]
     missing = [case.case_id for case in cases if case.case_id not in by_id]
     if missing:
         raise ValueError(f"missing observations: {missing}")
+    if not cases:
+        raise ValueError("no cases selected for aggregation")
 
-    scored = [(case, by_id[case.case_id], score_observation(case, by_id[case.case_id]))
-              for case in cases]
-    metric_names = sorted({name for _, _, metrics in scored for name in metrics})
+    selected_metrics = metric_names or DEFAULT_METRICS[target]
+    scored = []
+    for case in cases:
+        full = score_observation(case, by_id[case.case_id])
+        filtered = {
+            name: value for name, value in full.items()
+            if name in selected_metrics
+        }
+        scored.append((case, by_id[case.case_id], filtered))
+
+    available = sorted({name for _, _, metrics in scored for name in metrics})
     metrics = {
         name: mean(item[name] for _, _, item in scored if name in item)
-        for name in metric_names
+        for name in available
     }
     resources = {}
     for field in ("latency_ms", "peak_ram_bytes", "peak_vram_bytes", "throughput_tps"):
         values = [getattr(obs, field) for _, obs, _ in scored if getattr(obs, field) is not None]
         if values:
-            resources[field] = {
-                "mean": mean(values),
-                "max": max(values),
-            }
+            resources[field] = {"mean": mean(values), "max": max(values)}
     return {
         "schema_version": 1,
         "benchmark_class": target,

@@ -29,9 +29,11 @@ class FakeRuntime:
         self.results = results
         self.closed = False
         self.queries = []
+        self.rerank_flags = []
 
-    def search(self, query):
+    def search(self, query, *, rerank=True):
         self.queries.append(query)
+        self.rerank_flags.append(rerank)
         return KnowledgeSearchResult(
             request_id=query.request_id,
             results=self.results[:query.limit],
@@ -427,4 +429,33 @@ def test_technical_conversation_rejects_unrelated_retrieval_before_llm(tmp_path)
             assert data["retrieval"]["grounding_guard"] == "rejected"
             assert provider.calls == []
 
+    asyncio.run(run())
+
+
+def test_search_can_disable_reranker_for_benchmark_track(tmp_path):
+    async def run():
+        async with api_client(tmp_path) as (http, runtimes, provider, _snapshot):
+            response = await http.post("/api/v1/knowledge/search", json={
+                "query": "0 281 007 439",
+                "mode": "hybrid",
+                "rerank": False,
+                "context": {
+                    "domain": "ecu-repair",
+                    "request_id": "req_raw_retrieval",
+                },
+            })
+            assert response.status_code == 200, response.text
+            assert provider.calls == []
+            assert runtimes[-1].rerank_flags == [False]
+
+            response = await http.post("/api/v1/knowledge/search", json={
+                "query": "0 281 007 439",
+                "mode": "hybrid",
+                "context": {
+                    "domain": "ecu-repair",
+                    "request_id": "req_reranked_retrieval",
+                },
+            })
+            assert response.status_code == 200, response.text
+            assert runtimes[-1].rerank_flags == [True]
     asyncio.run(run())
