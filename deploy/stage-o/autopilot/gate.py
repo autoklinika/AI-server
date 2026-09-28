@@ -423,6 +423,45 @@ def platform_smoke(active: bool, *, require_observability: bool = False) -> None
             raise RuntimeError("Stage M baseline unexpectedly exposes app registry")
 
 
+
+
+def benchmark_contract_smoke() -> dict:
+    base = e.GATEWAY + "/api/v1"
+    catalog = e.fetch(base + "/benchmarks")
+    suites = {item["suite_id"]: item for item in catalog["suites"]}
+    expected = {
+        "automotive-reasoning": 58,
+        "decision-models": 51,
+        "rag-knowledge": 61,
+    }
+    for suite_id, minimum_cases in expected.items():
+        suite = suites[suite_id]
+        require(suite["status"] == "foundation")
+        require(suite["case_count"] >= minimum_cases)
+        require(suite["run_count"] == 0)
+
+    request = {
+        "schema_version": 1,
+        "query": "0 281 007 439",
+        "mode": "hybrid",
+        "context": {"domain": "ecu-repair"},
+        "limit": 10,
+    }
+    raw = e.fetch(base + "/knowledge/search", {**request, "rerank": False})
+    reranked = e.fetch(base + "/knowledge/search", {**request, "rerank": True})
+    require(raw["results"])
+    require(reranked["results"])
+    return {
+        "status": "PASS",
+        "suite_case_counts": {
+            suite_id: suites[suite_id]["case_count"]
+            for suite_id in expected
+        },
+        "raw_results": len(raw["results"]),
+        "reranked_results": len(reranked["results"]),
+    }
+
+
 def smoke(
     phase: str,
     target: Path,
@@ -442,6 +481,11 @@ def smoke(
         if has_control_center
         else {"status": "ABSENT"}
     )
+    benchmark_evidence = (
+        benchmark_contract_smoke()
+        if active
+        else {"status": "ROLLBACK_NOT_REQUIRED"}
+    )
     if not has_control_center:
         control_center_absent()
     e.hermes_state()
@@ -452,6 +496,7 @@ def smoke(
             "release_id": target.name,
             "schema": schema_version(),
             "control_center": evidence,
+            "benchmarks": benchmark_evidence,
             "time": int(time.time()),
         },
     )

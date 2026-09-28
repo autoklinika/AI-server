@@ -135,3 +135,31 @@ def test_candidate_metadata_remains_strict(monkeypatch, tmp_path):
         gate.verify_release(release)
 
     assert calls == [(release, "o")]
+
+
+def test_candidate_benchmark_contract_smoke_requires_raw_and_reranked_search(monkeypatch):
+    calls = []
+
+    def fetch(url, payload=None):
+        calls.append((url, payload))
+        if url.endswith("/api/v1/benchmarks"):
+            return {
+                "suites": [
+                    {"suite_id": "automotive-reasoning", "status": "foundation", "case_count": 58, "run_count": 0},
+                    {"suite_id": "decision-models", "status": "foundation", "case_count": 51, "run_count": 0},
+                    {"suite_id": "rag-knowledge", "status": "foundation", "case_count": 61, "run_count": 0},
+                ]
+            }
+        if url.endswith("/api/v1/knowledge/search"):
+            assert payload["rerank"] in (False, True)
+            return {"results": [{"source": {"uri": "github://ers/component"}}]}
+        raise AssertionError((url, payload))
+
+    monkeypatch.setattr(gate.e, "GATEWAY", "http://gateway")
+    monkeypatch.setattr(gate.e, "fetch", fetch)
+
+    evidence = gate.benchmark_contract_smoke()
+
+    assert evidence["status"] == "PASS"
+    search_calls = [payload for url, payload in calls if url.endswith("/knowledge/search")]
+    assert [payload["rerank"] for payload in search_calls] == [False, True]
