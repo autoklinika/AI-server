@@ -566,6 +566,7 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                 "queue_wait_ms": round(ticket.wait_ms, 3),
                 "duration_ms": round((monotonic() - started) * 1000, 3),
             },
+            "usage": asdict(generated.usage),
         }
         knowledge_history.add(
             query=body.query,

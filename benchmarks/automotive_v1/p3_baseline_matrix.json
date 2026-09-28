@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "matrix_id": "automotive-baseline-v1",
+  "dataset": "datasets/golden.v1.jsonl",
+  "policy": {
+    "training_allowed": false,
+    "holdout_after_dev_gate": true,
+    "challenge_after_holdout_gate": true,
+    "resource_scope": "system",
+    "require_dataset_hash_lock": true
+  },
+  "phases": [
+    {
+      "phase_id": "retrieval-dev",
+      "split": "dev",
+      "runs": [
+        {"suite": "rag-knowledge", "track": "retrieval_only", "subject": "knowledge-hybrid-raw"},
+        {"suite": "rag-knowledge", "track": "retrieval_plus_reranker", "subject": "knowledge-hybrid-reranked"}
+      ]
+    },
+    {
+      "phase_id": "reasoning-dev",
+      "split": "dev",
+      "runs": [
+        {"suite": "automotive-reasoning", "track": "reasoning_fixed_evidence", "subject": "reasoning-main"},
+        {"suite": "rag-knowledge", "track": "end_to_end_rag", "subject": "rag-hybrid"}
+      ]
+    },
+    {
+      "phase_id": "router-dev",
+      "split": "dev",
+      "runs": [
+        {"suite": "decision-models", "track": "routing_zero_shot", "subject": "fastino/GLiNER2.5-multi-Decide"},
+        {"suite": "decision-models", "track": "routing_zero_shot", "subject": "fastino/GLiNER2.5-Decide"},
+        {"suite": "decision-models", "track": "routing_zero_shot", "subject": "fastino/gliner2.5-small-v1"}
+      ]
+    },
+    {
+      "phase_id": "holdout",
+      "split": "holdout",
+      "inherits_tracks_from": ["retrieval-dev", "reasoning-dev", "router-dev"]
+    },
+    {
+      "phase_id": "challenge",
+      "split": "challenge",
+      "inherits_tracks_from": ["retrieval-dev", "reasoning-dev", "router-dev"]
+    }
+  ],
+  "acceptance": {
+    "completion_rate": 1.0,
+    "failed_cases": 0,
+    "require_per_track_metrics": true,
+    "require_latency": true,
+    "require_resource_telemetry": true,
+    "forbid_single_aggregate_verdict": true
+  }
+}

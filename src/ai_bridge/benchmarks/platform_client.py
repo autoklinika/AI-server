@@ -69,6 +69,7 @@ class AskResponse(_Public):
     citations: list[dict[str, Any]]
     retrieval: dict[str, Any]
     execution: dict[str, Any] | None = None
+    usage: dict[str, int | None] | None = None
 
 
 class PlatformBenchmarkClient:

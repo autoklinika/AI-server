@@ -123,6 +123,18 @@ def _observation_from_evaluation(
         ranked_source_ids=[hit.result_id for hit in execution.hits],
         fail_closed=evaluation.fail_closed,
         latency_ms=execution.latency_ms,
+        peak_ram_bytes=(
+            execution.adapter_peak_ram_bytes
+            or (
+                execution.resource_usage.peak_delta_ram_bytes
+                if execution.resource_usage else None
+            )
+        ),
+        peak_vram_bytes=(
+            execution.resource_usage.peak_delta_vram_bytes
+            if execution.resource_usage else None
+        ),
+        throughput_tps=execution.throughput_tps,
     )
 
 
@@ -132,6 +144,18 @@ def _automatic_observation(case, execution: CaseExecution) -> BenchmarkObservati
         route=execution.route,
         selected_tools=execution.selected_tools,
         latency_ms=execution.latency_ms,
+        peak_ram_bytes=(
+            execution.adapter_peak_ram_bytes
+            or (
+                execution.resource_usage.peak_delta_ram_bytes
+                if execution.resource_usage else None
+            )
+        ),
+        peak_vram_bytes=(
+            execution.resource_usage.peak_delta_vram_bytes
+            if execution.resource_usage else None
+        ),
+        throughput_tps=execution.throughput_tps,
     )
 
 
