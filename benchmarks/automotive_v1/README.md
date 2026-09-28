@@ -1,6 +1,6 @@
 # Automotive Benchmark System v1
 
-Status: P1 golden-dataset pilot gate after Stage O.
+Status: P2 benchmark-runner development gate after Stage O.
 
 ## Purpose
 
@@ -140,3 +140,39 @@ Canonical initial router checkpoints:
 - fastino/GLiNER2.5-Decide (340M),
 - fastino/GLiNER2.5-multi-Decide (287M),
 - fastino/gliner2.5-small-v1 (74M).
+
+
+## P2 execution and evaluation
+
+P2 adds a runner over the stable AI Platform API. It never calls Ollama,
+Qdrant or provider internals directly.
+
+Supported execution paths:
+
+- reasoning_fixed_evidence -> /api/v1/ai with background priority,
+- retrieval_only -> /api/v1/knowledge/search with rerank=false,
+- retrieval_plus_reranker -> /api/v1/knowledge/search with rerank=true,
+- end_to_end_rag -> /api/v1/knowledge/ask with grounding required,
+- router tracks -> isolated router-adapter-v1 contract.
+
+Live runs require an explicit split or case ID plus an output artifact path.
+Dry runs are always available and make no Platform API calls.
+
+
+Every run artifact freezes:
+
+- golden dataset SHA-256,
+- source Git revisions,
+- suite and track identity,
+- benchmark subject and adapter,
+- per-case request IDs, status and latency,
+- retrieval hits or structured answer metadata.
+
+Evaluation is separate from execution. Router output can be finalized
+automatically. Retrieval can use the deterministic source-identity evaluator,
+which matches exact repository locators/source URIs and atomic source IDs.
+Semantic LLM/RAG scoring requires an explicit versioned EvaluationBundle; P2
+does not silently use an LLM-as-a-judge.
+
+Finalization rejects changed golden data by comparing the run's dataset hash to
+the current file. This prevents scoring an old result against a newer gold set.

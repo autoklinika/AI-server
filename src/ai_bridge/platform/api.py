@@ -151,6 +151,7 @@ class KnowledgeSearchRequest(Contract):
     source_types: list[ID] = Field(default_factory=list, max_length=32)
     filters: dict = Field(default_factory=dict)
     limit: int = Field(default=10, ge=1, le=50)
+    rerank: bool = True
 
 
 class KnowledgeAskRequest(KnowledgeSearchRequest):
@@ -360,7 +361,10 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
         query = knowledge_query(body, request)
         runtime = runtime_factory()
         try:
-            result = await asyncio.to_thread(runtime.search, query)
+            if body.rerank:
+                result = await asyncio.to_thread(runtime.search, query)
+            else:
+                result = await asyncio.to_thread(runtime.search, query, rerank=False)
         except KeyError:
             raise APIError(404, "not_found") from None
         except Exception:

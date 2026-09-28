@@ -47,7 +47,15 @@ class KnowledgeRuntime(AbstractContextManager["KnowledgeRuntime"]):
         self.service = KnowledgeService(self.backend, self.embedding)
         self.reranker = TechnicalEvidenceReranker()
 
-    def search(self, query: KnowledgeQuery) -> KnowledgeSearchResult:
+    def search(
+        self,
+        query: KnowledgeQuery,
+        *,
+        rerank: bool = True,
+    ) -> KnowledgeSearchResult:
+        if not rerank:
+            return self.service.search(query)
+
         requested_limit = query.limit
         candidate_limit = min(100, max(requested_limit * 4, 20))
         candidate_query = replace(query, limit=candidate_limit)
