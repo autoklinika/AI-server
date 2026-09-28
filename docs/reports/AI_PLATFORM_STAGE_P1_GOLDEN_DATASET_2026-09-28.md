@@ -114,7 +114,7 @@ Passing the coverage gate does not erase declared gaps.
 ## Reproducibility
 
 Golden dataset SHA-256:
-b38ab8701bacb652fba03012cf1555f6ee16d7013cb7c3f72c3d1ffdfcc1de8c
+1d7a567f222be99199744589c94c38bc58b0b70b3c7e5ca38aaaf45970651fd2
 
 P1 adds query_variants and context_turns to the strict GoldenCase schema, while
 preserving training exclusion and evidence requirements.
