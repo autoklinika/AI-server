@@ -415,6 +415,27 @@ def qdrant_count(url: str, collection: str) -> int:
     return int(response.json()["result"]["points_count"])
 
 
+def generate_rag_probe(
+    provider,
+    request,
+    prompt,
+    parse_response,
+    *,
+    max_attempts: int = 2,
+):
+    require(max_attempts >= 1, "RAG probe attempts must be positive")
+    for attempt in range(1, max_attempts + 1):
+        generated = provider.generate(request)
+        try:
+            parsed = parse_response(generated.content, prompt)
+        except ValueError:
+            if attempt >= max_attempts:
+                raise
+            continue
+        return generated, parsed, attempt
+    raise RuntimeError("RAG probe exhausted without result")
+
+
 def probe_restored_knowledge(
     *, env: dict[str, str], port: int, user: str, database: str,
 ) -> dict[str, object]:
@@ -488,7 +509,7 @@ def probe_restored_knowledge(
             request_priority=settings.gateway_priority_interactive,
             node_id=settings.node_id,
         )
-        generated = provider.generate(LLMRequest(
+        rag_request = LLMRequest(
             request_id="stage-k-restore-rag",
             capability="structured-generation",
             messages=prompt.messages,
@@ -496,8 +517,14 @@ def probe_restored_knowledge(
             temperature=0,
             reasoning_enabled=False,
             context={"domain": str(domain), "recovery_validation": True},
-        ))
-        parsed = parse_rag_response(generated.content, prompt)
+        )
+        generated, parsed, rag_attempts = generate_rag_probe(
+            provider,
+            rag_request,
+            prompt,
+            parse_rag_response,
+            max_attempts=2,
+        )
         require(parsed.claims, "restored RAG returned no grounded claims")
         refs = referenced_source_refs(parsed)
         citations = citation_payload(prompt, refs)
@@ -550,6 +577,7 @@ def probe_restored_knowledge(
             "search_backend": retrieval.backend,
             "rag_claims": len(parsed.claims),
             "rag_citations": len(citations),
+            "rag_attempts": rag_attempts,
             "opened_document_id": document_id,
             "opened_content_sha256": actual_hash,
             "llm_model": generated.execution.model,
@@ -736,6 +764,7 @@ def validate(backup: Path, ers_backup: Path | None = None) -> Path:
             "qdrant_points": points,
             "rag_claims": probe["rag_claims"],
             "rag_citations": probe["rag_citations"],
+            "rag_attempts": probe["rag_attempts"],
             "ers_cases": (
                 ers_restore["case_count"]
                 if ers_restore is not None
