@@ -147,18 +147,31 @@ full AI-server regression suite passed with no test failures and `git diff --che
 
 P3 development implementation: **PASS**.
 
-Current accepted baseline configuration remains:
+P3 post-merge production validation: **PASS**.
 
+Production evidence:
+- PR #143 merged to `main` as `8228dd27228622c5e2b5116d98ef71e400a0c6b6`,
+- post-merge `AI Platform CI` run `36465575715`: PASS,
+- production release: `stage-o-8228dd272286`,
+- Stage O sequence PASS: preflight -> build/install -> cutover -> smoke ->
+  rollback -> rollback smoke -> reactivation -> reactivation smoke -> finalize,
+- bounded RAG output, client-disconnect cancellation and benchmark telemetry are
+  therefore production-validated,
+- `ai-gateway` and `ai-bridge` active after final reactivation.
+
+P3 production status: **PRODUCTION COMPLETE**.
+
+The frozen reference baseline remains:
 - hybrid Knowledge retrieval,
 - production reranker enabled,
-- RAG `limit=10` as the reference baseline until the bounded-output patch is
-  production-validated,
+- RAG `limit=10`,
 - current `reasoning-main` model only as the baseline subject, not as the
   selected future automotive model.
 
-Production validation of the bounded-output/cancellation/telemetry patch is
-required after merge before P3 can be marked production-complete.
+The successful bounded `limit=5` smoke does not by itself change the frozen
+benchmark reference from `limit=10`; changing that reference is a separate
+project decision.
 
-After that gate, the next major activity is the comparative benchmark of large
-LLM candidates using this frozen baseline, followed by model selection and only
-then automotive training/fine-tuning experiments.
+The next major activity is the comparative benchmark of large LLM candidates
+using this frozen baseline. Model selection and any automotive
+training/fine-tuning remain subsequent, separately approved decisions.
