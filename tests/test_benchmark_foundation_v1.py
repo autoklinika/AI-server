@@ -176,3 +176,19 @@ def test_network_sources_are_present_in_golden_dataset():
     assert "ERS-NET-LIN-0003" in evidence
     assert "ERS-NET-J1939-0002" in evidence
     assert "ERS-NET-J1939-0005" in evidence
+
+
+def test_git_clean_guard_detects_worktree_changes(tmp_path: Path):
+    import subprocess
+    from ai_bridge.benchmarks.run_manifest import git_is_clean
+
+    subprocess.check_call(["git", "init", "-q", str(tmp_path)])
+    subprocess.check_call(["git", "-C", str(tmp_path), "config", "user.email", "test@example.com"])
+    subprocess.check_call(["git", "-C", str(tmp_path), "config", "user.name", "Benchmark Test"])
+    tracked = tmp_path / "tracked.txt"
+    tracked.write_text("clean\n", encoding="utf-8")
+    subprocess.check_call(["git", "-C", str(tmp_path), "add", "tracked.txt"])
+    subprocess.check_call(["git", "-C", str(tmp_path), "commit", "-qm", "seed"])
+    assert git_is_clean(tmp_path) is True
+    tracked.write_text("dirty\n", encoding="utf-8")
+    assert git_is_clean(tmp_path) is False

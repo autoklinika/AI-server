@@ -66,9 +66,18 @@ TRACK_METRICS = {
         "fact_recall", "forbidden_claim_rate", "citation_precision",
         "citation_recall", "grounding_coverage", "fail_closed_accuracy",
     },
-    "routing_zero_shot": {"route_accuracy", "tool_selection_recall"},
-    "routing_calibrated": {"route_accuracy", "tool_selection_recall"},
-    "routing_finetuned": {"route_accuracy", "tool_selection_recall"},
+    "routing_zero_shot": {
+        "route_accuracy", "macro_f1", "tool_selection_recall",
+        "tool_selection_accuracy", "false_positive_rate",
+    },
+    "routing_calibrated": {
+        "route_accuracy", "macro_f1", "tool_selection_recall",
+        "tool_selection_accuracy", "false_positive_rate",
+    },
+    "routing_finetuned": {
+        "route_accuracy", "macro_f1", "tool_selection_recall",
+        "tool_selection_accuracy", "false_positive_rate",
+    },
 }
 
 
@@ -123,6 +132,7 @@ def _observation_from_evaluation(
         ranked_source_ids=[hit.result_id for hit in execution.hits],
         fail_closed=evaluation.fail_closed,
         latency_ms=execution.latency_ms,
+        peak_ram_bytes=execution.peak_ram_bytes,
     )
 
 
@@ -132,6 +142,7 @@ def _automatic_observation(case, execution: CaseExecution) -> BenchmarkObservati
         route=execution.route,
         selected_tools=execution.selected_tools,
         latency_ms=execution.latency_ms,
+        peak_ram_bytes=execution.peak_ram_bytes,
     )
 
 
@@ -140,6 +151,7 @@ def _failed_observation(case, execution: CaseExecution) -> BenchmarkObservation:
         case_id=case.case_id,
         ranked_source_ids=[hit.result_id for hit in execution.hits],
         latency_ms=execution.latency_ms,
+        peak_ram_bytes=execution.peak_ram_bytes,
     )
 
 

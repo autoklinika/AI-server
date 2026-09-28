@@ -51,6 +51,7 @@ class CaseExecution(StrictModel):
     route: str | None = None
     selected_tools: list[str] = Field(default_factory=list)
     latency_ms: float | None = Field(default=None, ge=0)
+    peak_ram_bytes: int | None = Field(default=None, ge=0)
     queue_wait_ms: float | None = Field(default=None, ge=0)
     usage: dict = Field(default_factory=dict)
     error_code: str | None = None
@@ -464,6 +465,7 @@ def run_router(
                 route=decision.route,
                 selected_tools=decision.selected_tools,
                 latency_ms=decision.latency_ms,
+                peak_ram_bytes=decision.peak_ram_bytes,
             ))
         except Exception as exc:
             results.append(_failure(case, run_id, "router-adapter-v1", exc))

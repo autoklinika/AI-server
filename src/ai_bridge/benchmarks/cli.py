@@ -15,13 +15,19 @@ from .evaluation import (
 )
 from .platform_client import PlatformBenchmarkClient
 from .provenance import validate_ers_provenance
-from .run_manifest import build_run_plan, git_revision
+from .router_adapters import (
+    Gliner2RouterAdapter,
+    MajorityKnowledgeRouterAdapter,
+    RulesV1RouterAdapter,
+)
+from .run_manifest import build_run_plan, git_is_clean, git_revision
 from .runner import (
     BenchmarkSubject,
     dry_run,
     run_end_to_end_rag,
     run_fixed_evidence_llm,
     run_retrieval,
+    run_router,
     write_artifact,
 )
 
@@ -67,6 +73,15 @@ def _parser() -> argparse.ArgumentParser:
         "exact", "keyword", "semantic", "hybrid", "auto"
     ], default="hybrid")
     run.add_argument("--limit", type=int, default=10)
+    run.add_argument(
+        "--router-implementation",
+        choices=["majority-knowledge-v1", "rules-v1", "gliner2"],
+    )
+    run.add_argument("--router-checkpoint")
+    run.add_argument("--router-revision")
+    run.add_argument("--router-threshold", type=float, default=0.5)
+    run.add_argument("--allow-dirty", action="store_true")
+    run.add_argument("--router-head-mode", choices=["joint", "separate"], default="joint")
     run.add_argument("--output", type=Path)
 
     evaluate = sub.add_parser("evaluate")
@@ -137,10 +152,28 @@ def main() -> None:
             raise SystemExit("live benchmark requires --split or --case-id")
         if args.mode == "live" and args.output is None:
             raise SystemExit("live benchmark requires --output")
+        if args.mode == "live" and not args.allow_dirty:
+            dirty_roots = [root for root in (args.ai_root, args.ers_root)
+                           if root is not None and not git_is_clean(root)]
+            if dirty_roots:
+                joined = ", ".join(str(root) for root in dirty_roots)
+                raise SystemExit(
+                    "official live benchmark requires clean git worktrees: "
+                    + joined
+                )
 
         metadata = {}
         if args.adapter == "knowledge-api-v1":
             metadata = {"knowledge_mode": args.knowledge_mode, "limit": args.limit}
+        elif args.adapter == "router-adapter-v1" and args.router_implementation:
+            metadata = {"router_implementation": args.router_implementation}
+            if args.router_checkpoint:
+                metadata["checkpoint"] = args.router_checkpoint
+                metadata["revision"] = args.router_revision
+                metadata["threshold"] = args.router_threshold
+                metadata["head_mode"] = args.router_head_mode
+            if args.allow_dirty:
+                metadata["exploratory_dirty_worktree"] = True
         subject = BenchmarkSubject(
             subject_id=args.subject_id,
             kind=args.subject_kind,
@@ -162,38 +195,79 @@ def main() -> None:
                 case_ids=case_ids or None,
             )
         else:
-            token = os.getenv("AI_PLATFORM_API_TOKEN")
-            client = PlatformBenchmarkClient(args.platform_url, token=token)
-            if suite.benchmark_class == "llm" and args.track == "reasoning_fixed_evidence":
-                if args.ers_root is None:
-                    raise SystemExit("fixed-evidence live run requires --ers-root")
-                artifact = run_fixed_evidence_llm(
-                    client=client, suite_path=args.suite, dataset_path=args.dataset,
-                    subject=subject, ai_root=args.ai_root, ers_root=args.ers_root,
-                    source_revisions=revisions, splits=splits or None,
+            if suite.benchmark_class == "router":
+                if args.adapter != "router-adapter-v1":
+                    raise SystemExit("router live run requires router-adapter-v1")
+                if args.router_implementation == "gliner2":
+                    if not args.router_checkpoint:
+                        raise SystemExit(
+                            "GLiNER2 run requires --router-checkpoint"
+                        )
+                    if not args.router_revision:
+                        raise SystemExit(
+                            "GLiNER2 live run requires --router-revision"
+                        )
+                    router_adapter = Gliner2RouterAdapter(
+                        args.router_checkpoint,
+                        revision=args.router_revision,
+                        threshold=args.router_threshold,
+                        head_mode=args.router_head_mode,
+                    )
+                    subject.metadata["runtime"] = router_adapter.runtime_metadata()
+                else:
+                    adapters = {
+                        "majority-knowledge-v1": MajorityKnowledgeRouterAdapter,
+                        "rules-v1": RulesV1RouterAdapter,
+                    }
+                    adapter_factory = adapters.get(args.router_implementation)
+                    if adapter_factory is None:
+                        raise SystemExit(
+                            "router live run requires --router-implementation"
+                        )
+                    router_adapter = adapter_factory()
+                artifact = run_router(
+                    adapter=router_adapter,
+                    suite_path=args.suite,
+                    dataset_path=args.dataset,
+                    subject=subject,
+                    track=args.track,
+                    source_revisions=revisions,
+                    splits=splits or None,
                     case_ids=case_ids or None,
                 )
-            elif suite.benchmark_class == "retrieval_rag" and args.track in {
-                "retrieval_only", "retrieval_plus_reranker"
-            }:
-                artifact = run_retrieval(
-                    client=client, suite_path=args.suite, dataset_path=args.dataset,
-                    subject=subject, track=args.track, source_revisions=revisions,
-                    mode=args.knowledge_mode, limit=args.limit,
-                    splits=splits or None, case_ids=case_ids or None,
-                )
-            elif suite.benchmark_class == "retrieval_rag" and args.track == "end_to_end_rag":
-                artifact = run_end_to_end_rag(
-                    client=client, suite_path=args.suite, dataset_path=args.dataset,
-                    subject=subject, source_revisions=revisions,
-                    mode=args.knowledge_mode, limit=min(args.limit, 20),
-                    splits=splits or None, case_ids=case_ids or None,
-                )
             else:
-                raise SystemExit(
-                    "live execution for this track requires a dedicated adapter; "
-                    "dry-run remains available"
-                )
+                token = os.getenv("AI_PLATFORM_API_TOKEN")
+                client = PlatformBenchmarkClient(args.platform_url, token=token)
+                if suite.benchmark_class == "llm" and args.track == "reasoning_fixed_evidence":
+                    if args.ers_root is None:
+                        raise SystemExit("fixed-evidence live run requires --ers-root")
+                    artifact = run_fixed_evidence_llm(
+                        client=client, suite_path=args.suite, dataset_path=args.dataset,
+                        subject=subject, ai_root=args.ai_root, ers_root=args.ers_root,
+                        source_revisions=revisions, splits=splits or None,
+                        case_ids=case_ids or None,
+                    )
+                elif suite.benchmark_class == "retrieval_rag" and args.track in {
+                    "retrieval_only", "retrieval_plus_reranker"
+                }:
+                    artifact = run_retrieval(
+                        client=client, suite_path=args.suite, dataset_path=args.dataset,
+                        subject=subject, track=args.track, source_revisions=revisions,
+                        mode=args.knowledge_mode, limit=args.limit,
+                        splits=splits or None, case_ids=case_ids or None,
+                    )
+                elif suite.benchmark_class == "retrieval_rag" and args.track == "end_to_end_rag":
+                    artifact = run_end_to_end_rag(
+                        client=client, suite_path=args.suite, dataset_path=args.dataset,
+                        subject=subject, source_revisions=revisions,
+                        mode=args.knowledge_mode, limit=min(args.limit, 20),
+                        splits=splits or None, case_ids=case_ids or None,
+                    )
+                else:
+                    raise SystemExit(
+                        "live execution for this track requires a dedicated adapter; "
+                        "dry-run remains available"
+                    )
 
         if args.output:
             write_artifact(args.output, artifact)
