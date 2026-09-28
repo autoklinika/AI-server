@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "policy_id": "automotive-golden-v1-pilot",
+  "minimum_total": 70,
+  "minimum_targets": {"llm": 55, "router": 45, "retrieval_rag": 58},
+  "minimum_languages": {"pl": 55, "en": 8, "bilingual": 2},
+  "minimum_splits": {"dev": 30, "holdout": 20, "challenge": 16},
+  "minimum_tags": {
+    "can": 8,
+    "j1939": 8,
+    "lin": 5,
+    "cross-platform": 2,
+    "sensor": 1,
+    "actuator": 4,
+    "mpc555": 4,
+    "eeprom": 2,
+    "flash": 3,
+    "driver": 4,
+    "power": 2,
+    "fail-closed": 6,
+    "exact": 4,
+    "part-number": 2,
+    "cross-language": 8,
+    "router": 10,
+    "graphify": 3,
+    "vision": 3,
+    "telemetry": 2,
+    "multi-turn": 1,
+    "schematic": 1,
+    "pcb": 2
+  },
+  "minimum_unique_evidence_sources": 40,
+  "minimum_oem_manifest_sources": 8,
+  "declared_gaps": [
+    "LIN physical-layer coverage is currently TJA1021-centric and needs a second independent LIN transceiver family.",
+    "J1939 now has generic Microchip evidence plus Hatz C81 OEM semantics, but another independent vehicle/engine implementation is still desirable.",
+    "Vision cases currently validate routing only, not visual diagnostic accuracy.",
+    "Sensor, schematic and PCB reasoning coverage is still shallow compared with driver/power/network coverage.",
+    "Real repair cases remain only CASE-0001 and CASE-0002; more independent workshop cases are required before training acceptance."
+  ]
+}

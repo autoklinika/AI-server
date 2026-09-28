@@ -23,6 +23,9 @@ def validate_ers_provenance(dataset: GoldenDataset, ers_root: Path) -> dict:
     corpus = ers_root / "sources" / "automotive-semiconductor-corpus-v0"
     diagnostic_ids = _jsonl_ids(corpus / "DIAGNOSTIC_KNOWLEDGE.jsonl")
     manifest_ids = _jsonl_ids(corpus / "MANIFEST.jsonl")
+    network_ids: set[str] = set()
+    for facts in (ers_root / "sources").rglob("SOURCE_FACTS.jsonl"):
+        network_ids.update(_jsonl_ids(facts))
     case_ids = {
         path.name.split("-", 2)[0] + "-" + path.name.split("-", 2)[1]
         for path in (ers_root / "cases").glob("CASE-*")
@@ -30,7 +33,7 @@ def validate_ers_provenance(dataset: GoldenDataset, ers_root: Path) -> dict:
     }
 
     errors: list[str] = []
-    checked = {"diagnostic_ids": 0, "manifest_ids": 0, "case_ids": 0}
+    checked = {"diagnostic_ids": 0, "manifest_ids": 0, "network_ids": 0, "case_ids": 0}
     for case in dataset.cases:
         source_ids = set(case.provenance.source_ids)
         source_ids.update(evidence.source_id for evidence in case.expected_evidence)
@@ -43,6 +46,10 @@ def validate_ers_provenance(dataset: GoldenDataset, ers_root: Path) -> dict:
                 checked["manifest_ids"] += 1
                 if source_id not in manifest_ids:
                     errors.append(f"{case.case_id}: unknown corpus source {source_id}")
+            elif source_id.startswith("ERS-NET-"):
+                checked["network_ids"] += 1
+                if source_id not in network_ids:
+                    errors.append(f"{case.case_id}: unknown network source {source_id}")
         for case_id in case.provenance.case_ids:
             checked["case_ids"] += 1
             if case_id not in case_ids:
@@ -55,5 +62,6 @@ def validate_ers_provenance(dataset: GoldenDataset, ers_root: Path) -> dict:
         "checked": checked,
         "diagnostic_source_count": len(diagnostic_ids),
         "manifest_source_count": len(manifest_ids),
+        "network_source_count": len(network_ids),
         "ers_case_count": len(case_ids),
     }

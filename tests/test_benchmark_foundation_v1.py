@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from ai_bridge.benchmarks.contracts import GoldenCase, GoldenDataset, SuiteManifest
+from ai_bridge.benchmarks.coverage import CoveragePolicy, evaluate_coverage
 from ai_bridge.benchmarks.scoring import BenchmarkObservation, aggregate, score_observation
 
 
@@ -15,15 +16,18 @@ DATASET = BENCH / "datasets" / "golden.v1.jsonl"
 def test_golden_dataset_v1_is_valid_and_cross_domain():
     dataset = GoldenDataset.load_jsonl(DATASET)
     summary = dataset.summary()
-    assert summary["case_count"] >= 14
-    assert summary["by_target"]["llm"] >= 10
-    assert summary["by_target"]["router"] >= 8
-    assert summary["by_target"]["retrieval_rag"] >= 12
-    assert summary["by_language"]["pl"] >= 10
-    assert summary["by_language"]["en"] >= 2
-    assert len(summary["by_category"]) >= 10
-    assert summary["by_split"] == {"dev": 14}
+    assert summary["case_count"] >= 70
+    assert summary["by_target"]["llm"] >= 55
+    assert summary["by_target"]["router"] >= 45
+    assert summary["by_target"]["retrieval_rag"] >= 58
+    assert summary["by_language"]["pl"] >= 55
+    assert summary["by_language"]["en"] >= 8
+    assert summary["by_language"]["bilingual"] >= 2
+    assert len(summary["by_category"]) >= 60
+    assert summary["by_split"] == {"challenge": 18, "dev": 31, "holdout": 23}
     assert all(case.training_exclusion is True for case in dataset.cases)
+    assert any(case.query_variants for case in dataset.cases)
+    assert any(case.context_turns for case in dataset.cases)
 
 
 def test_golden_dataset_is_model_independent():
@@ -129,11 +133,11 @@ def test_benchmark_catalog_projects_foundation_manifests():
         for item in BenchmarkCatalog(ROOT / "benchmarks").list_suites()
     }
     assert suites["automotive-reasoning"]["status"] == "foundation"
-    assert suites["automotive-reasoning"]["case_count"] == 10
+    assert suites["automotive-reasoning"]["case_count"] == 58
     assert suites["decision-models"]["status"] == "foundation"
-    assert suites["decision-models"]["case_count"] == 8
+    assert suites["decision-models"]["case_count"] == 51
     assert suites["rag-knowledge"]["status"] == "foundation"
-    assert suites["rag-knowledge"]["case_count"] == 12
+    assert suites["rag-knowledge"]["case_count"] == 61
     assert suites["vision"]["status"] == "planned"
 
 
@@ -147,3 +151,28 @@ def test_run_plan_rejects_unknown_track():
             track="reasoning_fixed_evidence",
             ai_root=ROOT,
         )
+
+
+def test_p1_coverage_policy_passes_and_keeps_declared_gaps_visible():
+    dataset = GoldenDataset.load_jsonl(DATASET)
+    policy = CoveragePolicy.load(BENCH / "coverage_policy.json")
+    report = evaluate_coverage(dataset, policy)
+    assert report["status"] == "pass"
+    assert report["failures"] == []
+    assert report["unique_evidence_sources"] >= 40
+    assert report["oem_manifest_sources"] >= 8
+    assert any("Vision" in gap for gap in report["declared_gaps"])
+    assert any("Real repair cases" in gap for gap in report["declared_gaps"])
+
+
+def test_network_sources_are_present_in_golden_dataset():
+    dataset = GoldenDataset.load_jsonl(DATASET)
+    evidence = {
+        item.source_id
+        for case in dataset.cases
+        for item in case.expected_evidence
+    }
+    assert "ERS-NET-LIN-0001" in evidence
+    assert "ERS-NET-LIN-0003" in evidence
+    assert "ERS-NET-J1939-0002" in evidence
+    assert "ERS-NET-J1939-0005" in evidence
