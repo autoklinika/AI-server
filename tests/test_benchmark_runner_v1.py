@@ -226,10 +226,14 @@ def test_fixed_evidence_runner_can_select_allowlisted_benchmark_model(tmp_path):
         ers_root=ers,
         source_revisions={"ai_server_commit": "abc", "ers_commit": "def"},
         model="qwen3.8:27b",
+        model_num_ctx=32768,
+        model_num_gpu=88,
     )
 
     assert seen["path"] == "/api/v1/benchmarks/ai"
     assert seen["body"]["model"] == "qwen3.8:27b"
+    assert seen["body"]["num_ctx"] == 32768
+    assert seen["body"]["num_gpu"] == 88
     assert seen["body"]["priority_class"] == "background"
     assert artifact.cases[0].status == "completed"
 

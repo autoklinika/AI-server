@@ -25,8 +25,14 @@ class GatewayLLMAdapter:
         self.client, self.model, self.node_id = client, model, node_id
         self.health_timeout = health_timeout
 
-    async def _generate_model(self, request: LLMRequest, model: str) -> LLMResponse:
+    async def _generate_model(
+        self, request: LLMRequest, model: str, *, num_ctx: int | None = None, num_gpu: int | None = None
+    ) -> LLMResponse:
         options = {"temperature": request.temperature}
+        if num_ctx is not None:
+            options["num_ctx"] = num_ctx
+        if num_gpu is not None:
+            options["num_gpu"] = num_gpu
         if request.max_output_tokens is not None:
             if request.max_output_tokens <= 0:
                 raise ValueError("max_output_tokens must be positive")
@@ -51,8 +57,10 @@ class GatewayLLMAdapter:
     async def generate(self, request: LLMRequest) -> LLMResponse:
         return await self._generate_model(request, self.model)
 
-    async def generate_for_model(self, request: LLMRequest, model: str) -> LLMResponse:
-        return await self._generate_model(request, model)
+    async def generate_for_model(
+        self, request: LLMRequest, model: str, *, num_ctx: int | None = None, num_gpu: int | None = None
+    ) -> LLMResponse:
+        return await self._generate_model(request, model, num_ctx=num_ctx, num_gpu=num_gpu)
 
     async def ready(self) -> bool:
         try:

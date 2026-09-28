@@ -131,12 +131,16 @@ def test_benchmark_ai_path_is_allowlisted_and_does_not_change_normal_model_contr
                 },
                 "temperature": 0,
                 "timeout_seconds": 30,
+                "num_ctx": 32768,
+                "num_gpu": 77,
             }
             response = await http.post("/api/v1/benchmarks/ai", json=body)
             assert response.status_code == 200, response.text
             result = response.json()
             assert result["execution"]["model"] == "candidate-model:tag"
             assert seen[0]["model"] == "candidate-model:tag"
+            assert seen[0]["options"]["num_ctx"] == 32768
+            assert seen[0]["options"]["num_gpu"] == 77
             job = (await app.state.scheduler.snapshot())["recent_jobs"][-1]
             assert job["priority_class"] == "background"
 
@@ -153,6 +157,8 @@ def test_benchmark_ai_path_is_allowlisted_and_does_not_change_normal_model_contr
             assert normal.status_code == 200
             assert normal.json()["execution"]["model"] == "reasoning-main"
             assert seen[-1]["model"] == "private-model"
+            assert "num_ctx" not in seen[-1]["options"]
+            assert "num_gpu" not in seen[-1]["options"]
 
     asyncio.run(run())
 

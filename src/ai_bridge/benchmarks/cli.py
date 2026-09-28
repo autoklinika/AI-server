@@ -67,6 +67,8 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--split", action="append", choices=["dev", "holdout", "challenge"])
     run.add_argument("--case-id", action="append")
     run.add_argument("--model", default="reasoning-main")
+    run.add_argument("--model-num-ctx", type=int, default=65536)
+    run.add_argument("--model-num-gpu", type=int, default=99)
     run.add_argument("--platform-url", default=os.getenv(
         "AI_PLATFORM_URL", "http://127.0.0.1:11435"
     ))
@@ -165,7 +167,13 @@ def main() -> None:
 
         metadata = {}
         if args.adapter == "platform-ai-v1":
-            metadata = {"model": args.model}
+            metadata = {
+                "model": args.model,
+                "runtime_profile": {
+                    "num_ctx": args.model_num_ctx,
+                    "num_gpu": args.model_num_gpu,
+                },
+            }
         elif args.adapter == "knowledge-api-v1":
             metadata = {"knowledge_mode": args.knowledge_mode, "limit": args.limit}
         elif args.adapter == "router-adapter-v1" and args.router_implementation:
@@ -262,7 +270,9 @@ def main() -> None:
                     artifact = run_fixed_evidence_llm(
                         client=client, suite_path=args.suite, dataset_path=args.dataset,
                         subject=subject, ai_root=args.ai_root, ers_root=args.ers_root,
-                        source_revisions=revisions, model=args.model, splits=splits or None,
+                        source_revisions=revisions, model=args.model,
+                        model_num_ctx=args.model_num_ctx, model_num_gpu=args.model_num_gpu,
+                        splits=splits or None,
                         case_ids=case_ids or None,
                     )
                 elif suite.benchmark_class == "retrieval_rag" and args.track in {
