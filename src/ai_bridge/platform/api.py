@@ -59,13 +59,17 @@ ID = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")]
 
 
 async def _wait_for_client_disconnect(request: Request) -> None:
+    # FastAPI has consumed the request body before the endpoint runs. From this
+    # point the ASGI receive channel is the authoritative client-lifetime
+    # signal. Avoid Starlette Request.is_disconnected() polling here: its
+    # pre-cancelled AnyIO scope can miss an already-queued http.disconnect on
+    # the asyncio backend.
     while True:
-        if await request.is_disconnected():
+        message = await request.receive()
+        if message.get("type") == "http.disconnect":
             return
-        task = asyncio.current_task()
-        if task is not None and task.cancelling():
-            raise asyncio.CancelledError
-        await asyncio.sleep(0.05)
+        if message.get("type") == "http.request":
+            continue
 
 
 async def _generate_until_disconnect(provider, llm_request, request: Request):
