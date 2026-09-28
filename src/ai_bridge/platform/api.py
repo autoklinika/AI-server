@@ -182,6 +182,22 @@ class AIRequest(Contract):
     timeout_seconds: float = Field(default=300, gt=0, le=600)
 
 
+class BenchmarkAIRequest(Contract):
+    schema_version: Literal[1] = 1
+    capability: Literal["structured-generation"] = "structured-generation"
+    model: str = Field(
+        min_length=1,
+        max_length=256,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,255}$",
+    )
+    context: Context = Field(default_factory=Context)
+    priority_class: Literal["background", "maintenance"] = "background"
+    messages: list[Message] = Field(min_length=1, max_length=64)
+    response_schema: dict
+    temperature: float = Field(default=0, ge=0, le=2)
+    timeout_seconds: float = Field(default=300, gt=0, le=600)
+
+
 class KnowledgeSearchRequest(Contract):
     schema_version: Literal[1] = 1
     context: Context = Field(default_factory=Context)
@@ -1346,38 +1362,61 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                             "inference": {"status": "ready" if inference_ready else "unavailable"},
                         }, compatibility_health="not_probed")
 
-    @api.post("/ai")
-    async def ai(body: AIRequest, request: Request):
-        if body.context.request_id:
-            if request.headers.get("x-request-id") not in (None, body.context.request_id):
-                raise APIError(400, "invalid_request")
-            request.state.request_id = body.context.request_id
+    async def execute_ai_request(
+        body: AIRequest | BenchmarkAIRequest,
+        request: Request,
+        *,
+        source: str,
+        physical_model: str | None = None,
+    ):
+        apply_context_request_id(body.context, request)
         if body.capability not in ("chat", "reasoning", "structured-generation"):
             raise APIError(503, "capability_unavailable")
         if body.capability == "structured-generation" and body.response_schema is None:
             raise APIError(400, "invalid_request")
         scheduler = gateway.state.scheduler
         provider = gateway.state.platform_provider
-        metadata = JobMetadata(request_id=request.state.request_id, domain=body.context.domain,
-                               capability=body.capability, priority_class=PriorityClass(body.priority_class),
-                               workload=(WorkloadBinding(provider.provider_id, provider.node_id,
-                                                         body.capability),))
+        metadata = JobMetadata(
+            request_id=request.state.request_id,
+            domain=body.context.domain,
+            capability=body.capability,
+            priority_class=PriorityClass(body.priority_class),
+            workload=(
+                WorkloadBinding(provider.provider_id, provider.node_id, body.capability),
+            ),
+        )
         ticket = None
         outcome = JobLifecycle.FAILED
         start = monotonic()
         try:
             async with asyncio.timeout(body.timeout_seconds):
-                ticket = await scheduler.acquire(priority=priority_for_class(body.priority_class),
-                                                 source="platform-v1", metadata=metadata)
-                await scheduler.mark_running(ticket.job_id, provider=provider.provider_id,
-                                             node=provider.node_id)
-                result = await provider.generate(LLMRequest(
-                    request_id=metadata.request_id, capability=body.capability,
+                ticket = await scheduler.acquire(
+                    priority=priority_for_class(body.priority_class),
+                    source=source,
+                    metadata=metadata,
+                )
+                await scheduler.mark_running(
+                    ticket.job_id,
+                    provider=provider.provider_id,
+                    node=provider.node_id,
+                )
+                llm_request = LLMRequest(
+                    request_id=metadata.request_id,
+                    capability=body.capability,
                     messages=apply_polish_response_policy(
                         [item.model_dump() for item in body.messages]
                     ),
-                    response_schema=body.response_schema, temperature=body.temperature,
-                    context=body.context.model_dump(exclude_none=True)))
+                    response_schema=body.response_schema,
+                    temperature=body.temperature,
+                    context=body.context.model_dump(exclude_none=True),
+                )
+                if physical_model is None:
+                    result = await provider.generate(llm_request)
+                else:
+                    generate_for_model = getattr(provider, "generate_for_model", None)
+                    if generate_for_model is None:
+                        raise APIError(503, "capability_unavailable")
+                    result = await generate_for_model(llm_request, physical_model)
                 outcome = JobLifecycle.COMPLETED
         except SchedulerQueueFull:
             raise APIError(429, "queue_full", True) from None
@@ -1387,16 +1426,51 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
         except asyncio.CancelledError:
             outcome = JobLifecycle.CANCELLED
             raise
+        except APIError:
+            raise
         except Exception:
             raise APIError(503, "provider_unavailable", True) from None
         finally:
             if ticket is not None:
                 await scheduler.release(ticket, state=outcome)
-        return envelope(request, job_id=ticket.platform_job_id, state="completed",
-                        content=result.content, finish_reason=result.finish_reason,
-                        usage=asdict(result.usage), execution={"provider": provider.provider_id,
-                        "model": body.model, "node": provider.node_id,
-                        "queue_wait_ms": round(ticket.wait_ms, 3),
-                        "duration_ms": round((monotonic() - start) * 1000, 3)})
+        return envelope(
+            request,
+            job_id=ticket.platform_job_id,
+            state="completed",
+            content=result.content,
+            finish_reason=result.finish_reason,
+            usage=asdict(result.usage),
+            execution={
+                "provider": provider.provider_id,
+                "model": physical_model or body.model,
+                "node": provider.node_id,
+                "queue_wait_ms": round(ticket.wait_ms, 3),
+                "duration_ms": round((monotonic() - start) * 1000, 3),
+            },
+        )
+
+    @api.post("/ai")
+    async def ai(body: AIRequest, request: Request):
+        return await execute_ai_request(
+            body,
+            request,
+            source="platform-v1",
+        )
+
+    @api.post("/benchmarks/ai")
+    async def benchmark_ai(body: BenchmarkAIRequest, request: Request):
+        allowed_models = {
+            item.strip()
+            for item in settings.benchmark_model_allowlist.split(",")
+            if item.strip()
+        }
+        if body.model not in allowed_models:
+            raise APIError(400, "benchmark_model_not_allowed")
+        return await execute_ai_request(
+            body,
+            request,
+            source="benchmark-llm-v1",
+            physical_model=body.model,
+        )
 
     return api

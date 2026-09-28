@@ -25,13 +25,13 @@ class GatewayLLMAdapter:
         self.client, self.model, self.node_id = client, model, node_id
         self.health_timeout = health_timeout
 
-    async def generate(self, request: LLMRequest) -> LLMResponse:
+    async def _generate_model(self, request: LLMRequest, model: str) -> LLMResponse:
         options = {"temperature": request.temperature}
         if request.max_output_tokens is not None:
             if request.max_output_tokens <= 0:
                 raise ValueError("max_output_tokens must be positive")
             options["num_predict"] = request.max_output_tokens
-        payload = {"model": self.model, "messages": request.messages,
+        payload = {"model": model, "messages": request.messages,
                    "stream": False, "think": False,
                    "options": options}
         if request.response_schema is not None:
@@ -47,6 +47,12 @@ class GatewayLLMAdapter:
             return value if type(value) is int and value >= 0 else None
         return LLMResponse(request_id=request.request_id, content=content,
                            usage=LLMUsage(count("prompt_eval_count"), count("eval_count")))
+
+    async def generate(self, request: LLMRequest) -> LLMResponse:
+        return await self._generate_model(request, self.model)
+
+    async def generate_for_model(self, request: LLMRequest, model: str) -> LLMResponse:
+        return await self._generate_model(request, model)
 
     async def ready(self) -> bool:
         try:
