@@ -1587,8 +1587,11 @@ function benchmarksPage() {
   const suites = payload && Array.isArray(payload.suites) ? payload.suites : [];
   const body = suites.length
     ? '<div class="benchmark-grid">' + suites.map(function (suite) {
+        const volume = suite.case_count != null
+          ? String(suite.case_count) + ' cases'
+          : String(suite.run_count) + ' runs';
         return '<a class="panel benchmark-card" href="' + controlUrl('/apps/benchmarks/' + encodeURIComponent(suite.suite_id)) + '" data-nav data-benchmark-suite="' + escapeHtml(suite.suite_id) + '">' +
-          '<div class="benchmark-card-top"><span class="badge">' + escapeHtml(suite.status) + '</span><strong>' + escapeHtml(String(suite.run_count)) + '</strong></div>' +
+          '<div class="benchmark-card-top"><span class="badge">' + escapeHtml(suite.status) + '</span><strong>' + escapeHtml(volume) + '</strong></div>' +
           '<h3>' + escapeHtml(suite.name) + '</h3><p>' + escapeHtml(suite.category) + '</p>' +
           '<div class="capability-list">' + (suite.capabilities || []).map(function (cap) { return '<span>' + escapeHtml(cap) + '</span>'; }).join('') + '</div>' +
           '<span class="open-link">Open suite →</span>' +

@@ -205,6 +205,8 @@ def test_control_center_benchmark_ui_has_run_deep_links_and_metrics():
     assert "metrics.mrr" in javascript
     assert "latency.search_avg" in javascript
     assert "latency.query_embedding_total" in javascript
+    assert "suite.case_count" in javascript
+    assert "' cases'" in javascript
 
 
 

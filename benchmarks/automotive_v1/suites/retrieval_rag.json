@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "suite_id": "rag-knowledge",
+  "benchmark_class": "retrieval_rag",
+  "version": "1.0.0",
+  "status": "foundation",
+  "objective": "Measure retrieval, reranking and grounded answer quality separately from LLM reasoning.",
+  "dataset": "../datasets/golden.v1.jsonl",
+  "metrics": ["evidence_recall_at_1", "evidence_recall_at_3", "evidence_recall_at_5", "mrr", "ndcg_at_5", "source_precision", "citation_precision", "citation_recall", "grounding_coverage", "fail_closed_accuracy", "latency_ms"],
+  "dimensions": ["lexical", "dense", "hybrid", "reranking", "query_expansion", "technical_aliases", "part_numbers", "mcu_identifiers", "dtc", "ecu_case_identity", "architecture_parameters", "source_ranking", "grounding", "fail_closed", "multiturn_context"],
+  "tracks": ["retrieval_only", "retrieval_plus_reranker", "end_to_end_rag"],
+  "candidate_models": [],
+  "notes": ["Qdrant remains a replaceable retrieval backend.", "Scania S6 and Hatz are regression cases, not the benchmark boundary."]
+}
