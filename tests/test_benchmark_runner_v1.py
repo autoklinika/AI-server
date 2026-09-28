@@ -169,6 +169,9 @@ def test_fixed_evidence_runner_uses_platform_ai_background_priority(tmp_path):
     assert "The value is 42." in seen["body"]["messages"][0]["content"]
     assert artifact.cases[0].evaluation_state == "pending_semantic"
     assert artifact.cases[0].cited_source_ids == ["FIX-1"]
+    assert artifact.cases[0].throughput_tps == 1000.0
+    assert artifact.cases[0].resource_usage is not None
+    assert artifact.cases[0].resource_usage.scope == "system"
 
 
 def test_retrieval_runner_uses_stable_knowledge_api(tmp_path):
@@ -217,6 +220,8 @@ def test_retrieval_runner_uses_stable_knowledge_api(tmp_path):
     assert artifact.cases[0].evaluation_state == "pending_relevance"
     assert artifact.cases[0].hits[0].source_id == "FIX-1"
     assert artifact.cases[0].hits[0].text == "The value is 42."
+    assert artifact.cases[0].resource_usage is not None
+    assert artifact.cases[0].resource_usage.scope == "system"
 
 
 def test_rag_runner_uses_grounded_knowledge_ask_background(tmp_path):
@@ -242,6 +247,7 @@ def test_rag_runner_uses_grounded_knowledge_ask_background(tmp_path):
             }],
             "retrieval": {"mode": "hybrid", "backend": "composite", "result_count": 1},
             "execution": {"model": "reasoning-main", "queue_wait_ms": 2.0, "duration_ms": 15.0},
+            "usage": {"input_tokens": 100, "output_tokens": 15},
         })
 
 
@@ -261,8 +267,11 @@ def test_rag_runner_uses_grounded_knowledge_ask_background(tmp_path):
     assert seen["path"] == "/api/v1/knowledge/ask"
     assert seen["body"]["priority_class"] == "background"
     assert seen["body"]["require_grounding_signal"] is True
+    assert seen["body"]["timeout_seconds"] == 300
     assert artifact.cases[0].evaluation_state == "pending_semantic"
     assert "doc-1" in artifact.cases[0].cited_source_ids
+    assert artifact.cases[0].throughput_tps == 1000.0
+    assert artifact.cases[0].resource_usage is not None
 
 
 def test_router_adapter_is_separate_from_large_llm(tmp_path):

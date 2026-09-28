@@ -13,6 +13,7 @@ from pydantic import Field
 from .contracts import GoldenCase, GoldenDataset, StrictModel, SuiteManifest
 from .evidence import render_fixed_evidence, resolve_evidence
 from .platform_client import PlatformBenchmarkClient
+from .resources import ResourceSampler, SystemResourceUsage
 
 
 class BenchmarkSubject(StrictModel):
@@ -54,6 +55,8 @@ class CaseExecution(StrictModel):
     peak_ram_bytes: int | None = Field(default=None, ge=0)
     queue_wait_ms: float | None = Field(default=None, ge=0)
     usage: dict = Field(default_factory=dict)
+    throughput_tps: float | None = Field(default=None, ge=0)
+    resource_usage: SystemResourceUsage | None = None
     error_code: str | None = None
 
 
@@ -96,6 +99,25 @@ _FIXED_RESPONSE_SCHEMA = {
 
 def _dataset_hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _sampled(call):
+    sampler = ResourceSampler().start()
+    try:
+        value = call()
+    except Exception:
+        sampler.stop()
+        raise
+    return value, sampler.stop()
+
+
+def _throughput_tps(usage: dict | None, duration_ms: float | None) -> float | None:
+    if not usage or not duration_ms or duration_ms <= 0:
+        return None
+    output_tokens = usage.get("output_tokens")
+    if type(output_tokens) is not int or output_tokens < 0:
+        return None
+    return output_tokens / (duration_ms / 1000.0)
 
 
 def _request_id(case: GoldenCase, run_id: str) -> str:
@@ -244,11 +266,11 @@ def run_fixed_evidence_llm(
     for case in selected:
         request_id = _request_id(case, run_id)
         try:
-            response = client.ai_structured(
+            response, resources = _sampled(lambda: client.ai_structured(
                 request_id=request_id,
                 message=render_fixed_evidence(case, evidence_by_case[case.case_id]),
                 response_schema=_FIXED_RESPONSE_SCHEMA,
-            )
+            ))
             parsed = _FixedAnswer.model_validate_json(response.content)
             results.append(CaseExecution(
                 case_id=case.case_id,
@@ -263,6 +285,10 @@ def run_fixed_evidence_llm(
                 latency_ms=response.execution.duration_ms,
                 queue_wait_ms=response.execution.queue_wait_ms,
                 usage=response.usage,
+                throughput_tps=_throughput_tps(
+                    response.usage, response.execution.duration_ms
+                ),
+                resource_usage=resources,
             ))
         except Exception as exc:
             results.append(_failure(case, run_id, "/api/v1/ai", exc))
@@ -321,13 +347,13 @@ def run_retrieval(
     for case in selected:
         request_id = _request_id(case, run_id)
         try:
-            response = client.knowledge_search(
+            response, resources = _sampled(lambda: client.knowledge_search(
                 request_id=request_id,
                 query=case.question,
                 mode=mode,
                 limit=limit,
                 rerank=(track == "retrieval_plus_reranker"),
-            )
+            ))
             results.append(CaseExecution(
                 case_id=case.case_id,
                 request_id=request_id,
@@ -339,6 +365,7 @@ def run_retrieval(
                     for rank, hit in enumerate(response.results, 1)
                 ],
                 latency_ms=response.duration_ms,
+                resource_usage=resources,
             ))
         except Exception as exc:
             results.append(_failure(
@@ -396,12 +423,12 @@ def run_end_to_end_rag(
         request_id = _request_id(case, run_id)
         try:
             started = time.perf_counter()
-            response = client.knowledge_ask(
+            response, resources = _sampled(lambda: client.knowledge_ask(
                 request_id=request_id,
                 query=case.question,
                 mode=mode,
                 limit=limit,
-            )
+            ))
             elapsed_ms = (time.perf_counter() - started) * 1000.0
             execution = response.execution or {}
             results.append(CaseExecution(
@@ -416,6 +443,12 @@ def run_end_to_end_rag(
                 insufficient_context=response.insufficient_context,
                 latency_ms=float(execution.get("duration_ms", elapsed_ms)),
                 queue_wait_ms=execution.get("queue_wait_ms"),
+                usage=response.usage or {},
+                throughput_tps=_throughput_tps(
+                    response.usage,
+                    float(execution.get("duration_ms", elapsed_ms)),
+                ),
+                resource_usage=resources,
             ))
         except Exception as exc:
             results.append(_failure(case, run_id, "/api/v1/knowledge/ask", exc))
@@ -455,7 +488,7 @@ def run_router(
     for case in selected:
         request_id = _request_id(case, run_id)
         try:
-            decision = adapter.decide(case)
+            decision, resources = _sampled(lambda: adapter.decide(case))
             results.append(CaseExecution(
                 case_id=case.case_id,
                 request_id=request_id,
@@ -466,6 +499,7 @@ def run_router(
                 selected_tools=decision.selected_tools,
                 latency_ms=decision.latency_ms,
                 peak_ram_bytes=decision.peak_ram_bytes,
+                resource_usage=resources,
             ))
         except Exception as exc:
             results.append(_failure(case, run_id, "router-adapter-v1", exc))

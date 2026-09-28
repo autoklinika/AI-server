@@ -208,6 +208,7 @@ def test_search_is_raw_retrieval_and_ask_is_cited_rag(tmp_path):
             assert answer["citations"][0]["ref"] == "S1"
             assert answer["citations"][0]["document_id"] == snapshot.document.document_id
             assert answer["execution"]["model"] == "reasoning-main"
+            assert set(answer["usage"]) == {"input_tokens", "output_tokens"}
             assert "ollama-local" not in ask.text and "private-model" not in ask.text
             assert len(provider.calls) == 1
             assert provider.calls[0].capability == "structured-generation"

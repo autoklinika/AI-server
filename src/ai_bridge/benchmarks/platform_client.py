@@ -69,6 +69,7 @@ class AskResponse(_Public):
     citations: list[dict[str, Any]]
     retrieval: dict[str, Any]
     execution: dict[str, Any] | None = None
+    usage: dict[str, int | None] = Field(default_factory=dict)
 
 
 class PlatformBenchmarkClient:
@@ -178,7 +179,7 @@ class PlatformBenchmarkClient:
             "mode": mode,
             "limit": limit,
             "priority_class": priority_class,
-            "timeout_seconds": 600,
+            "timeout_seconds": 300,
             "require_grounding_signal": True,
         }, headers={"X-Request-Id": request_id})
         return AskResponse.model_validate(data)

@@ -92,6 +92,15 @@ def _validate_fact_ids(case, values: list[str], field: str) -> None:
         raise ValueError(f"{case.case_id}: {field} references unknown facts {unknown}")
 
 
+def _execution_resources(execution: CaseExecution):
+    if execution.resource_usage is not None:
+        return (
+            execution.resource_usage.peak_delta_ram_bytes,
+            execution.resource_usage.peak_delta_vram_bytes,
+        )
+    return execution.peak_ram_bytes, None
+
+
 def _observation_from_evaluation(
     case,
     execution: CaseExecution,
@@ -132,7 +141,9 @@ def _observation_from_evaluation(
         ranked_source_ids=[hit.result_id for hit in execution.hits],
         fail_closed=evaluation.fail_closed,
         latency_ms=execution.latency_ms,
-        peak_ram_bytes=execution.peak_ram_bytes,
+        peak_ram_bytes=_execution_resources(execution)[0],
+        peak_vram_bytes=_execution_resources(execution)[1],
+        throughput_tps=execution.throughput_tps,
     )
 
 
@@ -142,7 +153,9 @@ def _automatic_observation(case, execution: CaseExecution) -> BenchmarkObservati
         route=execution.route,
         selected_tools=execution.selected_tools,
         latency_ms=execution.latency_ms,
-        peak_ram_bytes=execution.peak_ram_bytes,
+        peak_ram_bytes=_execution_resources(execution)[0],
+        peak_vram_bytes=_execution_resources(execution)[1],
+        throughput_tps=execution.throughput_tps,
     )
 
 
@@ -151,7 +164,9 @@ def _failed_observation(case, execution: CaseExecution) -> BenchmarkObservation:
         case_id=case.case_id,
         ranked_source_ids=[hit.result_id for hit in execution.hits],
         latency_ms=execution.latency_ms,
-        peak_ram_bytes=execution.peak_ram_bytes,
+        peak_ram_bytes=_execution_resources(execution)[0],
+        peak_vram_bytes=_execution_resources(execution)[1],
+        throughput_tps=execution.throughput_tps,
     )
 
 
