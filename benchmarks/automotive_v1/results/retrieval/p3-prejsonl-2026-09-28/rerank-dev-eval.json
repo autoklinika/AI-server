@@ -1,0 +1,338 @@
+{
+  "schema_version": 1,
+  "run_id": "run_44f700d71e534f5ab0ad",
+  "suite_id": "rag-knowledge",
+  "track": "retrieval_plus_reranker",
+  "subject": {
+    "subject_id": "production-knowledge-pre-jsonl-reranked",
+    "kind": "knowledge-config",
+    "adapter": "knowledge-api-v1",
+    "metadata": {
+      "knowledge_mode": "hybrid",
+      "limit": 10,
+      "platform_release": {
+        "release_id": "stage-o-491e982e627e",
+        "stage": "O",
+        "source_git_sha": "491e982e627e8b550dcea0742693bb903009622f",
+        "migration_version": "crt-projection-v1",
+        "knowledge_service_contract_version": "1",
+        "platform_api_contract_version": "1"
+      }
+    }
+  },
+  "case_count": 26,
+  "completed_count": 26,
+  "completion_rate": 1.0,
+  "evaluation": {
+    "evaluator_type": "deterministic",
+    "evaluator_id": "source-identity-v1",
+    "evaluator_version": "1"
+  },
+  "aggregate": {
+    "schema_version": 1,
+    "benchmark_class": "retrieval_rag",
+    "case_count": 26,
+    "metrics": {
+      "evidence_recall_at_1": 0.5961538461538461,
+      "evidence_recall_at_3": 0.9615384615384616,
+      "evidence_recall_at_5": 1.0,
+      "mrr": 0.7769230769230769,
+      "ndcg_at_5": 0.8214217866106753,
+      "source_precision": 0.34615384615384615
+    },
+    "resources": {
+      "latency_ms": {
+        "mean": 259.77328318941335,
+        "max": 283.12930901302025
+      }
+    },
+    "case_scores": [
+      {
+        "case_id": "ERS-GOLD-0001",
+        "metrics": {
+          "evidence_recall_at_1": 1.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 1.0,
+          "mrr": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0002",
+        "metrics": {
+          "evidence_recall_at_1": 1.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 1.0,
+          "mrr": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0003",
+        "metrics": {
+          "evidence_recall_at_1": 0.5,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.2,
+          "mrr": 1.0,
+          "ndcg_at_5": 0.75
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0004",
+        "metrics": {
+          "evidence_recall_at_1": 0.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.2,
+          "mrr": 0.5,
+          "ndcg_at_5": 0.5654648767857288
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0005",
+        "metrics": {
+          "evidence_recall_at_1": 0.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.1,
+          "mrr": 0.3333333333333333,
+          "ndcg_at_5": 0.5
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0006",
+        "metrics": {
+          "evidence_recall_at_1": 1.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.1,
+          "mrr": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0007",
+        "metrics": {
+          "evidence_recall_at_1": 1.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.1,
+          "mrr": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0008",
+        "metrics": {
+          "evidence_recall_at_1": 0.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.1,
+          "mrr": 0.5,
+          "ndcg_at_5": 0.6309297535714575
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0009",
+        "metrics": {
+          "evidence_recall_at_1": 1.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.1,
+          "mrr": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0010",
+        "metrics": {
+          "evidence_recall_at_1": 0.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.4,
+          "mrr": 0.5,
+          "ndcg_at_5": 0.6309297535714575
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0011",
+        "metrics": {
+          "evidence_recall_at_1": 1.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.1,
+          "mrr": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0012",
+        "metrics": {
+          "evidence_recall_at_1": 0.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.6,
+          "mrr": 0.5,
+          "ndcg_at_5": 0.6309297535714575
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0015",
+        "metrics": {
+          "evidence_recall_at_1": 0.0,
+          "evidence_recall_at_3": 0.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.1,
+          "mrr": 0.2,
+          "ndcg_at_5": 0.38685280723454163
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0018",
+        "metrics": {
+          "evidence_recall_at_1": 0.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.2,
+          "mrr": 0.3333333333333333,
+          "ndcg_at_5": 0.5
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0019",
+        "metrics": {
+          "evidence_recall_at_1": 1.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.7,
+          "mrr": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0023",
+        "metrics": {
+          "evidence_recall_at_1": 0.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.2,
+          "mrr": 0.3333333333333333,
+          "ndcg_at_5": 0.5
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0025",
+        "metrics": {
+          "evidence_recall_at_1": 0.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.2,
+          "mrr": 0.5,
+          "ndcg_at_5": 0.6309297535714575
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0028",
+        "metrics": {
+          "evidence_recall_at_1": 1.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 1.0,
+          "mrr": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0031",
+        "metrics": {
+          "evidence_recall_at_1": 0.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.1,
+          "mrr": 0.5,
+          "ndcg_at_5": 0.6309297535714575
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0036",
+        "metrics": {
+          "evidence_recall_at_1": 1.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.1,
+          "mrr": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0040",
+        "metrics": {
+          "evidence_recall_at_1": 1.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.1,
+          "mrr": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0041",
+        "metrics": {
+          "evidence_recall_at_1": 1.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.1,
+          "mrr": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0042",
+        "metrics": {
+          "evidence_recall_at_1": 1.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.1,
+          "mrr": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0048",
+        "metrics": {
+          "evidence_recall_at_1": 1.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 0.1,
+          "mrr": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0065",
+        "metrics": {
+          "evidence_recall_at_1": 1.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 1.0,
+          "mrr": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0069",
+        "metrics": {
+          "evidence_recall_at_1": 1.0,
+          "evidence_recall_at_3": 1.0,
+          "evidence_recall_at_5": 1.0,
+          "source_precision": 1.0,
+          "mrr": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      }
+    ]
+  }
+}

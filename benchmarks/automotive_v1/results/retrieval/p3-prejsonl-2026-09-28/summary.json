@@ -1,0 +1,228 @@
+{
+  "schema_version": 1,
+  "phase": "pre_jsonl_sync",
+  "tracks": {
+    "raw": {
+      "dev": {
+        "case_count": 26,
+        "metrics": {
+          "evidence_recall_at_1": 0.5961538461538461,
+          "evidence_recall_at_3": 0.7692307692307693,
+          "evidence_recall_at_5": 0.9230769230769231,
+          "mrr": 0.7394688644688645,
+          "ndcg_at_5": 0.7632147545226353,
+          "source_precision": 0.31153846153846154
+        },
+        "resources": {
+          "latency_ms": {
+            "mean": 257.90789492356663,
+            "max": 287.47511201072484
+          }
+        },
+        "platform_release": {
+          "release_id": "stage-o-491e982e627e",
+          "stage": "O",
+          "source_git_sha": "491e982e627e8b550dcea0742693bb903009622f",
+          "migration_version": "crt-projection-v1",
+          "knowledge_service_contract_version": "1",
+          "platform_api_contract_version": "1"
+        },
+        "source_revisions": {
+          "ai_server_commit": "c520cbd1426319616442dedb5af2d7ce8d58ef40",
+          "ers_commit": "81909b30ef18ca2053bd7496d6faeb814d4e9866"
+        },
+        "dataset_sha256": "1f829de1eacdd8e19905e28f2d086161f94fd93c691bee586d6171976d0f8edf"
+      },
+      "holdout": {
+        "case_count": 20,
+        "metrics": {
+          "evidence_recall_at_1": 0.7,
+          "evidence_recall_at_3": 0.95,
+          "evidence_recall_at_5": 1.0,
+          "mrr": 0.8291666666666667,
+          "ndcg_at_5": 0.8727197786179611,
+          "source_precision": 0.325
+        },
+        "resources": {
+          "latency_ms": {
+            "mean": 254.16606778744608,
+            "max": 279.4952900148928
+          }
+        },
+        "platform_release": {
+          "release_id": "stage-o-491e982e627e",
+          "stage": "O",
+          "source_git_sha": "491e982e627e8b550dcea0742693bb903009622f",
+          "migration_version": "crt-projection-v1",
+          "knowledge_service_contract_version": "1",
+          "platform_api_contract_version": "1"
+        },
+        "source_revisions": {
+          "ai_server_commit": "c520cbd1426319616442dedb5af2d7ce8d58ef40",
+          "ers_commit": "81909b30ef18ca2053bd7496d6faeb814d4e9866"
+        },
+        "dataset_sha256": "1f829de1eacdd8e19905e28f2d086161f94fd93c691bee586d6171976d0f8edf"
+      },
+      "challenge": {
+        "case_count": 15,
+        "metrics": {
+          "evidence_recall_at_1": 0.7333333333333333,
+          "evidence_recall_at_3": 0.9333333333333333,
+          "evidence_recall_at_5": 1.0,
+          "mrr": 0.8466666666666667,
+          "ndcg_at_5": 0.8853094711965943,
+          "source_precision": 0.22666666666666668
+        },
+        "resources": {
+          "latency_ms": {
+            "mean": 255.25753805413842,
+            "max": 282.23533398704603
+          }
+        },
+        "platform_release": {
+          "release_id": "stage-o-491e982e627e",
+          "stage": "O",
+          "source_git_sha": "491e982e627e8b550dcea0742693bb903009622f",
+          "migration_version": "crt-projection-v1",
+          "knowledge_service_contract_version": "1",
+          "platform_api_contract_version": "1"
+        },
+        "source_revisions": {
+          "ai_server_commit": "c520cbd1426319616442dedb5af2d7ce8d58ef40",
+          "ers_commit": "81909b30ef18ca2053bd7496d6faeb814d4e9866"
+        },
+        "dataset_sha256": "1f829de1eacdd8e19905e28f2d086161f94fd93c691bee586d6171976d0f8edf"
+      }
+    },
+    "rerank": {
+      "dev": {
+        "case_count": 26,
+        "metrics": {
+          "evidence_recall_at_1": 0.5961538461538461,
+          "evidence_recall_at_3": 0.9615384615384616,
+          "evidence_recall_at_5": 1.0,
+          "mrr": 0.7769230769230769,
+          "ndcg_at_5": 0.8214217866106753,
+          "source_precision": 0.34615384615384615
+        },
+        "resources": {
+          "latency_ms": {
+            "mean": 259.77328318941335,
+            "max": 283.12930901302025
+          }
+        },
+        "platform_release": {
+          "release_id": "stage-o-491e982e627e",
+          "stage": "O",
+          "source_git_sha": "491e982e627e8b550dcea0742693bb903009622f",
+          "migration_version": "crt-projection-v1",
+          "knowledge_service_contract_version": "1",
+          "platform_api_contract_version": "1"
+        },
+        "source_revisions": {
+          "ai_server_commit": "c520cbd1426319616442dedb5af2d7ce8d58ef40",
+          "ers_commit": "81909b30ef18ca2053bd7496d6faeb814d4e9866"
+        },
+        "dataset_sha256": "1f829de1eacdd8e19905e28f2d086161f94fd93c691bee586d6171976d0f8edf"
+      },
+      "holdout": {
+        "case_count": 20,
+        "metrics": {
+          "evidence_recall_at_1": 0.75,
+          "evidence_recall_at_3": 0.95,
+          "evidence_recall_at_5": 1.0,
+          "mrr": 0.8433333333333334,
+          "ndcg_at_5": 0.8824356157188729,
+          "source_precision": 0.34
+        },
+        "resources": {
+          "latency_ms": {
+            "mean": 258.86469269753434,
+            "max": 280.85599903715774
+          }
+        },
+        "platform_release": {
+          "release_id": "stage-o-491e982e627e",
+          "stage": "O",
+          "source_git_sha": "491e982e627e8b550dcea0742693bb903009622f",
+          "migration_version": "crt-projection-v1",
+          "knowledge_service_contract_version": "1",
+          "platform_api_contract_version": "1"
+        },
+        "source_revisions": {
+          "ai_server_commit": "c520cbd1426319616442dedb5af2d7ce8d58ef40",
+          "ers_commit": "81909b30ef18ca2053bd7496d6faeb814d4e9866"
+        },
+        "dataset_sha256": "1f829de1eacdd8e19905e28f2d086161f94fd93c691bee586d6171976d0f8edf"
+      },
+      "challenge": {
+        "case_count": 15,
+        "metrics": {
+          "evidence_recall_at_1": 0.8,
+          "evidence_recall_at_3": 0.9333333333333333,
+          "evidence_recall_at_5": 1.0,
+          "mrr": 0.88,
+          "ndcg_at_5": 0.9099141542918304,
+          "source_precision": 0.20666666666666667
+        },
+        "resources": {
+          "latency_ms": {
+            "mean": 257.3241572050999,
+            "max": 282.0304299821146
+          }
+        },
+        "platform_release": {
+          "release_id": "stage-o-491e982e627e",
+          "stage": "O",
+          "source_git_sha": "491e982e627e8b550dcea0742693bb903009622f",
+          "migration_version": "crt-projection-v1",
+          "knowledge_service_contract_version": "1",
+          "platform_api_contract_version": "1"
+        },
+        "source_revisions": {
+          "ai_server_commit": "c520cbd1426319616442dedb5af2d7ce8d58ef40",
+          "ers_commit": "81909b30ef18ca2053bd7496d6faeb814d4e9866"
+        },
+        "dataset_sha256": "1f829de1eacdd8e19905e28f2d086161f94fd93c691bee586d6171976d0f8edf"
+      }
+    }
+  },
+  "subgroups": {
+    "raw": {
+      "j1939": {
+        "case_count": 9,
+        "evidence_recall_at_1": 0.5555555555555556,
+        "evidence_recall_at_3": 0.7777777777777778,
+        "evidence_recall_at_5": 0.8888888888888888,
+        "mrr": 0.7103174603174603,
+        "ndcg_at_5": 0.7436151183573676
+      },
+      "lin": {
+        "case_count": 6,
+        "evidence_recall_at_1": 0.6666666666666666,
+        "evidence_recall_at_3": 1.0,
+        "evidence_recall_at_5": 1.0,
+        "mrr": 0.8055555555555555,
+        "ndcg_at_5": 0.8551549589285763
+      }
+    },
+    "rerank": {
+      "j1939": {
+        "case_count": 9,
+        "evidence_recall_at_1": 0.6666666666666666,
+        "evidence_recall_at_3": 0.8888888888888888,
+        "evidence_recall_at_5": 1.0,
+        "mrr": 0.762962962962963,
+        "ndcg_at_5": 0.8207614230260601
+      },
+      "lin": {
+        "case_count": 6,
+        "evidence_recall_at_1": 0.6666666666666666,
+        "evidence_recall_at_3": 0.8333333333333334,
+        "evidence_recall_at_5": 1.0,
+        "mrr": 0.7833333333333333,
+        "ndcg_at_5": 0.8362970934676666
+      }
+    }
+  }
+}

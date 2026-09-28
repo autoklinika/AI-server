@@ -193,3 +193,38 @@ boundary precision, vision recall, and independent multi-tool selection.
 The majority floor's high raw accuracy is not evidence of good routing; it gets
 100% recall only for knowledge_rag and 0% for every minority route. Macro-F1 is
 therefore the primary quality metric for router development.
+
+
+## Production retrieval baseline — before JSONL sync
+
+P3 also captured the current production Knowledge retrieval baseline before
+applying the new record-level JSONL synchronization.
+
+Runtime:
+- release stage-o-491e982e627e,
+- source SHA 491e982e627e8b550dcea0742693bb903009622f,
+- Knowledge Service contract v1,
+- hybrid retrieval, top-k 10.
+
+Raw retrieval aggregate:
+- dev Recall@1/3/5 59.6% / 76.9% / 92.3%, MRR 0.739,
+- holdout 70.0% / 95.0% / 100%, MRR 0.829,
+- challenge 73.3% / 93.3% / 100%, MRR 0.847.
+
+
+With production reranking:
+- dev Recall@1/3/5 59.6% / 96.2% / 100%, MRR 0.777,
+- holdout 75.0% / 95.0% / 100%, MRR 0.843,
+- challenge 80.0% / 93.3% / 100%, MRR 0.880.
+
+Reranking therefore materially improves top-3/top-5 grounding with essentially
+no observed latency penalty in this run (~254–260 ms/query).
+
+Raw top-5 misses occur only on two dev cases: ERS-DK-0023 input protection and
+Hatz CAN service-vs-customer topology. The reranker recovers both into top-5.
+
+The pre-sync J1939 subgroup has raw Recall@1/3/5 55.6% / 77.8% / 88.9%;
+reranking raises it to 66.7% / 88.9% / 100%. LIN has raw
+66.7% / 100% / 100% and reranked 66.7% / 83.3% / 100%.
+
+These artifacts are the A-side for an identical post-JSONL-ingestion A/B run.
