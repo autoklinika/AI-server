@@ -145,3 +145,51 @@ retrieval/RAG baselines are also complete.
 Focused P3/router/JSONL/runner/evaluation tests: PASS.
 Dataset schema, ERS provenance and coverage policy: PASS.
 Full repository regression is required before the implementation commit.
+
+
+## Authoritative router baseline v1
+
+After committing the P3 implementation, router baselines were repeated from a
+clean worktree with pinned Hugging Face revisions. Raw run artifacts, evaluation
+artifacts, confusion matrices and summary are stored under:
+
+benchmarks/automotive_v1/results/router/p3-2026-09-28/
+
+All runs use:
+- AI-server commit 31ccb42855a06539785469dbe8dfdc1f2af7cc46,
+- ERS commit 81909b30ef18ca2053bd7496d6faeb814d4e9866,
+- dataset SHA-256 1f829de1eacdd8e19905e28f2d086161f94fd93c691bee586d6171976d0f8edf.
+
+
+Authoritative route accuracy / macro-F1:
+
+| Subject | Dev | Holdout | Challenge |
+|---|---|---|---|
+| majority floor | 82.6% / 0.226 | 80.0% / 0.222 | 76.9% / 0.217 |
+| GLiNER2.5 small 74M | 60.9% / 0.133 | 33.3% / 0.151 | 53.8% / 0.358 |
+| GLiNER2.5 multi-Decide 287M | 69.6% / 0.553 | 60.0% / 0.405 | 38.5% / 0.250 |
+| GLiNER2.5 Decide 340M | 82.6% / 0.670 | 80.0% / 0.705 | 76.9% / 0.474 |
+
+CPU mean per-case latency was about 58–61 ms for 74M, 246–253 ms for 287M,
+and 571–753 ms for 340M. Peak RSS was about 1.21 GB, 2.98–3.00 GB and
+4.28 GB respectively.
+
+Tool exact accuracy remains weak even for 340M: 39.1% dev, 53.3% holdout and
+46.2% challenge. This blocks production adoption of any tested checkpoint as a
+complete route+tool policy.
+
+
+Across all 51 router cases, 340M route recall is:
+- graphify: 100%,
+- reasoning: 100%,
+- telemetry: 100%,
+- tool/agent handoff: 100%,
+- vision: 66.7%,
+- knowledge_rag: 78.0%.
+
+This identifies the first router-training curriculum targets: knowledge-vs-other
+boundary precision, vision recall, and independent multi-tool selection.
+
+The majority floor's high raw accuracy is not evidence of good routing; it gets
+100% recall only for knowledge_rag and 0% for every minority route. Macro-F1 is
+therefore the primary quality metric for router development.

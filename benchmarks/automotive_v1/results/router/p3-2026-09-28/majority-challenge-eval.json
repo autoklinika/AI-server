@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "run_id": "run_86eecc83ca70473da7f9",
+  "suite_id": "decision-models",
+  "track": "routing_zero_shot",
+  "subject": {
+    "subject_id": "majority-knowledge-v1",
+    "kind": "router-checkpoint",
+    "adapter": "router-adapter-v1",
+    "metadata": {
+      "router_implementation": "majority-knowledge-v1"
+    }
+  },
+  "case_count": 13,
+  "completed_count": 13,
+  "completion_rate": 1.0,
+  "evaluation": {
+    "evaluator_type": "automatic"
+  },
+  "aggregate": {
+    "schema_version": 1,
+    "benchmark_class": "router",
+    "case_count": 13,
+    "metrics": {
+      "false_positive_rate": 0.07692307692307693,
+      "route_accuracy": 0.7692307692307693,
+      "tool_selection_accuracy": 0.7692307692307693,
+      "tool_selection_recall": 0.8461538461538461,
+      "macro_f1": 0.2173913043478261
+    },
+    "resources": {
+      "latency_ms": {
+        "mean": 0.00015185483229848056,
+        "max": 0.0007119961082935333
+      }
+    },
+    "case_scores": [
+      {
+        "case_id": "ERS-GOLD-0021",
+        "metrics": {
+          "route_accuracy": 1.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0033",
+        "metrics": {
+          "route_accuracy": 1.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0043",
+        "metrics": {
+          "route_accuracy": 1.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0046",
+        "metrics": {
+          "route_accuracy": 1.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0054",
+        "metrics": {
+          "route_accuracy": 0.0,
+          "tool_selection_recall": 0.0,
+          "tool_selection_accuracy": 0.0,
+          "false_positive_rate": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0055",
+        "metrics": {
+          "route_accuracy": 0.0,
+          "tool_selection_recall": 0.5,
+          "tool_selection_accuracy": 0.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0056",
+        "metrics": {
+          "route_accuracy": 1.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0058",
+        "metrics": {
+          "route_accuracy": 1.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0061",
+        "metrics": {
+          "route_accuracy": 1.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0063",
+        "metrics": {
+          "route_accuracy": 0.0,
+          "tool_selection_recall": 0.5,
+          "tool_selection_accuracy": 0.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0064",
+        "metrics": {
+          "route_accuracy": 1.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0067",
+        "metrics": {
+          "route_accuracy": 1.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0072",
+        "metrics": {
+          "route_accuracy": 1.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      }
+    ]
+  }
+}

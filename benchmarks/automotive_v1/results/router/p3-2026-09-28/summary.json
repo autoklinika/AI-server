@@ -1,0 +1,446 @@
+{
+  "schema_version": 1,
+  "dataset_sha256": "1f829de1eacdd8e19905e28f2d086161f94fd93c691bee586d6171976d0f8edf",
+  "source_revisions": {
+    "ai_server_commit": "31ccb42855a06539785469dbe8dfdc1f2af7cc46",
+    "ers_commit": "81909b30ef18ca2053bd7496d6faeb814d4e9866"
+  },
+  "subjects": {
+    "majority": {
+      "splits": {
+        "dev": {
+          "case_count": 23,
+          "metrics": {
+            "false_positive_rate": 0.13043478260869565,
+            "route_accuracy": 0.8260869565217391,
+            "tool_selection_accuracy": 0.8260869565217391,
+            "tool_selection_recall": 0.8478260869565217,
+            "macro_f1": 0.22619047619047616
+          },
+          "resources": {
+            "latency_ms": {
+              "mean": 0.0001132113697088283,
+              "max": 0.0007309718057513237
+            }
+          }
+        },
+        "holdout": {
+          "case_count": 15,
+          "metrics": {
+            "false_positive_rate": 0.13333333333333333,
+            "route_accuracy": 0.8,
+            "tool_selection_accuracy": 0.8,
+            "tool_selection_recall": 0.9,
+            "macro_f1": 0.22222222222222224
+          },
+          "resources": {
+            "latency_ms": {
+              "mean": 0.0001341997024913629,
+              "max": 0.0006710179150104523
+            }
+          }
+        },
+        "challenge": {
+          "case_count": 13,
+          "metrics": {
+            "false_positive_rate": 0.07692307692307693,
+            "route_accuracy": 0.7692307692307693,
+            "tool_selection_accuracy": 0.7692307692307693,
+            "tool_selection_recall": 0.8461538461538461,
+            "macro_f1": 0.2173913043478261
+          },
+          "resources": {
+            "latency_ms": {
+              "mean": 0.00015185483229848056,
+              "max": 0.0007119961082935333
+            }
+          }
+        }
+      },
+      "confusion": {
+        "knowledge_rag": {
+          "knowledge_rag": 41
+        },
+        "graphify": {
+          "knowledge_rag": 3
+        },
+        "vision": {
+          "knowledge_rag": 3
+        },
+        "telemetry": {
+          "knowledge_rag": 2
+        },
+        "reasoning": {
+          "knowledge_rag": 1
+        },
+        "tool": {
+          "knowledge_rag": 1
+        }
+      },
+      "route_recall": {
+        "graphify": 0.0,
+        "knowledge_rag": 1.0,
+        "reasoning": 0.0,
+        "telemetry": 0.0,
+        "tool": 0.0,
+        "vision": 0.0
+      },
+      "subject": {
+        "subject_id": "majority-knowledge-v1",
+        "kind": "router-checkpoint",
+        "adapter": "router-adapter-v1",
+        "metadata": {
+          "router_implementation": "majority-knowledge-v1"
+        }
+      }
+    },
+    "small": {
+      "splits": {
+        "dev": {
+          "case_count": 23,
+          "metrics": {
+            "false_positive_rate": 0.2608695652173913,
+            "route_accuracy": 0.6086956521739131,
+            "tool_selection_accuracy": 0.6956521739130435,
+            "tool_selection_recall": 0.717391304347826,
+            "macro_f1": 0.13333333333333333
+          },
+          "resources": {
+            "latency_ms": {
+              "mean": 57.722122256603576,
+              "max": 86.61823399597779
+            },
+            "peak_ram_bytes": {
+              "mean": 1264861184,
+              "max": 1264861184
+            }
+          }
+        },
+        "holdout": {
+          "case_count": 15,
+          "metrics": {
+            "false_positive_rate": 0.6,
+            "route_accuracy": 0.3333333333333333,
+            "tool_selection_accuracy": 0.4,
+            "tool_selection_recall": 0.4666666666666667,
+            "macro_f1": 0.15126050420168066
+          },
+          "resources": {
+            "latency_ms": {
+              "mean": 60.49352006133025,
+              "max": 83.77756201662123
+            },
+            "peak_ram_bytes": {
+              "mean": 1265922048,
+              "max": 1265922048
+            }
+          }
+        },
+        "challenge": {
+          "case_count": 13,
+          "metrics": {
+            "false_positive_rate": 0.15384615384615385,
+            "route_accuracy": 0.5384615384615384,
+            "tool_selection_accuracy": 0.6923076923076923,
+            "tool_selection_recall": 0.7692307692307693,
+            "macro_f1": 0.35833333333333334
+          },
+          "resources": {
+            "latency_ms": {
+              "mean": 60.48744224244729,
+              "max": 85.76544601237401
+            },
+            "peak_ram_bytes": {
+              "mean": 1265881088,
+              "max": 1265881088
+            }
+          }
+        }
+      },
+      "confusion": {
+        "knowledge_rag": {
+          "knowledge_rag": 23,
+          "reasoning": 3,
+          "telemetry": 6,
+          "tool": 8,
+          "graphify": 1
+        },
+        "graphify": {
+          "tool": 1,
+          "knowledge_rag": 1,
+          "graphify": 1
+        },
+        "vision": {
+          "knowledge_rag": 2,
+          "tool": 1
+        },
+        "telemetry": {
+          "knowledge_rag": 1,
+          "telemetry": 1
+        },
+        "reasoning": {
+          "telemetry": 1
+        },
+        "tool": {
+          "tool": 1
+        }
+      },
+      "route_recall": {
+        "graphify": 0.3333333333333333,
+        "knowledge_rag": 0.5609756097560976,
+        "reasoning": 0.0,
+        "telemetry": 0.5,
+        "tool": 1.0,
+        "vision": 0.0
+      },
+      "subject": {
+        "subject_id": "fastino-gliner2.5-small-v1-calibrated",
+        "kind": "router-checkpoint",
+        "adapter": "router-adapter-v1",
+        "metadata": {
+          "router_implementation": "gliner2",
+          "checkpoint": "fastino/gliner2.5-small-v1",
+          "revision": "7132dc4561c3f94563c6147e75ffa8ef34c4964a",
+          "threshold": 0.5,
+          "head_mode": "joint",
+          "runtime": {
+            "python": "3.14.4",
+            "torch": "2.14.0+cpu",
+            "gliner2": "2.0.0",
+            "gliner2_base_sha256": "791814c58c3674f0b546c67d90ab5013bf645e5eda29d25e9fd17fa100aaa061"
+          }
+        }
+      }
+    },
+    "multi": {
+      "splits": {
+        "dev": {
+          "case_count": 23,
+          "metrics": {
+            "false_positive_rate": 0.5434782608695652,
+            "route_accuracy": 0.6956521739130435,
+            "tool_selection_accuracy": 0.391304347826087,
+            "tool_selection_recall": 0.45652173913043476,
+            "macro_f1": 0.5529761904761905
+          },
+          "resources": {
+            "latency_ms": {
+              "mean": 252.72180274655312,
+              "max": 307.23451398080215
+            },
+            "peak_ram_bytes": {
+              "mean": 3140755456,
+              "max": 3140755456
+            }
+          }
+        },
+        "holdout": {
+          "case_count": 15,
+          "metrics": {
+            "false_positive_rate": 0.5333333333333333,
+            "route_accuracy": 0.6,
+            "tool_selection_accuracy": 0.4666666666666667,
+            "tool_selection_recall": 0.5333333333333333,
+            "macro_f1": 0.4045112781954887
+          },
+          "resources": {
+            "latency_ms": {
+              "mean": 248.5208343481645,
+              "max": 279.61370203411207
+            },
+            "peak_ram_bytes": {
+              "mean": 3131162624,
+              "max": 3131162624
+            }
+          }
+        },
+        "challenge": {
+          "case_count": 13,
+          "metrics": {
+            "false_positive_rate": 0.7307692307692307,
+            "route_accuracy": 0.38461538461538464,
+            "tool_selection_accuracy": 0.15384615384615385,
+            "tool_selection_recall": 0.23076923076923078,
+            "macro_f1": 0.25
+          },
+          "resources": {
+            "latency_ms": {
+              "mean": 246.16420262296182,
+              "max": 258.7018990307115
+            },
+            "peak_ram_bytes": {
+              "mean": 3123486720,
+              "max": 3123486720
+            }
+          }
+        }
+      },
+      "confusion": {
+        "knowledge_rag": {
+          "knowledge_rag": 24,
+          "reasoning": 5,
+          "telemetry": 10,
+          "vision": 1,
+          "tool": 1
+        },
+        "graphify": {
+          "graphify": 3
+        },
+        "vision": {
+          "telemetry": 1,
+          "vision": 1,
+          "knowledge_rag": 1
+        },
+        "telemetry": {
+          "telemetry": 2
+        },
+        "reasoning": {
+          "telemetry": 1
+        },
+        "tool": {
+          "knowledge_rag": 1
+        }
+      },
+      "route_recall": {
+        "graphify": 1.0,
+        "knowledge_rag": 0.5853658536585366,
+        "reasoning": 0.0,
+        "telemetry": 1.0,
+        "tool": 0.0,
+        "vision": 0.3333333333333333
+      },
+      "subject": {
+        "subject_id": "fastino-gliner2.5-multi-Decide-calibrated",
+        "kind": "router-checkpoint",
+        "adapter": "router-adapter-v1",
+        "metadata": {
+          "router_implementation": "gliner2",
+          "checkpoint": "fastino/GLiNER2.5-multi-Decide",
+          "revision": "a35a0cd3b7a0f00f2effc576f454cd48fa98aa5f",
+          "threshold": 0.5,
+          "head_mode": "separate",
+          "runtime": {
+            "python": "3.14.4",
+            "torch": "2.14.0+cpu",
+            "gliner2": "2.0.0",
+            "gliner2_base_sha256": "791814c58c3674f0b546c67d90ab5013bf645e5eda29d25e9fd17fa100aaa061"
+          }
+        }
+      }
+    },
+    "decide": {
+      "splits": {
+        "dev": {
+          "case_count": 23,
+          "metrics": {
+            "false_positive_rate": 0.5652173913043478,
+            "route_accuracy": 0.8260869565217391,
+            "tool_selection_accuracy": 0.391304347826087,
+            "tool_selection_recall": 0.41304347826086957,
+            "macro_f1": 0.6698039215686274
+          },
+          "resources": {
+            "latency_ms": {
+              "mean": 728.4116598666119,
+              "max": 817.2757379943505
+            },
+            "peak_ram_bytes": {
+              "mean": 4488548352,
+              "max": 4488548352
+            }
+          }
+        },
+        "holdout": {
+          "case_count": 15,
+          "metrics": {
+            "false_positive_rate": 0.4,
+            "route_accuracy": 0.8,
+            "tool_selection_accuracy": 0.5333333333333333,
+            "tool_selection_recall": 0.6333333333333333,
+            "macro_f1": 0.7047619047619047
+          },
+          "resources": {
+            "latency_ms": {
+              "mean": 571.2262714708535,
+              "max": 689.0816100058146
+            },
+            "peak_ram_bytes": {
+              "mean": 4488462336,
+              "max": 4488462336
+            }
+          }
+        },
+        "challenge": {
+          "case_count": 13,
+          "metrics": {
+            "false_positive_rate": 0.46153846153846156,
+            "route_accuracy": 0.7692307692307693,
+            "tool_selection_accuracy": 0.46153846153846156,
+            "tool_selection_recall": 0.5,
+            "macro_f1": 0.4736842105263158
+          },
+          "resources": {
+            "latency_ms": {
+              "mean": 753.4426391626207,
+              "max": 816.7765830294229
+            },
+            "peak_ram_bytes": {
+              "mean": 4488957952,
+              "max": 4488957952
+            }
+          }
+        }
+      },
+      "confusion": {
+        "knowledge_rag": {
+          "knowledge_rag": 32,
+          "reasoning": 3,
+          "vision": 3,
+          "telemetry": 3
+        },
+        "graphify": {
+          "graphify": 3
+        },
+        "vision": {
+          "vision": 2,
+          "knowledge_rag": 1
+        },
+        "telemetry": {
+          "telemetry": 2
+        },
+        "reasoning": {
+          "reasoning": 1
+        },
+        "tool": {
+          "tool": 1
+        }
+      },
+      "route_recall": {
+        "graphify": 1.0,
+        "knowledge_rag": 0.7804878048780488,
+        "reasoning": 1.0,
+        "telemetry": 1.0,
+        "tool": 1.0,
+        "vision": 0.6666666666666666
+      },
+      "subject": {
+        "subject_id": "fastino-gliner2.5-Decide-calibrated",
+        "kind": "router-checkpoint",
+        "adapter": "router-adapter-v1",
+        "metadata": {
+          "router_implementation": "gliner2",
+          "checkpoint": "fastino/GLiNER2.5-Decide",
+          "revision": "5a7adf72a23b4d311abae6ce050d7f0012bb3416",
+          "threshold": 0.5,
+          "head_mode": "separate",
+          "runtime": {
+            "python": "3.14.4",
+            "torch": "2.14.0+cpu",
+            "gliner2": "2.0.0",
+            "gliner2_base_sha256": "791814c58c3674f0b546c67d90ab5013bf645e5eda29d25e9fd17fa100aaa061"
+          }
+        }
+      }
+    }
+  }
+}
