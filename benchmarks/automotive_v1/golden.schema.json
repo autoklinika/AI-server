@@ -1,0 +1,371 @@
+{
+  "$defs": {
+    "AcceptableAnswer": {
+      "additionalProperties": false,
+      "properties": {
+        "reference": {
+          "title": "Reference",
+          "type": "string"
+        },
+        "required_concepts": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Required Concepts",
+          "type": "array"
+        },
+        "optional_concepts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Optional Concepts",
+          "type": "array"
+        }
+      },
+      "required": [
+        "reference",
+        "required_concepts"
+      ],
+      "title": "AcceptableAnswer",
+      "type": "object"
+    },
+    "ConfidenceExpectation": {
+      "additionalProperties": false,
+      "properties": {
+        "grounded_min": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Grounded Min",
+          "type": "number"
+        },
+        "ungrounded_max": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Ungrounded Max",
+          "type": "number"
+        }
+      },
+      "required": [
+        "grounded_min",
+        "ungrounded_max"
+      ],
+      "title": "ConfidenceExpectation",
+      "type": "object"
+    },
+    "ExpectedEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "locator": {
+          "title": "Locator",
+          "type": "string"
+        },
+        "supports_fact_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Supports Fact Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source_id",
+        "locator",
+        "supports_fact_ids"
+      ],
+      "title": "ExpectedEvidence",
+      "type": "object"
+    },
+    "ExpectedFact": {
+      "additionalProperties": false,
+      "properties": {
+        "fact_id": {
+          "title": "Fact Id",
+          "type": "string"
+        },
+        "statement": {
+          "title": "Statement",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "fact_id",
+        "statement"
+      ],
+      "title": "ExpectedFact",
+      "type": "object"
+    },
+    "GroundingExpectation": {
+      "additionalProperties": false,
+      "properties": {
+        "must_cite": {
+          "default": true,
+          "title": "Must Cite",
+          "type": "boolean"
+        },
+        "minimum_source_coverage": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Minimum Source Coverage",
+          "type": "number"
+        },
+        "fail_closed_if_missing": {
+          "default": true,
+          "title": "Fail Closed If Missing",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "minimum_source_coverage"
+      ],
+      "title": "GroundingExpectation",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "source_repo": {
+          "title": "Source Repo",
+          "type": "string"
+        },
+        "source_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "case_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Case Ids",
+          "type": "array"
+        },
+        "source_commit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Commit"
+        },
+        "reuse_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reuse Status"
+        }
+      },
+      "required": [
+        "source_repo",
+        "source_ids"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "RoutingExpectation": {
+      "additionalProperties": false,
+      "properties": {
+        "primary": {
+          "enum": [
+            "reasoning",
+            "knowledge_rag",
+            "graphify",
+            "telemetry",
+            "vision",
+            "tool"
+          ],
+          "title": "Primary",
+          "type": "string"
+        },
+        "requires_knowledge": {
+          "default": false,
+          "title": "Requires Knowledge",
+          "type": "boolean"
+        },
+        "requires_graph": {
+          "default": false,
+          "title": "Requires Graph",
+          "type": "boolean"
+        },
+        "requires_vision": {
+          "default": false,
+          "title": "Requires Vision",
+          "type": "boolean"
+        },
+        "expected_tools": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Expected Tools",
+          "type": "array"
+        }
+      },
+      "required": [
+        "primary"
+      ],
+      "title": "RoutingExpectation",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "case_id": {
+      "title": "Case Id",
+      "type": "string"
+    },
+    "targets": {
+      "items": {
+        "enum": [
+          "llm",
+          "router",
+          "retrieval_rag"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Targets",
+      "type": "array"
+    },
+    "question": {
+      "title": "Question",
+      "type": "string"
+    },
+    "category": {
+      "title": "Category",
+      "type": "string"
+    },
+    "difficulty": {
+      "enum": [
+        "easy",
+        "medium",
+        "hard",
+        "adversarial"
+      ],
+      "title": "Difficulty",
+      "type": "string"
+    },
+    "language": {
+      "enum": [
+        "pl",
+        "en",
+        "bilingual"
+      ],
+      "title": "Language",
+      "type": "string"
+    },
+    "split": {
+      "enum": [
+        "dev",
+        "holdout",
+        "challenge"
+      ],
+      "title": "Split",
+      "type": "string"
+    },
+    "training_exclusion": {
+      "const": true,
+      "title": "Training Exclusion",
+      "type": "boolean"
+    },
+    "expected_facts": {
+      "items": {
+        "$ref": "#/$defs/ExpectedFact"
+      },
+      "minItems": 1,
+      "title": "Expected Facts",
+      "type": "array"
+    },
+    "expected_evidence": {
+      "items": {
+        "$ref": "#/$defs/ExpectedEvidence"
+      },
+      "minItems": 1,
+      "title": "Expected Evidence",
+      "type": "array"
+    },
+    "acceptable_answer": {
+      "$ref": "#/$defs/AcceptableAnswer"
+    },
+    "forbidden_claims": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Forbidden Claims",
+      "type": "array"
+    },
+    "required_tools": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Required Tools",
+      "type": "array"
+    },
+    "expected_routing": {
+      "$ref": "#/$defs/RoutingExpectation"
+    },
+    "grounding": {
+      "$ref": "#/$defs/GroundingExpectation"
+    },
+    "expected_confidence": {
+      "$ref": "#/$defs/ConfidenceExpectation"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "case_id",
+    "targets",
+    "question",
+    "category",
+    "difficulty",
+    "language",
+    "split",
+    "training_exclusion",
+    "expected_facts",
+    "expected_evidence",
+    "acceptable_answer",
+    "expected_routing",
+    "grounding",
+    "expected_confidence",
+    "provenance"
+  ],
+  "title": "GoldenCase",
+  "type": "object"
+}

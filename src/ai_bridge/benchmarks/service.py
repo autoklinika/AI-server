@@ -8,6 +8,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from .contracts import GoldenDataset, SuiteManifest
+
 
 class BenchmarkCatalog:
     def __init__(self, root: Path | None = None):
@@ -34,14 +36,10 @@ class BenchmarkCatalog:
                 "run_count": validation_count,
                 "capabilities": ["historical-artifacts"],
             },
-            {
-                "suite_id": "decision-models",
-                "name": "Decision Models",
-                "category": "Routers / Policy",
-                "status": "planned",
-                "run_count": 0,
-                "capabilities": ["routing", "tool-selection", "multilingual-pl"],
-            },
+            self._foundation_suite(
+                "router.json", "Decision Models", "Routers / Policy",
+                ["routing", "tool-selection", "multilingual-pl", "golden-dataset-v1"],
+            ),
             {
                 "suite_id": "vision",
                 "name": "Vision",
@@ -50,22 +48,14 @@ class BenchmarkCatalog:
                 "run_count": 0,
                 "capabilities": ["image-analysis"],
             },
-            {
-                "suite_id": "automotive-reasoning",
-                "name": "Automotive Reasoning",
-                "category": "Automotive",
-                "status": "planned",
-                "run_count": 0,
-                "capabilities": ["ecu-reasoning"],
-            },
-            {
-                "suite_id": "rag-knowledge",
-                "name": "RAG / Knowledge",
-                "category": "RAG",
-                "status": "planned",
-                "run_count": 0,
-                "capabilities": ["rag-quality", "citations"],
-            },
+            self._foundation_suite(
+                "llm.json", "Automotive Reasoning", "Automotive",
+                ["ecu-reasoning", "grounding", "hallucination-resistance", "golden-dataset-v1"],
+            ),
+            self._foundation_suite(
+                "retrieval_rag.json", "RAG / Knowledge", "RAG",
+                ["retrieval-metrics", "reranking", "grounding", "golden-dataset-v1"],
+            ),
         ]
 
     def list_runs(self, suite_id: str) -> list[dict]:
@@ -116,6 +106,31 @@ class BenchmarkCatalog:
                     })
                 return {**run, "variants": variants}
         raise KeyError(run_id)
+
+    def _foundation_suite(
+        self,
+        manifest_name: str,
+        name: str,
+        category: str,
+        capabilities: list[str],
+    ) -> dict:
+        path = self.root / "automotive_v1" / "suites" / manifest_name
+        manifest = SuiteManifest.load(path)
+        dataset_path = (path.parent / manifest.dataset).resolve()
+        dataset = GoldenDataset.load_jsonl(dataset_path)
+        case_count = sum(
+            manifest.benchmark_class in case.targets for case in dataset.cases
+        )
+        return {
+            "suite_id": manifest.suite_id,
+            "name": name,
+            "category": category,
+            "status": manifest.status,
+            "run_count": 0,
+            "case_count": case_count,
+            "benchmark_version": manifest.version,
+            "capabilities": capabilities,
+        }
 
     def _knowledge_files(self) -> list[Path]:
         directory = self.root / "knowledge" / "results"

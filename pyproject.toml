@@ -27,6 +27,7 @@ dev = [
 ai-bridge = "ai_bridge.main:main"
 ai-bridge-analyze-ventilation = "ai_bridge.analysis.main:main"
 ai-gateway = "ai_bridge.gateway.main:main"
+ai-benchmark = "ai_bridge.benchmarks.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
