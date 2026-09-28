@@ -246,6 +246,8 @@ def run_fixed_evidence_llm(
     ers_root: Path,
     source_revisions: dict[str, str | None],
     model: str = "reasoning-main",
+    model_num_ctx: int = 65536,
+    model_num_gpu: int = 99,
     splits: set[str] | None = None,
     case_ids: set[str] | None = None,
 ) -> BenchmarkRunArtifact:
@@ -272,6 +274,8 @@ def run_fixed_evidence_llm(
                 message=render_fixed_evidence(case, evidence_by_case[case.case_id]),
                 response_schema=_FIXED_RESPONSE_SCHEMA,
                 model=model,
+                model_num_ctx=model_num_ctx,
+                model_num_gpu=model_num_gpu,
             ))
             parsed = _FixedAnswer.model_validate_json(response.content)
             results.append(CaseExecution(

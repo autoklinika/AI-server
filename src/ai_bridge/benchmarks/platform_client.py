@@ -126,11 +126,13 @@ class PlatformBenchmarkClient:
         message: str,
         response_schema: dict,
         model: str = "reasoning-main",
+        model_num_ctx: int = 65536,
+        model_num_gpu: int = 99,
         domain: str = "ecu-repair",
         priority_class: str = "background",
     ) -> AIResponse:
         path = "/api/v1/ai" if model == "reasoning-main" else "/api/v1/benchmarks/ai"
-        data = self._call("POST", path, json={
+        payload = {
             "schema_version": 1,
             "capability": "structured-generation",
             "model": model,
@@ -140,7 +142,13 @@ class PlatformBenchmarkClient:
             "response_schema": response_schema,
             "temperature": 0,
             "timeout_seconds": 300,
-        }, headers={"X-Request-Id": request_id})
+        }
+        if model != "reasoning-main":
+            payload["num_ctx"] = model_num_ctx
+            payload["num_gpu"] = model_num_gpu
+        data = self._call(
+            "POST", path, json=payload, headers={"X-Request-Id": request_id}
+        )
         return AIResponse.model_validate(data)
 
     def knowledge_search(

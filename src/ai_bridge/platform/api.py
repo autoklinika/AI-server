@@ -196,6 +196,8 @@ class BenchmarkAIRequest(Contract):
     response_schema: dict
     temperature: float = Field(default=0, ge=0, le=2)
     timeout_seconds: float = Field(default=300, gt=0, le=600)
+    num_ctx: int = Field(default=65536, ge=8192, le=262144)
+    num_gpu: int = Field(default=99, ge=0, le=999)
 
 
 class KnowledgeSearchRequest(Contract):
@@ -1416,7 +1418,12 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                     generate_for_model = getattr(provider, "generate_for_model", None)
                     if generate_for_model is None:
                         raise APIError(503, "capability_unavailable")
-                    result = await generate_for_model(llm_request, physical_model)
+                    result = await generate_for_model(
+                        llm_request,
+                        physical_model,
+                        num_ctx=getattr(body, "num_ctx", None),
+                        num_gpu=getattr(body, "num_gpu", None),
+                    )
                 outcome = JobLifecycle.COMPLETED
         except SchedulerQueueFull:
             raise APIError(429, "queue_full", True) from None
