@@ -238,6 +238,21 @@ def main() -> None:
             else:
                 token = os.getenv("AI_PLATFORM_API_TOKEN")
                 client = PlatformBenchmarkClient(args.platform_url, token=token)
+                operations = client.operations()
+                release = operations.get("release")
+                if isinstance(release, dict):
+                    subject.metadata["platform_release"] = {
+                        key: release.get(key)
+                        for key in (
+                            "release_id",
+                            "stage",
+                            "source_git_sha",
+                            "migration_version",
+                            "knowledge_service_contract_version",
+                            "platform_api_contract_version",
+                        )
+                        if release.get(key) is not None
+                    }
                 if suite.benchmark_class == "llm" and args.track == "reasoning_fixed_evidence":
                     if args.ers_root is None:
                         raise SystemExit("fixed-evidence live run requires --ers-root")
