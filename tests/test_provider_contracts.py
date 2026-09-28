@@ -51,6 +51,7 @@ def _request() -> LLMRequest:
         temperature=0.0,
         reasoning_enabled=False,
         context={"domain": "wvc"},
+        max_output_tokens=321,
     )
 
 
@@ -77,6 +78,7 @@ def test_ollama_adapter_maps_generic_request_and_response_without_domain_leakage
     assert client.kwargs["model"] == "qwen3.6:35b"
     assert client.kwargs["think"] is False
     assert client.kwargs["temperature"] == 0.0
+    assert client.kwargs["max_output_tokens"] == 321
     sampling_schema = client.kwargs["response_schema"]
     assert "title" not in sampling_schema
     assert "maxLength" not in sampling_schema["properties"]["value"]

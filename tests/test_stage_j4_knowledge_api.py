@@ -211,7 +211,9 @@ def test_search_is_raw_retrieval_and_ask_is_cited_rag(tmp_path):
             assert "ollama-local" not in ask.text and "private-model" not in ask.text
             assert len(provider.calls) == 1
             assert provider.calls[0].capability == "structured-generation"
+            assert provider.calls[0].max_output_tokens == 1024
             assert "Use ONLY" in provider.calls[0].messages[0]["content"]
+            assert "no repeated claims" in provider.calls[0].messages[0]["content"]
             assert all(runtime.closed for runtime in runtimes)
     asyncio.run(run())
 

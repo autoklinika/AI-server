@@ -81,3 +81,21 @@ def test_rag_allows_explicit_insufficient_context():
     }), prompt)
     assert parsed.insufficient_context is True
     assert parsed.answer == "Źródła nie wystarczają do odpowiedzi."
+
+
+def test_rag_rejects_runaway_insufficiency_reason():
+    prompt = build_rag_prompt(question="Unknown?", results=(hit(1),))
+    with pytest.raises(ValueError, match="invalid structured response"):
+        parse_rag_response(json.dumps({
+            "claims": [],
+            "insufficient_context": True,
+            "insufficiency_reason": "x" * 801,
+        }), prompt)
+
+
+def test_rag_prompt_requires_concise_non_repeating_output():
+    prompt = build_rag_prompt(question="Question?", results=(hit(1),))
+    system = prompt.messages[0]["content"]
+    assert "Keep the response concise" in system
+    assert "no repeated claims" in system
+    assert "at most two short sentences" in system

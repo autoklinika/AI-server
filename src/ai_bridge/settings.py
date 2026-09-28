@@ -93,6 +93,7 @@ class Settings(BaseSettings):
     knowledge_pdf_ocr_min_alnum: int = Field(default=80, ge=0, le=10000)
     knowledge_rag_max_sources: int = Field(default=8, ge=1, le=20)
     knowledge_rag_context_max_chars: int = Field(default=24000, ge=2000, le=100000)
+    knowledge_rag_max_output_tokens: int = Field(default=1024, ge=128, le=8192)
 
     analysis_window_minutes: int = Field(default=15, ge=1, le=60)
     analysis_min_samples: int = Field(default=120, ge=1)

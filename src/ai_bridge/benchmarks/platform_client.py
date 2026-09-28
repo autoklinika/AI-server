@@ -136,7 +136,7 @@ class PlatformBenchmarkClient:
             "messages": [{"role": "user", "content": message}],
             "response_schema": response_schema,
             "temperature": 0,
-            "timeout_seconds": 600,
+            "timeout_seconds": 300,
         }, headers={"X-Request-Id": request_id})
         return AIResponse.model_validate(data)
 

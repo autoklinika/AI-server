@@ -72,6 +72,7 @@ class OllamaAdapter:
             response_schema=sampling_schema,
             think=request.reasoning_enabled,
             temperature=request.temperature,
+            max_output_tokens=request.max_output_tokens,
         )
         return LLMResponse(
             request_id=request.request_id,

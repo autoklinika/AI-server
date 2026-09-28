@@ -517,7 +517,7 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                     provider=provider.provider_id,
                     node=provider.node_id,
                 )
-                generated = await provider.generate(LLMRequest(
+                llm_request = LLMRequest(
                     request_id=request.state.request_id,
                     capability="structured-generation",
                     messages=prompt.messages,
@@ -528,7 +528,9 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                         **body.context.model_dump(exclude_none=True),
                         "knowledge_mode": body.mode,
                     },
-                ))
+                    max_output_tokens=settings.knowledge_rag_max_output_tokens,
+                )
+                generated = await provider.generate(llm_request)
                 parsed = parse_rag_response(generated.content, prompt)
                 outcome = JobLifecycle.COMPLETED
         except SchedulerQueueFull:

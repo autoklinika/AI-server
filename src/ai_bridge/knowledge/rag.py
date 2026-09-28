@@ -12,7 +12,7 @@ from ai_bridge.response_language import apply_polish_response_policy
 class RAGClaim(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    text: str = Field(min_length=1, max_length=6000)
+    text: str = Field(min_length=1, max_length=1600)
     source_refs: list[str] = Field(min_length=1, max_length=8)
 
 
@@ -21,7 +21,7 @@ class RAGProviderPayload(BaseModel):
 
     claims: list[RAGClaim] = Field(default_factory=list, max_length=12)
     insufficient_context: bool = False
-    insufficiency_reason: str | None = Field(default=None, max_length=4000)
+    insufficiency_reason: str | None = Field(default=None, max_length=800)
 
     @model_validator(mode="after")
     def validate_state(self):
@@ -100,7 +100,10 @@ def build_rag_prompt(
         "Use only source refs like S1 that were provided. "
         "If evidence is insufficient, set insufficient_context=true, explain what is "
         "missing in insufficiency_reason, and include only claims that are still directly supported. "
-        "Prefer exact identifiers, measurements, pins, DTCs and conditions from sources."
+        "Prefer exact identifiers, measurements, pins, DTCs and conditions from sources. "
+        "Keep the response concise: one technical point per claim, no repeated claims, "
+        "no repeated insufficiency explanation. If context is insufficient, explain "
+        "what is missing in at most two short sentences."
     )
     user = f"QUESTION:\n{question.strip()}\n\nSOURCES:\n{source_text}"
     return RAGPrompt(

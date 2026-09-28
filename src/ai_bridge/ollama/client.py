@@ -149,14 +149,23 @@ class OllamaClient:
         response_schema: dict[str, Any],
         think: bool = False,
         temperature: float = 0.0,
+        max_output_tokens: int | None = None,
     ) -> OllamaChatResult:
+        if max_output_tokens is not None and max_output_tokens <= 0:
+            raise ValueError("max_output_tokens must be positive")
         payload = {
             "model": model,
             "messages": messages,
             "stream": False,
             "format": response_schema,
             "think": think,
-            "options": {"temperature": temperature},
+            "options": {
+                "temperature": temperature,
+                **(
+                    {"num_predict": max_output_tokens}
+                    if max_output_tokens is not None else {}
+                ),
+            },
         }
         request_kwargs: dict[str, Any] = {
             "json": payload,
