@@ -14,36 +14,111 @@
       "phase_id": "retrieval-dev",
       "split": "dev",
       "runs": [
-        {"suite": "rag-knowledge", "track": "retrieval_only", "subject": "knowledge-hybrid-raw"},
-        {"suite": "rag-knowledge", "track": "retrieval_plus_reranker", "subject": "knowledge-hybrid-reranked"}
+        {
+          "suite": "rag-knowledge",
+          "track": "retrieval_only",
+          "subject": "knowledge-hybrid-raw",
+          "subject_kind": "knowledge-config",
+          "adapter": "knowledge-api-v1",
+          "parameters": {
+            "knowledge_mode": "hybrid",
+            "limit": 10
+          }
+        },
+        {
+          "suite": "rag-knowledge",
+          "track": "retrieval_plus_reranker",
+          "subject": "knowledge-hybrid-reranked",
+          "subject_kind": "knowledge-config",
+          "adapter": "knowledge-api-v1",
+          "parameters": {
+            "knowledge_mode": "hybrid",
+            "limit": 10
+          }
+        }
       ]
     },
     {
       "phase_id": "reasoning-dev",
       "split": "dev",
       "runs": [
-        {"suite": "automotive-reasoning", "track": "reasoning_fixed_evidence", "subject": "reasoning-main"},
-        {"suite": "rag-knowledge", "track": "end_to_end_rag", "subject": "rag-hybrid"}
+        {
+          "suite": "automotive-reasoning",
+          "track": "reasoning_fixed_evidence",
+          "subject": "reasoning-main",
+          "subject_kind": "logical-llm",
+          "adapter": "platform-ai-v1",
+          "parameters": {}
+        },
+        {
+          "suite": "rag-knowledge",
+          "track": "end_to_end_rag",
+          "subject": "rag-hybrid",
+          "subject_kind": "knowledge-config",
+          "adapter": "knowledge-api-v1",
+          "parameters": {
+            "knowledge_mode": "hybrid",
+            "limit": 10
+          }
+        }
       ]
     },
     {
       "phase_id": "router-dev",
       "split": "dev",
       "runs": [
-        {"suite": "decision-models", "track": "routing_zero_shot", "subject": "fastino/GLiNER2.5-multi-Decide"},
-        {"suite": "decision-models", "track": "routing_zero_shot", "subject": "fastino/GLiNER2.5-Decide"},
-        {"suite": "decision-models", "track": "routing_zero_shot", "subject": "fastino/gliner2.5-small-v1"}
+        {
+          "suite": "decision-models",
+          "track": "routing_zero_shot",
+          "subject": "fastino/GLiNER2.5-multi-Decide",
+          "subject_kind": "router-checkpoint",
+          "adapter": "router-adapter-v1",
+          "parameters": {
+            "map_location": "cpu",
+            "tool_threshold": 0.4
+          }
+        },
+        {
+          "suite": "decision-models",
+          "track": "routing_zero_shot",
+          "subject": "fastino/GLiNER2.5-Decide",
+          "subject_kind": "router-checkpoint",
+          "adapter": "router-adapter-v1",
+          "parameters": {
+            "map_location": "cpu",
+            "tool_threshold": 0.4
+          }
+        },
+        {
+          "suite": "decision-models",
+          "track": "routing_zero_shot",
+          "subject": "fastino/gliner2.5-small-v1",
+          "subject_kind": "router-checkpoint",
+          "adapter": "router-adapter-v1",
+          "parameters": {
+            "map_location": "cpu",
+            "tool_threshold": 0.4
+          }
+        }
       ]
     },
     {
       "phase_id": "holdout",
       "split": "holdout",
-      "inherits_tracks_from": ["retrieval-dev", "reasoning-dev", "router-dev"]
+      "inherits_tracks_from": [
+        "retrieval-dev",
+        "reasoning-dev",
+        "router-dev"
+      ]
     },
     {
       "phase_id": "challenge",
       "split": "challenge",
-      "inherits_tracks_from": ["retrieval-dev", "reasoning-dev", "router-dev"]
+      "inherits_tracks_from": [
+        "retrieval-dev",
+        "reasoning-dev",
+        "router-dev"
+      ]
     }
   ],
   "acceptance": {

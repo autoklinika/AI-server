@@ -13,6 +13,9 @@ class MatrixRun(StrictModel):
     suite: str
     track: str
     subject: str
+    subject_kind: Literal["logical-llm", "knowledge-config", "router-checkpoint"]
+    adapter: Literal["platform-ai-v1", "knowledge-api-v1", "router-adapter-v1"]
+    parameters: dict = Field(default_factory=dict)
 
 
 class MatrixPhase(StrictModel):
@@ -57,6 +60,11 @@ class BaselineMatrix(StrictModel):
         if len(ids) != len(set(ids)):
             raise ValueError("duplicate phase_id")
         by_id = {phase.phase_id: phase for phase in self.phases}
+        contracts = {
+            "automotive-reasoning": ("logical-llm", "platform-ai-v1"),
+            "rag-knowledge": ("knowledge-config", "knowledge-api-v1"),
+            "decision-models": ("router-checkpoint", "router-adapter-v1"),
+        }
         for phase in self.phases:
             if not phase.runs and not phase.inherits_tracks_from:
                 raise ValueError(f"{phase.phase_id}: phase has no runs or inheritance")
@@ -65,4 +73,12 @@ class BaselineMatrix(StrictModel):
                 raise ValueError(
                     f"{phase.phase_id}: unknown inherited phases {sorted(missing)}"
                 )
+            for run in phase.runs:
+                expected = contracts.get(run.suite)
+                if expected is None:
+                    raise ValueError(f"{phase.phase_id}: unsupported suite {run.suite}")
+                if (run.subject_kind, run.adapter) != expected:
+                    raise ValueError(
+                        f"{phase.phase_id}: invalid subject/adapter for {run.suite}"
+                    )
         return self

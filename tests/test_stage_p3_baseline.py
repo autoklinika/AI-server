@@ -87,6 +87,10 @@ def test_p3_matrix_forbids_training_and_gates_splits():
         "end_to_end_rag",
         "routing_zero_shot",
     }
+    assert all(run.subject_kind and run.adapter for run in dev_runs)
+    router_runs = [run for run in dev_runs if run.suite == "decision-models"]
+    assert all(run.adapter == "router-adapter-v1" for run in router_runs)
+    assert all(run.parameters["map_location"] == "cpu" for run in router_runs)
 
 
 def test_gliner_adapter_uses_independent_route_and_tool_heads():
