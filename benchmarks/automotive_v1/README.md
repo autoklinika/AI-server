@@ -176,3 +176,36 @@ does not silently use an LLM-as-a-judge.
 
 Finalization rejects changed golden data by comparing the run's dataset hash to
 the current file. This prevents scoring an old result against a newer gold set.
+
+## P3 baseline matrix and resources
+
+P3 defines p3_baseline_matrix.json. Dev runs must complete before holdout;
+holdout must complete before challenge. The matrix itself has
+training_allowed=false and forbids acceptance based on one aggregate score.
+
+The first matrix compares layers rather than conflating them:
+
+- hybrid retrieval without TechnicalEvidenceReranker,
+- the same retrieval with the deterministic reranker,
+- fixed-evidence reasoning-main,
+- end-to-end grounded RAG,
+- three independent GLiNER2.5 router checkpoints.
+
+Router execution uses AutoExtractor only through the optional router-benchmark
+dependency. CI and normal AI Platform installs do not install GLiNER2 or download
+model checkpoints.
+
+### Resource telemetry
+
+Each live case samples host resource state while it executes. The artifact records
+system-scoped RAM/VRAM baseline, peak, final, and peak delta. On the current UMA
+host this is intentionally labelled scope=system: shared-memory usage cannot be
+truthfully assigned to one model when other services are resident.
+
+For LLM/RAG calls, output throughput is derived from API token usage and execution
+duration when both are available. Router adapters may additionally report their
+own process peak RAM. Missing telemetry remains null; it is never fabricated.
+
+P3 acceptance requires resource telemetry and latency, but quality remains
+per-track/per-dimension. Resource efficiency cannot compensate for grounding or
+safety regressions.

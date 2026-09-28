@@ -169,6 +169,9 @@ def test_fixed_evidence_runner_uses_platform_ai_background_priority(tmp_path):
     assert "The value is 42." in seen["body"]["messages"][0]["content"]
     assert artifact.cases[0].evaluation_state == "pending_semantic"
     assert artifact.cases[0].cited_source_ids == ["FIX-1"]
+    assert artifact.cases[0].throughput_tps == 1000.0
+    assert artifact.cases[0].resource_usage is not None
+    assert artifact.cases[0].resource_usage.scope == "system"
 
 
 def test_retrieval_runner_uses_stable_knowledge_api(tmp_path):

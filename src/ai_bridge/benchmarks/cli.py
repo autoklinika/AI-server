@@ -22,6 +22,7 @@ from .runner import (
     run_end_to_end_rag,
     run_fixed_evidence_llm,
     run_retrieval,
+    run_router,
     write_artifact,
 )
 
@@ -67,6 +68,8 @@ def _parser() -> argparse.ArgumentParser:
         "exact", "keyword", "semantic", "hybrid", "auto"
     ], default="hybrid")
     run.add_argument("--limit", type=int, default=10)
+    run.add_argument("--router-map-location", default="cpu")
+    run.add_argument("--router-tool-threshold", type=float, default=0.4)
     run.add_argument("--output", type=Path)
 
     evaluate = sub.add_parser("evaluate")
@@ -188,6 +191,26 @@ def main() -> None:
                     subject=subject, source_revisions=revisions,
                     mode=args.knowledge_mode, limit=min(args.limit, 20),
                     splits=splits or None, case_ids=case_ids or None,
+                )
+            elif suite.benchmark_class == "router":
+                from .router_gliner import GlinerDecisionAdapter
+
+                if args.adapter != "router-adapter-v1":
+                    raise SystemExit("router live run requires router-adapter-v1")
+                adapter = GlinerDecisionAdapter(
+                    args.subject_id,
+                    map_location=args.router_map_location,
+                    tool_threshold=args.router_tool_threshold,
+                )
+                artifact = run_router(
+                    adapter=adapter,
+                    suite_path=args.suite,
+                    dataset_path=args.dataset,
+                    subject=subject,
+                    track=args.track,
+                    source_revisions=revisions,
+                    splits=splits or None,
+                    case_ids=case_ids or None,
                 )
             else:
                 raise SystemExit(
