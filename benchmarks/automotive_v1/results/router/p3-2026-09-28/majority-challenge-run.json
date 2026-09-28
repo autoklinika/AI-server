@@ -1,0 +1,297 @@
+{
+  "schema_version": 1,
+  "run_id": "run_86eecc83ca70473da7f9",
+  "suite_id": "decision-models",
+  "benchmark_class": "router",
+  "track": "routing_zero_shot",
+  "subject": {
+    "subject_id": "majority-knowledge-v1",
+    "kind": "router-checkpoint",
+    "adapter": "router-adapter-v1",
+    "metadata": {
+      "router_implementation": "majority-knowledge-v1"
+    }
+  },
+  "mode": "live",
+  "dataset_sha256": "1f829de1eacdd8e19905e28f2d086161f94fd93c691bee586d6171976d0f8edf",
+  "source_revisions": {
+    "ai_server_commit": "31ccb42855a06539785469dbe8dfdc1f2af7cc46",
+    "ers_commit": "81909b30ef18ca2053bd7496d6faeb814d4e9866"
+  },
+  "case_count": 13,
+  "cases": [
+    {
+      "case_id": "ERS-GOLD-0021",
+      "request_id": "bench_ca70473da7f9_ers_gold_0021",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 0.0007119961082935333,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0033",
+      "request_id": "bench_ca70473da7f9_ers_gold_0033",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 0.00029098009690642357,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0043",
+      "request_id": "bench_ca70473da7f9_ers_gold_0043",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 0.00018998980522155762,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0046",
+      "request_id": "bench_ca70473da7f9_ers_gold_0046",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 0.00008003553375601768,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0054",
+      "request_id": "bench_ca70473da7f9_ers_gold_0054",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 0.000100000761449337,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0055",
+      "request_id": "bench_ca70473da7f9_ers_gold_0055",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 0.00006996560841798782,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0056",
+      "request_id": "bench_ca70473da7f9_ers_gold_0056",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 0.00007002381607890129,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0058",
+      "request_id": "bench_ca70473da7f9_ers_gold_0058",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 0.00007002381607890129,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0061",
+      "request_id": "bench_ca70473da7f9_ers_gold_0061",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 0.00007101334631443024,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0063",
+      "request_id": "bench_ca70473da7f9_ers_gold_0063",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 0.00008003553375601768,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0064",
+      "request_id": "bench_ca70473da7f9_ers_gold_0064",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 0.00008003553375601768,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0067",
+      "request_id": "bench_ca70473da7f9_ers_gold_0067",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 0.00007002381607890129,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0072",
+      "request_id": "bench_ca70473da7f9_ers_gold_0072",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 0.00008998904377222061,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "error_code": null
+    }
+  ]
+}

@@ -115,6 +115,9 @@ class PlatformBenchmarkClient:
             raise RuntimeError("Resource Manager is not ready")
         return health
 
+    def operations(self) -> dict[str, Any]:
+        return self._call("GET", "/api/v1/operations")
+
     def ai_structured(
         self,
         *,

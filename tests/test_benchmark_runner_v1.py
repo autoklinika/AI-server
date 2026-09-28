@@ -516,3 +516,25 @@ def test_retrieval_plus_reranker_sets_stable_api_flag(tmp_path):
     )
     assert artifact.track == "retrieval_plus_reranker"
     assert seen["body"]["rerank"] is True
+
+
+def test_platform_benchmark_client_reads_release_snapshot():
+    def handler(request):
+        assert request.url.path == "/api/v1/operations"
+        return httpx.Response(200, json={
+            "schema_version": 1,
+            "request_id": "req_ops",
+            "release": {
+                "status": "ready",
+                "release_id": "stage-o-test",
+                "source_git_sha": "abc123",
+            },
+        })
+
+    client = PlatformBenchmarkClient(
+        "http://platform",
+        transport=httpx.MockTransport(handler),
+    )
+    operations = client.operations()
+    assert operations["release"]["release_id"] == "stage-o-test"
+    assert operations["release"]["source_git_sha"] == "abc123"

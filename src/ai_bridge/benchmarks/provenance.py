@@ -33,7 +33,13 @@ def validate_ers_provenance(dataset: GoldenDataset, ers_root: Path) -> dict:
     }
 
     errors: list[str] = []
-    checked = {"diagnostic_ids": 0, "manifest_ids": 0, "network_ids": 0, "case_ids": 0}
+    checked = {
+        "diagnostic_ids": 0,
+        "manifest_ids": 0,
+        "network_ids": 0,
+        "case_ids": 0,
+        "locator_paths": 0,
+    }
     for case in dataset.cases:
         source_ids = set(case.provenance.source_ids)
         source_ids.update(evidence.source_id for evidence in case.expected_evidence)
@@ -50,6 +56,17 @@ def validate_ers_provenance(dataset: GoldenDataset, ers_root: Path) -> dict:
                 checked["network_ids"] += 1
                 if source_id not in network_ids:
                     errors.append(f"{case.case_id}: unknown network source {source_id}")
+        for evidence in case.expected_evidence:
+            locator_path = evidence.locator.partition("#")[0].strip()
+            if (
+                "://" not in locator_path
+                and locator_path.endswith((".md", ".pdf", ".jsonl"))
+            ):
+                checked["locator_paths"] += 1
+                if not (ers_root / locator_path).is_file():
+                    errors.append(
+                        f"{case.case_id}: missing evidence locator {locator_path}"
+                    )
         for case_id in case.provenance.case_ids:
             checked["case_ids"] += 1
             if case_id not in case_ids:

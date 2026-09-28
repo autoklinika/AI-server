@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "run_id": "run_c883f80b3bee46098f5f",
+  "suite_id": "decision-models",
+  "track": "routing_calibrated",
+  "subject": {
+    "subject_id": "fastino-gliner2.5-small-v1-calibrated",
+    "kind": "router-checkpoint",
+    "adapter": "router-adapter-v1",
+    "metadata": {
+      "router_implementation": "gliner2",
+      "checkpoint": "fastino/gliner2.5-small-v1",
+      "revision": "7132dc4561c3f94563c6147e75ffa8ef34c4964a",
+      "threshold": 0.5,
+      "head_mode": "joint",
+      "runtime": {
+        "python": "3.14.4",
+        "torch": "2.14.0+cpu",
+        "gliner2": "2.0.0",
+        "gliner2_base_sha256": "791814c58c3674f0b546c67d90ab5013bf645e5eda29d25e9fd17fa100aaa061"
+      }
+    }
+  },
+  "case_count": 15,
+  "completed_count": 15,
+  "completion_rate": 1.0,
+  "evaluation": {
+    "evaluator_type": "automatic"
+  },
+  "aggregate": {
+    "schema_version": 1,
+    "benchmark_class": "router",
+    "case_count": 15,
+    "metrics": {
+      "false_positive_rate": 0.6,
+      "route_accuracy": 0.3333333333333333,
+      "tool_selection_accuracy": 0.4,
+      "tool_selection_recall": 0.4666666666666667,
+      "macro_f1": 0.15126050420168066
+    },
+    "resources": {
+      "latency_ms": {
+        "mean": 60.49352006133025,
+        "max": 83.77756201662123
+      },
+      "peak_ram_bytes": {
+        "mean": 1265922048,
+        "max": 1265922048
+      }
+    },
+    "case_scores": [
+      {
+        "case_id": "ERS-GOLD-0016",
+        "metrics": {
+          "route_accuracy": 1.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0017",
+        "metrics": {
+          "route_accuracy": 1.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0020",
+        "metrics": {
+          "route_accuracy": 0.0,
+          "tool_selection_recall": 0.0,
+          "tool_selection_accuracy": 0.0,
+          "false_positive_rate": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0024",
+        "metrics": {
+          "route_accuracy": 0.0,
+          "tool_selection_recall": 0.0,
+          "tool_selection_accuracy": 0.0,
+          "false_positive_rate": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0029",
+        "metrics": {
+          "route_accuracy": 0.0,
+          "tool_selection_recall": 0.0,
+          "tool_selection_accuracy": 0.0,
+          "false_positive_rate": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0039",
+        "metrics": {
+          "route_accuracy": 0.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0050",
+        "metrics": {
+          "route_accuracy": 0.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 0.0,
+          "false_positive_rate": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0052",
+        "metrics": {
+          "route_accuracy": 0.0,
+          "tool_selection_recall": 0.0,
+          "tool_selection_accuracy": 0.0,
+          "false_positive_rate": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0057",
+        "metrics": {
+          "route_accuracy": 1.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0059",
+        "metrics": {
+          "route_accuracy": 0.0,
+          "tool_selection_recall": 0.0,
+          "tool_selection_accuracy": 0.0,
+          "false_positive_rate": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0062",
+        "metrics": {
+          "route_accuracy": 1.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0066",
+        "metrics": {
+          "route_accuracy": 0.0,
+          "tool_selection_recall": 0.0,
+          "tool_selection_accuracy": 0.0,
+          "false_positive_rate": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0068",
+        "metrics": {
+          "route_accuracy": 0.0,
+          "tool_selection_recall": 0.0,
+          "tool_selection_accuracy": 0.0,
+          "false_positive_rate": 1.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0070",
+        "metrics": {
+          "route_accuracy": 1.0,
+          "tool_selection_recall": 1.0,
+          "tool_selection_accuracy": 1.0,
+          "false_positive_rate": 0.0
+        }
+      },
+      {
+        "case_id": "ERS-GOLD-0071",
+        "metrics": {
+          "route_accuracy": 0.0,
+          "tool_selection_recall": 0.0,
+          "tool_selection_accuracy": 0.0,
+          "false_positive_rate": 1.0
+        }
+      }
+    ]
+  }
+}

@@ -136,6 +136,11 @@ def score_observation(case: GoldenCase, obs: BenchmarkObservation) -> dict[str, 
         )
         citation_recall = _ratio(supported, expected_sources)
 
+    selected_tools = set(obs.selected_tools)
+    extra_tools = selected_tools - expected_tools
+    tool_false_positive_rate = (
+        len(extra_tools) / len(selected_tools) if selected_tools else 0.0
+    )
     metrics = {
         "fact_recall": _ratio(set(obs.matched_fact_ids), required_facts),
         "forbidden_claim_rate": 1.0 if obs.forbidden_claims_triggered else 0.0,
@@ -143,7 +148,9 @@ def score_observation(case: GoldenCase, obs: BenchmarkObservation) -> dict[str, 
         "citation_recall": citation_recall,
         "grounding_coverage": citation_recall,
         "route_accuracy": 1.0 if obs.route == case.expected_routing.primary else 0.0,
-        "tool_selection_recall": _ratio(set(obs.selected_tools), expected_tools),
+        "tool_selection_recall": _ratio(selected_tools, expected_tools),
+        "tool_selection_accuracy": 1.0 if selected_tools == expected_tools else 0.0,
+        "false_positive_rate": tool_false_positive_rate,
         "evidence_recall_at_1": evidence_at_1,
         "evidence_recall_at_3": evidence_at_3,
         "evidence_recall_at_5": evidence_at_5,
@@ -161,12 +168,51 @@ DEFAULT_METRICS: dict[Target, set[str]] = {
         "fact_recall", "forbidden_claim_rate", "citation_precision",
         "citation_recall", "grounding_coverage", "fail_closed_accuracy",
     },
-    "router": {"route_accuracy", "tool_selection_recall"},
+    "router": {
+        "route_accuracy", "macro_f1", "tool_selection_recall",
+        "tool_selection_accuracy", "false_positive_rate",
+    },
     "retrieval_rag": {
         "evidence_recall_at_1", "evidence_recall_at_3", "evidence_recall_at_5",
         "source_precision", "mrr", "ndcg_at_5",
     },
 }
+
+
+def _macro_f1(cases: list[GoldenCase], by_id: dict[str, BenchmarkObservation]) -> float:
+    labels = sorted({
+        case.expected_routing.primary for case in cases
+    } | {
+        by_id[case.case_id].route
+        for case in cases
+        if by_id[case.case_id].route is not None
+    })
+    if not labels:
+        return 0.0
+    scores: list[float] = []
+    for label in labels:
+        tp = sum(
+            case.expected_routing.primary == label
+            and by_id[case.case_id].route == label
+            for case in cases
+        )
+        fp = sum(
+            case.expected_routing.primary != label
+            and by_id[case.case_id].route == label
+            for case in cases
+        )
+        fn = sum(
+            case.expected_routing.primary == label
+            and by_id[case.case_id].route != label
+            for case in cases
+        )
+        precision = tp / (tp + fp) if tp + fp else 0.0
+        recall = tp / (tp + fn) if tp + fn else 0.0
+        scores.append(
+            2 * precision * recall / (precision + recall)
+            if precision + recall else 0.0
+        )
+    return mean(scores)
 
 
 def aggregate(
@@ -203,6 +249,8 @@ def aggregate(
         name: mean(item[name] for _, _, item in scored if name in item)
         for name in available
     }
+    if target == "router" and "macro_f1" in selected_metrics:
+        metrics["macro_f1"] = _macro_f1(cases, by_id)
     resources = {}
     for field in ("latency_ms", "peak_ram_bytes", "peak_vram_bytes", "throughput_tps"):
         values = [getattr(obs, field) for _, obs, _ in scored if getattr(obs, field) is not None]

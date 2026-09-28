@@ -26,6 +26,16 @@ def git_revision(path: Path) -> str | None:
     ).strip()
 
 
+def git_is_clean(path: Path) -> bool:
+    if not (path / ".git").exists():
+        raise ValueError(f"not a git checkout: {path}")
+    status = subprocess.check_output(
+        ["git", "-C", str(path), "status", "--porcelain"],
+        text=True,
+    )
+    return not status.strip()
+
+
 def build_run_plan(
     suite_path: Path,
     dataset_path: Path,
