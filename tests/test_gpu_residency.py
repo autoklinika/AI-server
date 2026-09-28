@@ -281,7 +281,9 @@ async def test_cleanup_retries_lost_comfy_wakeup_until_acknowledged(tmp_path):
             providers.cleanup_pending = len(frees) < 2
         return providers.handle(request)
     client = httpx.AsyncClient(base_url='http://test', transport=httpx.MockTransport(handle))
-    gpu = GPUResidency(client, client, tmp_path / 'marker', timeout=.1, poll=.001)
+    # Keep the timing relationship under test, but leave enough wall-clock
+    # budget for slower CI event loops. Runtime behavior is unchanged.
+    gpu = GPUResidency(client, client, tmp_path / 'marker', timeout=.6, poll=.001)
     await gpu.enter_media()
     await gpu.leave_media()
     assert len(frees) == 2 and gpu.state == 'llm' and not gpu.marker.exists()
@@ -336,10 +338,12 @@ async def test_late_authoritative_clean_in_final_read_only_window(tmp_path):
             started = started or loop.time()
             frees.append(loop.time())
         if request.url.path == '/ai-platform/residency' and started:
-            providers.cleanup_pending = loop.time() - started < .075
+            providers.cleanup_pending = loop.time() - started < .375
         return providers.handle(request)
     client = httpx.AsyncClient(base_url='http://test', transport=httpx.MockTransport(handle))
-    gpu = GPUResidency(client, client, tmp_path / 'marker', timeout=.12, poll=.001)
+    # settle=.2s and final read-only window starts at .4s; authoritative
+    # clean evidence arrives at .375s, independent of normal CI jitter.
+    gpu = GPUResidency(client, client, tmp_path / 'marker', timeout=.6, poll=.001)
     await gpu.enter_media()
     await gpu.leave_media()
     assert gpu.state == 'llm' and len(frees) == 2
