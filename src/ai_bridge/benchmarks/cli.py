@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from .contracts import GoldenDataset, SuiteManifest
+from .coverage import CoveragePolicy, evaluate_coverage
 from .provenance import validate_ers_provenance
 from .run_manifest import build_run_plan
 
@@ -18,6 +19,7 @@ def _parser() -> argparse.ArgumentParser:
     validate.add_argument("--dataset", type=Path, required=True)
     validate.add_argument("--suite", action="append", type=Path, default=[])
     validate.add_argument("--ers-root", type=Path)
+    validate.add_argument("--coverage-policy", type=Path)
 
     plan = sub.add_parser("plan")
     plan.add_argument("--suite", type=Path, required=True)
@@ -35,12 +37,20 @@ def main() -> None:
         dataset = GoldenDataset.load_jsonl(args.dataset)
         suites = [SuiteManifest.load(path).model_dump() for path in args.suite]
         provenance = validate_ers_provenance(dataset, args.ers_root) if args.ers_root else None
+        coverage = (
+            evaluate_coverage(dataset, CoveragePolicy.load(args.coverage_policy))
+            if args.coverage_policy else None
+        )
+        status = "fail" if coverage and coverage["status"] == "fail" else "pass"
         print(json.dumps({
-            "status": "pass",
+            "status": status,
             "dataset": dataset.summary(),
             "suites": suites,
             "provenance": provenance,
+            "coverage": coverage,
         }, ensure_ascii=False, indent=2))
+        if status != "pass":
+            raise SystemExit(2)
         return
 
     plan = build_run_plan(

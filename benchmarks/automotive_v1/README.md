@@ -1,6 +1,6 @@
 # Automotive Benchmark System v1
 
-Status: foundation implementation after Stage O.
+Status: P1 golden-dataset pilot gate after Stage O.
 
 ## Purpose
 
@@ -72,8 +72,8 @@ Measures intent routing, Knowledge/RAG choice, Graphify/GraphRAG choice,
 telemetry-vs-reasoning, tool selection, agent handoff, Vision requirement,
 CPU latency, RAM and multilingual accuracy.
 
-Initial required candidates are GLiNER2.5-Decide 340M,
-GLiNER2.5-multi-Decide 287M and GLiNER2.5-small 74M.
+Initial required checkpoints are fastino/GLiNER2.5-Decide (340M),
+fastino/GLiNER2.5-multi-Decide (287M) and fastino/gliner2.5-small-v1 (74M).
 
 ### Retrieval/RAG
 
@@ -98,15 +98,27 @@ OEM documents marked retrieval_reference_only_pending_license_review may be
 used as retrieval/evaluation references; they are not automatically approved
 as training material.
 
-## Current seed
+## P1 golden dataset
 
-The golden.v1.jsonl dataset starts with Hatz and Scania regression cases plus
-OEM-derived driver, CAN and power/protection cases. Those two repairs are
-regressions, not the scope boundary.
+The current golden.v1.jsonl contains 72 benchmark-only cases:
 
-Use ai-benchmark validate for schema validation and ai-benchmark plan to create
-a non-executing reproducibility plan. The plan explicitly forbids training and
-direct provider bypass.
+- 58 LLM-targeted,
+- 51 router-targeted,
+- 61 retrieval/RAG-targeted,
+- 31 dev, 23 holdout and 18 challenge,
+- 61 Polish, 9 English and 2 bilingual cases.
+
+Hatz and Scania remain regression cases, not the scope boundary. Independent
+OEM/reference evidence now includes driver/power sources plus NXP TJA1021 LIN
+physical-layer facts and Microchip AN930 J1939 mechanics.
+
+coverage_policy.json is a hard pilot-readiness gate. It checks total/target/
+language/split counts, domain tags, unique evidence sources and OEM source
+diversity. Declared gaps remain visible even when the gate passes.
+
+Use ai-benchmark validate for schema/provenance/coverage validation and
+ai-benchmark plan to create a non-executing reproducibility plan. The plan
+explicitly forbids training and direct provider bypass.
 
 
 ## Evaluation tracks and contamination control
@@ -115,9 +127,9 @@ Golden cases are benchmark-only records. Every case carries
 training_exclusion=true; future training/export pipelines must reject benchmark
 records rather than merely ignore them by convention.
 
-Current seed cases use split=dev. P1 will add held-out and challenge strata.
-Holdout cases must never be used for SFT, LoRA/QLoRA, preference optimization,
-distillation targets or synthetic-data prompting.
+P1 uses explicit dev/holdout/challenge strata. Holdout and challenge cases
+must never be used for SFT, LoRA/QLoRA, preference optimization, distillation
+targets or synthetic-data prompting.
 
 The LLM suite separates fixed-evidence reasoning from closed-book diagnostics and
 tool/multi-turn behavior. Retrieval/RAG separates retrieval-only, retrieval plus

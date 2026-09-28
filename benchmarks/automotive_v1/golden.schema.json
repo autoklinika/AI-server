@@ -53,6 +53,29 @@
       "title": "ConfidenceExpectation",
       "type": "object"
     },
+    "ConversationTurn": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "enum": [
+            "user",
+            "assistant"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "content"
+      ],
+      "title": "ConversationTurn",
+      "type": "object"
+    },
     "ExpectedEvidence": {
       "additionalProperties": false,
       "properties": {
@@ -257,6 +280,20 @@
     "question": {
       "title": "Question",
       "type": "string"
+    },
+    "query_variants": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Query Variants",
+      "type": "array"
+    },
+    "context_turns": {
+      "items": {
+        "$ref": "#/$defs/ConversationTurn"
+      },
+      "title": "Context Turns",
+      "type": "array"
     },
     "category": {
       "title": "Category",
