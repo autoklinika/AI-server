@@ -58,6 +58,42 @@ LOGGER = logging.getLogger(__name__)
 ID = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")]
 
 
+async def _wait_for_client_disconnect(request: Request) -> None:
+    while True:
+        if await request.is_disconnected():
+            return
+        task = asyncio.current_task()
+        if task is not None and task.cancelling():
+            raise asyncio.CancelledError
+        await asyncio.sleep(0.05)
+
+
+async def _generate_until_disconnect(provider, llm_request, request: Request):
+    generation = asyncio.create_task(provider.generate(llm_request))
+    disconnect = asyncio.create_task(_wait_for_client_disconnect(request))
+    try:
+        done, _pending = await asyncio.wait(
+            {generation, disconnect},
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        if generation in done:
+            return await generation
+
+        generation.cancel()
+        try:
+            await generation
+        except asyncio.CancelledError:
+            pass
+        raise asyncio.CancelledError
+    finally:
+        if not disconnect.done():
+            disconnect.cancel()
+        try:
+            await disconnect
+        except asyncio.CancelledError:
+            pass
+
+
 CONTROL_CENTER_APPS = (
     {
         "id": "knowledge",
@@ -530,7 +566,11 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                     },
                     max_output_tokens=settings.knowledge_rag_max_output_tokens,
                 )
-                generated = await provider.generate(llm_request)
+                generated = await _generate_until_disconnect(
+                    provider,
+                    llm_request,
+                    request,
+                )
                 parsed = parse_rag_response(generated.content, prompt)
                 outcome = JobLifecycle.COMPLETED
         except SchedulerQueueFull:
