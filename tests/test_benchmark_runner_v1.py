@@ -174,6 +174,66 @@ def test_fixed_evidence_runner_uses_platform_ai_background_priority(tmp_path):
     assert artifact.cases[0].resource_usage.scope == "system"
 
 
+def test_fixed_evidence_runner_can_select_allowlisted_benchmark_model(tmp_path):
+    dataset = _dataset(tmp_path, _case())
+    ers = tmp_path / "ers"
+    ers.mkdir()
+    (ers / "fixture.md").write_text("# Fact\nThe value is 42.\n", encoding="utf-8")
+    seen = {}
+
+    def handler(request):
+        if request.url.path == "/api/v1/health":
+            return _health()
+        seen["path"] = request.url.path
+        seen["body"] = json.loads(request.content)
+        body = seen["body"]
+        return httpx.Response(200, json={
+            "schema_version": 1,
+            "request_id": body["context"]["request_id"],
+            "state": "completed",
+            "content": json.dumps({
+                "answer": "42 [FIX-1]",
+                "cited_source_ids": ["FIX-1"],
+                "insufficient_context": False,
+            }),
+            "finish_reason": "stop",
+            "usage": {"input_tokens": 100, "output_tokens": 12},
+            "execution": {
+                "provider": "ollama-local",
+                "model": "qwen3.8:27b",
+                "node": "test-node",
+                "queue_wait_ms": 1.0,
+                "duration_ms": 10.0,
+            },
+        })
+
+    client = PlatformBenchmarkClient(
+        "http://platform",
+        transport=httpx.MockTransport(handler),
+    )
+    subject = BenchmarkSubject(
+        subject_id="qwen3.8-27b-p4",
+        kind="logical-llm",
+        adapter="platform-ai-v1",
+        metadata={"model": "qwen3.8:27b"},
+    )
+    artifact = run_fixed_evidence_llm(
+        client=client,
+        suite_path=SUITES / "llm.json",
+        dataset_path=dataset,
+        subject=subject,
+        ai_root=ROOT,
+        ers_root=ers,
+        source_revisions={"ai_server_commit": "abc", "ers_commit": "def"},
+        model="qwen3.8:27b",
+    )
+
+    assert seen["path"] == "/api/v1/benchmarks/ai"
+    assert seen["body"]["model"] == "qwen3.8:27b"
+    assert seen["body"]["priority_class"] == "background"
+    assert artifact.cases[0].status == "completed"
+
+
 def test_retrieval_runner_uses_stable_knowledge_api(tmp_path):
     dataset = _dataset(tmp_path, _case(target="retrieval_rag"))
     seen = {}

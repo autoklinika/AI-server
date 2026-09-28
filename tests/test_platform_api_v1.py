@@ -101,6 +101,62 @@ def test_invalid_requests_never_reach_provider(body):
     asyncio.run(run())
 
 
+def test_benchmark_ai_path_is_allowlisted_and_does_not_change_normal_model_contract():
+    async def run():
+        seen = []
+
+        def upstream(request):
+            seen.append(json.loads(request.content))
+            return httpx.Response(200, json={
+                "done": True,
+                "message": {"content": '{"answer":"ok","cited_source_ids":[],"insufficient_context":false}'},
+                "prompt_eval_count": 4,
+                "eval_count": 8,
+            })
+
+        async with client(
+            upstream,
+            benchmark_model_allowlist="candidate-model:tag",
+        ) as (http, app):
+            body = {
+                "schema_version": 1,
+                "capability": "structured-generation",
+                "model": "candidate-model:tag",
+                "context": {"request_id": "req_bench_model", "domain": "ecu-repair"},
+                "priority_class": "background",
+                "messages": [{"role": "user", "content": "private-benchmark-prompt"}],
+                "response_schema": {
+                    "type": "object",
+                    "properties": {"answer": {"type": "string"}},
+                },
+                "temperature": 0,
+                "timeout_seconds": 30,
+            }
+            response = await http.post("/api/v1/benchmarks/ai", json=body)
+            assert response.status_code == 200, response.text
+            result = response.json()
+            assert result["execution"]["model"] == "candidate-model:tag"
+            assert seen[0]["model"] == "candidate-model:tag"
+            job = (await app.state.scheduler.snapshot())["recent_jobs"][-1]
+            assert job["priority_class"] == "background"
+
+            disallowed = await http.post(
+                "/api/v1/benchmarks/ai",
+                json={**body, "model": "not-allowed:latest",
+                      "context": {"request_id": "req_bench_denied", "domain": "ecu-repair"}},
+            )
+            assert disallowed.status_code == 400
+            assert disallowed.json()["error"]["code"] == "benchmark_model_not_allowed"
+            assert len(seen) == 1
+
+            normal = await http.post("/api/v1/ai", json=payload())
+            assert normal.status_code == 200
+            assert normal.json()["execution"]["model"] == "reasoning-main"
+            assert seen[-1]["model"] == "private-model"
+
+    asyncio.run(run())
+
+
 def test_error_auth_and_health_contracts():
     async def run():
         async with client(peer='192.0.2.5') as (http, _):

@@ -6,9 +6,57 @@
   "status": "foundation",
   "objective": "Measure automotive/electronics reasoning quality independently of model family or accelerator.",
   "dataset": "../datasets/golden.v1.jsonl",
-  "metrics": ["fact_recall", "forbidden_claim_rate", "citation_precision", "citation_recall", "grounding_coverage", "insufficient_evidence_accuracy", "tool_success", "multiturn_consistency", "latency_ms", "throughput_tps", "peak_ram_bytes", "peak_vram_bytes"],
-  "dimensions": ["ecu_diagnostics", "automotive_electronics", "pcb", "schematics", "can_lin_j1939", "power_protection_drivers", "dtc", "technical_reasoning", "manufacturer_docs", "rag", "citations", "incomplete_data", "hallucination_resistance", "pl_en", "tool_use", "context_length", "multiturn"],
-  "tracks": ["reasoning_fixed_evidence", "closed_book_diagnostic", "tool_use_multiturn"],
-  "candidate_models": [],
-  "notes": ["Model selection is intentionally decoupled from current hardware.", "No fine-tuning is accepted before a reproducible baseline run."]
+  "metrics": [
+    "fact_recall",
+    "forbidden_claim_rate",
+    "citation_precision",
+    "citation_recall",
+    "grounding_coverage",
+    "insufficient_evidence_accuracy",
+    "tool_success",
+    "multiturn_consistency",
+    "latency_ms",
+    "throughput_tps",
+    "peak_ram_bytes",
+    "peak_vram_bytes"
+  ],
+  "dimensions": [
+    "ecu_diagnostics",
+    "automotive_electronics",
+    "pcb",
+    "schematics",
+    "can_lin_j1939",
+    "power_protection_drivers",
+    "dtc",
+    "technical_reasoning",
+    "manufacturer_docs",
+    "rag",
+    "citations",
+    "incomplete_data",
+    "hallucination_resistance",
+    "pl_en",
+    "tool_use",
+    "context_length",
+    "multiturn"
+  ],
+  "tracks": [
+    "reasoning_fixed_evidence",
+    "closed_book_diagnostic",
+    "tool_use_multiturn"
+  ],
+  "candidate_models": [
+    "reasoning-main",
+    "qwen3.8:27b",
+    "qwen3.8-flash-next",
+    "gpt-oss:20b",
+    "gpt-oss:120b",
+    "mistral-small-4-119b",
+    "deepseek-v4.1-flash-reference",
+    "glm-5.3-flash-reference"
+  ],
+  "notes": [
+    "Model selection is intentionally decoupled from current hardware.",
+    "No fine-tuning is accepted before a reproducible baseline run.",
+    "P4 compares candidates against the frozen P3 reasoning-main baseline; reference-only models may use a separate approved runtime adapter."
+  ]
 }

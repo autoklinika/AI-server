@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     ollama_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen3.6:35b"
     ollama_analysis_timeout_seconds: float = Field(default=300.0, gt=0.0)
+    # Physical Ollama models allowed only through the benchmark-only Platform API path.
+    # Normal clients remain pinned to the logical reasoning-main contract.
+    benchmark_model_allowlist: str = (
+        "qwen3.8:27b,gpt-oss:20b,gpt-oss:120b"
+    )
 
     # Central inference gateway. It binds to localhost by default because both
     # Hermes and the ventilation analysis runner live on the AI Server.

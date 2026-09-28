@@ -125,13 +125,15 @@ class PlatformBenchmarkClient:
         request_id: str,
         message: str,
         response_schema: dict,
+        model: str = "reasoning-main",
         domain: str = "ecu-repair",
         priority_class: str = "background",
     ) -> AIResponse:
-        data = self._call("POST", "/api/v1/ai", json={
+        path = "/api/v1/ai" if model == "reasoning-main" else "/api/v1/benchmarks/ai"
+        data = self._call("POST", path, json={
             "schema_version": 1,
             "capability": "structured-generation",
-            "model": "reasoning-main",
+            "model": model,
             "context": self._context(request_id, domain),
             "priority_class": priority_class,
             "messages": [{"role": "user", "content": message}],

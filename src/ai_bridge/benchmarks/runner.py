@@ -245,6 +245,7 @@ def run_fixed_evidence_llm(
     ai_root: Path,
     ers_root: Path,
     source_revisions: dict[str, str | None],
+    model: str = "reasoning-main",
     splits: set[str] | None = None,
     case_ids: set[str] | None = None,
 ) -> BenchmarkRunArtifact:
@@ -270,6 +271,7 @@ def run_fixed_evidence_llm(
                 request_id=request_id,
                 message=render_fixed_evidence(case, evidence_by_case[case.case_id]),
                 response_schema=_FIXED_RESPONSE_SCHEMA,
+                model=model,
             ))
             parsed = _FixedAnswer.model_validate_json(response.content)
             results.append(CaseExecution(
