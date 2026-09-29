@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "base_model": "Qwen/Qwen3.8-27B",
+  "base_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+  "dataset_sha256": "7c11610a9e2c6a6ce373038164cb3427c89c16bb64a07122218cc40df525a7ac",
+  "holdout_sha256": "385cb2b78755784d1ca086e0c37fbca8247c7af1f9b86d64ed8a132eabcc3e58",
+  "status": "selected_for_next_stage_not_deployed",
+  "selection_metric": "frozen_holdout_token_weighted_loss",
+  "selected_run": "electronics-foundation-v1-r1-20260929",
+  "selected_adapter_sha256": "9b52b30908baf29f21856ec2f0777dfd6b7d2e4a7f3b83b521127917c3034935",
+  "selected_adapter_path": "/srv/ai-data/training/p5/checkpoints/electronics-electronics-foundation-v1-r1-20260929",
+  "base_holdout_loss": 1.5601645532673891,
+  "r1_holdout_loss": 1.1656979527923057,
+  "r2_holdout_loss": 1.1810732232938566,
+  "r1_relative_improvement_vs_base": 0.25283653551092933,
+  "r2_relative_improvement_vs_base": 0.24298163240513126,
+  "r2_relative_change_vs_r1": -0.013189755085973193,
+  "selection_reason": "R1 has the lowest loss on the frozen unseen electronics holdout. R2 improved training exposure but regressed on holdout, so early stopping retains R1."
+}

@@ -124,3 +124,39 @@ Improvement:
 - P5.2 electronics holdout gate: PASS.
 
 R1 is therefore accepted as evidence that the LoRA learned transferable electronics reasoning patterns beyond the training records. It is still an experimental foundation adapter and is not yet a production automotive adapter.
+
+## Round R2 — staged continuation and early stop
+
+R2 resumed the R1 adapter weights with a fresh optimizer, used the same deterministic shuffle, and advanced to records 41–80 (start_index=40). Learning rate was reduced from 1e-4 to 5e-5.
+
+Run ID: electronics-foundation-v1-r2-20260929
+
+Training:
+- steps: 40/40 PASS,
+- resume mode: adapter_weights_only_fresh_optimizer,
+- source adapter: R1,
+- start index: 40,
+- learning rate: 5e-5,
+- training time: 705.949 s,
+- mean step: 17.647 s,
+- throughput: 21.666 tokens/s,
+- peak VRAM allocated: 57,224,953,856 bytes,
+- peak VRAM reserved: 59,382,956,032 bytes,
+- adapter SHA-256: eb4541ec5e5de3028b50c6f6bbcaec045405543b29c319ee0f7ebd317b3308f8.
+
+R2 frozen-holdout:
+- token-weighted loss: 1.181073,
+- perplexity: 3.2579,
+- mean case loss: 1.178269,
+- relative improvement vs base: 24.2982%,
+- relative change vs R1: -1.3190% (regression).
+
+R2 remains substantially better than the untuned base, but it is worse than R1 on the same frozen unseen holdout. Therefore the training series is early-stopped at R1.
+
+Selected electronics foundation adapter:
+- run: electronics-foundation-v1-r1-20260929,
+- adapter SHA-256: 9b52b30908baf29f21856ec2f0777dfd6b7d2e4a7f3b83b521127917c3034935,
+- stable alias: /srv/ai-data/training/p5/adapters/electronics-foundation-v1/current,
+- status: selected_for_next_stage_not_deployed.
+
+R2 is retained for audit at the r2 alias but is not selected.
