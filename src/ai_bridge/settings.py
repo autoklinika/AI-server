@@ -34,7 +34,9 @@ class Settings(BaseSettings):
     # Physical Ollama models allowed only through the benchmark-only Platform API path.
     # Normal clients remain pinned to the logical reasoning-main contract.
     benchmark_model_allowlist: str = (
-        "qwen3.8:27b,gpt-oss:20b,gpt-oss:120b"
+        "qwen3.8:27b,gpt-oss:20b,gpt-oss:120b,"
+        "frob/qwen3.8-flash-next:125b-a6b-ud-q4_K_XL,"
+        "frob/mistral-small-4:119b-a6b-2603-ud-q4_K_M"
     )
 
     # Central inference gateway. It binds to localhost by default because both
