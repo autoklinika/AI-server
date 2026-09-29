@@ -196,6 +196,7 @@ class BenchmarkAIRequest(Contract):
     response_schema: dict
     temperature: float = Field(default=0, ge=0, le=2)
     timeout_seconds: float = Field(default=300, gt=0, le=600)
+    max_output_tokens: int = Field(default=1024, ge=128, le=8192)
     num_ctx: int = Field(default=65536, ge=8192, le=262144)
     num_gpu: int = Field(default=99, ge=0, le=999)
 
@@ -1410,6 +1411,7 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                     ),
                     response_schema=body.response_schema,
                     temperature=body.temperature,
+                    max_output_tokens=getattr(body, "max_output_tokens", None),
                     context=body.context.model_dump(exclude_none=True),
                 )
                 if physical_model is None:
