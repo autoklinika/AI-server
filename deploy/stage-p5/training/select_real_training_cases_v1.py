@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, json
+import argparse, json, re
 from pathlib import Path
 
 CONFIRMED = {"workshop_confirmed", "vehicle_confirmed", "application_confirmed"}
+
+def case_family(case_id: str) -> str:
+    match = re.match(r"^(CASE-\d{4})", case_id or "")
+    return match.group(1) if match else (case_id or "")
 
 def load_jsonl(path: Path):
     return [json.loads(x) for x in path.read_text().splitlines() if x.strip()]
@@ -16,7 +20,7 @@ def main():
     args=ap.parse_args()
 
     golden=load_jsonl(Path(args.golden))
-    benchmarked={c for row in golden for c in row.get("provenance",{}).get("case_ids",[])}
+    benchmarked={case_family(c) for row in golden for c in row.get("provenance",{}).get("case_ids",[])}
     allow_doc=json.loads(Path(args.allowlist).read_text())
     approved=set(allow_doc.get("approved_case_ids",[]))
     if len(approved) != len(allow_doc.get("approved_case_ids",[])):
@@ -29,6 +33,7 @@ def main():
         for seed in sorted(root.glob("*/case.seed.json")):
             doc=json.loads(seed.read_text())
             case_id=doc.get("legacy_case_code") or seed.parent.name
+            family_id=case_family(case_id)
             confirmations={
                 r.get("confirmation_status")
                 for r in doc.get("results",[])
@@ -36,7 +41,7 @@ def main():
             }
             final_status=doc.get("final_status")
             reasons=[]
-            if case_id in benchmarked: reasons.append("reserved_by_benchmark")
+            if family_id in benchmarked: reasons.append("reserved_by_benchmark")
             if final_status != "closed": reasons.append("case_not_closed")
             if not confirmations.intersection(CONFIRMED): reasons.append("no_confirmed_final_result")
             if case_id not in approved: reasons.append("not_allowlisted")
@@ -44,9 +49,10 @@ def main():
             item={
                 "case_id":case_id,
                 "seed":str(seed),
+                "family_id":family_id,
                 "final_status":final_status,
                 "confirmation_statuses":sorted(confirmations),
-                "benchmarked":case_id in benchmarked,
+                "benchmarked":family_id in benchmarked,
                 "allowlisted":case_id in approved,
                 "eligible":eligible,
                 "reasons":reasons,

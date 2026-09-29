@@ -36,10 +36,10 @@ def test_confirmed_unbenchmarked_allowlisted_case_is_selected():
 def test_benchmarked_or_unconfirmed_case_is_rejected():
     with tempfile.TemporaryDirectory() as tmp:
         root=Path(tmp)
-        write_case(root,"CASE-0001")
+        write_case(root,"CASE-0001-LONG-NAME")
         write_case(root,"CASE-0098",closed=False,confirmation="bench_confirmed_vehicle_pending")
         golden=[{"provenance":{"case_ids":["CASE-0001"]}}]
-        r=run(root,golden,["CASE-0001","CASE-0098"])
+        r=run(root,golden,["CASE-0001-LONG-NAME","CASE-0098"])
         assert r.returncode==0, r.stdout+r.stderr
         assert '"eligible_case_ids": []' in r.stdout
         assert "reserved_by_benchmark" in r.stdout
