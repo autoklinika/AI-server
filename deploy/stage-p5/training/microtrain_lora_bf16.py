@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import psutil
 import torch
-from peft import LoraConfig, PeftConfig, get_peft_model
+from peft import LoraConfig, PeftConfig, PeftModel, get_peft_model
 from safetensors import safe_open
 from transformers import AutoTokenizer
 from streaming_bf16_loader import load_qwen_bf16
@@ -58,6 +58,8 @@ def main():
     ap.add_argument("--lora-r", type=int, default=4)
     ap.add_argument("--purpose", default="P5.0 feasibility only; synthetic dataset is not P5.1 training data")
     ap.add_argument("--shuffle", action="store_true")
+    ap.add_argument("--adapter-dir")
+    ap.add_argument("--start-index", type=int, default=0)
     args = ap.parse_args()
 
     random.seed(args.seed)
@@ -111,9 +113,17 @@ def main():
         target_modules=linear,
         task_type="CAUSAL_LM",
     )
-    print(f"P5_MARK=LORA_ATTACH_START targets={len(linear)}", flush=True)
-    model = get_peft_model(model, lcfg)
-    print("P5_MARK=LORA_ATTACH_DONE", flush=True)
+    if args.adapter_dir:
+        resume_cfg = PeftConfig.from_pretrained(args.adapter_dir)
+        if getattr(resume_cfg, "r", None) != args.lora_r:
+            raise RuntimeError(f"resume LoRA rank mismatch: adapter={getattr(resume_cfg, 'r', None)} requested={args.lora_r}")
+        print(f"P5_MARK=LORA_RESUME_START adapter={args.adapter_dir}", flush=True)
+        model = PeftModel.from_pretrained(model, args.adapter_dir, is_trainable=True)
+        print("P5_MARK=LORA_RESUME_DONE", flush=True)
+    else:
+        print(f"P5_MARK=LORA_ATTACH_START targets={len(linear)}", flush=True)
+        model = get_peft_model(model, lcfg)
+        print("P5_MARK=LORA_ATTACH_DONE", flush=True)
     for name, p in model.named_parameters():
         if p.requires_grad and any(x in name.lower() for x in ("visual", "vision", "image")):
             p.requires_grad = False
@@ -139,7 +149,7 @@ def main():
     total_target_tokens = 0
 
     for step in range(args.steps):
-        ex = examples[step % len(examples)]
+        ex = examples[(args.start_index + step) % len(examples)]
         optimizer.zero_grad(set_to_none=True)
         t0 = time.perf_counter()
         out = model(
@@ -204,6 +214,9 @@ def main():
             "base_dtype": "bfloat16",
             "gradient_checkpointing": True,
             "shuffle": args.shuffle,
+            "adapter_dir": args.adapter_dir,
+            "start_index": args.start_index,
+            "resume_mode": "adapter_weights_only_fresh_optimizer" if args.adapter_dir else "new_adapter",
         },
         "environment": {
             "torch": torch.__version__,

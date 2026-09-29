@@ -9,6 +9,8 @@ STEPS="${P5_ELECTRONICS_STEPS:-40}"
 MAX_LENGTH="${P5_ELECTRONICS_MAX_LENGTH:-448}"
 LORA_R="${P5_ELECTRONICS_LORA_R:-8}"
 LR="${P5_ELECTRONICS_LR:-0.0001}"
+ADAPTER_DIR="${P5_ELECTRONICS_ADAPTER_DIR:-}"
+START_INDEX="${P5_ELECTRONICS_START_INDEX:-0}"
 CGROUP_MEMORY="${P5_CGROUP_MEMORY:-48g}"
 CGROUP_SWAP="${P5_CGROUP_SWAP:-$CGROUP_MEMORY}"
 MIN_HOST_AVAILABLE_KIB="${P5_MIN_HOST_AVAILABLE_KIB:-8388608}"
@@ -25,6 +27,11 @@ python3 "$ROOT/deploy/stage-p5/training/electronics/validate_electronics_foundat
 grep -q '^P5_2_ELECTRONICS_READINESS=PASS$' /tmp/p52-ready.txt
 
 test -f "$MODEL/model.safetensors.index.json"
+EXTRA_ARGS=(--start-index "$START_INDEX")
+if [[ -n "$ADAPTER_DIR" ]]; then
+  test -f "$ADAPTER_DIR/adapter_config.json"
+  EXTRA_ARGS+=(--adapter-dir "${ADAPTER_DIR/$DATA//p5}")
+fi
 mkdir -p "$OUT" "$(dirname "$LOG")"
 VRAM_USED="$(cat /sys/class/drm/card0/device/mem_info_vram_used)"
 if (( VRAM_USED > 2147483648 )); then
@@ -63,7 +70,7 @@ docker run --rm --name "$CONTAINER_NAME" \
  --dataset /workspace/deploy/stage-p5/training/electronics/electronics_foundation_train_v1.jsonl \
  --output-dir "/p5/checkpoints/electronics-$RUN_ID" \
  --steps "$STEPS" --max-length "$MAX_LENGTH" --seed 20260929 \
- --lora-r "$LORA_R" --lr "$LR" --shuffle \
+ --lora-r "$LORA_R" --lr "$LR" --shuffle "${EXTRA_ARGS[@]}" \
  --purpose "P5.2 electronics-foundation-v1 reasoning calibration; non-deployable until holdout/automotive benchmark acceptance" \
  2>&1 | tee "$LOG"
 
