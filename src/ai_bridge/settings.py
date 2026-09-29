@@ -36,7 +36,8 @@ class Settings(BaseSettings):
     benchmark_model_allowlist: str = (
         "qwen3.8:27b,gpt-oss:20b,gpt-oss:120b,"
         "frob/qwen3.8-flash-next:125b-a6b-ud-q4_K_XL,"
-        "frob/mistral-small-4:119b-a6b-2603-ud-q4_K_M"
+        "frob/mistral-small-4:119b-a6b-2603-ud-q4_K_M,"
+        "granite4.2:30b,nemotron-cascade-2:30b,ornith-1.5:35b"
     )
 
     # Central inference gateway. It binds to localhost by default because both
