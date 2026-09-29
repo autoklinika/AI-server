@@ -140,3 +140,23 @@ P5.1 DATA FOUNDATION / SEED SMOKE = PASS.
 The 20-record seed is too small for a meaningful 100–300 step calibration without excessive repetition. The next P5.1 gate is corpus expansion with the same contamination/licensing rules. Serious calibration starts only after the curriculum is large/diverse enough to make the measured 100–300 steps informative.
 
 The benchmark remains untouched and CASE-0001/CASE-0002 remain reserved.
+
+## Serious-calibration readiness gate
+
+A separate corpus-readiness gate now prevents the default 100-step calibration from being treated as meaningful until the corpus is large and diverse enough.
+
+Current serious-calibration requirements:
+- at least 100 training records,
+- at least 12 unique diagnostic categories,
+- at least 2 approved source kinds,
+- both project-owned synthetic material and project-owned confirmed, unbenchmarked real cases,
+- at least 15 incomplete-evidence examples,
+- zero normalized duplicate records,
+- all eight diagnostic reasoning sections present in every target.
+
+Current seed status:
+- seed-level validation: PASS,
+- serious-calibration readiness: NOT_READY,
+- primary blockers: 20/100 records, only one source kind, no confirmed unbenchmarked real case source yet, and 4/15 incomplete-evidence records.
+
+This is intentional. The 8-step smoke proved the training path; it does not justify repeated training on a small seed.

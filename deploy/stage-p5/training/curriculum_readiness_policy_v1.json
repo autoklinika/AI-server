@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "serious_calibration": {
+    "min_records": 100,
+    "min_unique_categories": 12,
+    "min_source_kinds": 2,
+    "required_source_kinds": [
+      "project_owned_synthetic",
+      "project_owned_confirmed_case_unbenchmarked"
+    ],
+    "min_incomplete_evidence_records": 15,
+    "max_normalized_duplicate_fraction": 0.0
+  }
+}
