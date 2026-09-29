@@ -198,3 +198,17 @@ Current readiness:
 - required project_owned_confirmed_case_unbenchmarked: MISSING.
 
 The serious runner was explicitly tested to fail before any GPU allocation: VRAM was unchanged before/after the blocked invocation.
+
+## Real-case admission control
+
+Real workshop cases are not automatically eligible for training.
+
+The P5.1 selector requires all of the following:
+- the ERS case is closed,
+- at least one final result is workshop/vehicle/application confirmed,
+- the case family is not referenced by the golden benchmark,
+- the case ID is explicitly present in the versioned training allowlist.
+
+The current allowlist is intentionally empty. Current ERS state contains only CASE-0001 and CASE-0002; both are benchmark-reserved, and CASE-0002 is not finally closed. Current selector result: 0 eligible real cases.
+
+This keeps the final serious-calibration blocker explicit and under user control. A future CASE-0003 (or later) can qualify only after confirmed repair evidence exists and the user deliberately approves that case for training.
