@@ -83,7 +83,9 @@ def main():
         dtype=torch.bfloat16,
         device_map={"": 0},
         low_cpu_mem_usage=True,
+        disable_mmap=True,
     )
+    print("P5_MARK=MODEL_FROM_PRETRAINED_RETURNED", flush=True)
     torch.cuda.synchronize()
     load_seconds = time.perf_counter() - load_t0
     print(f"P5_MARK=MODEL_LOAD_DONE seconds={load_seconds:.3f} vram={torch.cuda.memory_allocated()}", flush=True)
