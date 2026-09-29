@@ -59,21 +59,23 @@ def main():
 
     random.seed(args.seed)
     np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
+    print("P5_MARK=ARGS_READY", flush=True)
 
     dataset_path = Path(args.dataset)
     output = Path(args.output_dir)
     output.mkdir(parents=True, exist_ok=True)
     rows = load_rows(dataset_path)
 
+    print("P5_MARK=TOKENIZER_LOAD_START", flush=True)
     tok = AutoTokenizer.from_pretrained(args.model_dir, local_files_only=True)
+    print("P5_MARK=TOKENIZER_LOAD_DONE", flush=True)
     if tok.pad_token_id is None:
         tok.pad_token = tok.eos_token
 
     torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats()
     host_ram_before = psutil.virtual_memory().used
+    print("P5_MARK=MODEL_LOAD_START", flush=True)
     load_t0 = time.perf_counter()
     model = AutoModelForMultimodalLM.from_pretrained(
         args.model_dir,
@@ -84,6 +86,9 @@ def main():
     )
     torch.cuda.synchronize()
     load_seconds = time.perf_counter() - load_t0
+    print(f"P5_MARK=MODEL_LOAD_DONE seconds={load_seconds:.3f} vram={torch.cuda.memory_allocated()}", flush=True)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
 
     if hasattr(model.config, "use_cache"):
         model.config.use_cache = False
@@ -107,7 +112,9 @@ def main():
         target_modules=linear,
         task_type="CAUSAL_LM",
     )
+    print(f"P5_MARK=LORA_ATTACH_START targets={len(linear)}", flush=True)
     model = get_peft_model(model, lcfg)
+    print("P5_MARK=LORA_ATTACH_DONE", flush=True)
     for name, p in model.named_parameters():
         if p.requires_grad and any(x in name.lower() for x in ("visual", "vision", "image")):
             p.requires_grad = False
@@ -126,6 +133,7 @@ def main():
 
     model.train()
     torch.cuda.synchronize()
+    print(f"P5_MARK=TRAIN_START trainable={trainable}", flush=True)
     train_t0 = time.perf_counter()
     step_metrics = []
     total_tokens = 0
