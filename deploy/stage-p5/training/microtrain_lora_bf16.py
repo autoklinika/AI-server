@@ -56,6 +56,7 @@ def main():
     ap.add_argument("--seed", type=int, default=20260929)
     ap.add_argument("--lr", type=float, default=2e-4)
     ap.add_argument("--lora-r", type=int, default=4)
+    ap.add_argument("--purpose", default="P5.0 feasibility only; synthetic dataset is not P5.1 training data")
     args = ap.parse_args()
 
     random.seed(args.seed)
@@ -180,7 +181,7 @@ def main():
 
     manifest = {
         "status": "PASS",
-        "purpose": "P5.0 feasibility only; synthetic dataset is not P5.1 training data",
+        "purpose": args.purpose,
         "base_model": "Qwen/Qwen3.8-27B",
         "base_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
         "git_sha": os.environ.get("P5_GIT_SHA", "unknown"),

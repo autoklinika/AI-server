@@ -1,0 +1,25 @@
+{
+  "dataset_id": "automotive-curriculum-seed-v1",
+  "dataset_sha256": "367920c9e9e4a2318aac8a722c48b708de193cd62a5718a993ac8252e9d52659",
+  "golden_records_seen": 72,
+  "golden_sha256": "1f829de1eacdd8e19905e28f2d086161f94fd93c691bee586d6171976d0f8edf",
+  "languages": {
+    "pl": 20
+  },
+  "prohibited_sources": [
+    "benchmarks/automotive_v1/datasets/golden.v1.jsonl",
+    "OEM/retrieval_reference_only_pending_license_review",
+    "CASE-0001 direct facts",
+    "CASE-0002 direct facts"
+  ],
+  "purpose": "P5.1 calibration seed; not production/deployment acceptance corpus",
+  "records": 20,
+  "reserved_benchmark_case_families": [
+    "CASE-0001",
+    "CASE-0002"
+  ],
+  "schema_version": 1,
+  "source_kinds": {
+    "project_owned_synthetic": 20
+  }
+}
