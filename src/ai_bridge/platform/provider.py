@@ -39,11 +39,15 @@ class GatewayLLMAdapter:
             options["num_predict"] = request.max_output_tokens
         payload = {"model": model, "messages": request.messages,
                    "stream": False, "options": options}
-        # gpt-oss uses Ollama Harmony thinking controls. Sending think=False
-        # together with a JSON schema can yield an empty final content field.
-        # Let Ollama use the model-native thinking mode; only final content is
-        # consumed below. Other current runtime models retain think=False.
-        if not model.startswith("gpt-oss:"):
+        # Some model families require their native thinking/template path for
+        # structured output. Forcing think=False can route the whole response to
+        # message.thinking and leave final content empty. In those cases we omit
+        # the control and still consume only final message.content below.
+        native_thinking = (
+            model.startswith("gpt-oss:")
+            or "mistral-small-4:" in model
+        )
+        if not native_thinking:
             payload["think"] = False
         if request.response_schema is not None:
             payload["format"] = request.response_schema

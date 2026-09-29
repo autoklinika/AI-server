@@ -113,3 +113,44 @@ def test_gateway_llm_adapter_omits_think_for_gptoss_structured_output():
     asyncio.run(run())
     assert "think" not in seen
     assert seen["format"] == {"type": "object"}
+
+
+def test_gateway_llm_adapter_omits_think_for_mistral_small4_structured_output():
+    seen = {}
+
+    async def handler(request):
+        seen.update(json.loads(request.content))
+        return httpx.Response(200, json={
+            "done": True,
+            "message": {
+                "content": "{\"answer\":\"ok\"}",
+                "thinking": "hidden model reasoning",
+            },
+            "prompt_eval_count": 1,
+            "eval_count": 1,
+        })
+
+    async def run():
+        async with httpx.AsyncClient(
+            base_url="http://ollama",
+            transport=httpx.MockTransport(handler),
+        ) as client:
+            adapter = GatewayLLMAdapter(
+                client, model="qwen3.6:35b",
+                node_id="ai-node-01", health_timeout=1.0,
+            )
+            response = await adapter.generate_for_model(
+                LLMRequest(
+                    request_id="req-mistral4-think",
+                    capability="structured-generation",
+                    messages=[{"role": "user", "content": "test"}],
+                    response_schema={"type": "object"},
+                ),
+                "frob/mistral-small-4:119b-a6b-2603-ud-q4_K_M",
+                num_ctx=65536, num_gpu=99,
+            )
+            assert response.content == "{\"answer\":\"ok\"}"
+
+    asyncio.run(run())
+    assert "think" not in seen
+    assert seen["format"] == {"type": "object"}
