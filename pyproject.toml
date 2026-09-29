@@ -18,7 +18,7 @@ dependencies = [
 
 [project.optional-dependencies]
 postgres = ["psycopg[binary]>=3.2,<4"]
-router-benchmark = ["gliner2[local]>=2,<3"]
+router-benchmark = ["gliner2[local]>=2,<3", "protobuf>=5"]
 dev = [
   "alembic>=1.18,<2",
   "pytest>=9,<10",

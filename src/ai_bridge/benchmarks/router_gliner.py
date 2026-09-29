@@ -1,6 +1,7 @@
 """GLiNER2.5 decision-model adapter for the independent router suite."""
 from __future__ import annotations
 
+import inspect
 import time
 from pathlib import Path
 from typing import Any
@@ -74,6 +75,30 @@ def _case_text(case: GoldenCase) -> str:
     return "\n".join(history)
 
 
+def _load_extractor_compat(auto_extractor, model_id: str, map_location: str):
+    """Load legacy GLiNER2 checkpoints without mutating Hugging Face cache files."""
+    from transformers import AutoTokenizer
+
+    original_descriptor = inspect.getattr_static(AutoTokenizer, "from_pretrained")
+    original_loader = AutoTokenizer.from_pretrained
+
+    def compatible_loader(*args, **kwargs):
+        try:
+            return original_loader(*args, **kwargs)
+        except AttributeError as exc:
+            if "'list' object has no attribute 'keys'" not in str(exc):
+                raise
+            retry_kwargs = dict(kwargs)
+            retry_kwargs["extra_special_tokens"] = {}
+            return original_loader(*args, **retry_kwargs)
+
+    AutoTokenizer.from_pretrained = staticmethod(compatible_loader)
+    try:
+        return auto_extractor.from_pretrained(model_id, map_location=map_location)
+    finally:
+        setattr(AutoTokenizer, "from_pretrained", original_descriptor)
+
+
 class GlinerDecisionAdapter:
     def __init__(
         self,
@@ -97,9 +122,10 @@ class GlinerDecisionAdapter:
                     "GLiNER2 local runtime is not installed; install optional "
                     "router benchmark dependencies before a live router run"
                 ) from exc
-            self.extractor = AutoExtractor.from_pretrained(
+            self.extractor = _load_extractor_compat(
+                AutoExtractor,
                 self.model_id,
-                map_location=self.map_location,
+                self.map_location,
             )
         return self.extractor
 

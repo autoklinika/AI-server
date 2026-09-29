@@ -1,4 +1,6 @@
 import json
+import sys
+import types
 from pathlib import Path
 
 from ai_bridge.benchmarks.contracts import GoldenCase
@@ -7,7 +9,10 @@ from ai_bridge.benchmarks.resources import (
     ResourcePoint,
     ResourceSampler,
 )
-from ai_bridge.benchmarks.router_gliner import GlinerDecisionAdapter
+from ai_bridge.benchmarks.router_gliner import (
+    GlinerDecisionAdapter,
+    _load_extractor_compat,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -117,6 +122,34 @@ def test_gliner_adapter_uses_independent_route_and_tool_heads():
     assert seen["tasks"]["tools"]["multi_label"] is True
     assert decision.latency_ms >= 0
     assert decision.peak_ram_bytes is None or decision.peak_ram_bytes > 0
+
+
+def test_gliner_legacy_tokenizer_metadata_compat(monkeypatch):
+    calls = []
+
+    class FakeAutoTokenizer:
+        @classmethod
+        def from_pretrained(cls, *args, **kwargs):
+            calls.append(dict(kwargs))
+            if "extra_special_tokens" not in kwargs:
+                raise AttributeError("'list' object has no attribute 'keys'")
+            return object()
+
+    class FakeAutoExtractor:
+        @staticmethod
+        def from_pretrained(model_id, map_location):
+            from transformers import AutoTokenizer
+
+            AutoTokenizer.from_pretrained(model_id)
+            return model_id, map_location
+
+    fake_transformers = types.SimpleNamespace(AutoTokenizer=FakeAutoTokenizer)
+    monkeypatch.setitem(sys.modules, "transformers", fake_transformers)
+
+    loaded = _load_extractor_compat(FakeAutoExtractor, "fake/model", "cpu")
+
+    assert loaded == ("fake/model", "cpu")
+    assert calls == [{}, {"extra_special_tokens": {}}]
 
 
 def test_resource_sampler_reports_system_peak_delta():
