@@ -18,7 +18,7 @@ def norm(text: str) -> str:
 
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument("--dataset", default="deploy/stage-p5/training/fixtures/automotive_curriculum_seed_v1.jsonl")
+    ap.add_argument("--dataset", default="deploy/stage-p5/training/fixtures/automotive_curriculum_v2.jsonl")
     ap.add_argument("--policy", default="deploy/stage-p5/training/curriculum_readiness_policy_v1.json")
     ap.add_argument("--level", choices=["seed","serious"], default="serious")
     args=ap.parse_args()
@@ -36,7 +36,7 @@ def main():
     duplicate_fraction=1.0-(len(set(normalized))/max(1,len(normalized)))
     categories=Counter(r.get("metadata",{}).get("category") for r in rows)
     source_kinds=Counter(r.get("metadata",{}).get("source_kind") for r in rows)
-    incomplete=sum(1 for r in rows if r.get("metadata",{}).get("category") in INCOMPLETE_CATEGORIES)
+    incomplete=sum(1 for r in rows if r.get("metadata",{}).get("incomplete_evidence") is True or r.get("metadata",{}).get("category") in INCOMPLETE_CATEGORIES)
 
     serious_failures=[]
     if len(rows) < policy["min_records"]: serious_failures.append(f"records:{len(rows)}<{policy['min_records']}")

@@ -160,3 +160,41 @@ Current seed status:
 - primary blockers: 20/100 records, only one source kind, no confirmed unbenchmarked real case source yet, and 4/15 incomplete-evidence records.
 
 This is intentional. The 8-step smoke proved the training path; it does not justify repeated training on a small seed.
+
+## Curriculum v2 expansion
+
+P5.1 curriculum v2 expands the contamination-safe synthetic reasoning corpus while preserving the benchmark and licensing boundary.
+
+V2:
+- 155 records total,
+- 47 unique diagnostic categories,
+- 36 incomplete-evidence records under the readiness classifier,
+- normalized duplicate fraction: 0,
+- source kind: project_owned_synthetic only,
+- golden overlap gate: PASS,
+- reserved CASE-0001 / CASE-0002 reuse: 0,
+- OEM retrieval-only reuse: 0,
+- dataset SHA-256: b9f3b85afd10d0bcbc286b95c1f2f8b4135f095ca8911b2f8780235c8e6190cc.
+
+Qwen3.8 tokenizer measurements:
+- total tokens: 72,074,
+- target/assistant tokens: 39,455,
+- mean tokens per record: 464.99,
+- median: 460,
+- p95: 520,
+- maximum: 531,
+- maximum target tokens: 315.
+
+Because a few examples exceed 512 tokens, the serious-calibration runner now defaults to max_length=576. It also enables deterministic seed-based shuffling so a 100-step calibration samples a representative subset instead of taking the first 100 records in file order.
+
+At the measured P5.1 smoke throughput of approximately 21.45 tokens/s, one pass over the current 72k-token synthetic corpus is roughly an hour of pure step time. This is only a planning extrapolation; the serious calibration remains blocked until real-case readiness passes.
+
+Current readiness:
+- record-count gate: PASS (155 >= 100),
+- category gate: PASS (47 >= 12),
+- incomplete-evidence gate: PASS (36 >= 15),
+- duplicate gate: PASS,
+- source-kind diversity: FAIL (1 < 2),
+- required project_owned_confirmed_case_unbenchmarked: MISSING.
+
+The serious runner was explicitly tested to fail before any GPU allocation: VRAM was unchanged before/after the blocked invocation.
