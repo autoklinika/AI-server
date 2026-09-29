@@ -38,8 +38,13 @@ class GatewayLLMAdapter:
                 raise ValueError("max_output_tokens must be positive")
             options["num_predict"] = request.max_output_tokens
         payload = {"model": model, "messages": request.messages,
-                   "stream": False, "think": False,
-                   "options": options}
+                   "stream": False, "options": options}
+        # gpt-oss uses Ollama Harmony thinking controls. Sending think=False
+        # together with a JSON schema can yield an empty final content field.
+        # Let Ollama use the model-native thinking mode; only final content is
+        # consumed below. Other current runtime models retain think=False.
+        if not model.startswith("gpt-oss:"):
+            payload["think"] = False
         if request.response_schema is not None:
             payload["format"] = request.response_schema
         response = await self.client.post("/api/chat", json=payload)
