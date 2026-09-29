@@ -120,6 +120,21 @@ Therefore the current boot is considered GPU-runtime-degraded. Additional traini
 
 The Radeon 890M belongs to the gfx1150 family. ROCm 7.2.x has known MIOpen limitations for gfx1150 backward convolution paths. Qwen3.8 uses hybrid linear-attention / Gated DeltaNet layers, including convolutional components, so a clean post-recovery backward probe is required before accepting ROCm 7.2.1 for full LoRA training.
 
+## Confirmed post-incident GPU probe — 19:58 CEST
+
+A minimal isolated ROCm probe was attempted after the large-model jobs were gone:
+
+- PyTorch reported the AMD GPU as available;
+- device discovery succeeded;
+- a tiny 1024x1024 BF16 matmul with backward did **not** complete;
+- the kernel immediately resumed repeated `amdgpu ... MES ring buffer is full` messages;
+- the probe container was forcibly stopped;
+- VRAM returned to idle (~155 MiB), but `gpu_busy_percent` remained at 100.
+
+This confirms the current blocker is the GPU/KFD/MES runtime state, not Qwen3.8 checkpoint size alone. No further P5 training workloads may run in this boot.
+
+The earlier 24 GiB cgroup diagnostic also ended in cgroup OOM at ~24 GiB anonymous RSS. The committed feasibility runner is therefore restored to the conservative 16 GiB / 16 GiB memory+swap ceiling while P5.0 remains fail-closed.
+
 ## Required next gate
 
 Before P5.0 can PASS:

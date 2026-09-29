@@ -43,7 +43,7 @@ UIDN="$(id -u)"; GIDN="$(id -g)"
 RGID="$(getent group render | cut -d: -f3)"
 VGID="$(getent group video | cut -d: -f3)"
 
-docker run --rm --name "p5-feasibility-$RUN_ID"   --memory=24g --memory-swap=28g   --user "$UIDN:$GIDN" --group-add "$RGID" --group-add "$VGID"   --device=/dev/kfd --device=/dev/dri --ipc=host --shm-size=8g   -e HOME=/p5/tmp/home -e HF_HOME=/p5/hf-cache -e P5_GIT_SHA="$GIT_SHA"   -v "$DATA:/p5" -v "$ROOT:/workspace:ro" "$IMAGE"   python3 /workspace/deploy/stage-p5/training/microtrain_lora_bf16.py     --model-dir "${MODEL/$DATA//p5}"     --dataset /workspace/deploy/stage-p5/training/fixtures/microtrain_feasibility_v1.jsonl     --output-dir "/p5/checkpoints/feasibility-$RUN_ID"     --steps 8 --max-length 256 --seed 20260929 2>&1 | tee "$LOG"
+docker run --rm --name "p5-feasibility-$RUN_ID"   --memory=16g --memory-swap=16g   --user "$UIDN:$GIDN" --group-add "$RGID" --group-add "$VGID"   --device=/dev/kfd --device=/dev/dri --ipc=host --shm-size=8g   -e HOME=/p5/tmp/home -e HF_HOME=/p5/hf-cache -e P5_GIT_SHA="$GIT_SHA"   -v "$DATA:/p5" -v "$ROOT:/workspace:ro" "$IMAGE"   python3 /workspace/deploy/stage-p5/training/microtrain_lora_bf16.py     --model-dir "${MODEL/$DATA//p5}"     --dataset /workspace/deploy/stage-p5/training/fixtures/microtrain_feasibility_v1.jsonl     --output-dir "/p5/checkpoints/feasibility-$RUN_ID"     --steps 8 --max-length 256 --seed 20260929 2>&1 | tee "$LOG"
 
 kill "$MON_PID" 2>/dev/null || true
 trap - EXIT
