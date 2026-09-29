@@ -141,6 +141,7 @@ def test_benchmark_ai_path_is_allowlisted_and_does_not_change_normal_model_contr
             assert seen[0]["model"] == "candidate-model:tag"
             assert seen[0]["options"]["num_ctx"] == 32768
             assert seen[0]["options"]["num_gpu"] == 77
+            assert seen[0]["options"]["num_predict"] == 1024
             job = (await app.state.scheduler.snapshot())["recent_jobs"][-1]
             assert job["priority_class"] == "background"
 
