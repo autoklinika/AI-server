@@ -8,7 +8,8 @@ import psutil
 import torch
 from peft import LoraConfig, PeftConfig, get_peft_model
 from safetensors import safe_open
-from transformers import AutoModelForMultimodalLM, AutoTokenizer
+from transformers import AutoTokenizer
+from streaming_bf16_loader import load_qwen_bf16
 import transformers, peft, trl, accelerate, datasets
 
 def sha256_file(path: Path) -> str:
@@ -77,15 +78,7 @@ def main():
     host_ram_before = psutil.virtual_memory().used
     print("P5_MARK=MODEL_LOAD_START", flush=True)
     load_t0 = time.perf_counter()
-    model = AutoModelForMultimodalLM.from_pretrained(
-        args.model_dir,
-        local_files_only=True,
-        dtype=torch.bfloat16,
-        device_map={"": 0},
-        low_cpu_mem_usage=True,
-        disable_mmap=True,
-    )
-    print("P5_MARK=MODEL_FROM_PRETRAINED_RETURNED", flush=True)
+    model, loader_metrics = load_qwen_bf16(args.model_dir)
     torch.cuda.synchronize()
     load_seconds = time.perf_counter() - load_t0
     print(f"P5_MARK=MODEL_LOAD_DONE seconds={load_seconds:.3f} vram={torch.cuda.memory_allocated()}", flush=True)
@@ -219,6 +212,7 @@ def main():
             "device_total_memory": torch.cuda.get_device_properties(0).total_memory,
         },
         "model_load_seconds": load_seconds,
+        "streaming_loader": loader_metrics,
         "train_seconds": train_seconds,
         "mean_step_seconds": sum(x["seconds"] for x in step_metrics) / len(step_metrics),
         "tokens_per_second": total_tokens / train_seconds,
