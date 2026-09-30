@@ -1,0 +1,14 @@
+{
+  "dataset_id": "discriminating-measurement-v4",
+  "families": 6,
+  "holdout_records": 36,
+  "holdout_sha256": "a4e53ea4618a93400fb8fbb6ce7f039d58128dabf2aa6bb6491e9a520ec29e35",
+  "p55_frozen_sha256": "8ba6b0a767c4649949a399e38e276287cc3058d89e89fca86d44b3ddb1858fa5",
+  "p55_training_exclusion": true,
+  "parent_adapter": "electronics-foundation-v3/current",
+  "principle": "known facts -> competing hypotheses -> missing information -> highest-information test -> predicted branch result",
+  "schema_version": 1,
+  "target_microcases": 300,
+  "train_records": 50,
+  "train_sha256": "84ddcf658490292201f783016a68b12610ba5937e4ac084f60cd137cef61b101"
+}

@@ -1,0 +1,17 @@
+{
+  "dataset_id": "discriminating-measurement-v4-replay",
+  "dataset_sha256": "e43dabc2395875226f7dfc97ff846d63eff02111f8bd3a7bedd51cfed798ec39",
+  "parent_adapter": "electronics-foundation-v3/current",
+  "records": 65,
+  "replay_mix": {
+    "v1_replay": 3,
+    "v2_replay": 4,
+    "v3_new": 8
+  },
+  "replay_records": 15,
+  "schema_version": 1,
+  "steps_for_full_pass": 65,
+  "target_microcases": 300,
+  "target_records": 50,
+  "trainer_shuffle_seed": 20261037
+}
