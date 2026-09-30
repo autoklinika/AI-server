@@ -154,3 +154,23 @@ Wynik B nie uzasadnia samodzielnie zmiany BIOS/kernel/boot ani wznowienia pełne
 
 Wersja uruchomionego MES oraz dokładny zestaw poprawek dystrybucyjnego kernela pozostają
 lukami audytu. Odczyt live firmware wymaga udostępnienia uprawnionego odczytu, nie zmiany sterownika.
+
+## 8. Wyniki wykonanych prob
+
+31 testow jednostkowych/integracyjnych nowego narzedzia: PASS. Proby GPU ponizej maja exit code 0 i brak regresji wedlug automatycznych kontroli hosta.
+
+| Konfiguracja | Profil | Wynik | Workload / wall [s] | MES / KFD / GPUVM | Peak VRAM [GiB] | Min MemAvailable [GiB] |
+|---|---|---|---:|---|---:|---:|
+| A | synthetic | PASS tylko proby | 60.01 / 62.91 | 0 / 0 / 0 | 56.87 | 24.87 |
+| B | synthetic | PASS tylko proby | 60.01 / 62.91 | 0 / 0 / 0 | 56.86 | 24.82 |
+| C | synthetic | PASS tylko proby | 60.01 / 63.04 | 0 / 0 / 0 | 56.87 | 24.82 |
+| D | synthetic | PASS tylko proby | 60.01 / 62.87 | 0 / 0 / 0 | 56.86 | 24.78 |
+| B | qwen | PASS tylko proby | 190.83 / 213.93 | 0 / 0 / 0 | 57.49 | 24.39 |
+
+E: nie uruchomiono; brak podstaw do dodawania kolejnej zmiennej przed dlugim testem B.
+
+Wczesne testy techniczne harnessu: GPU_OCCUPIED poprawnie blokowal start; asynchroniczne zwalnianie pamieci po unload/exit powodowalo poczatkowo BLOCKED lub FAIL_CLEANUP bez bledow GPU. Dodano oczekiwanie z limitem czasu i testy regresji. Oryginalne wyniki pozostawiono w evidence; nie sa zaliczone do stability gate.
+
+B/Qwen: 5 syntetycznych krokow, wszystkie planowane dlugosci tokenow, 190.83 s compute, zero nowych bledow. Kolejny eksperyment: B, trzy swieze procesy po 3600 s. STABILITY GATE nadal NOT PASSED.
+
+Dodatkowe zrodlo pierwotne: [zgloszenie amd-gfx dla gfx1150, 2025-12-29](https://www.mail-archive.com/amd-gfx@lists.freedesktop.org/msg134427.html) opisuje te sama kolejnosc MES WAIT_REG_MEM i ring-full po ok. 13 godzinach treningu na innym kernelu. To wspiera klasyfikacje objawow, nie potwierdza konkretnej przyczyny u nas. Trzy godzinne powtorzenia nie dowodza stabilnosci 13-godzinnej.

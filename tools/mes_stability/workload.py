@@ -94,7 +94,7 @@ def run_qwen(args):
         if not torch.isfinite(grad).item():
             raise RuntimeError('nonfinite synthetic gradient')
         optimizer.step(); torch.cuda.synchronize(); step += 1
-        emit(phase='stress', profile='qwen', step=step, tokens=length, loss=float(loss),
+        emit(phase='stress', profile='qwen', step=step, tokens=length, loss=float(loss.detach()),
              elapsed_s=time.monotonic()-start, **memory())
     emit(phase='completed', profile='qwen', steps=step, measured_s=time.monotonic()-start, **memory())
 

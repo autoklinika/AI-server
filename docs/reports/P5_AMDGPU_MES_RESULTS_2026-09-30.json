@@ -1,0 +1,121 @@
+[
+  {
+    "variant": "A",
+    "status": "PASS_RUN_ONLY",
+    "profile": "synthetic",
+    "git": {
+      "dirty": false,
+      "sha": "3a611d579559458cf43fe02727c53acf977cc1eb"
+    },
+    "image_id": "sha256:415b8e68c15d5bf9f7eeb6c4b697327953c600c875456ec5b12fccc1eb5414f8",
+    "kernel": "7.0.0-34-generic",
+    "environment_overrides": {},
+    "elapsed_s": 62.9080444629999,
+    "measured_workload_s": 60.01158947299996,
+    "error_counts": {},
+    "peak_vram_bytes": 61067833344,
+    "min_mem_available_bytes": 26701811712,
+    "torch_peak_allocated": 60347648512,
+    "torch_peak_reserved": 60660121600,
+    "workload_exit_code": 0,
+    "host_regression_free": true,
+    "container_stopped": true
+  },
+  {
+    "variant": "B",
+    "status": "PASS_RUN_ONLY",
+    "profile": "synthetic",
+    "git": {
+      "dirty": false,
+      "sha": "3a611d579559458cf43fe02727c53acf977cc1eb"
+    },
+    "image_id": "sha256:415b8e68c15d5bf9f7eeb6c4b697327953c600c875456ec5b12fccc1eb5414f8",
+    "kernel": "7.0.0-34-generic",
+    "environment_overrides": {
+      "HSA_USE_SVM": "0"
+    },
+    "elapsed_s": 62.90556519799998,
+    "measured_workload_s": 60.0078319669999,
+    "error_counts": {},
+    "peak_vram_bytes": 61056602112,
+    "min_mem_available_bytes": 26648735744,
+    "torch_peak_allocated": 60347648512,
+    "torch_peak_reserved": 60660121600,
+    "workload_exit_code": 0,
+    "host_regression_free": true,
+    "container_stopped": true
+  },
+  {
+    "variant": "C",
+    "status": "PASS_RUN_ONLY",
+    "profile": "synthetic",
+    "git": {
+      "dirty": false,
+      "sha": "3a611d579559458cf43fe02727c53acf977cc1eb"
+    },
+    "image_id": "sha256:415b8e68c15d5bf9f7eeb6c4b697327953c600c875456ec5b12fccc1eb5414f8",
+    "kernel": "7.0.0-34-generic",
+    "environment_overrides": {
+      "HSA_ENABLE_SDMA": "0"
+    },
+    "elapsed_s": 63.04085490900002,
+    "measured_workload_s": 60.007866667000144,
+    "error_counts": {},
+    "peak_vram_bytes": 61067821056,
+    "min_mem_available_bytes": 26650537984,
+    "torch_peak_allocated": 60347648512,
+    "torch_peak_reserved": 60660121600,
+    "workload_exit_code": 0,
+    "host_regression_free": true,
+    "container_stopped": true
+  },
+  {
+    "variant": "D",
+    "status": "PASS_RUN_ONLY",
+    "profile": "synthetic",
+    "git": {
+      "dirty": false,
+      "sha": "3a611d579559458cf43fe02727c53acf977cc1eb"
+    },
+    "image_id": "sha256:415b8e68c15d5bf9f7eeb6c4b697327953c600c875456ec5b12fccc1eb5414f8",
+    "kernel": "7.0.0-34-generic",
+    "environment_overrides": {
+      "HSA_ENABLE_SDMA": "0",
+      "HSA_USE_SVM": "0"
+    },
+    "elapsed_s": 62.87093371800006,
+    "measured_workload_s": 60.01444871600006,
+    "error_counts": {},
+    "peak_vram_bytes": 61056589824,
+    "min_mem_available_bytes": 26604683264,
+    "torch_peak_allocated": 60347648512,
+    "torch_peak_reserved": 60660121600,
+    "workload_exit_code": 0,
+    "host_regression_free": true,
+    "container_stopped": true
+  },
+  {
+    "variant": "B",
+    "status": "PASS_RUN_ONLY",
+    "profile": "qwen",
+    "git": {
+      "dirty": false,
+      "sha": "86aafba24099cafc6ec0721ee2e0fcea9b08973b"
+    },
+    "image_id": "sha256:415b8e68c15d5bf9f7eeb6c4b697327953c600c875456ec5b12fccc1eb5414f8",
+    "kernel": "7.0.0-34-generic",
+    "environment_overrides": {
+      "HSA_USE_SVM": "0"
+    },
+    "elapsed_s": 213.93176277400016,
+    "measured_workload_s": 190.82783896900014,
+    "error_counts": {},
+    "peak_vram_bytes": 61730758656,
+    "min_mem_available_bytes": 26193334272,
+    "torch_peak_allocated": 59007731712,
+    "torch_peak_reserved": 60081307648,
+    "workload_exit_code": 0,
+    "host_regression_free": true,
+    "container_stopped": true
+  }
+]
