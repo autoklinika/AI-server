@@ -24,6 +24,19 @@ def api(port, method, path, data=None, timeout=5):
         return json.load(response)
 
 
+def wait_idle_gpu(heartbeat, timeout=30):
+    deadline = time.monotonic() + timeout
+    consecutive = 0
+    while consecutive < 2:
+        heartbeat()
+        sample = telemetry(gpu_path())
+        idle = sample['mem_info_vram_used'] <= 2*GIB and sample['gpu_busy_percent'] <= 5
+        consecutive = consecutive + 1 if idle else 0
+        if time.monotonic() > deadline:
+            raise RuntimeError('GPU physical release/idle timeout')
+        time.sleep(1)
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output', type=Path, required=True)
@@ -66,6 +79,7 @@ def main():
         for variant in args.variants:
             for repeat in range(args.repeats):
                 heartbeat()
+                wait_idle_gpu(heartbeat)
                 dest=args.output/f'{variant}-{repeat+1}'
                 argv=[sys.executable,str(Path(__file__).with_name('mes_stability.py')),'run',
                       '--variant',variant,'--seconds',str(args.seconds),'--resident-gib',str(args.resident_gib),
