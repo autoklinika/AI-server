@@ -92,6 +92,8 @@ def main():
                 child=None
                 result=json.loads((dest/'result.json').read_text())
                 save(args.output/'progress.json',{'variant':variant,'repeat':repeat+1,'result':result})
+                if result['status'] in ('FAIL_CONTAINMENT', 'FAIL_CLEANUP'):
+                    unsafe=True
                 if result['status']!='PASS_RUN_ONLY':
                     raise RuntimeError('run not passed; matrix stopped')
         success=True
@@ -123,7 +125,16 @@ def main():
                 save(args.output/'restored-models.json',api(11434,'GET','/api/ps'))
         finally:
             if not unsafe:
-                api(11435,'DELETE',lease_path)
+                try:
+                    unsafe=bool(count_records(kernel_records(cursor=cursor)))
+                except Exception:
+                    unsafe=True
+                if unsafe:
+                    save(args.output/'containment.json',{'status':'HOLD_FAULT','reason':'fault/monitor loss during residency restoration','lease_path':lease_path})
+                    while boot_id()==initial_boot:
+                        heartbeat();time.sleep(5)
+                else:
+                    api(11435,'DELETE',lease_path)
     return 0 if success else 1
 
 if __name__=='__main__':

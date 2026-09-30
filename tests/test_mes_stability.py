@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import io
 from pathlib import Path
 import subprocess
 import tempfile
@@ -202,6 +203,25 @@ class MatrixTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError,'not idle'):
                     matrix.main()
                 self.assertEqual(api.call_count,1)
+
+uspec = importlib.util.spec_from_file_location('mes_upstream', MODULE.with_name('collect_upstream.py'))
+upstream = importlib.util.module_from_spec(uspec); uspec.loader.exec_module(upstream)
+
+class UpstreamEvidenceTests(unittest.TestCase):
+    def test_download_hashes_and_no_execution(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dest=Path(tmp)/'upstream'
+            with patch.object(sys,'argv',['collect','--output',str(dest)]), patch.object(upstream.urllib.request,'urlopen',side_effect=lambda *a,**k:io.BytesIO(b'source')), patch.object(Path,'glob',return_value=[]):
+                self.assertEqual(upstream.main(),0)
+                manifest=json.loads((dest/'manifest.json').read_text())
+                self.assertEqual(manifest['tlb.patch']['bytes'],6)
+                self.assertEqual(len(manifest['tlb.patch']['sha256']),64)
+    def test_unavailable_sources_explicit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dest=Path(tmp)/'upstream'
+            with patch.object(sys,'argv',['collect','--output',str(dest)]), patch.object(upstream.urllib.request,'urlopen',side_effect=OSError('offline')), patch.object(Path,'glob',return_value=[]):
+                self.assertEqual(upstream.main(),1)
+                self.assertIn('error',json.loads((dest/'manifest.json').read_text())['tlb.patch'])
 
 if __name__ == '__main__':
     unittest.main()
