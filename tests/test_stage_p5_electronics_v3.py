@@ -63,3 +63,9 @@ def test_runner_uses_selected_v2_and_safe_limits():
     assert "P5_ELECTRONICS_V3_MAX_LENGTH:-480" in text
     assert "P5_ELECTRONICS_V3_LR:-0.00002" in text
     assert "electronics_foundation_v3_replay_train.jsonl" in text
+
+def test_runner_has_mes_watchdog():
+    text=(DIR/"run_electronics_foundation_v3.sh").read_text()
+    assert "MES_BASELINE=" in text
+    assert "P5_MES_WATCHDOG=TRIGGERED" in text
+    assert "mes_count" in text

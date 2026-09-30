@@ -69,3 +69,25 @@ Selected electronics-foundation-v2/current evaluated on the new v3 holdout:
 - evaluation time: 140.884 s.
 
 This v3 holdout is frozen and is not used for training or replay.
+
+## First v3 training attempt — runtime abort
+
+Run ID: electronics-foundation-v3-replay-r1-20260930
+
+The replay-protected training started correctly from selected electronics-foundation-v2 and completed 13 steps with finite loss/gradients. During the transition to the next step the AMD GPU entered a degraded MES state:
+- last completed step: 13,
+- GPU busy: 100%,
+- repeated kernel message: `MES ring buffer is full`,
+- Docker kill could not receive a container exit event,
+- no adapter was written to the partial output directory,
+- repository remained clean and all prior selected adapters remained intact.
+
+The last completed example was hbridge_recirculation; the next shuffled example was comparator_propagation_glitch. This correlation is recorded for reproduction but is not treated as proof that the example caused the GPU hang.
+
+The run is classified ABORTED_RUNTIME_GPU_MES and is not eligible for evaluation or selection.
+
+## MES watchdog hardening
+
+The v3 runner now snapshots the kernel MES error count before starting and rechecks it every five seconds while training. Any new `MES ring buffer is full` event triggers `P5_MES_WATCHDOG=TRIGGERED`, attempts immediate container termination, and marks the run failed before acceptance.
+
+This watchdog supplements the existing 8 GiB host-memory floor; it does not replace a host reboot if the GPU is already hard-wedged and cannot process a kill event.

@@ -50,18 +50,30 @@ if ollama ps 2>/dev/null | tail -n +2 | grep -q .; then
   exit 43
 fi
 
-printf "timestamp,vram_used_bytes,mem_available_kib\n" > "$TELEM"
+printf "timestamp,vram_used_bytes,mem_available_kib,mes_count\n" > "$TELEM"
+MES_BASELINE="$(journalctl -b -k --no-pager 2>/dev/null | grep -c "MES ring buffer is full" || true)"
 (
+  tick=0
+  mes="$MES_BASELINE"
   while true; do
     ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     vu="$(cat /sys/class/drm/card0/device/mem_info_vram_used 2>/dev/null || echo 0)"
     ma="$(awk '/MemAvailable:/ {print $2}' /proc/meminfo)"
-    printf "%s,%s,%s\n" "$ts" "$vu" "$ma" >> "$TELEM"
+    if (( tick % 5 == 0 )); then
+      mes="$(journalctl -b -k --no-pager 2>/dev/null | grep -c "MES ring buffer is full" || true)"
+    fi
+    printf "%s,%s,%s,%s\n" "$ts" "$vu" "$ma" "$mes" >> "$TELEM"
     if (( ma < MIN_HOST_AVAILABLE_KIB )); then
       echo "P5_HOST_WATCHDOG=TRIGGERED mem_available_kib=$ma threshold_kib=$MIN_HOST_AVAILABLE_KIB" >&2
       docker kill "$CONTAINER_NAME" >/dev/null 2>&1 || true
       exit 88
     fi
+    if (( mes > MES_BASELINE )); then
+      echo "P5_MES_WATCHDOG=TRIGGERED baseline=$MES_BASELINE current=$mes" >&2
+      docker kill "$CONTAINER_NAME" >/dev/null 2>&1 || true
+      exit 89
+    fi
+    tick=$((tick+1))
     sleep 1
   done
 ) &
