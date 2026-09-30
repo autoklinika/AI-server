@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "stage": "P5.5",
+  "status": "NEEDS_IMPROVEMENT",
+  "dataset_records": 42,
+  "dataset_sha256": "8ba6b0a767c4649949a399e38e276287cc3058d89e89fca86d44b3ddb1858fa5",
+  "frozen_results_sha256": "7824d3dee9a76c0288951443c3cb6a28425f64594fed6318d931e669de1c9d4d",
+  "generation_gate": "PASS",
+  "automated_quality_gate": "FAIL",
+  "automated_metrics": {
+    "records": 42,
+    "parse_rate": 1.0,
+    "diagnostic_model_pass_rate": 0.42857142857142855,
+    "measurement_pass_rate": 0.5476190476190477,
+    "prediction_pass_rate": 0.14285714285714285,
+    "no_guessing_pass_rate": 0.8571428571428571,
+    "insufficient_data_abstention_rate": 0.0,
+    "overall_dimension_pass_rate": 0.49404761904761907
+  },
+  "manual_semantic_audit": {
+    "overall_weighted_rate": 0.8779761904761905,
+    "dimension_rates": {
+      "diagnostic_model": 0.8809523809523809,
+      "discriminating_measurement": 0.7857142857142857,
+      "predicted_result": 0.8452380952380952,
+      "no_guessing": 1.0
+    },
+    "primary_gap": "discriminating_measurement",
+    "semantic_insufficient_data_no_guessing_rate": 1.0
+  },
+  "decision": "Freeze P5.5 benchmark; improve discriminating-measurement competence in P5.6 without training on these 42 cases."
+}
