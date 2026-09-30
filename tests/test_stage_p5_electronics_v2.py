@@ -46,3 +46,23 @@ def test_dual_holdout_gate_rejects_old_skill_regression():
             cwd=ROOT,text=True,capture_output=True)
         assert r.returncode!=0
         assert json.loads((p/"out.json").read_text())["v1_regression_gate_pass"] is False
+
+
+def test_replay_dataset_preserves_expected_first40_mix():
+    script = DIR / "prepare_electronics_v2_replay.py"
+    result = subprocess.run([sys.executable, str(script)], cwd=ROOT, text=True, capture_output=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+    manifest = json.loads((DIR / "electronics_foundation_v2_replay.manifest.json").read_text())
+    assert manifest["records"] == 207
+    assert manifest["v2_new_records"] == 155
+    assert manifest["v1_replay_records"] == 52
+    assert manifest["holdout_leakage"] is False
+    assert manifest["first40_after_trainer_shuffle"] == {"v1_replay": 10, "v2_new": 30}
+
+
+def test_replay_runner_starts_from_selected_v1_adapter():
+    text = (DIR / "run_electronics_foundation_v2_replay.sh").read_text()
+    assert "electronics_foundation_v2_replay_train.jsonl" in text
+    assert "P5_ELECTRONICS_V2_REPLAY_LR:-0.00003" in text
+    assert "electronics-foundation-v1/current" in text
+    assert "prepare_electronics_v2_replay.py" in text
