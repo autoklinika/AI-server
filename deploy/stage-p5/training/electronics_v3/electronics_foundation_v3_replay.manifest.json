@@ -1,0 +1,17 @@
+{
+  "base_adapter": "electronics-foundation-v2/current",
+  "dataset_id": "electronics-foundation-v3-replay",
+  "dataset_sha256": "6934bf23be9e8ffad34dfa56cdc04d545243ccaf4a2a69681da1e4c0ae4408a3",
+  "first40_after_trainer_shuffle": {
+    "v1_replay": 5,
+    "v2_replay": 5,
+    "v3_new": 30
+  },
+  "holdout_leakage": false,
+  "records": 200,
+  "schema_version": 1,
+  "trainer_shuffle_seed": 20261003,
+  "v1_replay_records": 20,
+  "v2_replay_records": 30,
+  "v3_new_records": 150
+}

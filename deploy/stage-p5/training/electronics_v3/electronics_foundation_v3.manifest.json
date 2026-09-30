@@ -1,0 +1,15 @@
+{
+  "automotive_golden_used": false,
+  "base_adapter": "electronics-foundation-v2/current",
+  "dataset_id": "electronics-foundation-v3",
+  "external_text_copied": false,
+  "holdout_categories": 8,
+  "holdout_records": 24,
+  "holdout_sha256": "53c42d955bc956ded5911ad25650029293eda02c34f7f82aedcb4979e7dd52ca",
+  "oem_material_used": false,
+  "prior_records_checked": 392,
+  "schema_version": 3,
+  "train_categories": 30,
+  "train_records": 150,
+  "train_sha256": "c7c618e66e23b141fb9bcfff8c898f6761f065986688519148c86c341344f02d"
+}
