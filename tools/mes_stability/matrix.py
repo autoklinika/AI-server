@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 import urllib.request
-from mes_stability import kernel_records, count_records, save, boot_id
+from mes_stability import kernel_records, count_records, save, boot_id, telemetry, gpu_path, GIB
 
 
 def api(port, method, path, data=None, timeout=5):
@@ -58,7 +58,7 @@ def main():
         for model in models:
             api(11434,'POST','/api/generate',{'model':model['name'],'keep_alive':0,'stream':False},timeout=30)
         deadline=time.monotonic()+30
-        while api(11434,'GET','/api/ps')['models']:
+        while (api(11434,'GET','/api/ps')['models'] or telemetry(gpu_path())['mem_info_vram_used'] > 2*GIB or telemetry(gpu_path())['gpu_busy_percent'] > 5):
             heartbeat()
             if time.monotonic()>deadline:
                 raise RuntimeError('model unload did not complete')
