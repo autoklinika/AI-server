@@ -157,7 +157,10 @@ Selected electronics foundation v3 adapter:
 - run: electronics-foundation-v3-replay-r2-20260930,
 - stable alias: /srv/ai-data/training/p5/adapters/electronics-foundation-v3/current,
 - adapter SHA-256: 2fbcbd394318576d2a50924ad2e3f7b452306566243ede24dd524c6d1b549183,
-- status: selected_for_next_stage_not_deployed.
+- status: selected_for_next_stage_not_deployed,
+- official foundation for P5.5/P6: yes,
+- artifact kind: standalone LoRA adapter,
+- merged into Qwen3.8 base weights: no.
 
 The aborted r1 MES run produced no adapter and remains documented only as a runtime incident. The isolated reproduction probe was removed after validation.
 

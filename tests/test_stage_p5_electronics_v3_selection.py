@@ -11,6 +11,9 @@ def test_v3_retry_is_selected():
     assert doc["triple_holdout_gate"] == "PASS"
     assert doc["selected_run"] == "electronics-foundation-v3-replay-r2-20260930"
     assert doc["selected_adapter_sha256"] == "2fbcbd394318576d2a50924ad2e3f7b452306566243ede24dd524c6d1b549183"
+    assert doc["official_foundation"] is True
+    assert doc["artifact_kind"] == "lora_adapter"
+    assert doc["weights_merged_into_base"] is False
 
 
 def test_v3_selection_passes_all_three_metrics():

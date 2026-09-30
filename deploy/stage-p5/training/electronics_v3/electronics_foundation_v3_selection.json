@@ -19,5 +19,9 @@
   "v1_relative_regression": -0.0045044280210434565,
   "triple_holdout_gate": "PASS",
   "aborted_run": "electronics-foundation-v3-replay-r1-20260930",
-  "aborted_reason": "AMD ROCm/MES hang after step 13; no adapter produced. Isolated step-14 probe passed after reboot, so the event was treated as a nondeterministic runtime failure."
+  "aborted_reason": "AMD ROCm/MES hang after step 13; no adapter produced. Isolated step-14 probe passed after reboot, so the event was treated as a nondeterministic runtime failure.",
+  "official_foundation": true,
+  "artifact_kind": "lora_adapter",
+  "weights_merged_into_base": false,
+  "next_stage": "P5.5 qualitative electronics benchmark"
 }

@@ -10,10 +10,10 @@ def test_seed_readiness_passes():
     assert r.returncode==0, r.stdout+r.stderr
     assert "P5_1_READINESS=PASS level=seed" in r.stdout
 
-def test_serious_calibration_is_blocked_until_corpus_expands():
+def test_serious_calibration_is_blocked_until_required_source_diversity_exists():
     r=subprocess.run([sys.executable,str(SCRIPT),"--level","serious"],cwd=ROOT,text=True,capture_output=True)
     assert r.returncode!=0
     text=r.stdout+r.stderr
     assert "P5_1_READINESS=NOT_READY" in text
-    assert "records:20<100" in text
-    assert "project_owned_confirmed_case_unbenchmarked" in text
+    assert "source_kinds:1<2" in text
+    assert "missing_source_kinds:project_owned_confirmed_case_unbenchmarked" in text
