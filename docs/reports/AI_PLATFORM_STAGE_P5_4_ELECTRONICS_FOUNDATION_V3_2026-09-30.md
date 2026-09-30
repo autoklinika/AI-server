@@ -56,3 +56,16 @@ Training defaults:
 - learning rate=2e-5,
 - parent adapter=electronics-foundation-v2/current,
 - UMA safety policy inherited from P5.0/P5.2.
+
+## Frozen baseline before v3 training
+
+Selected electronics-foundation-v2/current evaluated on the new v3 holdout:
+- records: 24,
+- target tokens: 4,920,
+- token-weighted loss: 0.947101,
+- mean case loss: 0.946837,
+- median case loss: 0.954510,
+- perplexity: 2.5782,
+- evaluation time: 140.884 s.
+
+This v3 holdout is frozen and is not used for training or replay.
