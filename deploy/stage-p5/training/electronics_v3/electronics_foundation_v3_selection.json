@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "status": "selected_for_next_stage_not_deployed",
+  "base_model": "Qwen/Qwen3.8-27B",
+  "parent_adapter": "electronics-foundation-v2/current",
+  "selected_run": "electronics-foundation-v3-replay-r2-20260930",
+  "selected_adapter_path": "/srv/ai-data/training/p5/checkpoints/electronics-v3-electronics-foundation-v3-replay-r2-20260930",
+  "stable_alias": "/srv/ai-data/training/p5/adapters/electronics-foundation-v3/current",
+  "selected_adapter_sha256": "2fbcbd394318576d2a50924ad2e3f7b452306566243ede24dd524c6d1b549183",
+  "replay_dataset_sha256": "6934bf23be9e8ffad34dfa56cdc04d545243ccaf4a2a69681da1e4c0ae4408a3",
+  "v3_baseline_loss": 0.9471011470003826,
+  "v3_selected_loss": 0.7260055494138865,
+  "v3_relative_improvement": 0.23344454632616635,
+  "v2_reference_loss": 0.7260672813620005,
+  "v2_selected_loss": 0.7453903450915754,
+  "v2_relative_regression": 0.026613323896550703,
+  "v1_reference_loss": 1.1605527589678923,
+  "v1_selected_loss": 1.155325132600498,
+  "v1_relative_regression": -0.0045044280210434565,
+  "triple_holdout_gate": "PASS",
+  "aborted_run": "electronics-foundation-v3-replay-r1-20260930",
+  "aborted_reason": "AMD ROCm/MES hang after step 13; no adapter produced. Isolated step-14 probe passed after reboot, so the event was treated as a nondeterministic runtime failure."
+}

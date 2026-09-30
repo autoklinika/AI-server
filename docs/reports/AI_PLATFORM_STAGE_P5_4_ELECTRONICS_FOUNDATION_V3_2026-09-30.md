@@ -91,3 +91,79 @@ The run is classified ABORTED_RUNTIME_GPU_MES and is not eligible for evaluation
 The v3 runner now snapshots the kernel MES error count before starting and rechecks it every five seconds while training. Any new `MES ring buffer is full` event triggers `P5_MES_WATCHDOG=TRIGGERED`, attempts immediate container termination, and marks the run failed before acceptance.
 
 This watchdog supplements the existing 8 GiB host-memory floor; it does not replace a host reboot if the GPU is already hard-wedged and cannot process a kill event.
+
+## Post-reboot reproduction check
+
+After the MES hang, the host was rebooted. Post-reboot:
+- GPU busy returned to 0%,
+- VRAM returned to ~163 MiB,
+- boot MES count returned to 0,
+- BF16 matmul forward/backward passed.
+
+The exact shuffled step-14 example (comparator_propagation_glitch) was then isolated into a one-record probe and trained for one step from selected v2:
+- loss: 1.083978,
+- grad norm: 3.0696,
+- result: PASS,
+- post-probe MES count: 0.
+
+Therefore the earlier hang was treated as a nondeterministic ROCm/MES runtime incident rather than a deterministic dataset failure.
+
+## Successful retry — PASS
+
+Run ID: electronics-foundation-v3-replay-r2-20260930
+
+Training:
+- parent adapter: electronics-foundation-v2/current,
+- replay mix in first 40 shuffled examples: 30 v3-new + 5 v2-replay + 5 v1-replay,
+- steps: 40/40 PASS,
+- learning rate: 2e-5,
+- max_length: 480,
+- LoRA rank: 8,
+- trainable parameters: 58,363,904,
+- model load: 15.506 s,
+- training time: 746.731 s,
+- mean step time: 18.667 s,
+- throughput: 21.834 tokens/s,
+- peak VRAM allocated: 57,342,813,184 bytes,
+- peak VRAM reserved: 58,537,803,776 bytes,
+- adapter SHA-256: 2fbcbd394318576d2a50924ad2e3f7b452306566243ede24dd524c6d1b549183,
+- MES errors during retry: 0.
+
+## Triple-holdout result — PASS
+
+New v3 holdout:
+- baseline selected-v2 loss: 0.947101,
+- v3 selected loss: 0.726006,
+- relative improvement: 23.3445%,
+- required minimum improvement: 5%.
+
+Frozen v2 holdout:
+- selected-v2 reference loss: 0.726067,
+- v3 selected loss: 0.745390,
+- relative regression: 2.6613%,
+- maximum allowed regression: 3%.
+
+Frozen v1 holdout:
+- selected-v2 reference loss: 1.160553,
+- v3 selected loss: 1.155325,
+- relative regression: -0.4504% (slight improvement),
+- maximum allowed regression: 3%.
+
+P5.4 triple-holdout gate: PASS.
+
+## Selection
+
+Selected electronics foundation v3 adapter:
+- run: electronics-foundation-v3-replay-r2-20260930,
+- stable alias: /srv/ai-data/training/p5/adapters/electronics-foundation-v3/current,
+- adapter SHA-256: 2fbcbd394318576d2a50924ad2e3f7b452306566243ede24dd524c6d1b549183,
+- status: selected_for_next_stage_not_deployed.
+
+The aborted r1 MES run produced no adapter and remains documented only as a runtime incident. The isolated reproduction probe was removed after validation.
+
+Post-selection:
+- GPU busy: 0%,
+- VRAM idle: ~163 MiB,
+- boot MES count: 0.
+
+P5.4 ELECTRONICS FOUNDATION V3 = PASS.
