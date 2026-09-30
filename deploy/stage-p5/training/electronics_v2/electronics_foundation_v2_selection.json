@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "status": "selected_for_next_stage_not_deployed",
+  "base_model": "Qwen/Qwen3.8-27B",
+  "parent_adapter": "electronics-foundation-v1 R1",
+  "selected_run": "electronics-foundation-v2-replay-r1-20260930",
+  "selected_adapter_path": "/srv/ai-data/training/p5/checkpoints/electronics-v2-electronics-foundation-v2-replay-r1-20260930",
+  "stable_alias": "/srv/ai-data/training/p5/adapters/electronics-foundation-v2/current",
+  "selected_adapter_sha256": "96c6565a6b1f29c1c86716e90c966aef09915009bd1041639bdd545e1383c84c",
+  "replay_dataset_sha256": "f3fbe5d921cb27c57845d8cdbd4155666f638b2211a62081f8133db3a1204e69",
+  "v2_baseline_loss": 1.0594402808815149,
+  "v2_selected_loss": 0.7260672813620005,
+  "v2_relative_improvement": 0.3146689865729185,
+  "v1_reference_loss": 1.1656979527923057,
+  "v1_selected_loss": 1.1605527589678923,
+  "v1_relative_regression": -0.00441383105468153,
+  "dual_holdout_gate": "PASS",
+  "rejected_run": "electronics-foundation-v2-r1-20260930",
+  "rejected_reason": "New-only training improved v2 holdout but regressed frozen v1 holdout by 8.0732%, exceeding the 3% limit."
+}

@@ -1,0 +1,17 @@
+{
+  "configured_ratio": "155:52 (~3:1)",
+  "dataset_id": "electronics-foundation-v2-replay",
+  "dataset_sha256": "f3fbe5d921cb27c57845d8cdbd4155666f638b2211a62081f8133db3a1204e69",
+  "first40_after_trainer_shuffle": {
+    "v1_replay": 10,
+    "v2_new": 30
+  },
+  "holdout_leakage": false,
+  "records": 207,
+  "schema_version": 1,
+  "seed": 20260930,
+  "v1_replay_records": 52,
+  "v1_source_sha256": "7c11610a9e2c6a6ce373038164cb3427c89c16bb64a07122218cc40df525a7ac",
+  "v2_new_records": 155,
+  "v2_source_sha256": "bbead16839dccbecf8fb4b4f0373d80c88bc9cb98540a1dd40b7ec448dfe061a"
+}
