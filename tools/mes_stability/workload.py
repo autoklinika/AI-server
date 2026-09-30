@@ -83,7 +83,7 @@ def run_qwen(args):
     start = time.monotonic(); step = 0
     while time.monotonic() - start < args.seconds:
         length = (396, 900, 960, 887, 399)[step % 5]
-        ids = torch.randint(10, vocab, (1, length), device='cuda')
+        ids = torch.randint(100, min(vocab, 10000), (1, length), device='cuda')
         labels = ids.clone(); labels[:, :length//2] = -100
         optimizer.zero_grad(set_to_none=True)
         loss = model(input_ids=ids, attention_mask=torch.ones_like(ids), labels=labels).loss

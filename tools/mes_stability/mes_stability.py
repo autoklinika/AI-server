@@ -78,6 +78,16 @@ def telemetry(gpu):
     values['memory_pressure'] = Path('/proc/pressure/memory').read_text().strip()
     return values
 
+def wait_release(gpu, baseline_used, journal, timeout=15):
+    deadline = time.monotonic() + timeout
+    while True:
+        sample = telemetry(gpu)
+        if journal and journal.poll():
+            return sample
+        if sample['mem_info_vram_used'] <= baseline_used + GIB or time.monotonic() >= deadline:
+            return sample
+        time.sleep(0.2)
+
 def preflight_reason(counts, sample, min_available=8*GIB):
     if any(counts.values()):
         return 'BOOT_TAINTED: previous fault/warning in this boot; no automatic recovery'
@@ -334,6 +344,18 @@ def run(args):
                 except Exception as e:
                     result['status'] = 'FAIL_EVIDENCE'
                     result['completion_error'] = str(e)
+        if before:
+            try:
+                after = wait_release(gpu, before['mem_info_vram_used'], journal)
+                after['failed_services'] = command(['systemctl', '--failed', '--no-legend', '--plain', '--no-pager']).stdout
+                result['host_regression_free'] = (after['failed_services'] == before['failed_services'] and after['mem_available_bytes'] >= 8*GIB and after['mem_info_vram_used'] <= before['mem_info_vram_used'] + GIB)
+                save(out / 'postflight.json', after)
+                if result['status'] == 'PASS_RUN_ONLY' and after['mem_info_vram_used'] > before['mem_info_vram_used'] + GIB:
+                    result['status'] = 'FAIL_CLEANUP'
+                result['postflight_mem_available_bytes'] = after['mem_available_bytes']
+            except Exception as e:
+                result['postflight_error'] = str(e)
+                result['status'] = 'FAIL_MONITOR'
         if last_cursor:
             try:
                 final_rows = kernel_records(cursor=last_cursor)
@@ -352,18 +374,6 @@ def run(args):
             if journal.first_error:
                 save(out / 'first-error.json', journal.first_error)
             journal.close()
-        if before:
-            try:
-                after = telemetry(gpu)
-                after['failed_services'] = command(['systemctl', '--failed', '--no-legend', '--plain', '--no-pager']).stdout
-                result['host_regression_free'] = (after['failed_services'] == before['failed_services'] and after['mem_available_bytes'] >= 8*GIB and after['mem_info_vram_used'] <= before['mem_info_vram_used'] + GIB)
-                save(out / 'postflight.json', after)
-                if result['status'] == 'PASS_RUN_ONLY' and after['mem_info_vram_used'] > before['mem_info_vram_used'] + GIB:
-                    result['status'] = 'FAIL_CLEANUP'
-                result['postflight_mem_available_bytes'] = after['mem_available_bytes']
-            except Exception as e:
-                result['postflight_error'] = str(e)
-                result['status'] = 'FAIL_MONITOR'
         result['elapsed_s'] = time.monotonic() - start
         result['ended_at_unix'] = time.time()
         save(out / 'result.json', result)

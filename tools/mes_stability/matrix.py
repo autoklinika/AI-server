@@ -59,7 +59,7 @@ def main():
                'priority_class':'maintenance','workload':'external'})
     lease_path='/resource/leases/'+lease['lease_id']
     save(args.output/'lease.json',lease)
-    child=None; unsafe=False; success=False
+    child=None; unsafe=False; success=False; unloaded=False
     def heartbeat():
         response=api(11435,'POST',lease_path+'/heartbeat',{})
         if response.get('state')!='active':
@@ -68,6 +68,7 @@ def main():
         if lease.get('state')!='active':
             raise RuntimeError('reservation not immediately active; retry in idle window')
         heartbeat()
+        unloaded=True
         for model in models:
             api(11434,'POST','/api/generate',{'model':model['name'],'keep_alive':0,'stream':False},timeout=30)
         deadline=time.monotonic()+30
@@ -110,17 +111,19 @@ def main():
             save(args.output/'containment.json',{'status':'HOLD_FAULT','reason':'kernel fault or lost monitoring; no reload/reset/reboot', 'lease_path':lease_path})
             while boot_id()==initial_boot:
                 heartbeat();time.sleep(5)
-            return 1
+            success=False
         # Restore idle residency exactly by model name and observed context length.
         # An empty generate call loads weights without generating a response.
         try:
-            for model in models:
+            for model in (models if unloaded and not unsafe else []):
                 heartbeat()
                 api(11434,'POST','/api/generate',{'model':model['name'],'keep_alive':-1,'stream':False,
                     'options':{'num_ctx':model.get('context_length',65536)}},timeout=30)
-            save(args.output/'restored-models.json',api(11434,'GET','/api/ps'))
+            if not unsafe:
+                save(args.output/'restored-models.json',api(11434,'GET','/api/ps'))
         finally:
-            api(11435,'DELETE',lease_path)
+            if not unsafe:
+                api(11435,'DELETE',lease_path)
     return 0 if success else 1
 
 if __name__=='__main__':

@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -63,6 +64,10 @@ class SafetyTests(unittest.TestCase):
         with patch.object(Path, 'glob', return_value=paths), patch.object(Path, 'read_text', return_value='0x1002') as read:
             self.assertEqual(m.gpu_path(), paths[1])
             self.assertEqual(read.call_count, 1)
+    def test_wait_for_asynchronous_gpu_release(self):
+        with patch.object(m,'telemetry',side_effect=[{'mem_info_vram_used':56*m.GIB},{'mem_info_vram_used':100}]), patch.object(m.time,'sleep') as sleep:
+            self.assertEqual(m.wait_release(Path('/gpu'),100,None)['mem_info_vram_used'],100)
+            sleep.assert_called_once()
     def test_clean_preflight(self):
         self.assertIsNone(m.preflight_reason({}, self.sample()))
     def test_matrix_single_factors(self):
@@ -173,6 +178,30 @@ class GateTests(unittest.TestCase):
         rows=self.evidence()
         self.assertNotEqual(gate.evaluate(rows[:2])['gate'], 'PASS')
         self.assertNotEqual(gate.evaluate([rows[0]]*3)['gate'], 'PASS')
+
+sys.modules['mes_stability'] = m
+mspec = importlib.util.spec_from_file_location('mes_matrix', MODULE.with_name('matrix.py'))
+matrix = importlib.util.module_from_spec(mspec); mspec.loader.exec_module(matrix)
+
+class MatrixTests(unittest.TestCase):
+    def test_two_consecutive_idle_samples_after_unload(self):
+        samples=[{'mem_info_vram_used':24*m.GIB,'gpu_busy_percent':0},
+                 {'mem_info_vram_used':100,'gpu_busy_percent':13},
+                 {'mem_info_vram_used':100,'gpu_busy_percent':0},
+                 {'mem_info_vram_used':100,'gpu_busy_percent':0}]
+        with patch.object(matrix,'telemetry',side_effect=samples), patch.object(matrix,'gpu_path'), patch.object(matrix.time,'sleep'), patch.object(matrix,'api') as api:
+            matrix.wait_idle_gpu(lambda: api('heartbeat'))
+            self.assertEqual(api.call_count,4)
+    def test_idle_timeout_stops_matrix(self):
+        with patch.object(matrix,'telemetry',return_value={'mem_info_vram_used':24*m.GIB,'gpu_busy_percent':0}), patch.object(matrix,'gpu_path'), patch.object(matrix.time,'monotonic',side_effect=[0,40]):
+            with self.assertRaisesRegex(RuntimeError,'idle timeout'):
+                matrix.wait_idle_gpu(lambda:None)
+    def test_active_platform_never_reserves_or_unloads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(sys,'argv',['matrix.py','--output',str(Path(tmp)/'out')]), patch.object(matrix,'api',return_value={'active_count':1,'queued_count':0,'admission_blocked':False}) as api:
+                with self.assertRaisesRegex(RuntimeError,'not idle'):
+                    matrix.main()
+                self.assertEqual(api.call_count,1)
 
 if __name__ == '__main__':
     unittest.main()
