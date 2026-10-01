@@ -3,7 +3,7 @@ from pathlib import Path
 import argparse,json,math,re,urllib.request
 
 FIELDS=("diagnostic_model","discriminating_measurement","predicted_result")
-ACTION_WORDS=("zmierz","mierz","porówn","rejestr","obserw","wykon","monitor","sprawd","wstrzy","ogrze","chłod","zadaj","test","zasil","odłącz","odlacz")
+ACTION_WORDS=("zmierz","mierz","porówn","rejestr","zapis","obserw","wykon","monitor","sprawd","wstrzy","ogrze","chłod","zadaj","test","zasil","odłącz","odlacz")
 BRANCH_WORDS=("jeśli","jezeli","gdy","wtedy","wskazuje","wskaże","wskaze","zawęża","zaweza","potwierdza","wyklucza",
               "przenosi","rozróż","rozroz","lokaliz","pierwsz","przy stabil","przy spad","brak zmiany","zmiana zasil")
 CERTAINTY=("na pewno","jednoznacznie winny","z całą pewnością","z cala pewnoscia","definitywnie","wymień ","wymien ")
