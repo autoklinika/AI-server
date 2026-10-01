@@ -70,7 +70,7 @@ def thermal_case(block,kind):
         test="podczas kontrolowanego heat/cool mierz jednocześnie lokalne VDD oraz wejście i wyjście badanego stopnia"
         pred="jeśli pierwsze zmienia się VDD, kierunek jest zasilaniowy; jeśli VDD i wejście są stabilne, a zmienia się wyjście, zawęź element lub jego połączenie"
     elif kind==1:
-        user=f"W {zone} selektywne chłodzenie natychmiast przywraca działanie przy {temp}°C. Sam sygnał sterujący przed strefą nie zmienia się."
+        user=f"W strefie „{zone}” selektywne chłodzenie natychmiast przywraca działanie przy {temp}°C. Sam sygnał sterujący przed strefą nie zmienia się."
         model="lokalizacja termiczna jest wiarygodna, ale przyczyną może być lokalne zasilanie, aktywny stopień albo interconnect"
         test="rejestruj równolegle zasilanie strefy, sygnał przed stopniem i sygnał po stopniu podczas cyklu ogrzewanie-chłodzenie"
         pred="jeśli zmienia się zasilanie strefy, badaj regulator lub tor zasilania; jeśli zasilanie i wejście są stabilne, a wyjście reaguje, problem jest w stopniu lub interconnect"

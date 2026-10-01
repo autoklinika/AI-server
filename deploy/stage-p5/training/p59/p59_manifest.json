@@ -16,5 +16,5 @@
   "selection_focus": "thermal predicted_result first; preserve diagnostic/measurement/no_guessing",
   "thermal_train_records": 48,
   "train_records": 64,
-  "train_sha256": "a90f31af5e1fe39e89c27ee3c68dbae82c95692ee27de52eb4e6ba5493a6e696"
+  "train_sha256": "a88945542e70f2618154db11cb479b98fc3598032666b7b1f1af33f83ef40a1a"
 }
