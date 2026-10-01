@@ -113,7 +113,7 @@ hermes:
 
 provider_model_config:
   llm_provider: OllamaAdapter
-  llm_model: qwen3.6:35b
+  llm_model: qwen3.8:27b-p4-64k-gpu
   agent_provider: HermesAdapter
   media_provider: ComfyUIAdapter
   embedding_provider: contract-only

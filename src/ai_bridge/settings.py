@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # Ollama remains the inference backend. The AI Gateway is a local admission
     # layer in front of it and must therefore use this direct upstream URL.
     ollama_url: str = "http://127.0.0.1:11434"
-    ollama_model: str = "qwen3.6:35b"
+    ollama_model: str = "qwen3.8:27b-p4-64k-gpu"
     ollama_analysis_timeout_seconds: float = Field(default=300.0, gt=0.0)
     # Physical Ollama models allowed only through the benchmark-only Platform API path.
     # Normal clients remain pinned to the logical reasoning-main contract.
