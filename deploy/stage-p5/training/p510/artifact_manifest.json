@@ -1,0 +1,66 @@
+{
+  "acceptance_authorized": false,
+  "artifacts": {
+    "audit": {
+      "bytes": 174714,
+      "path": "deploy/stage-p5/training/p510/audit.json",
+      "sha256": "e0c2d7f30010d47b0088eb58e1c921a5a560f70eeb5c0ac11a6d3a19f21a8540"
+    },
+    "audit_code": {
+      "bytes": 8244,
+      "path": "deploy/stage-p5/training/p510/audit_dataset_quality.py",
+      "sha256": "1feda337ac8c6b7a8fbc86728048b72f7e16267ed9a4a0f3dfdc44e81bc32717"
+    },
+    "comparator": {
+      "bytes": 5360,
+      "path": "deploy/stage-p5/training/p510/compare_quality_v5.py",
+      "sha256": "eb2524a58d0c60d0316a4b4da1bfa67abe0fbc889fbdd96b8345876cd5fbad4c"
+    },
+    "inventory": {
+      "bytes": 90881,
+      "path": "deploy/stage-p5/training/p510/evidence_inventory.json",
+      "sha256": "8531b134e557a772542bc2982599f75bfa2ccdd9e12c709c25053cd5771af4b1"
+    },
+    "inventory_code": {
+      "bytes": 4843,
+      "path": "deploy/stage-p5/training/p510/inventory_evidence.py",
+      "sha256": "cc7aaf079be85520ee0f1768fc513e91b83c6570cec415c42363b0c8a549fce7"
+    },
+    "methodology": {
+      "bytes": 10921,
+      "path": "deploy/stage-p5/training/p510/METHODOLOGY.md",
+      "sha256": "8768f8c5c767c8948c31e25182ebf0acf582e4cae9a52eb9ea95ea7a8e786ef5"
+    },
+    "preflight": {
+      "bytes": 4950,
+      "path": "deploy/stage-p5/training/p510/preflight.py",
+      "sha256": "d1fc00c02c79866eb539077f7a620b6a5f81ffac524f578b3c3a4e4b5e5b1e59"
+    },
+    "report": {
+      "bytes": 3010,
+      "path": "deploy/stage-p5/training/p510/CODEX_REPORT.md",
+      "sha256": "ef46eeb58f88dbb093818cc446db3fba6bc34bcc428525d0d181ca350392db1e"
+    },
+    "scorer": {
+      "bytes": 7319,
+      "path": "deploy/stage-p5/benchmark/score_quality_benchmark_v5.py",
+      "sha256": "ac6e3b1317b39e4ba3bf3f1294edc0ff23d298ff71c5e51f0c44d78c16084435"
+    },
+    "task": {
+      "bytes": 6573,
+      "path": "deploy/stage-p5/training/p510/CODEX_TASK.md",
+      "sha256": "df5f2795ed0925afa7a6504ccf9c4a97090e427f6fb8309e6304bed7431ad83f"
+    },
+    "unit_tests": {
+      "bytes": 12979,
+      "path": "deploy/stage-p5/training/p510/test_foundation.py",
+      "sha256": "f8ac2563ae214120253f14111e5fbdf8e2e97cf846858bd3960adeea9497c7be"
+    }
+  },
+  "blocker": "No provenance-backed independent evaluation exists: no frozen source/exposure ledger and independent causal-scenario review establish an unused case pool excluded from candidate training and prior evaluation. Independent scorer calibration and a validated prefinal gate are also missing.",
+  "candidate_status": "NOT_RUN",
+  "independent_eval": null,
+  "parent": null,
+  "schema_version": 1,
+  "status": "BLOCKED_INDEPENDENT_EVIDENCE"
+}

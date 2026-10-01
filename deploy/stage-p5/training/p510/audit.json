@@ -1,0 +1,4948 @@
+{
+  "cross_split_overlap": [
+    {
+      "exact_prompt_overlap": 4,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "c0ccdba11add1ff241857885c983896ac18d1295f4407457d23e7bbd05108169",
+          "right_template_sha256": "c0ccdba11add1ff241857885c983896ac18d1295f4407457d23e7bbd05108169"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "ff10553c8346247f64bf1dac9caa793850f2aefb6f8c8a4e152dbc7b7d9f3e97",
+          "right_template_sha256": "ff10553c8346247f64bf1dac9caa793850f2aefb6f8c8a4e152dbc7b7d9f3e97"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "0140ee8111ad35144ec52862641994fb620b9b6b997077acf563729340b9421d",
+          "right_template_sha256": "0140ee8111ad35144ec52862641994fb620b9b6b997077acf563729340b9421d"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics/electronics_foundation_holdout_v1.jsonl",
+      "near_template_pairs": 4,
+      "normalized_overlap": 4,
+      "right": "deploy/stage-p5/training/p57/p57_regression_slice_v1.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 52,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "d1f52858b5343fb1b6ce78b3f08d3206222536b9d48d567bf0ea063092db4f7b",
+          "right_template_sha256": "d1f52858b5343fb1b6ce78b3f08d3206222536b9d48d567bf0ea063092db4f7b"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "4d1e018bba1117552fb7d119b80212d2236abc3f704f7e2501332e2332843d33",
+          "right_template_sha256": "4d1e018bba1117552fb7d119b80212d2236abc3f704f7e2501332e2332843d33"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "f5d1cc3dee48348625b9a8b1a21f08538bc4e9c754ef994794a7681826d4abf9",
+          "right_template_sha256": "f5d1cc3dee48348625b9a8b1a21f08538bc4e9c754ef994794a7681826d4abf9"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics/electronics_foundation_train_v1.jsonl",
+      "near_template_pairs": 47,
+      "normalized_overlap": 47,
+      "right": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 20,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "cd3fbf44bf77294d7b691a34d2f6c1fcc2be23f6895d70943363bf1d02bae7da",
+          "right_template_sha256": "cd3fbf44bf77294d7b691a34d2f6c1fcc2be23f6895d70943363bf1d02bae7da"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "7be265294de2f08292443dd2ef77cce180dc9730597b1a80e24a0cb4822d4f11",
+          "right_template_sha256": "7be265294de2f08292443dd2ef77cce180dc9730597b1a80e24a0cb4822d4f11"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "e22751dd5567d1d9a18c1d50b6e0fe344e2cb5b70a6fd422cca8791874eb7654",
+          "right_template_sha256": "e22751dd5567d1d9a18c1d50b6e0fe344e2cb5b70a6fd422cca8791874eb7654"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics/electronics_foundation_train_v1.jsonl",
+      "near_template_pairs": 20,
+      "normalized_overlap": 20,
+      "right": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 3,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "e22751dd5567d1d9a18c1d50b6e0fe344e2cb5b70a6fd422cca8791874eb7654",
+          "right_template_sha256": "e22751dd5567d1d9a18c1d50b6e0fe344e2cb5b70a6fd422cca8791874eb7654"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "f6d48c91d065df16c5c6cfe736046cca7b0e0c9cd061393c3dee5804d39641dd",
+          "right_template_sha256": "f6d48c91d065df16c5c6cfe736046cca7b0e0c9cd061393c3dee5804d39641dd"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "6e6ed56b4abbc1789cfeab44be7f6466942aeeececec9bb6ce38ba6518cf7df2",
+          "right_template_sha256": "6e6ed56b4abbc1789cfeab44be7f6466942aeeececec9bb6ce38ba6518cf7df2"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics/electronics_foundation_train_v1.jsonl",
+      "near_template_pairs": 3,
+      "normalized_overlap": 3,
+      "right": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 2,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "7e096a4dfb80a79bd3942bf78ccfa4d8429e2563654105d514a881735f47c8c9",
+          "right_template_sha256": "7e096a4dfb80a79bd3942bf78ccfa4d8429e2563654105d514a881735f47c8c9"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "1b7891986640e0d392b0e8f47f8833e7a95c80851e0949e120f9785ae26a4fb4",
+          "right_template_sha256": "1b7891986640e0d392b0e8f47f8833e7a95c80851e0949e120f9785ae26a4fb4"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics/electronics_foundation_train_v1.jsonl",
+      "near_template_pairs": 2,
+      "normalized_overlap": 2,
+      "right": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 2,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "7e096a4dfb80a79bd3942bf78ccfa4d8429e2563654105d514a881735f47c8c9",
+          "right_template_sha256": "7e096a4dfb80a79bd3942bf78ccfa4d8429e2563654105d514a881735f47c8c9"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "1b7891986640e0d392b0e8f47f8833e7a95c80851e0949e120f9785ae26a4fb4",
+          "right_template_sha256": "1b7891986640e0d392b0e8f47f8833e7a95c80851e0949e120f9785ae26a4fb4"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics/electronics_foundation_train_v1.jsonl",
+      "near_template_pairs": 2,
+      "normalized_overlap": 2,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 1,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "77a56f66fa493dd83deec206ced62421b9d0100cc0e16c4da8f3a0b8556f51f2",
+          "right_template_sha256": "77a56f66fa493dd83deec206ced62421b9d0100cc0e16c4da8f3a0b8556f51f2"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics/electronics_foundation_train_v1.jsonl",
+      "near_template_pairs": 1,
+      "normalized_overlap": 1,
+      "right": "deploy/stage-p5/training/p57/p57_balanced_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 4,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "c2b6ad1d2caf6c550525df8f1e83df92be4528629d4a3cc9fabaa06c303c8e1d",
+          "right_template_sha256": "c2b6ad1d2caf6c550525df8f1e83df92be4528629d4a3cc9fabaa06c303c8e1d"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "376a3f25b2d26737473c48a2573d6a1f7b339615e11e451a1531a3bb2b88cef9",
+          "right_template_sha256": "376a3f25b2d26737473c48a2573d6a1f7b339615e11e451a1531a3bb2b88cef9"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "9f2502c9fef5f0738b693b6e691e49b82fd5405cd87fd6d72c7965b650f072c9",
+          "right_template_sha256": "9f2502c9fef5f0738b693b6e691e49b82fd5405cd87fd6d72c7965b650f072c9"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_holdout.jsonl",
+      "near_template_pairs": 4,
+      "normalized_overlap": 4,
+      "right": "deploy/stage-p5/training/p57/p57_regression_slice_v1.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 155,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "f14a568dc053a0069a1a18668b19a5a2c822b27282023e4c41cc0228f788cfcd",
+          "right_template_sha256": "f14a568dc053a0069a1a18668b19a5a2c822b27282023e4c41cc0228f788cfcd"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "b2428cfb120228050b5abaae60f12c3beccb5589066953589bae27ea7e1c18b9",
+          "right_template_sha256": "b2428cfb120228050b5abaae60f12c3beccb5589066953589bae27ea7e1c18b9"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "98fbcdb9feadd95eb9ab02d17d48e09e84d120a2f3a47fc0e88996f0274c42bc",
+          "right_template_sha256": "98fbcdb9feadd95eb9ab02d17d48e09e84d120a2f3a47fc0e88996f0274c42bc"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_replay_train.jsonl",
+      "near_template_pairs": 155,
+      "normalized_overlap": 155,
+      "right": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 47,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "cd3fbf44bf77294d7b691a34d2f6c1fcc2be23f6895d70943363bf1d02bae7da",
+          "right_template_sha256": "cd3fbf44bf77294d7b691a34d2f6c1fcc2be23f6895d70943363bf1d02bae7da"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "7be265294de2f08292443dd2ef77cce180dc9730597b1a80e24a0cb4822d4f11",
+          "right_template_sha256": "7be265294de2f08292443dd2ef77cce180dc9730597b1a80e24a0cb4822d4f11"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "e22751dd5567d1d9a18c1d50b6e0fe344e2cb5b70a6fd422cca8791874eb7654",
+          "right_template_sha256": "e22751dd5567d1d9a18c1d50b6e0fe344e2cb5b70a6fd422cca8791874eb7654"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_replay_train.jsonl",
+      "near_template_pairs": 47,
+      "normalized_overlap": 47,
+      "right": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 6,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "e22751dd5567d1d9a18c1d50b6e0fe344e2cb5b70a6fd422cca8791874eb7654",
+          "right_template_sha256": "e22751dd5567d1d9a18c1d50b6e0fe344e2cb5b70a6fd422cca8791874eb7654"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "3822d70fd5f4fb898800d691f15ac4b4b7c210189851253beb8b2759ce0dd382",
+          "right_template_sha256": "3822d70fd5f4fb898800d691f15ac4b4b7c210189851253beb8b2759ce0dd382"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "c1ddbd9153a0b2fea1161dc8fb922436537718b34cc993ad63e9404b0830a83b",
+          "right_template_sha256": "c1ddbd9153a0b2fea1161dc8fb922436537718b34cc993ad63e9404b0830a83b"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_replay_train.jsonl",
+      "near_template_pairs": 6,
+      "normalized_overlap": 6,
+      "right": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 5,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "b607bb809533c73fd0f5ae391ad2c31e0f47672f458217ffd91207c06497c544",
+          "right_template_sha256": "b607bb809533c73fd0f5ae391ad2c31e0f47672f458217ffd91207c06497c544"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "67b395ec83a3231961d2e58b5523f92cc3c3f0d3873aafd398482cea52a03bad",
+          "right_template_sha256": "67b395ec83a3231961d2e58b5523f92cc3c3f0d3873aafd398482cea52a03bad"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "7e096a4dfb80a79bd3942bf78ccfa4d8429e2563654105d514a881735f47c8c9",
+          "right_template_sha256": "7e096a4dfb80a79bd3942bf78ccfa4d8429e2563654105d514a881735f47c8c9"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_replay_train.jsonl",
+      "near_template_pairs": 5,
+      "normalized_overlap": 5,
+      "right": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 4,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "67b395ec83a3231961d2e58b5523f92cc3c3f0d3873aafd398482cea52a03bad",
+          "right_template_sha256": "67b395ec83a3231961d2e58b5523f92cc3c3f0d3873aafd398482cea52a03bad"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "7e096a4dfb80a79bd3942bf78ccfa4d8429e2563654105d514a881735f47c8c9",
+          "right_template_sha256": "7e096a4dfb80a79bd3942bf78ccfa4d8429e2563654105d514a881735f47c8c9"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "6ab2d46ab7b99a25f1138215f224f54921fbf3558b1f5c9309540fc02e4fe076",
+          "right_template_sha256": "6ab2d46ab7b99a25f1138215f224f54921fbf3558b1f5c9309540fc02e4fe076"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_replay_train.jsonl",
+      "near_template_pairs": 4,
+      "normalized_overlap": 4,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 5,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "0c05162fb1ca5834d0199d292bc1633d2fdd0247efa35c8fad9cb7edd72fb875",
+          "right_template_sha256": "0c05162fb1ca5834d0199d292bc1633d2fdd0247efa35c8fad9cb7edd72fb875"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "77a56f66fa493dd83deec206ced62421b9d0100cc0e16c4da8f3a0b8556f51f2",
+          "right_template_sha256": "77a56f66fa493dd83deec206ced62421b9d0100cc0e16c4da8f3a0b8556f51f2"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "c13a2b46fbf968d37ec20409c10ccdb0a0e58f7190956bba4609b9270ea27127",
+          "right_template_sha256": "c13a2b46fbf968d37ec20409c10ccdb0a0e58f7190956bba4609b9270ea27127"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_replay_train.jsonl",
+      "near_template_pairs": 5,
+      "normalized_overlap": 5,
+      "right": "deploy/stage-p5/training/p57/p57_balanced_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 30,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "b607bb809533c73fd0f5ae391ad2c31e0f47672f458217ffd91207c06497c544",
+          "right_template_sha256": "b607bb809533c73fd0f5ae391ad2c31e0f47672f458217ffd91207c06497c544"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "fee6d454513061e969d9b1ac4feb0fde1c20c604212122cfffaccbfb5bb34a7b",
+          "right_template_sha256": "fee6d454513061e969d9b1ac4feb0fde1c20c604212122cfffaccbfb5bb34a7b"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "49036fcc0745b846b0c143cf684d528052b05a383e3082709023e8b47a8996b1",
+          "right_template_sha256": "49036fcc0745b846b0c143cf684d528052b05a383e3082709023e8b47a8996b1"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_train.jsonl",
+      "near_template_pairs": 30,
+      "normalized_overlap": 30,
+      "right": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 4,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "3822d70fd5f4fb898800d691f15ac4b4b7c210189851253beb8b2759ce0dd382",
+          "right_template_sha256": "3822d70fd5f4fb898800d691f15ac4b4b7c210189851253beb8b2759ce0dd382"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "c1ddbd9153a0b2fea1161dc8fb922436537718b34cc993ad63e9404b0830a83b",
+          "right_template_sha256": "c1ddbd9153a0b2fea1161dc8fb922436537718b34cc993ad63e9404b0830a83b"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "5e1f423f52fad7732f0014cdcfbe2c03052e8b85380d445ec866fb715a69169d",
+          "right_template_sha256": "5e1f423f52fad7732f0014cdcfbe2c03052e8b85380d445ec866fb715a69169d"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_train.jsonl",
+      "near_template_pairs": 4,
+      "normalized_overlap": 4,
+      "right": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 3,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "b607bb809533c73fd0f5ae391ad2c31e0f47672f458217ffd91207c06497c544",
+          "right_template_sha256": "b607bb809533c73fd0f5ae391ad2c31e0f47672f458217ffd91207c06497c544"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "67b395ec83a3231961d2e58b5523f92cc3c3f0d3873aafd398482cea52a03bad",
+          "right_template_sha256": "67b395ec83a3231961d2e58b5523f92cc3c3f0d3873aafd398482cea52a03bad"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "6ab2d46ab7b99a25f1138215f224f54921fbf3558b1f5c9309540fc02e4fe076",
+          "right_template_sha256": "6ab2d46ab7b99a25f1138215f224f54921fbf3558b1f5c9309540fc02e4fe076"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_train.jsonl",
+      "near_template_pairs": 3,
+      "normalized_overlap": 3,
+      "right": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 2,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "67b395ec83a3231961d2e58b5523f92cc3c3f0d3873aafd398482cea52a03bad",
+          "right_template_sha256": "67b395ec83a3231961d2e58b5523f92cc3c3f0d3873aafd398482cea52a03bad"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "6ab2d46ab7b99a25f1138215f224f54921fbf3558b1f5c9309540fc02e4fe076",
+          "right_template_sha256": "6ab2d46ab7b99a25f1138215f224f54921fbf3558b1f5c9309540fc02e4fe076"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_train.jsonl",
+      "near_template_pairs": 2,
+      "normalized_overlap": 2,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 4,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "0c05162fb1ca5834d0199d292bc1633d2fdd0247efa35c8fad9cb7edd72fb875",
+          "right_template_sha256": "0c05162fb1ca5834d0199d292bc1633d2fdd0247efa35c8fad9cb7edd72fb875"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "c13a2b46fbf968d37ec20409c10ccdb0a0e58f7190956bba4609b9270ea27127",
+          "right_template_sha256": "c13a2b46fbf968d37ec20409c10ccdb0a0e58f7190956bba4609b9270ea27127"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "4cd4a217cceee4445de5ee96f8e43b764110919516ab58d3c33eda7b8cd82282",
+          "right_template_sha256": "4cd4a217cceee4445de5ee96f8e43b764110919516ab58d3c33eda7b8cd82282"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_train.jsonl",
+      "near_template_pairs": 4,
+      "normalized_overlap": 4,
+      "right": "deploy/stage-p5/training/p57/p57_balanced_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 4,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "93278170a581124b62aec51b0123251ea08e4556e9edbfcd2cf5bfd8796dec5b",
+          "right_template_sha256": "93278170a581124b62aec51b0123251ea08e4556e9edbfcd2cf5bfd8796dec5b"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "29a006bf032bd2d9e03749182d9768ed9c07d1f6154741f6acee4ed97d9cdcf4",
+          "right_template_sha256": "29a006bf032bd2d9e03749182d9768ed9c07d1f6154741f6acee4ed97d9cdcf4"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "5c3ce0e526a2d7d36e59dac3b885efe52777df9b51be7a7512fb193c34608ae9",
+          "right_template_sha256": "5c3ce0e526a2d7d36e59dac3b885efe52777df9b51be7a7512fb193c34608ae9"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_holdout.jsonl",
+      "near_template_pairs": 4,
+      "normalized_overlap": 4,
+      "right": "deploy/stage-p5/training/p57/p57_regression_slice_v1.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 150,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "522280385f800d3357525c81af2a329d0e99e68484008ad5aa5d0f26192a2b11",
+          "right_template_sha256": "522280385f800d3357525c81af2a329d0e99e68484008ad5aa5d0f26192a2b11"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "690605a32d47093a1f40edb0d402ffad2fc8d1738c11ebec0b04712bdd9cc865",
+          "right_template_sha256": "690605a32d47093a1f40edb0d402ffad2fc8d1738c11ebec0b04712bdd9cc865"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "553386ab999ccdf3efb3164f71a0f798415ac0ca222abf3a2d6fd25b77a5452f",
+          "right_template_sha256": "553386ab999ccdf3efb3164f71a0f798415ac0ca222abf3a2d6fd25b77a5452f"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_replay_train.jsonl",
+      "near_template_pairs": 150,
+      "normalized_overlap": 150,
+      "right": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 15,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "e22751dd5567d1d9a18c1d50b6e0fe344e2cb5b70a6fd422cca8791874eb7654",
+          "right_template_sha256": "e22751dd5567d1d9a18c1d50b6e0fe344e2cb5b70a6fd422cca8791874eb7654"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "f6d48c91d065df16c5c6cfe736046cca7b0e0c9cd061393c3dee5804d39641dd",
+          "right_template_sha256": "f6d48c91d065df16c5c6cfe736046cca7b0e0c9cd061393c3dee5804d39641dd"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "6e4e2b71ea471352ff0c9c4f33d299a45e7500104324ac2e8aafd6d8bcfc362a",
+          "right_template_sha256": "6e4e2b71ea471352ff0c9c4f33d299a45e7500104324ac2e8aafd6d8bcfc362a"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_replay_train.jsonl",
+      "near_template_pairs": 15,
+      "normalized_overlap": 15,
+      "right": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 24,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "553386ab999ccdf3efb3164f71a0f798415ac0ca222abf3a2d6fd25b77a5452f",
+          "right_template_sha256": "553386ab999ccdf3efb3164f71a0f798415ac0ca222abf3a2d6fd25b77a5452f"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "fe020886f20825e69bd342d309fa43777755ed961a3cb3bc40ddaf10fc764467",
+          "right_template_sha256": "fe020886f20825e69bd342d309fa43777755ed961a3cb3bc40ddaf10fc764467"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "9a825ef3264e79bb9a7ee0eeea09be37f58134a6a4291ce91c1ce8c4c75873fe",
+          "right_template_sha256": "9a825ef3264e79bb9a7ee0eeea09be37f58134a6a4291ce91c1ce8c4c75873fe"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_replay_train.jsonl",
+      "near_template_pairs": 24,
+      "normalized_overlap": 24,
+      "right": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 18,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "553386ab999ccdf3efb3164f71a0f798415ac0ca222abf3a2d6fd25b77a5452f",
+          "right_template_sha256": "553386ab999ccdf3efb3164f71a0f798415ac0ca222abf3a2d6fd25b77a5452f"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "fe020886f20825e69bd342d309fa43777755ed961a3cb3bc40ddaf10fc764467",
+          "right_template_sha256": "fe020886f20825e69bd342d309fa43777755ed961a3cb3bc40ddaf10fc764467"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "ad3c4f32195b42a5457c0418ef1c26296084d6d4ac1cec98f861828c4971d52e",
+          "right_template_sha256": "ad3c4f32195b42a5457c0418ef1c26296084d6d4ac1cec98f861828c4971d52e"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_replay_train.jsonl",
+      "near_template_pairs": 18,
+      "normalized_overlap": 18,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 28,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "63c4ffe80c5ad1d3b9eb428820a2c0d8f7ac23298462b08ce481f14d5eae0250",
+          "right_template_sha256": "63c4ffe80c5ad1d3b9eb428820a2c0d8f7ac23298462b08ce481f14d5eae0250"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "041e55c3f63afbb4f38c526fb27009626893d55ef822c8baaa598b19c3e1cfe3",
+          "right_template_sha256": "041e55c3f63afbb4f38c526fb27009626893d55ef822c8baaa598b19c3e1cfe3"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "b8bca807a6841a880ae47c4436c060159606a19df219d6761a89213406c1d818",
+          "right_template_sha256": "b8bca807a6841a880ae47c4436c060159606a19df219d6761a89213406c1d818"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_replay_train.jsonl",
+      "near_template_pairs": 28,
+      "normalized_overlap": 28,
+      "right": "deploy/stage-p5/training/p57/p57_balanced_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 10,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "9a825ef3264e79bb9a7ee0eeea09be37f58134a6a4291ce91c1ce8c4c75873fe",
+          "right_template_sha256": "9a825ef3264e79bb9a7ee0eeea09be37f58134a6a4291ce91c1ce8c4c75873fe"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "9f9ab2d6d58927372001a924c586289d931b923037d65e6b8d3692b16585f601",
+          "right_template_sha256": "9f9ab2d6d58927372001a924c586289d931b923037d65e6b8d3692b16585f601"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "21b5dccc47c54dab218597223ba01c623196596a95df5db2650e7ecb24bed0a9",
+          "right_template_sha256": "21b5dccc47c54dab218597223ba01c623196596a95df5db2650e7ecb24bed0a9"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_replay_train.jsonl",
+      "near_template_pairs": 10,
+      "normalized_overlap": 10,
+      "right": "deploy/stage-p5/training/p58/p58_curriculum_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 8,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "6e4e2b71ea471352ff0c9c4f33d299a45e7500104324ac2e8aafd6d8bcfc362a",
+          "right_template_sha256": "6e4e2b71ea471352ff0c9c4f33d299a45e7500104324ac2e8aafd6d8bcfc362a"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "4f7e532b5da6af30d847a4b2617cc2830e829c901652d107053913bda7a9fb19",
+          "right_template_sha256": "4f7e532b5da6af30d847a4b2617cc2830e829c901652d107053913bda7a9fb19"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "2c5b0aa278fedf8256bfe3982bfe96aae4fa9ad51c529d431ccfa3e2a9637ec5",
+          "right_template_sha256": "2c5b0aa278fedf8256bfe3982bfe96aae4fa9ad51c529d431ccfa3e2a9637ec5"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_train.jsonl",
+      "near_template_pairs": 8,
+      "normalized_overlap": 8,
+      "right": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 19,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "553386ab999ccdf3efb3164f71a0f798415ac0ca222abf3a2d6fd25b77a5452f",
+          "right_template_sha256": "553386ab999ccdf3efb3164f71a0f798415ac0ca222abf3a2d6fd25b77a5452f"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "fe020886f20825e69bd342d309fa43777755ed961a3cb3bc40ddaf10fc764467",
+          "right_template_sha256": "fe020886f20825e69bd342d309fa43777755ed961a3cb3bc40ddaf10fc764467"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "9a825ef3264e79bb9a7ee0eeea09be37f58134a6a4291ce91c1ce8c4c75873fe",
+          "right_template_sha256": "9a825ef3264e79bb9a7ee0eeea09be37f58134a6a4291ce91c1ce8c4c75873fe"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_train.jsonl",
+      "near_template_pairs": 19,
+      "normalized_overlap": 19,
+      "right": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 14,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "553386ab999ccdf3efb3164f71a0f798415ac0ca222abf3a2d6fd25b77a5452f",
+          "right_template_sha256": "553386ab999ccdf3efb3164f71a0f798415ac0ca222abf3a2d6fd25b77a5452f"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "fe020886f20825e69bd342d309fa43777755ed961a3cb3bc40ddaf10fc764467",
+          "right_template_sha256": "fe020886f20825e69bd342d309fa43777755ed961a3cb3bc40ddaf10fc764467"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "ad3c4f32195b42a5457c0418ef1c26296084d6d4ac1cec98f861828c4971d52e",
+          "right_template_sha256": "ad3c4f32195b42a5457c0418ef1c26296084d6d4ac1cec98f861828c4971d52e"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_train.jsonl",
+      "near_template_pairs": 14,
+      "normalized_overlap": 14,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 23,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "63c4ffe80c5ad1d3b9eb428820a2c0d8f7ac23298462b08ce481f14d5eae0250",
+          "right_template_sha256": "63c4ffe80c5ad1d3b9eb428820a2c0d8f7ac23298462b08ce481f14d5eae0250"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "041e55c3f63afbb4f38c526fb27009626893d55ef822c8baaa598b19c3e1cfe3",
+          "right_template_sha256": "041e55c3f63afbb4f38c526fb27009626893d55ef822c8baaa598b19c3e1cfe3"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "b8bca807a6841a880ae47c4436c060159606a19df219d6761a89213406c1d818",
+          "right_template_sha256": "b8bca807a6841a880ae47c4436c060159606a19df219d6761a89213406c1d818"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_train.jsonl",
+      "near_template_pairs": 23,
+      "normalized_overlap": 23,
+      "right": "deploy/stage-p5/training/p57/p57_balanced_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 10,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "9a825ef3264e79bb9a7ee0eeea09be37f58134a6a4291ce91c1ce8c4c75873fe",
+          "right_template_sha256": "9a825ef3264e79bb9a7ee0eeea09be37f58134a6a4291ce91c1ce8c4c75873fe"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "9f9ab2d6d58927372001a924c586289d931b923037d65e6b8d3692b16585f601",
+          "right_template_sha256": "9f9ab2d6d58927372001a924c586289d931b923037d65e6b8d3692b16585f601"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "21b5dccc47c54dab218597223ba01c623196596a95df5db2650e7ecb24bed0a9",
+          "right_template_sha256": "21b5dccc47c54dab218597223ba01c623196596a95df5db2650e7ecb24bed0a9"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_train.jsonl",
+      "near_template_pairs": 10,
+      "normalized_overlap": 10,
+      "right": "deploy/stage-p5/training/p58/p58_curriculum_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 4,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "f5da799689fe6d5ea9079c1d14c201ac41d65c86e50ac1c44d1c901ccbab4f14",
+          "right_template_sha256": "f5da799689fe6d5ea9079c1d14c201ac41d65c86e50ac1c44d1c901ccbab4f14"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "36e25937aab7225699956760a4316d726a1d2f985e697d0565c4e6b2727d2e90",
+          "right_template_sha256": "a600792edc65090c54b0d606730f5b2f35d3cbb5227b30a835e9eab682615638"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "a600792edc65090c54b0d606730f5b2f35d3cbb5227b30a835e9eab682615638",
+          "right_template_sha256": "a600792edc65090c54b0d606730f5b2f35d3cbb5227b30a835e9eab682615638"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_holdout.jsonl",
+      "near_template_pairs": 6,
+      "normalized_overlap": 4,
+      "right": "deploy/stage-p5/training/p57/p57_regression_slice_v1.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 50,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "31b47a19c638d6987264acb6968fc1b60ba1df7b3159abfdfdd779565021f482",
+          "right_template_sha256": "31b47a19c638d6987264acb6968fc1b60ba1df7b3159abfdfdd779565021f482"
+        },
+        {
+          "jaccard": 0.875,
+          "left_template_sha256": "31b47a19c638d6987264acb6968fc1b60ba1df7b3159abfdfdd779565021f482",
+          "right_template_sha256": "5299bcf9df2a3c8f5e099423a9993dd6303754b0b65f4a8eb8e29577f4e47b4d"
+        },
+        {
+          "jaccard": 0.8484848484848485,
+          "left_template_sha256": "31b47a19c638d6987264acb6968fc1b60ba1df7b3159abfdfdd779565021f482",
+          "right_template_sha256": "3a691483925fd4ca1ed69f1690ea095bd0e1c8856462413b7eaf3545bd0a25b7"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_replay_train.jsonl",
+      "near_template_pairs": 2190,
+      "normalized_overlap": 50,
+      "right": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 1,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "4f7e532b5da6af30d847a4b2617cc2830e829c901652d107053913bda7a9fb19",
+          "right_template_sha256": "4f7e532b5da6af30d847a4b2617cc2830e829c901652d107053913bda7a9fb19"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_replay_train.jsonl",
+      "near_template_pairs": 1,
+      "normalized_overlap": 1,
+      "right": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 1,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "4f7e532b5da6af30d847a4b2617cc2830e829c901652d107053913bda7a9fb19",
+          "right_template_sha256": "4f7e532b5da6af30d847a4b2617cc2830e829c901652d107053913bda7a9fb19"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_replay_train.jsonl",
+      "near_template_pairs": 1,
+      "normalized_overlap": 1,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 1,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "80481d62a7f01f79f02952355c39bbbf5933b24e16d41097857bf6c38f9d5df7",
+          "right_template_sha256": "80481d62a7f01f79f02952355c39bbbf5933b24e16d41097857bf6c38f9d5df7"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_replay_train.jsonl",
+      "near_template_pairs": 1,
+      "normalized_overlap": 1,
+      "right": "deploy/stage-p5/training/p57/p57_balanced_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 1,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "6f6f3f6bb4f1899b3f33d17cb4a68d309a8d7cf998b6b9a16102e5562bc3160f",
+          "right_template_sha256": "6f6f3f6bb4f1899b3f33d17cb4a68d309a8d7cf998b6b9a16102e5562bc3160f"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_replay_train.jsonl",
+      "near_template_pairs": 1,
+      "normalized_overlap": 1,
+      "right": "deploy/stage-p5/training/p58/p58_curriculum_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 34,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4"
+        },
+        {
+          "jaccard": 0.84,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "9eac378a4f4b7a345053ec777b7d40e6123b3736256a679175e1a0e75fb3f7a7"
+        },
+        {
+          "jaccard": 0.84,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "a60579c59698fe24b27f9dbd6c7cc5900893dd72227899a5412bb5a8ac3e5a5e"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_holdout.jsonl",
+      "near_template_pairs": 55,
+      "normalized_overlap": 19,
+      "right": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 34,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4"
+        },
+        {
+          "jaccard": 0.84,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "9eac378a4f4b7a345053ec777b7d40e6123b3736256a679175e1a0e75fb3f7a7"
+        },
+        {
+          "jaccard": 0.84,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "a60579c59698fe24b27f9dbd6c7cc5900893dd72227899a5412bb5a8ac3e5a5e"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_holdout.jsonl",
+      "near_template_pairs": 55,
+      "normalized_overlap": 19,
+      "right": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 1,
+      "examples": [
+        {
+          "jaccard": 0.8666666666666667,
+          "left_template_sha256": "e9d92aa36ee249589ae6bef0932fe0c0afa083be74f751b787d92f6baffa3491",
+          "right_template_sha256": "e0d7db65f54227580a6929a22cc3e6fa519591db722dfa424074a78850e7db7d"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "2dcbd7fe04f07d282af4136cbee630b35512538259d379bb930fa35b9870642f",
+          "right_template_sha256": "cb0a14660dfc8850859e5bd6d254866303e1bd0a382eea59cac78bbe8474a277"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638",
+          "right_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_holdout.jsonl",
+      "near_template_pairs": 3,
+      "normalized_overlap": 1,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_holdout.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 1,
+      "examples": [
+        {
+          "jaccard": 0.8666666666666667,
+          "left_template_sha256": "e9d92aa36ee249589ae6bef0932fe0c0afa083be74f751b787d92f6baffa3491",
+          "right_template_sha256": "e0d7db65f54227580a6929a22cc3e6fa519591db722dfa424074a78850e7db7d"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "2dcbd7fe04f07d282af4136cbee630b35512538259d379bb930fa35b9870642f",
+          "right_template_sha256": "cb0a14660dfc8850859e5bd6d254866303e1bd0a382eea59cac78bbe8474a277"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638",
+          "right_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_holdout.jsonl",
+      "near_template_pairs": 3,
+      "normalized_overlap": 1,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 1,
+      "examples": [
+        {
+          "jaccard": 0.8666666666666667,
+          "left_template_sha256": "e9d92aa36ee249589ae6bef0932fe0c0afa083be74f751b787d92f6baffa3491",
+          "right_template_sha256": "e0d7db65f54227580a6929a22cc3e6fa519591db722dfa424074a78850e7db7d"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "2dcbd7fe04f07d282af4136cbee630b35512538259d379bb930fa35b9870642f",
+          "right_template_sha256": "cb0a14660dfc8850859e5bd6d254866303e1bd0a382eea59cac78bbe8474a277"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638",
+          "right_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_holdout.jsonl",
+      "near_template_pairs": 3,
+      "normalized_overlap": 1,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 17,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4"
+        },
+        {
+          "jaccard": 0.84,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "9eac378a4f4b7a345053ec777b7d40e6123b3736256a679175e1a0e75fb3f7a7"
+        },
+        {
+          "jaccard": 0.84,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "a60579c59698fe24b27f9dbd6c7cc5900893dd72227899a5412bb5a8ac3e5a5e"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_holdout.jsonl",
+      "near_template_pairs": 56,
+      "normalized_overlap": 18,
+      "right": "deploy/stage-p5/training/p57/p57_balanced_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 108,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4"
+        },
+        {
+          "jaccard": 0.84,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "9eac378a4f4b7a345053ec777b7d40e6123b3736256a679175e1a0e75fb3f7a7"
+        },
+        {
+          "jaccard": 0.84,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "a60579c59698fe24b27f9dbd6c7cc5900893dd72227899a5412bb5a8ac3e5a5e"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl",
+      "near_template_pairs": 55,
+      "normalized_overlap": 19,
+      "right": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 1,
+      "examples": [
+        {
+          "jaccard": 0.8666666666666667,
+          "left_template_sha256": "e9d92aa36ee249589ae6bef0932fe0c0afa083be74f751b787d92f6baffa3491",
+          "right_template_sha256": "e0d7db65f54227580a6929a22cc3e6fa519591db722dfa424074a78850e7db7d"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "2dcbd7fe04f07d282af4136cbee630b35512538259d379bb930fa35b9870642f",
+          "right_template_sha256": "cb0a14660dfc8850859e5bd6d254866303e1bd0a382eea59cac78bbe8474a277"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638",
+          "right_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl",
+      "near_template_pairs": 3,
+      "normalized_overlap": 1,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_holdout.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 19,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "553386ab999ccdf3efb3164f71a0f798415ac0ca222abf3a2d6fd25b77a5452f",
+          "right_template_sha256": "553386ab999ccdf3efb3164f71a0f798415ac0ca222abf3a2d6fd25b77a5452f"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "fe020886f20825e69bd342d309fa43777755ed961a3cb3bc40ddaf10fc764467",
+          "right_template_sha256": "fe020886f20825e69bd342d309fa43777755ed961a3cb3bc40ddaf10fc764467"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "ad3c4f32195b42a5457c0418ef1c26296084d6d4ac1cec98f861828c4971d52e",
+          "right_template_sha256": "ad3c4f32195b42a5457c0418ef1c26296084d6d4ac1cec98f861828c4971d52e"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl",
+      "near_template_pairs": 21,
+      "normalized_overlap": 19,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 1,
+      "examples": [
+        {
+          "jaccard": 0.8666666666666667,
+          "left_template_sha256": "e9d92aa36ee249589ae6bef0932fe0c0afa083be74f751b787d92f6baffa3491",
+          "right_template_sha256": "e0d7db65f54227580a6929a22cc3e6fa519591db722dfa424074a78850e7db7d"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "2dcbd7fe04f07d282af4136cbee630b35512538259d379bb930fa35b9870642f",
+          "right_template_sha256": "cb0a14660dfc8850859e5bd6d254866303e1bd0a382eea59cac78bbe8474a277"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638",
+          "right_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl",
+      "near_template_pairs": 3,
+      "normalized_overlap": 1,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 50,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4"
+        },
+        {
+          "jaccard": 0.84,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "9eac378a4f4b7a345053ec777b7d40e6123b3736256a679175e1a0e75fb3f7a7"
+        },
+        {
+          "jaccard": 0.84,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "a60579c59698fe24b27f9dbd6c7cc5900893dd72227899a5412bb5a8ac3e5a5e"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl",
+      "near_template_pairs": 62,
+      "normalized_overlap": 24,
+      "right": "deploy/stage-p5/training/p57/p57_balanced_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 1,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "9a825ef3264e79bb9a7ee0eeea09be37f58134a6a4291ce91c1ce8c4c75873fe",
+          "right_template_sha256": "9a825ef3264e79bb9a7ee0eeea09be37f58134a6a4291ce91c1ce8c4c75873fe"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl",
+      "near_template_pairs": 1,
+      "normalized_overlap": 1,
+      "right": "deploy/stage-p5/training/p58/p58_curriculum_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 1,
+      "examples": [
+        {
+          "jaccard": 0.8666666666666667,
+          "left_template_sha256": "e9d92aa36ee249589ae6bef0932fe0c0afa083be74f751b787d92f6baffa3491",
+          "right_template_sha256": "e0d7db65f54227580a6929a22cc3e6fa519591db722dfa424074a78850e7db7d"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "2dcbd7fe04f07d282af4136cbee630b35512538259d379bb930fa35b9870642f",
+          "right_template_sha256": "cb0a14660dfc8850859e5bd6d254866303e1bd0a382eea59cac78bbe8474a277"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638",
+          "right_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_train.jsonl",
+      "near_template_pairs": 3,
+      "normalized_overlap": 1,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_holdout.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 1,
+      "examples": [
+        {
+          "jaccard": 0.8666666666666667,
+          "left_template_sha256": "e9d92aa36ee249589ae6bef0932fe0c0afa083be74f751b787d92f6baffa3491",
+          "right_template_sha256": "e0d7db65f54227580a6929a22cc3e6fa519591db722dfa424074a78850e7db7d"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "2dcbd7fe04f07d282af4136cbee630b35512538259d379bb930fa35b9870642f",
+          "right_template_sha256": "cb0a14660dfc8850859e5bd6d254866303e1bd0a382eea59cac78bbe8474a277"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638",
+          "right_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_train.jsonl",
+      "near_template_pairs": 3,
+      "normalized_overlap": 1,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 1,
+      "examples": [
+        {
+          "jaccard": 0.8666666666666667,
+          "left_template_sha256": "e9d92aa36ee249589ae6bef0932fe0c0afa083be74f751b787d92f6baffa3491",
+          "right_template_sha256": "e0d7db65f54227580a6929a22cc3e6fa519591db722dfa424074a78850e7db7d"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "2dcbd7fe04f07d282af4136cbee630b35512538259d379bb930fa35b9870642f",
+          "right_template_sha256": "cb0a14660dfc8850859e5bd6d254866303e1bd0a382eea59cac78bbe8474a277"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638",
+          "right_template_sha256": "8f881f499dd145c4625c787092235cabc1c18d3c983234eaf8b56b0514582638"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_train.jsonl",
+      "near_template_pairs": 3,
+      "normalized_overlap": 1,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 44,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4"
+        },
+        {
+          "jaccard": 0.84,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "9eac378a4f4b7a345053ec777b7d40e6123b3736256a679175e1a0e75fb3f7a7"
+        },
+        {
+          "jaccard": 0.84,
+          "left_template_sha256": "0773cc74bf1e9406f2158d71e9e33659ac5dfe0561d645ec1dc0773983cda1f4",
+          "right_template_sha256": "a60579c59698fe24b27f9dbd6c7cc5900893dd72227899a5412bb5a8ac3e5a5e"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_train.jsonl",
+      "near_template_pairs": 56,
+      "normalized_overlap": 18,
+      "right": "deploy/stage-p5/training/p57/p57_balanced_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 41,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "0cee319ccb7ed862c0ee32973f91de7f26f29e767ceab1ac1b66e73e4eb5532b",
+          "right_template_sha256": "0cee319ccb7ed862c0ee32973f91de7f26f29e767ceab1ac1b66e73e4eb5532b"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "5ac146b6df6a293ab8552cf8f8f93cfd7279cf683b21b4ef3d567cc66108ae70",
+          "right_template_sha256": "5ac146b6df6a293ab8552cf8f8f93cfd7279cf683b21b4ef3d567cc66108ae70"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "691b7b91c0a28d863c4520b3c9ce69c8b56a8fdae4532ebd0f1db1e84b318a2b",
+          "right_template_sha256": "691b7b91c0a28d863c4520b3c9ce69c8b56a8fdae4532ebd0f1db1e84b318a2b"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_holdout.jsonl",
+      "near_template_pairs": 49,
+      "normalized_overlap": 19,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_replay_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 41,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "0cee319ccb7ed862c0ee32973f91de7f26f29e767ceab1ac1b66e73e4eb5532b",
+          "right_template_sha256": "0cee319ccb7ed862c0ee32973f91de7f26f29e767ceab1ac1b66e73e4eb5532b"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "5ac146b6df6a293ab8552cf8f8f93cfd7279cf683b21b4ef3d567cc66108ae70",
+          "right_template_sha256": "5ac146b6df6a293ab8552cf8f8f93cfd7279cf683b21b4ef3d567cc66108ae70"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "691b7b91c0a28d863c4520b3c9ce69c8b56a8fdae4532ebd0f1db1e84b318a2b",
+          "right_template_sha256": "691b7b91c0a28d863c4520b3c9ce69c8b56a8fdae4532ebd0f1db1e84b318a2b"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_holdout.jsonl",
+      "near_template_pairs": 49,
+      "normalized_overlap": 19,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 23,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "0cee319ccb7ed862c0ee32973f91de7f26f29e767ceab1ac1b66e73e4eb5532b",
+          "right_template_sha256": "0cee319ccb7ed862c0ee32973f91de7f26f29e767ceab1ac1b66e73e4eb5532b"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "5ac146b6df6a293ab8552cf8f8f93cfd7279cf683b21b4ef3d567cc66108ae70",
+          "right_template_sha256": "5ac146b6df6a293ab8552cf8f8f93cfd7279cf683b21b4ef3d567cc66108ae70"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "691b7b91c0a28d863c4520b3c9ce69c8b56a8fdae4532ebd0f1db1e84b318a2b",
+          "right_template_sha256": "691b7b91c0a28d863c4520b3c9ce69c8b56a8fdae4532ebd0f1db1e84b318a2b"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_holdout.jsonl",
+      "near_template_pairs": 44,
+      "normalized_overlap": 17,
+      "right": "deploy/stage-p5/training/p57/p57_balanced_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 129,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "0cee319ccb7ed862c0ee32973f91de7f26f29e767ceab1ac1b66e73e4eb5532b",
+          "right_template_sha256": "0cee319ccb7ed862c0ee32973f91de7f26f29e767ceab1ac1b66e73e4eb5532b"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "5ac146b6df6a293ab8552cf8f8f93cfd7279cf683b21b4ef3d567cc66108ae70",
+          "right_template_sha256": "5ac146b6df6a293ab8552cf8f8f93cfd7279cf683b21b4ef3d567cc66108ae70"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "691b7b91c0a28d863c4520b3c9ce69c8b56a8fdae4532ebd0f1db1e84b318a2b",
+          "right_template_sha256": "691b7b91c0a28d863c4520b3c9ce69c8b56a8fdae4532ebd0f1db1e84b318a2b"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_replay_train.jsonl",
+      "near_template_pairs": 49,
+      "normalized_overlap": 19,
+      "right": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 59,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "0cee319ccb7ed862c0ee32973f91de7f26f29e767ceab1ac1b66e73e4eb5532b",
+          "right_template_sha256": "0cee319ccb7ed862c0ee32973f91de7f26f29e767ceab1ac1b66e73e4eb5532b"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "5ac146b6df6a293ab8552cf8f8f93cfd7279cf683b21b4ef3d567cc66108ae70",
+          "right_template_sha256": "5ac146b6df6a293ab8552cf8f8f93cfd7279cf683b21b4ef3d567cc66108ae70"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "2d52464c0bfc8c7efe68300d68cd2458a6a780a09b9c5372a8f7d73655a632cf",
+          "right_template_sha256": "2d52464c0bfc8c7efe68300d68cd2458a6a780a09b9c5372a8f7d73655a632cf"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_replay_train.jsonl",
+      "near_template_pairs": 48,
+      "normalized_overlap": 21,
+      "right": "deploy/stage-p5/training/p57/p57_balanced_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 55,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "0cee319ccb7ed862c0ee32973f91de7f26f29e767ceab1ac1b66e73e4eb5532b",
+          "right_template_sha256": "0cee319ccb7ed862c0ee32973f91de7f26f29e767ceab1ac1b66e73e4eb5532b"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "5ac146b6df6a293ab8552cf8f8f93cfd7279cf683b21b4ef3d567cc66108ae70",
+          "right_template_sha256": "5ac146b6df6a293ab8552cf8f8f93cfd7279cf683b21b4ef3d567cc66108ae70"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "691b7b91c0a28d863c4520b3c9ce69c8b56a8fdae4532ebd0f1db1e84b318a2b",
+          "right_template_sha256": "691b7b91c0a28d863c4520b3c9ce69c8b56a8fdae4532ebd0f1db1e84b318a2b"
+        }
+      ],
+      "left": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_train.jsonl",
+      "near_template_pairs": 44,
+      "normalized_overlap": 17,
+      "right": "deploy/stage-p5/training/p57/p57_balanced_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 20,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "64ed1fa0ad8a3736e808d9b107797e6a806a387da3d53903c0f3dd37d711be6b",
+          "right_template_sha256": "64ed1fa0ad8a3736e808d9b107797e6a806a387da3d53903c0f3dd37d711be6b"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "323b588e741fe118afd2ef95186228eab31cab065e4d881dd56b13b695d229cc",
+          "right_template_sha256": "323b588e741fe118afd2ef95186228eab31cab065e4d881dd56b13b695d229cc"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "a60155d4edc661c0e4199e30a09b57a608ac23475b3ba6e37016b0fd783986ac",
+          "right_template_sha256": "a60155d4edc661c0e4199e30a09b57a608ac23475b3ba6e37016b0fd783986ac"
+        }
+      ],
+      "left": "deploy/stage-p5/training/fixtures/automotive_curriculum_seed_v1.jsonl",
+      "near_template_pairs": 20,
+      "normalized_overlap": 20,
+      "right": "deploy/stage-p5/training/fixtures/automotive_curriculum_v2.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 2,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "ef9cfba9d9ac7f24f577cdda841033984618a1f055c5e14ed3da2bac33009f35",
+          "right_template_sha256": "ef9cfba9d9ac7f24f577cdda841033984618a1f055c5e14ed3da2bac33009f35"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "20c5ca0fb2758228f5c7af9018f508cb6cf969970729194128396fe416c4d96a",
+          "right_template_sha256": "20c5ca0fb2758228f5c7af9018f508cb6cf969970729194128396fe416c4d96a"
+        }
+      ],
+      "left": "deploy/stage-p5/training/p57/p57_balanced_train.jsonl",
+      "near_template_pairs": 2,
+      "normalized_overlap": 2,
+      "right": "deploy/stage-p5/training/p58/p58_curriculum_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 14,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "e6a3e9f97c73bf174ce8a0c93ec1a832138306ea2ab75a81faafd716bb8c0cc9",
+          "right_template_sha256": "e6a3e9f97c73bf174ce8a0c93ec1a832138306ea2ab75a81faafd716bb8c0cc9"
+        },
+        {
+          "jaccard": 0.875,
+          "left_template_sha256": "e6a3e9f97c73bf174ce8a0c93ec1a832138306ea2ab75a81faafd716bb8c0cc9",
+          "right_template_sha256": "3ecdf126ca975791a2f00ddf290784e76e9512f2c5f694d9c61098e72721eccc"
+        },
+        {
+          "jaccard": 0.875,
+          "left_template_sha256": "5d3a39ce76f1be62a923a75ef90d84f4f8a658b9d7eb3b161ebb5d4f16617160",
+          "right_template_sha256": "e6a3e9f97c73bf174ce8a0c93ec1a832138306ea2ab75a81faafd716bb8c0cc9"
+        }
+      ],
+      "left": "deploy/stage-p5/training/p57/p57_dev_v1.jsonl",
+      "near_template_pairs": 22,
+      "normalized_overlap": 10,
+      "right": "deploy/stage-p5/training/p57/p57_mini_dev_v1.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 8,
+      "examples": [
+        {
+          "jaccard": 0.9090909090909091,
+          "left_template_sha256": "d16b5b3ba4362bf2e24dd2c3102d77efa51c0b71a249e3955cbe1a12b158a05a",
+          "right_template_sha256": "d4462eab519d9b325f93e5f62eac27ceae59931cec818b098eea40db3f143c9f"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "d4462eab519d9b325f93e5f62eac27ceae59931cec818b098eea40db3f143c9f",
+          "right_template_sha256": "d4462eab519d9b325f93e5f62eac27ceae59931cec818b098eea40db3f143c9f"
+        },
+        {
+          "jaccard": 0.8823529411764706,
+          "left_template_sha256": "a626a2d63a172d2a655cf9b10a3048034c69ea5957767fb6eae76be21e6a13c8",
+          "right_template_sha256": "d4462eab519d9b325f93e5f62eac27ceae59931cec818b098eea40db3f143c9f"
+        }
+      ],
+      "left": "deploy/stage-p5/training/p58/p58_curriculum_train.jsonl",
+      "near_template_pairs": 22,
+      "normalized_overlap": 7,
+      "right": "deploy/stage-p5/training/p59/p59_thermal_train.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 14,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "203df63406d2fe383cb72f9451ee8231ed4d7e458d3faa7cfa5bfed59d85efa7",
+          "right_template_sha256": "203df63406d2fe383cb72f9451ee8231ed4d7e458d3faa7cfa5bfed59d85efa7"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "28b9d596f4f9043d17dd26565a89a6110ed28f1ee0c8f4c9c9d0f55b7565d050",
+          "right_template_sha256": "28b9d596f4f9043d17dd26565a89a6110ed28f1ee0c8f4c9c9d0f55b7565d050"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "8f4343ad698c7ddd2b09c06c65bd03be3ef45a0ef55d3c56b5fb1e552be0da70",
+          "right_template_sha256": "8f4343ad698c7ddd2b09c06c65bd03be3ef45a0ef55d3c56b5fb1e552be0da70"
+        }
+      ],
+      "left": "deploy/stage-p5/training/p58/p58_dev_v1.jsonl",
+      "near_template_pairs": 25,
+      "normalized_overlap": 11,
+      "right": "deploy/stage-p5/training/p58/p58_mini_dev_v1.jsonl"
+    },
+    {
+      "exact_prompt_overlap": 14,
+      "examples": [
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "70643ba18292964cd03adee16aecb813bf9a969843cc3bd301919d952ee6f171",
+          "right_template_sha256": "70643ba18292964cd03adee16aecb813bf9a969843cc3bd301919d952ee6f171"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "e9bf08ea34b58b10be2677db3e05a39ef141b251a501ce0576bf28c8ebf3785f",
+          "right_template_sha256": "e9bf08ea34b58b10be2677db3e05a39ef141b251a501ce0576bf28c8ebf3785f"
+        },
+        {
+          "jaccard": 1.0,
+          "left_template_sha256": "228a603d58ab67db6db6489383be3b2726e204763a83d485f176028f4c885a38",
+          "right_template_sha256": "228a603d58ab67db6db6489383be3b2726e204763a83d485f176028f4c885a38"
+        }
+      ],
+      "left": "deploy/stage-p5/training/p59/p59_thermal_dev_v1.jsonl",
+      "near_template_pairs": 4,
+      "normalized_overlap": 4,
+      "right": "deploy/stage-p5/training/p59/p59_thermal_mini_dev_v1.jsonl"
+    }
+  ],
+  "limitations": [
+    "Lexical template clustering is a lower bound on dependence, not a semantic independence certificate.",
+    "No train/replay file is automatically approved; row-level provenance and scenario review are required.",
+    "Sealed/final/test content is excluded; cross-split checks against it are deferred until authorized final evaluation.",
+    "Historical exposure is inferred from roles and run artifacts; absence of an output does not prove non-exposure."
+  ],
+  "near_threshold": 0.82,
+  "protected_unopened": [
+    {
+      "allowed_roles": [],
+      "bytes": 121190,
+      "content_hash": null,
+      "disposition": "RESERVED_NOT_CERTIFIED_FOR_ANY_NEW_ROLE",
+      "path": "benchmarks/automotive_v1/datasets/golden.v1.jsonl",
+      "status": "NOT_OPENED"
+    },
+    {
+      "allowed_roles": [],
+      "bytes": 42228,
+      "content_hash": null,
+      "disposition": "RESERVED_NOT_CERTIFIED_FOR_ANY_NEW_ROLE",
+      "path": "deploy/stage-p5/training/p57/p57_final_v1.jsonl",
+      "status": "NOT_OPENED"
+    },
+    {
+      "allowed_roles": [],
+      "bytes": 55758,
+      "content_hash": null,
+      "disposition": "RESERVED_NOT_CERTIFIED_FOR_ANY_NEW_ROLE",
+      "path": "deploy/stage-p5/training/p58/p58_final_v1.jsonl",
+      "status": "NOT_OPENED"
+    },
+    {
+      "allowed_roles": [],
+      "bytes": 42228,
+      "content_hash": null,
+      "disposition": "RESERVED_NOT_CERTIFIED_FOR_ANY_NEW_ROLE",
+      "path": "deploy/stage-p5/training/p58/p58_p57final_regression.jsonl",
+      "status": "NOT_OPENED"
+    }
+  ],
+  "schema_version": 2,
+  "status": "AUDITED_NOT_CERTIFIED",
+  "summaries": {
+    "benchmarks/electronics_v3_quality_v1/cases.v1.jsonl": {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "categories": {
+        "good_bad_channel_comparison": 6,
+        "good_bad_channels": 6,
+        "insufficient_data": 6,
+        "numeric_waveform": 6,
+        "pcb_short": 6,
+        "schematic_symptom_measurements": 6,
+        "thermal_intermittent": 6
+      },
+      "category_templates": {
+        "good_bad_channel_comparison": 6,
+        "good_bad_channels": 1,
+        "insufficient_data": 6,
+        "numeric_waveform": 1,
+        "pcb_short": 1,
+        "schematic_symptom_measurements": 1,
+        "thermal_intermittent": 6
+      },
+      "declared_role": "exposed_evaluation_only",
+      "disposition": "NOT_UNUSED_NO_SELECTION_OR_FINAL_CLAIM",
+      "duplicate_groups": [
+        [
+          "P55-SUP-01",
+          "P55-SUP-02",
+          "P55-SUP-03",
+          "P55-SUP-04",
+          "P55-SUP-05",
+          "P55-SUP-06"
+        ],
+        [
+          "P55-ANA-01",
+          "P55-ANA-02",
+          "P55-ANA-03",
+          "P55-ANA-04",
+          "P55-ANA-05",
+          "P55-ANA-06"
+        ],
+        [
+          "P55-WAV-01",
+          "P55-WAV-02",
+          "P55-WAV-03",
+          "P55-WAV-04",
+          "P55-WAV-05",
+          "P55-WAV-06"
+        ],
+        [
+          "P55-SHT-01",
+          "P55-SHT-02",
+          "P55-SHT-03",
+          "P55-SHT-04",
+          "P55-SHT-05",
+          "P55-SHT-06"
+        ]
+      ],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 42,
+      "largest_template_share": 0.14285714285714285,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 20,
+      "normalized_unique_prompts": 22,
+      "path": "benchmarks/electronics_v3_quality_v1/cases.v1.jsonl",
+      "records": 42,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "8ba6b0a767c4649949a399e38e276287cc3058d89e89fca86d44b3ddb1858fa5",
+      "template_effective_n": 10.88888888888889,
+      "template_entropy_bits": 3.9151959937952423,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 30
+    },
+    "deploy/stage-p5/training/electronics/electronics_foundation_holdout_v1.jsonl": {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "categories": {
+        "current_sense_holdout": 3,
+        "esr_holdout": 3,
+        "flyback_holdout": 3,
+        "loaded_divider": 3,
+        "mosfet_body_holdout": 3,
+        "opamp_saturation_holdout": 3,
+        "scope_aliasing_holdout": 3,
+        "unknown_component_holdout": 3
+      },
+      "category_templates": {
+        "current_sense_holdout": 3,
+        "esr_holdout": 3,
+        "flyback_holdout": 3,
+        "loaded_divider": 3,
+        "mosfet_body_holdout": 3,
+        "opamp_saturation_holdout": 3,
+        "scope_aliasing_holdout": 3,
+        "unknown_component_holdout": 3
+      },
+      "declared_role": "exposed_evaluation_only",
+      "disposition": "NOT_UNUSED_NO_SELECTION_OR_FINAL_CLAIM",
+      "duplicate_groups": [],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 24,
+      "largest_template_share": 0.041666666666666664,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 0,
+      "normalized_unique_prompts": 24,
+      "path": "deploy/stage-p5/training/electronics/electronics_foundation_holdout_v1.jsonl",
+      "records": 24,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "385cb2b78755784d1ca086e0c37fbca8247c7af1f9b86d64ed8a132eabcc3e58",
+      "template_effective_n": 24.0,
+      "template_entropy_bits": 4.584962500721156,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 0
+    },
+    "deploy/stage-p5/training/electronics/electronics_foundation_train_v1.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "adc_quantization": 5,
+        "bjt_switch": 5,
+        "body_diode": 5,
+        "boost_basic": 5,
+        "buck_basic": 5,
+        "capacitor_esr": 5,
+        "clamp_tvs": 5,
+        "comparator_hysteresis": 5,
+        "connector_contact": 5,
+        "decoupling": 5,
+        "diode_basic": 5,
+        "dmm_limits": 5,
+        "gate_resistor": 5,
+        "halfbridge_deadtime": 5,
+        "inductor_flyback": 5,
+        "kcl_kvl": 5,
+        "ldo_dropout": 5,
+        "logic_open_drain": 5,
+        "lowpass_filter": 5,
+        "measurement_reference": 5,
+        "mosfet_high_side": 5,
+        "mosfet_low_side": 5,
+        "ohms_law": 9,
+        "opamp_linear": 5,
+        "open_short_reasoning": 5,
+        "pcb_short_localization": 5,
+        "pullup_pulldown": 5,
+        "pwm_average": 5,
+        "rc_time_constant": 5,
+        "relay_diagnostics": 5,
+        "reset_supervisor": 5,
+        "scope_grounding": 5,
+        "series_parallel": 5,
+        "shunt_current": 5,
+        "thermal_diagnostics": 5,
+        "thevenin_source_impedance": 5,
+        "voltage_divider": 5
+      },
+      "category_templates": {
+        "adc_quantization": 5,
+        "bjt_switch": 5,
+        "body_diode": 5,
+        "boost_basic": 5,
+        "buck_basic": 5,
+        "capacitor_esr": 5,
+        "clamp_tvs": 5,
+        "comparator_hysteresis": 5,
+        "connector_contact": 5,
+        "decoupling": 5,
+        "diode_basic": 5,
+        "dmm_limits": 5,
+        "gate_resistor": 5,
+        "halfbridge_deadtime": 5,
+        "inductor_flyback": 5,
+        "kcl_kvl": 5,
+        "ldo_dropout": 5,
+        "logic_open_drain": 5,
+        "lowpass_filter": 5,
+        "measurement_reference": 5,
+        "mosfet_high_side": 5,
+        "mosfet_low_side": 5,
+        "ohms_law": 1,
+        "opamp_linear": 5,
+        "open_short_reasoning": 5,
+        "pcb_short_localization": 5,
+        "pullup_pulldown": 5,
+        "pwm_average": 5,
+        "rc_time_constant": 1,
+        "relay_diagnostics": 5,
+        "reset_supervisor": 5,
+        "scope_grounding": 5,
+        "series_parallel": 5,
+        "shunt_current": 5,
+        "thermal_diagnostics": 5,
+        "thevenin_source_impedance": 5,
+        "voltage_divider": 1
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "ROW_LEVEL_REVIEW_REQUIRED",
+      "duplicate_groups": [
+        [
+          "ELEC-TRAIN-0001",
+          "ELEC-TRAIN-0002",
+          "ELEC-TRAIN-0003",
+          "ELEC-TRAIN-0004",
+          "ELEC-TRAIN-0005",
+          "ELEC-TRAIN-0006",
+          "ELEC-TRAIN-0007",
+          "ELEC-TRAIN-0008",
+          "ELEC-TRAIN-0009"
+        ],
+        [
+          "ELEC-TRAIN-0010",
+          "ELEC-TRAIN-0011",
+          "ELEC-TRAIN-0012",
+          "ELEC-TRAIN-0013",
+          "ELEC-TRAIN-0014"
+        ],
+        [
+          "ELEC-TRAIN-0015",
+          "ELEC-TRAIN-0016",
+          "ELEC-TRAIN-0017",
+          "ELEC-TRAIN-0018",
+          "ELEC-TRAIN-0019"
+        ]
+      ],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 189,
+      "largest_template_share": 0.047619047619047616,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 16,
+      "normalized_unique_prompts": 173,
+      "path": "deploy/stage-p5/training/electronics/electronics_foundation_train_v1.jsonl",
+      "records": 189,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "7c11610a9e2c6a6ce373038164cb3427c89c16bb64a07122218cc40df525a7ac",
+      "template_effective_n": 118.67441860465117,
+      "template_entropy_bits": 7.288440276274752,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 0
+    },
+    "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_holdout.jsonl": {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "categories": {
+        "charge_pump": 3,
+        "common_mode_choke": 3,
+        "crystal_startup": 3,
+        "dac_settling": 3,
+        "foldback_power": 3,
+        "instrumentation_amp": 3,
+        "stub_reflection": 3,
+        "tia_photodiode": 3
+      },
+      "category_templates": {
+        "charge_pump": 3,
+        "common_mode_choke": 3,
+        "crystal_startup": 3,
+        "dac_settling": 3,
+        "foldback_power": 3,
+        "instrumentation_amp": 3,
+        "stub_reflection": 3,
+        "tia_photodiode": 3
+      },
+      "declared_role": "exposed_evaluation_only",
+      "disposition": "NOT_UNUSED_NO_SELECTION_OR_FINAL_CLAIM",
+      "duplicate_groups": [],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 24,
+      "largest_template_share": 0.041666666666666664,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 0,
+      "normalized_unique_prompts": 24,
+      "path": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_holdout.jsonl",
+      "records": 24,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "f3eaaef82fe4f6203591518e74b3d031cbbafa51dd2c1ab41524dc5031978fd5",
+      "template_effective_n": 24.0,
+      "template_entropy_bits": 4.584962500721156,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 0
+    },
+    "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_replay_train.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "ac_impedance": 5,
+        "adc_quantization": 2,
+        "adc_sample_hold": 5,
+        "bjt_switch": 1,
+        "body_diode": 1,
+        "boost_basic": 2,
+        "buck_basic": 2,
+        "capacitive_coupling": 5,
+        "clamp_tvs": 2,
+        "comparator_hysteresis": 1,
+        "connector_contact": 2,
+        "constant_current_source": 5,
+        "current_mirror": 5,
+        "decoupling": 1,
+        "diode_basic": 1,
+        "dmm_limits": 1,
+        "efuse_current_limit": 5,
+        "emi_common_mode": 5,
+        "four_wire_measurement": 5,
+        "gate_resistor": 2,
+        "ground_loop": 5,
+        "halfbridge_deadtime": 1,
+        "inductive_coupling": 5,
+        "inductor_flyback": 1,
+        "inrush_current": 5,
+        "kcl_kvl": 1,
+        "ldo_dropout": 1,
+        "level_shifter": 5,
+        "logic_open_drain": 1,
+        "logic_thresholds": 5,
+        "lowpass_filter": 2,
+        "measurement_reference": 1,
+        "miller_plateau": 5,
+        "mosfet_gate_charge": 5,
+        "mosfet_high_side": 1,
+        "mosfet_low_side": 1,
+        "mosfet_soa": 5,
+        "ohms_law": 4,
+        "opamp_linear": 2,
+        "open_short_reasoning": 2,
+        "optocoupler_ctr": 5,
+        "pcb_short_localization": 1,
+        "pullup_pulldown": 1,
+        "pwm_average": 2,
+        "q_factor": 5,
+        "rc_time_constant": 1,
+        "rcd_clamp": 5,
+        "reference_noise": 5,
+        "relay_diagnostics": 1,
+        "reset_supervisor": 1,
+        "return_current_path": 5,
+        "reverse_polarity_mosfet": 5,
+        "rlc_resonance": 5,
+        "scope_grounding": 1,
+        "series_parallel": 2,
+        "shunt_current": 1,
+        "snubber_rc": 5,
+        "switching_losses": 5,
+        "thermal_diagnostics": 2,
+        "thermal_resistance": 5,
+        "thermal_runaway": 5,
+        "transformer_ratio": 5,
+        "transformer_saturation": 5,
+        "transmission_line_reflection": 5,
+        "voltage_divider": 3,
+        "zener_shunt": 5
+      },
+      "category_templates": {
+        "ac_impedance": 5,
+        "adc_quantization": 2,
+        "adc_sample_hold": 5,
+        "bjt_switch": 1,
+        "body_diode": 1,
+        "boost_basic": 2,
+        "buck_basic": 2,
+        "capacitive_coupling": 5,
+        "clamp_tvs": 2,
+        "comparator_hysteresis": 1,
+        "connector_contact": 2,
+        "constant_current_source": 5,
+        "current_mirror": 5,
+        "decoupling": 1,
+        "diode_basic": 1,
+        "dmm_limits": 1,
+        "efuse_current_limit": 5,
+        "emi_common_mode": 5,
+        "four_wire_measurement": 5,
+        "gate_resistor": 2,
+        "ground_loop": 5,
+        "halfbridge_deadtime": 1,
+        "inductive_coupling": 5,
+        "inductor_flyback": 1,
+        "inrush_current": 5,
+        "kcl_kvl": 1,
+        "ldo_dropout": 1,
+        "level_shifter": 5,
+        "logic_open_drain": 1,
+        "logic_thresholds": 5,
+        "lowpass_filter": 2,
+        "measurement_reference": 1,
+        "miller_plateau": 5,
+        "mosfet_gate_charge": 5,
+        "mosfet_high_side": 1,
+        "mosfet_low_side": 1,
+        "mosfet_soa": 5,
+        "ohms_law": 1,
+        "opamp_linear": 2,
+        "open_short_reasoning": 2,
+        "optocoupler_ctr": 5,
+        "pcb_short_localization": 1,
+        "pullup_pulldown": 1,
+        "pwm_average": 2,
+        "q_factor": 5,
+        "rc_time_constant": 1,
+        "rcd_clamp": 5,
+        "reference_noise": 5,
+        "relay_diagnostics": 1,
+        "reset_supervisor": 1,
+        "return_current_path": 5,
+        "reverse_polarity_mosfet": 5,
+        "rlc_resonance": 5,
+        "scope_grounding": 1,
+        "series_parallel": 2,
+        "shunt_current": 1,
+        "snubber_rc": 5,
+        "switching_losses": 5,
+        "thermal_diagnostics": 2,
+        "thermal_resistance": 5,
+        "thermal_runaway": 5,
+        "transformer_ratio": 5,
+        "transformer_saturation": 5,
+        "transmission_line_reflection": 5,
+        "voltage_divider": 1,
+        "zener_shunt": 5
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "ROW_LEVEL_REVIEW_REQUIRED",
+      "duplicate_groups": [
+        [
+          "REPLAY-ELEC-TRAIN-0006",
+          "REPLAY-ELEC-TRAIN-0007",
+          "REPLAY-ELEC-TRAIN-0002",
+          "REPLAY-ELEC-TRAIN-0009"
+        ],
+        [
+          "REPLAY-ELEC-TRAIN-0013",
+          "REPLAY-ELEC-TRAIN-0011",
+          "REPLAY-ELEC-TRAIN-0012"
+        ]
+      ],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 207,
+      "largest_template_share": 0.01932367149758454,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 5,
+      "normalized_unique_prompts": 202,
+      "path": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_replay_train.jsonl",
+      "records": 207,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "f3fbe5d921cb27c57845d8cdbd4155666f638b2211a62081f8133db3a1204e69",
+      "template_effective_n": 190.44,
+      "template_entropy_bits": 7.631869143479212,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 0
+    },
+    "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_train.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "ac_impedance": 5,
+        "adc_sample_hold": 5,
+        "capacitive_coupling": 5,
+        "constant_current_source": 5,
+        "current_mirror": 5,
+        "efuse_current_limit": 5,
+        "emi_common_mode": 5,
+        "four_wire_measurement": 5,
+        "ground_loop": 5,
+        "inductive_coupling": 5,
+        "inrush_current": 5,
+        "level_shifter": 5,
+        "logic_thresholds": 5,
+        "miller_plateau": 5,
+        "mosfet_gate_charge": 5,
+        "mosfet_soa": 5,
+        "optocoupler_ctr": 5,
+        "q_factor": 5,
+        "rcd_clamp": 5,
+        "reference_noise": 5,
+        "return_current_path": 5,
+        "reverse_polarity_mosfet": 5,
+        "rlc_resonance": 5,
+        "snubber_rc": 5,
+        "switching_losses": 5,
+        "thermal_resistance": 5,
+        "thermal_runaway": 5,
+        "transformer_ratio": 5,
+        "transformer_saturation": 5,
+        "transmission_line_reflection": 5,
+        "zener_shunt": 5
+      },
+      "category_templates": {
+        "ac_impedance": 5,
+        "adc_sample_hold": 5,
+        "capacitive_coupling": 5,
+        "constant_current_source": 5,
+        "current_mirror": 5,
+        "efuse_current_limit": 5,
+        "emi_common_mode": 5,
+        "four_wire_measurement": 5,
+        "ground_loop": 5,
+        "inductive_coupling": 5,
+        "inrush_current": 5,
+        "level_shifter": 5,
+        "logic_thresholds": 5,
+        "miller_plateau": 5,
+        "mosfet_gate_charge": 5,
+        "mosfet_soa": 5,
+        "optocoupler_ctr": 5,
+        "q_factor": 5,
+        "rcd_clamp": 5,
+        "reference_noise": 5,
+        "return_current_path": 5,
+        "reverse_polarity_mosfet": 5,
+        "rlc_resonance": 5,
+        "snubber_rc": 5,
+        "switching_losses": 5,
+        "thermal_resistance": 5,
+        "thermal_runaway": 5,
+        "transformer_ratio": 5,
+        "transformer_saturation": 5,
+        "transmission_line_reflection": 5,
+        "zener_shunt": 5
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "ROW_LEVEL_REVIEW_REQUIRED",
+      "duplicate_groups": [],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 155,
+      "largest_template_share": 0.0064516129032258064,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 0,
+      "normalized_unique_prompts": 155,
+      "path": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_train.jsonl",
+      "records": 155,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "bbead16839dccbecf8fb4b4f0373d80c88bc9cb98540a1dd40b7ec448dfe061a",
+      "template_effective_n": 155.0,
+      "template_entropy_bits": 7.2761244052742375,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 0
+    },
+    "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_holdout.jsonl": {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "categories": {
+        "ceramic_microphonic": 3,
+        "contamination_surface_leakage_humidity": 3,
+        "current_injection_parallel_paths": 3,
+        "hbridge_crossconduction_signature": 3,
+        "i2c_pullup_capacitance": 3,
+        "intermittent_via_temperature": 3,
+        "opamp_phase_margin_load": 3,
+        "power_good_sequence": 3
+      },
+      "category_templates": {
+        "ceramic_microphonic": 3,
+        "contamination_surface_leakage_humidity": 3,
+        "current_injection_parallel_paths": 3,
+        "hbridge_crossconduction_signature": 3,
+        "i2c_pullup_capacitance": 3,
+        "intermittent_via_temperature": 3,
+        "opamp_phase_margin_load": 3,
+        "power_good_sequence": 3
+      },
+      "declared_role": "exposed_evaluation_only",
+      "disposition": "NOT_UNUSED_NO_SELECTION_OR_FINAL_CLAIM",
+      "duplicate_groups": [],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 24,
+      "largest_template_share": 0.041666666666666664,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 0,
+      "normalized_unique_prompts": 24,
+      "path": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_holdout.jsonl",
+      "records": 24,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "53c42d955bc956ded5911ad25650029293eda02c34f7f82aedcb4979e7dd52ca",
+      "template_effective_n": 24.0,
+      "template_entropy_bits": 4.584962500721156,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 0
+    },
+    "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_replay_train.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "ac_impedance": 1,
+        "adc_quantization": 1,
+        "analog_mux_leakage": 5,
+        "bga_flex_fault": 5,
+        "bjt_switch": 1,
+        "body_diode": 1,
+        "boost_basic": 1,
+        "bootstrap_cap_degradation": 5,
+        "brownout_waveform_signature": 5,
+        "buck_basic": 1,
+        "capacitive_coupling": 2,
+        "capacitor_leakage": 5,
+        "ceramic_cap_crack": 5,
+        "clamp_tvs": 1,
+        "clock_jitter_fault": 5,
+        "comparative_channel_diagnosis": 5,
+        "comparator_propagation_glitch": 5,
+        "connector_contact": 1,
+        "constant_current_source": 1,
+        "contamination_leakage": 5,
+        "current_injection_millivolt_mapping": 5,
+        "current_limit_signature": 5,
+        "decoupling": 1,
+        "diode_basic": 1,
+        "diode_leakage_reverse": 5,
+        "efuse_current_limit": 1,
+        "emi_common_mode": 1,
+        "esd_latent_damage": 5,
+        "feedback_loop_instability": 5,
+        "gate_driver_uvlo": 5,
+        "gate_resistor": 1,
+        "ground_loop": 2,
+        "hbridge_recirculation": 5,
+        "i2c_bus_stuck": 5,
+        "inductive_coupling": 1,
+        "inrush_current": 1,
+        "kcl_kvl": 1,
+        "latchup_signature": 5,
+        "level_shifter": 2,
+        "logic_thresholds": 1,
+        "lowpass_filter": 2,
+        "miller_plateau": 1,
+        "mosfet_gate_charge": 1,
+        "mosfet_partial_short": 5,
+        "mosfet_soa": 1,
+        "ohms_law": 1,
+        "opamp_output_current_limit": 5,
+        "open_short_reasoning": 2,
+        "passive_drift_under_bias": 5,
+        "pcb_short_localization": 1,
+        "pcb_voltage_drop_tracing": 5,
+        "power_sequence_dependency": 5,
+        "pullup_pulldown": 1,
+        "pwm_average": 1,
+        "q_factor": 3,
+        "rcd_clamp": 1,
+        "reference_noise": 3,
+        "resistor_network_open": 5,
+        "return_current_path": 1,
+        "reverse_polarity_mosfet": 1,
+        "rlc_resonance": 2,
+        "snubber_rc": 2,
+        "solder_joint_crack": 5,
+        "spi_signal_integrity": 5,
+        "thermal_imaging_false_positive": 5,
+        "thermal_resistance": 1,
+        "uart_level_fault": 5,
+        "via_barrel_crack": 5,
+        "voltage_divider": 1
+      },
+      "category_templates": {
+        "ac_impedance": 1,
+        "adc_quantization": 1,
+        "analog_mux_leakage": 5,
+        "bga_flex_fault": 5,
+        "bjt_switch": 1,
+        "body_diode": 1,
+        "boost_basic": 1,
+        "bootstrap_cap_degradation": 5,
+        "brownout_waveform_signature": 5,
+        "buck_basic": 1,
+        "capacitive_coupling": 2,
+        "capacitor_leakage": 5,
+        "ceramic_cap_crack": 5,
+        "clamp_tvs": 1,
+        "clock_jitter_fault": 5,
+        "comparative_channel_diagnosis": 5,
+        "comparator_propagation_glitch": 5,
+        "connector_contact": 1,
+        "constant_current_source": 1,
+        "contamination_leakage": 5,
+        "current_injection_millivolt_mapping": 5,
+        "current_limit_signature": 5,
+        "decoupling": 1,
+        "diode_basic": 1,
+        "diode_leakage_reverse": 5,
+        "efuse_current_limit": 1,
+        "emi_common_mode": 1,
+        "esd_latent_damage": 5,
+        "feedback_loop_instability": 5,
+        "gate_driver_uvlo": 5,
+        "gate_resistor": 1,
+        "ground_loop": 2,
+        "hbridge_recirculation": 5,
+        "i2c_bus_stuck": 5,
+        "inductive_coupling": 1,
+        "inrush_current": 1,
+        "kcl_kvl": 1,
+        "latchup_signature": 5,
+        "level_shifter": 2,
+        "logic_thresholds": 1,
+        "lowpass_filter": 2,
+        "miller_plateau": 1,
+        "mosfet_gate_charge": 1,
+        "mosfet_partial_short": 5,
+        "mosfet_soa": 1,
+        "ohms_law": 1,
+        "opamp_output_current_limit": 5,
+        "open_short_reasoning": 2,
+        "passive_drift_under_bias": 5,
+        "pcb_short_localization": 1,
+        "pcb_voltage_drop_tracing": 5,
+        "power_sequence_dependency": 5,
+        "pullup_pulldown": 1,
+        "pwm_average": 1,
+        "q_factor": 3,
+        "rcd_clamp": 1,
+        "reference_noise": 3,
+        "resistor_network_open": 5,
+        "return_current_path": 1,
+        "reverse_polarity_mosfet": 1,
+        "rlc_resonance": 2,
+        "snubber_rc": 2,
+        "solder_joint_crack": 5,
+        "spi_signal_integrity": 5,
+        "thermal_imaging_false_positive": 5,
+        "thermal_resistance": 1,
+        "uart_level_fault": 5,
+        "via_barrel_crack": 5,
+        "voltage_divider": 1
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "ROW_LEVEL_REVIEW_REQUIRED",
+      "duplicate_groups": [],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 200,
+      "largest_template_share": 0.005,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 0,
+      "normalized_unique_prompts": 200,
+      "path": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_replay_train.jsonl",
+      "records": 200,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "6934bf23be9e8ffad34dfa56cdc04d545243ccaf4a2a69681da1e4c0ae4408a3",
+      "template_effective_n": 200.0,
+      "template_entropy_bits": 7.643856189774724,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 0
+    },
+    "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_train.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "analog_mux_leakage": 5,
+        "bga_flex_fault": 5,
+        "bootstrap_cap_degradation": 5,
+        "brownout_waveform_signature": 5,
+        "capacitor_leakage": 5,
+        "ceramic_cap_crack": 5,
+        "clock_jitter_fault": 5,
+        "comparative_channel_diagnosis": 5,
+        "comparator_propagation_glitch": 5,
+        "contamination_leakage": 5,
+        "current_injection_millivolt_mapping": 5,
+        "current_limit_signature": 5,
+        "diode_leakage_reverse": 5,
+        "esd_latent_damage": 5,
+        "feedback_loop_instability": 5,
+        "gate_driver_uvlo": 5,
+        "hbridge_recirculation": 5,
+        "i2c_bus_stuck": 5,
+        "latchup_signature": 5,
+        "mosfet_partial_short": 5,
+        "opamp_output_current_limit": 5,
+        "passive_drift_under_bias": 5,
+        "pcb_voltage_drop_tracing": 5,
+        "power_sequence_dependency": 5,
+        "resistor_network_open": 5,
+        "solder_joint_crack": 5,
+        "spi_signal_integrity": 5,
+        "thermal_imaging_false_positive": 5,
+        "uart_level_fault": 5,
+        "via_barrel_crack": 5
+      },
+      "category_templates": {
+        "analog_mux_leakage": 5,
+        "bga_flex_fault": 5,
+        "bootstrap_cap_degradation": 5,
+        "brownout_waveform_signature": 5,
+        "capacitor_leakage": 5,
+        "ceramic_cap_crack": 5,
+        "clock_jitter_fault": 5,
+        "comparative_channel_diagnosis": 5,
+        "comparator_propagation_glitch": 5,
+        "contamination_leakage": 5,
+        "current_injection_millivolt_mapping": 5,
+        "current_limit_signature": 5,
+        "diode_leakage_reverse": 5,
+        "esd_latent_damage": 5,
+        "feedback_loop_instability": 5,
+        "gate_driver_uvlo": 5,
+        "hbridge_recirculation": 5,
+        "i2c_bus_stuck": 5,
+        "latchup_signature": 5,
+        "mosfet_partial_short": 5,
+        "opamp_output_current_limit": 5,
+        "passive_drift_under_bias": 5,
+        "pcb_voltage_drop_tracing": 5,
+        "power_sequence_dependency": 5,
+        "resistor_network_open": 5,
+        "solder_joint_crack": 5,
+        "spi_signal_integrity": 5,
+        "thermal_imaging_false_positive": 5,
+        "uart_level_fault": 5,
+        "via_barrel_crack": 5
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "ROW_LEVEL_REVIEW_REQUIRED",
+      "duplicate_groups": [],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 150,
+      "largest_template_share": 0.006666666666666667,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 0,
+      "normalized_unique_prompts": 150,
+      "path": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_train.jsonl",
+      "records": 150,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "c7c618e66e23b141fb9bcfff8c898f6761f065986688519148c86c341344f02d",
+      "template_effective_n": 150.0,
+      "template_entropy_bits": 7.228818690495881,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 0
+    },
+    "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_holdout.jsonl": {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "categories": {
+        "analog": 6,
+        "insufficient": 6,
+        "short": 6,
+        "supply": 6,
+        "thermal": 6,
+        "waveform": 6
+      },
+      "category_templates": {
+        "analog": 3,
+        "insufficient": 5,
+        "short": 2,
+        "supply": 2,
+        "thermal": 6,
+        "waveform": 1
+      },
+      "declared_role": "exposed_evaluation_only",
+      "disposition": "NOT_UNUSED_NO_SELECTION_OR_FINAL_CLAIM",
+      "duplicate_groups": [
+        [
+          "ELEC4-HOLD-1-01",
+          "ELEC4-HOLD-1-02",
+          "ELEC4-HOLD-1-05",
+          "ELEC4-HOLD-1-06"
+        ],
+        [
+          "ELEC4-HOLD-1-03",
+          "ELEC4-HOLD-1-04"
+        ],
+        [
+          "ELEC4-HOLD-2-01",
+          "ELEC4-HOLD-2-03",
+          "ELEC4-HOLD-2-05"
+        ],
+        [
+          "ELEC4-HOLD-2-02",
+          "ELEC4-HOLD-2-06"
+        ],
+        [
+          "ELEC4-HOLD-3-01",
+          "ELEC4-HOLD-3-02",
+          "ELEC4-HOLD-3-03",
+          "ELEC4-HOLD-3-04",
+          "ELEC4-HOLD-3-05",
+          "ELEC4-HOLD-3-06"
+        ],
+        [
+          "ELEC4-HOLD-5-01",
+          "ELEC4-HOLD-5-03",
+          "ELEC4-HOLD-5-04",
+          "ELEC4-HOLD-5-06"
+        ],
+        [
+          "ELEC4-HOLD-5-02",
+          "ELEC4-HOLD-5-05"
+        ],
+        [
+          "ELEC4-HOLD-6-01",
+          "ELEC4-HOLD-6-06"
+        ]
+      ],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 36,
+      "largest_template_share": 0.16666666666666666,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 17,
+      "normalized_unique_prompts": 19,
+      "path": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_holdout.jsonl",
+      "records": 36,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "df1b39532dd32ad7ebcde750eb625c68c4d2b551d84997c37d6718be14e712cd",
+      "template_effective_n": 12.461538461538462,
+      "template_entropy_bits": 3.9403510429286897,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 20
+    },
+    "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_replay_train.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "adc_quantization": 1,
+        "bootstrap_cap_degradation": 1,
+        "capacitive_coupling": 1,
+        "clamp_tvs": 1,
+        "comparative_channel_diagnosis": 1,
+        "current_injection_millivolt_mapping": 1,
+        "discriminating_measurement_contrastive_pack": 50,
+        "emi_common_mode": 1,
+        "esd_latent_damage": 1,
+        "i2c_bus_stuck": 1,
+        "latchup_signature": 1,
+        "pullup_pulldown": 1,
+        "q_factor": 1,
+        "resistor_network_open": 1,
+        "thermal_resistance": 1,
+        "uart_level_fault": 1
+      },
+      "category_templates": {
+        "adc_quantization": 1,
+        "bootstrap_cap_degradation": 1,
+        "capacitive_coupling": 1,
+        "clamp_tvs": 1,
+        "comparative_channel_diagnosis": 1,
+        "current_injection_millivolt_mapping": 1,
+        "discriminating_measurement_contrastive_pack": 50,
+        "emi_common_mode": 1,
+        "esd_latent_damage": 1,
+        "i2c_bus_stuck": 1,
+        "latchup_signature": 1,
+        "pullup_pulldown": 1,
+        "q_factor": 1,
+        "resistor_network_open": 1,
+        "thermal_resistance": 1,
+        "uart_level_fault": 1
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "ROW_LEVEL_REVIEW_REQUIRED",
+      "duplicate_groups": [],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 65,
+      "largest_template_share": 0.015384615384615385,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 0,
+      "normalized_unique_prompts": 65,
+      "path": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_replay_train.jsonl",
+      "records": 65,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "67d462975082e9b45a3a63eb73294f020b2d3329d51b8035b15ef4f6a956f8d9",
+      "template_effective_n": 65.0,
+      "template_entropy_bits": 6.022367813028454,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 1070
+    },
+    "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_train.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "discriminating_measurement_contrastive_pack": 50
+      },
+      "category_templates": {
+        "discriminating_measurement_contrastive_pack": 50
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "ROW_LEVEL_REVIEW_REQUIRED",
+      "duplicate_groups": [],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 50,
+      "largest_template_share": 0.02,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 0,
+      "normalized_unique_prompts": 50,
+      "path": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_train.jsonl",
+      "records": 50,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "1e46bba6195030b2f688817d6606f83f314e2fec05ddc0d53d7ce802538d5cc0",
+      "template_effective_n": 50.0,
+      "template_entropy_bits": 5.643856189774724,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 1070
+    },
+    "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_holdout.jsonl": {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "categories": {
+        "analog": 8,
+        "insufficient_data": 8,
+        "short": 8,
+        "supply": 8,
+        "thermal": 8,
+        "waveform": 8
+      },
+      "category_templates": {
+        "analog": 4,
+        "insufficient_data": 6,
+        "short": 1,
+        "supply": 1,
+        "thermal": 6,
+        "waveform": 1
+      },
+      "declared_role": "exposed_evaluation_only",
+      "disposition": "NOT_UNUSED_NO_SELECTION_OR_FINAL_CLAIM",
+      "duplicate_groups": [
+        [
+          "ELEC41-HOLDOUT-1-001",
+          "ELEC41-HOLDOUT-1-002",
+          "ELEC41-HOLDOUT-1-003",
+          "ELEC41-HOLDOUT-1-004",
+          "ELEC41-HOLDOUT-1-005",
+          "ELEC41-HOLDOUT-1-006",
+          "ELEC41-HOLDOUT-1-007",
+          "ELEC41-HOLDOUT-1-008"
+        ],
+        [
+          "ELEC41-HOLDOUT-2-001",
+          "ELEC41-HOLDOUT-2-005"
+        ],
+        [
+          "ELEC41-HOLDOUT-2-002",
+          "ELEC41-HOLDOUT-2-006"
+        ],
+        [
+          "ELEC41-HOLDOUT-2-003",
+          "ELEC41-HOLDOUT-2-007"
+        ],
+        [
+          "ELEC41-HOLDOUT-2-004",
+          "ELEC41-HOLDOUT-2-008"
+        ],
+        [
+          "ELEC41-HOLDOUT-3-001",
+          "ELEC41-HOLDOUT-3-002",
+          "ELEC41-HOLDOUT-3-003",
+          "ELEC41-HOLDOUT-3-004",
+          "ELEC41-HOLDOUT-3-005",
+          "ELEC41-HOLDOUT-3-006",
+          "ELEC41-HOLDOUT-3-007",
+          "ELEC41-HOLDOUT-3-008"
+        ],
+        [
+          "ELEC41-HOLDOUT-4-001",
+          "ELEC41-HOLDOUT-4-007"
+        ],
+        [
+          "ELEC41-HOLDOUT-4-002",
+          "ELEC41-HOLDOUT-4-008"
+        ],
+        [
+          "ELEC41-HOLDOUT-5-001",
+          "ELEC41-HOLDOUT-5-002",
+          "ELEC41-HOLDOUT-5-003",
+          "ELEC41-HOLDOUT-5-004",
+          "ELEC41-HOLDOUT-5-005",
+          "ELEC41-HOLDOUT-5-006",
+          "ELEC41-HOLDOUT-5-007",
+          "ELEC41-HOLDOUT-5-008"
+        ],
+        [
+          "ELEC41-HOLDOUT-6-001",
+          "ELEC41-HOLDOUT-6-007"
+        ],
+        [
+          "ELEC41-HOLDOUT-6-002",
+          "ELEC41-HOLDOUT-6-008"
+        ]
+      ],
+      "exact_duplicate_rows": 2,
+      "exact_unique_prompts": 46,
+      "largest_template_share": 0.16666666666666666,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 29,
+      "normalized_unique_prompts": 19,
+      "path": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_holdout.jsonl",
+      "records": 48,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "002a2bf220e89bd84979eaec66c73181c9c4ed957ca16a905d675264e5d7606f",
+      "template_effective_n": 9.931034482758621,
+      "template_entropy_bits": 3.7516291673878226,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 18
+    },
+    "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "analog": 24,
+        "bga_flex_fault": 2,
+        "bjt_switch": 1,
+        "body_diode": 1,
+        "brownout_waveform_signature": 1,
+        "capacitor_leakage": 3,
+        "ceramic_cap_crack": 1,
+        "comparative_channel_diagnosis": 1,
+        "comparator_propagation_glitch": 1,
+        "contamination_leakage": 1,
+        "current_limit_signature": 1,
+        "diode_leakage_reverse": 1,
+        "feedback_loop_instability": 1,
+        "ground_loop": 1,
+        "hbridge_recirculation": 1,
+        "i2c_bus_stuck": 1,
+        "insufficient_data": 24,
+        "latchup_signature": 1,
+        "logic_thresholds": 1,
+        "opamp_output_current_limit": 1,
+        "power_sequence_dependency": 1,
+        "rcd_clamp": 1,
+        "short": 24,
+        "supply": 24,
+        "thermal": 24,
+        "thermal_imaging_false_positive": 1,
+        "waveform": 24
+      },
+      "category_templates": {
+        "analog": 4,
+        "bga_flex_fault": 2,
+        "bjt_switch": 1,
+        "body_diode": 1,
+        "brownout_waveform_signature": 1,
+        "capacitor_leakage": 3,
+        "ceramic_cap_crack": 1,
+        "comparative_channel_diagnosis": 1,
+        "comparator_propagation_glitch": 1,
+        "contamination_leakage": 1,
+        "current_limit_signature": 1,
+        "diode_leakage_reverse": 1,
+        "feedback_loop_instability": 1,
+        "ground_loop": 1,
+        "hbridge_recirculation": 1,
+        "i2c_bus_stuck": 1,
+        "insufficient_data": 6,
+        "latchup_signature": 1,
+        "logic_thresholds": 1,
+        "opamp_output_current_limit": 1,
+        "power_sequence_dependency": 1,
+        "rcd_clamp": 1,
+        "short": 1,
+        "supply": 1,
+        "thermal": 6,
+        "thermal_imaging_false_positive": 1,
+        "waveform": 1
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "QUARANTINE_CROSS_EVAL_TEMPLATE_OVERLAP",
+      "duplicate_groups": [
+        [
+          "ELEC41-TRAIN-1-008",
+          "ELEC41-TRAIN-1-021",
+          "ELEC41-TRAIN-1-002",
+          "ELEC41-TRAIN-1-001",
+          "ELEC41-TRAIN-1-017",
+          "ELEC41-TRAIN-1-022",
+          "ELEC41-TRAIN-1-006",
+          "ELEC41-TRAIN-1-016",
+          "ELEC41-TRAIN-1-024",
+          "ELEC41-TRAIN-1-013",
+          "ELEC41-TRAIN-1-005",
+          "ELEC41-TRAIN-1-009",
+          "ELEC41-TRAIN-1-004",
+          "ELEC41-TRAIN-1-019",
+          "ELEC41-TRAIN-1-011",
+          "ELEC41-TRAIN-1-012",
+          "ELEC41-TRAIN-1-018",
+          "ELEC41-TRAIN-1-003",
+          "ELEC41-TRAIN-1-023",
+          "ELEC41-TRAIN-1-014",
+          "ELEC41-TRAIN-1-015",
+          "ELEC41-TRAIN-1-007",
+          "ELEC41-TRAIN-1-010",
+          "ELEC41-TRAIN-1-020"
+        ],
+        [
+          "ELEC41-TRAIN-5-014",
+          "ELEC41-TRAIN-5-018",
+          "ELEC41-TRAIN-5-024",
+          "ELEC41-TRAIN-5-007",
+          "ELEC41-TRAIN-5-013",
+          "ELEC41-TRAIN-5-001",
+          "ELEC41-TRAIN-5-021",
+          "ELEC41-TRAIN-5-003",
+          "ELEC41-TRAIN-5-009",
+          "ELEC41-TRAIN-5-016",
+          "ELEC41-TRAIN-5-006",
+          "ELEC41-TRAIN-5-010",
+          "ELEC41-TRAIN-5-012",
+          "ELEC41-TRAIN-5-017",
+          "ELEC41-TRAIN-5-008",
+          "ELEC41-TRAIN-5-019",
+          "ELEC41-TRAIN-5-015",
+          "ELEC41-TRAIN-5-022",
+          "ELEC41-TRAIN-5-011",
+          "ELEC41-TRAIN-5-004",
+          "ELEC41-TRAIN-5-020",
+          "ELEC41-TRAIN-5-002",
+          "ELEC41-TRAIN-5-023",
+          "ELEC41-TRAIN-5-005"
+        ],
+        [
+          "ELEC41-TRAIN-3-008",
+          "ELEC41-TRAIN-3-022",
+          "ELEC41-TRAIN-3-017",
+          "ELEC41-TRAIN-3-006",
+          "ELEC41-TRAIN-3-011",
+          "ELEC41-TRAIN-3-014",
+          "ELEC41-TRAIN-3-004",
+          "ELEC41-TRAIN-3-024",
+          "ELEC41-TRAIN-3-003",
+          "ELEC41-TRAIN-3-023",
+          "ELEC41-TRAIN-3-019",
+          "ELEC41-TRAIN-3-010",
+          "ELEC41-TRAIN-3-009",
+          "ELEC41-TRAIN-3-015",
+          "ELEC41-TRAIN-3-020",
+          "ELEC41-TRAIN-3-016",
+          "ELEC41-TRAIN-3-012",
+          "ELEC41-TRAIN-3-005",
+          "ELEC41-TRAIN-3-018",
+          "ELEC41-TRAIN-3-021",
+          "ELEC41-TRAIN-3-002",
+          "ELEC41-TRAIN-3-007",
+          "ELEC41-TRAIN-3-001",
+          "ELEC41-TRAIN-3-013"
+        ],
+        [
+          "ELEC41-TRAIN-4-023",
+          "ELEC41-TRAIN-4-005",
+          "ELEC41-TRAIN-4-017",
+          "ELEC41-TRAIN-4-011"
+        ],
+        [
+          "ELEC41-TRAIN-2-006",
+          "ELEC41-TRAIN-2-014",
+          "ELEC41-TRAIN-2-018",
+          "ELEC41-TRAIN-2-022",
+          "ELEC41-TRAIN-2-010",
+          "ELEC41-TRAIN-2-002"
+        ],
+        [
+          "ELEC41-TRAIN-6-010",
+          "ELEC41-TRAIN-6-004",
+          "ELEC41-TRAIN-6-022",
+          "ELEC41-TRAIN-6-016"
+        ],
+        [
+          "ELEC41-TRAIN-2-020",
+          "ELEC41-TRAIN-2-004",
+          "ELEC41-TRAIN-2-016",
+          "ELEC41-TRAIN-2-012",
+          "ELEC41-TRAIN-2-024",
+          "ELEC41-TRAIN-2-008"
+        ],
+        [
+          "ELEC41-TRAIN-6-013",
+          "ELEC41-TRAIN-6-007",
+          "ELEC41-TRAIN-6-019",
+          "ELEC41-TRAIN-6-001"
+        ],
+        [
+          "ELEC41-TRAIN-4-007",
+          "ELEC41-TRAIN-4-013",
+          "ELEC41-TRAIN-4-019",
+          "ELEC41-TRAIN-4-001"
+        ],
+        [
+          "ELEC41-TRAIN-4-004",
+          "ELEC41-TRAIN-4-010",
+          "ELEC41-TRAIN-4-022",
+          "ELEC41-TRAIN-4-016"
+        ],
+        [
+          "ELEC41-TRAIN-6-024",
+          "ELEC41-TRAIN-6-006",
+          "ELEC41-TRAIN-6-018",
+          "ELEC41-TRAIN-6-012"
+        ],
+        [
+          "ELEC41-TRAIN-2-021",
+          "ELEC41-TRAIN-2-009",
+          "ELEC41-TRAIN-2-017",
+          "ELEC41-TRAIN-2-001",
+          "ELEC41-TRAIN-2-005",
+          "ELEC41-TRAIN-2-013"
+        ],
+        [
+          "ELEC41-TRAIN-4-002",
+          "ELEC41-TRAIN-4-008",
+          "ELEC41-TRAIN-4-014",
+          "ELEC41-TRAIN-4-020"
+        ],
+        [
+          "ELEC41-TRAIN-6-002",
+          "ELEC41-TRAIN-6-008",
+          "ELEC41-TRAIN-6-020",
+          "ELEC41-TRAIN-6-014"
+        ],
+        [
+          "ELEC41-TRAIN-4-024",
+          "ELEC41-TRAIN-4-006",
+          "ELEC41-TRAIN-4-012",
+          "ELEC41-TRAIN-4-018"
+        ],
+        [
+          "ELEC41-TRAIN-2-023",
+          "ELEC41-TRAIN-2-019",
+          "ELEC41-TRAIN-2-003",
+          "ELEC41-TRAIN-2-007",
+          "ELEC41-TRAIN-2-011",
+          "ELEC41-TRAIN-2-015"
+        ],
+        [
+          "ELEC41-TRAIN-6-015",
+          "ELEC41-TRAIN-6-021",
+          "ELEC41-TRAIN-6-009",
+          "ELEC41-TRAIN-6-003"
+        ],
+        [
+          "ELEC41-TRAIN-6-011",
+          "ELEC41-TRAIN-6-023",
+          "ELEC41-TRAIN-6-005",
+          "ELEC41-TRAIN-6-017"
+        ],
+        [
+          "ELEC41-TRAIN-4-003",
+          "ELEC41-TRAIN-4-015",
+          "ELEC41-TRAIN-4-009",
+          "ELEC41-TRAIN-4-021"
+        ]
+      ],
+      "exact_duplicate_rows": 36,
+      "exact_unique_prompts": 132,
+      "largest_template_share": 0.14285714285714285,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 125,
+      "normalized_unique_prompts": 43,
+      "path": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl",
+      "records": 168,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "17bce069ec1bdc267ac02a8c9160307984ff3e4307eca76827715023b19a9e99",
+      "template_effective_n": 13.517241379310345,
+      "template_entropy_bits": 4.4866245652238135,
+      "train_eval_overlap": true,
+      "within_file_near_template_pairs_at_082": 18
+    },
+    "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_train.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "analog": 24,
+        "insufficient_data": 24,
+        "short": 24,
+        "supply": 24,
+        "thermal": 24,
+        "waveform": 24
+      },
+      "category_templates": {
+        "analog": 4,
+        "insufficient_data": 6,
+        "short": 1,
+        "supply": 1,
+        "thermal": 6,
+        "waveform": 1
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "QUARANTINE_CROSS_EVAL_TEMPLATE_OVERLAP",
+      "duplicate_groups": [
+        [
+          "ELEC41-TRAIN-1-001",
+          "ELEC41-TRAIN-1-002",
+          "ELEC41-TRAIN-1-003",
+          "ELEC41-TRAIN-1-004",
+          "ELEC41-TRAIN-1-005",
+          "ELEC41-TRAIN-1-006",
+          "ELEC41-TRAIN-1-007",
+          "ELEC41-TRAIN-1-008",
+          "ELEC41-TRAIN-1-009",
+          "ELEC41-TRAIN-1-010",
+          "ELEC41-TRAIN-1-011",
+          "ELEC41-TRAIN-1-012",
+          "ELEC41-TRAIN-1-013",
+          "ELEC41-TRAIN-1-014",
+          "ELEC41-TRAIN-1-015",
+          "ELEC41-TRAIN-1-016",
+          "ELEC41-TRAIN-1-017",
+          "ELEC41-TRAIN-1-018",
+          "ELEC41-TRAIN-1-019",
+          "ELEC41-TRAIN-1-020",
+          "ELEC41-TRAIN-1-021",
+          "ELEC41-TRAIN-1-022",
+          "ELEC41-TRAIN-1-023",
+          "ELEC41-TRAIN-1-024"
+        ],
+        [
+          "ELEC41-TRAIN-2-001",
+          "ELEC41-TRAIN-2-005",
+          "ELEC41-TRAIN-2-009",
+          "ELEC41-TRAIN-2-013",
+          "ELEC41-TRAIN-2-017",
+          "ELEC41-TRAIN-2-021"
+        ],
+        [
+          "ELEC41-TRAIN-2-002",
+          "ELEC41-TRAIN-2-006",
+          "ELEC41-TRAIN-2-010",
+          "ELEC41-TRAIN-2-014",
+          "ELEC41-TRAIN-2-018",
+          "ELEC41-TRAIN-2-022"
+        ],
+        [
+          "ELEC41-TRAIN-2-003",
+          "ELEC41-TRAIN-2-007",
+          "ELEC41-TRAIN-2-011",
+          "ELEC41-TRAIN-2-015",
+          "ELEC41-TRAIN-2-019",
+          "ELEC41-TRAIN-2-023"
+        ],
+        [
+          "ELEC41-TRAIN-2-004",
+          "ELEC41-TRAIN-2-008",
+          "ELEC41-TRAIN-2-012",
+          "ELEC41-TRAIN-2-016",
+          "ELEC41-TRAIN-2-020",
+          "ELEC41-TRAIN-2-024"
+        ],
+        [
+          "ELEC41-TRAIN-3-001",
+          "ELEC41-TRAIN-3-002",
+          "ELEC41-TRAIN-3-003",
+          "ELEC41-TRAIN-3-004",
+          "ELEC41-TRAIN-3-005",
+          "ELEC41-TRAIN-3-006",
+          "ELEC41-TRAIN-3-007",
+          "ELEC41-TRAIN-3-008",
+          "ELEC41-TRAIN-3-009",
+          "ELEC41-TRAIN-3-010",
+          "ELEC41-TRAIN-3-011",
+          "ELEC41-TRAIN-3-012",
+          "ELEC41-TRAIN-3-013",
+          "ELEC41-TRAIN-3-014",
+          "ELEC41-TRAIN-3-015",
+          "ELEC41-TRAIN-3-016",
+          "ELEC41-TRAIN-3-017",
+          "ELEC41-TRAIN-3-018",
+          "ELEC41-TRAIN-3-019",
+          "ELEC41-TRAIN-3-020",
+          "ELEC41-TRAIN-3-021",
+          "ELEC41-TRAIN-3-022",
+          "ELEC41-TRAIN-3-023",
+          "ELEC41-TRAIN-3-024"
+        ],
+        [
+          "ELEC41-TRAIN-4-001",
+          "ELEC41-TRAIN-4-007",
+          "ELEC41-TRAIN-4-013",
+          "ELEC41-TRAIN-4-019"
+        ],
+        [
+          "ELEC41-TRAIN-4-002",
+          "ELEC41-TRAIN-4-008",
+          "ELEC41-TRAIN-4-014",
+          "ELEC41-TRAIN-4-020"
+        ],
+        [
+          "ELEC41-TRAIN-4-003",
+          "ELEC41-TRAIN-4-009",
+          "ELEC41-TRAIN-4-015",
+          "ELEC41-TRAIN-4-021"
+        ],
+        [
+          "ELEC41-TRAIN-4-004",
+          "ELEC41-TRAIN-4-010",
+          "ELEC41-TRAIN-4-016",
+          "ELEC41-TRAIN-4-022"
+        ],
+        [
+          "ELEC41-TRAIN-4-005",
+          "ELEC41-TRAIN-4-011",
+          "ELEC41-TRAIN-4-017",
+          "ELEC41-TRAIN-4-023"
+        ],
+        [
+          "ELEC41-TRAIN-4-006",
+          "ELEC41-TRAIN-4-012",
+          "ELEC41-TRAIN-4-018",
+          "ELEC41-TRAIN-4-024"
+        ],
+        [
+          "ELEC41-TRAIN-5-001",
+          "ELEC41-TRAIN-5-002",
+          "ELEC41-TRAIN-5-003",
+          "ELEC41-TRAIN-5-004",
+          "ELEC41-TRAIN-5-005",
+          "ELEC41-TRAIN-5-006",
+          "ELEC41-TRAIN-5-007",
+          "ELEC41-TRAIN-5-008",
+          "ELEC41-TRAIN-5-009",
+          "ELEC41-TRAIN-5-010",
+          "ELEC41-TRAIN-5-011",
+          "ELEC41-TRAIN-5-012",
+          "ELEC41-TRAIN-5-013",
+          "ELEC41-TRAIN-5-014",
+          "ELEC41-TRAIN-5-015",
+          "ELEC41-TRAIN-5-016",
+          "ELEC41-TRAIN-5-017",
+          "ELEC41-TRAIN-5-018",
+          "ELEC41-TRAIN-5-019",
+          "ELEC41-TRAIN-5-020",
+          "ELEC41-TRAIN-5-021",
+          "ELEC41-TRAIN-5-022",
+          "ELEC41-TRAIN-5-023",
+          "ELEC41-TRAIN-5-024"
+        ],
+        [
+          "ELEC41-TRAIN-6-001",
+          "ELEC41-TRAIN-6-007",
+          "ELEC41-TRAIN-6-013",
+          "ELEC41-TRAIN-6-019"
+        ],
+        [
+          "ELEC41-TRAIN-6-002",
+          "ELEC41-TRAIN-6-008",
+          "ELEC41-TRAIN-6-014",
+          "ELEC41-TRAIN-6-020"
+        ],
+        [
+          "ELEC41-TRAIN-6-003",
+          "ELEC41-TRAIN-6-009",
+          "ELEC41-TRAIN-6-015",
+          "ELEC41-TRAIN-6-021"
+        ],
+        [
+          "ELEC41-TRAIN-6-004",
+          "ELEC41-TRAIN-6-010",
+          "ELEC41-TRAIN-6-016",
+          "ELEC41-TRAIN-6-022"
+        ],
+        [
+          "ELEC41-TRAIN-6-005",
+          "ELEC41-TRAIN-6-011",
+          "ELEC41-TRAIN-6-017",
+          "ELEC41-TRAIN-6-023"
+        ],
+        [
+          "ELEC41-TRAIN-6-006",
+          "ELEC41-TRAIN-6-012",
+          "ELEC41-TRAIN-6-018",
+          "ELEC41-TRAIN-6-024"
+        ]
+      ],
+      "exact_duplicate_rows": 36,
+      "exact_unique_prompts": 108,
+      "largest_template_share": 0.16666666666666666,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 125,
+      "normalized_unique_prompts": 19,
+      "path": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_train.jsonl",
+      "records": 144,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "0bcbd7d1edb2fb38cb56779cbb77c54ce97ff1db8aaa369f0ee22e00fd93dfea",
+      "template_effective_n": 10.046511627906977,
+      "template_entropy_bits": 3.779950000961541,
+      "train_eval_overlap": true,
+      "within_file_near_template_pairs_at_082": 18
+    },
+    "deploy/stage-p5/training/electronics_v4_2/targeted_v42_holdout.jsonl": {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "categories": {
+        "borderline_sufficient": 9,
+        "good_bad_channels": 8,
+        "insufficient_data": 8,
+        "numeric_waveform": 8,
+        "pcb_short": 8,
+        "schematic_symptom_measurements": 8,
+        "thermal_intermittent": 8
+      },
+      "category_templates": {
+        "borderline_sufficient": 3,
+        "good_bad_channels": 1,
+        "insufficient_data": 6,
+        "numeric_waveform": 1,
+        "pcb_short": 1,
+        "schematic_symptom_measurements": 1,
+        "thermal_intermittent": 6
+      },
+      "declared_role": "exposed_evaluation_only",
+      "disposition": "NOT_UNUSED_NO_SELECTION_OR_FINAL_CLAIM",
+      "duplicate_groups": [
+        [
+          "ELEC42-holdout-SUP-9000",
+          "ELEC42-holdout-SUP-9013",
+          "ELEC42-holdout-SUP-9026",
+          "ELEC42-holdout-SUP-9039",
+          "ELEC42-holdout-SUP-9052",
+          "ELEC42-holdout-SUP-9065",
+          "ELEC42-holdout-SUP-9078",
+          "ELEC42-holdout-SUP-9091"
+        ],
+        [
+          "ELEC42-holdout-ANA-9001",
+          "ELEC42-holdout-ANA-9014",
+          "ELEC42-holdout-ANA-9027",
+          "ELEC42-holdout-ANA-9040",
+          "ELEC42-holdout-ANA-9053",
+          "ELEC42-holdout-ANA-9066",
+          "ELEC42-holdout-ANA-9079",
+          "ELEC42-holdout-ANA-9092"
+        ],
+        [
+          "ELEC42-holdout-WAV-9002",
+          "ELEC42-holdout-WAV-9015",
+          "ELEC42-holdout-WAV-9028",
+          "ELEC42-holdout-WAV-9041",
+          "ELEC42-holdout-WAV-9054",
+          "ELEC42-holdout-WAV-9067",
+          "ELEC42-holdout-WAV-9080",
+          "ELEC42-holdout-WAV-9093"
+        ],
+        [
+          "ELEC42-holdout-THM-9003",
+          "ELEC42-holdout-THM-9081"
+        ],
+        [
+          "ELEC42-holdout-SHT-9004",
+          "ELEC42-holdout-SHT-9017",
+          "ELEC42-holdout-SHT-9030",
+          "ELEC42-holdout-SHT-9043",
+          "ELEC42-holdout-SHT-9056",
+          "ELEC42-holdout-SHT-9069",
+          "ELEC42-holdout-SHT-9082",
+          "ELEC42-holdout-SHT-9095"
+        ],
+        [
+          "ELEC42-holdout-UNK-9005",
+          "ELEC42-holdout-UNK-9083"
+        ],
+        [
+          "ELEC42-holdout-THM-9016",
+          "ELEC42-holdout-THM-9094"
+        ],
+        [
+          "ELEC42-holdout-UNK-9018",
+          "ELEC42-holdout-UNK-9096"
+        ],
+        [
+          "ELEC42-holdout-BND-9700",
+          "ELEC42-holdout-BND-9703",
+          "ELEC42-holdout-BND-9706"
+        ],
+        [
+          "ELEC42-holdout-BND-9701",
+          "ELEC42-holdout-BND-9704",
+          "ELEC42-holdout-BND-9707"
+        ],
+        [
+          "ELEC42-holdout-BND-9702",
+          "ELEC42-holdout-BND-9705",
+          "ELEC42-holdout-BND-9708"
+        ]
+      ],
+      "exact_duplicate_rows": 8,
+      "exact_unique_prompts": 49,
+      "largest_template_share": 0.14035087719298245,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 38,
+      "normalized_unique_prompts": 19,
+      "path": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_holdout.jsonl",
+      "records": 57,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "ee3cb7743f4813c0a0f0f1a2fb55396b05aeccca28f2d68c65e192db24e0368d",
+      "template_effective_n": 10.583061889250814,
+      "template_entropy_bits": 3.7580713736999978,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 15
+    },
+    "deploy/stage-p5/training/electronics_v4_2/targeted_v42_replay_train.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "bga_flex_fault": 2,
+        "bjt_switch": 1,
+        "body_diode": 1,
+        "borderline_sufficient": 24,
+        "brownout_waveform_signature": 1,
+        "capacitor_leakage": 2,
+        "ceramic_cap_crack": 1,
+        "comparator_propagation_glitch": 1,
+        "contamination_leakage": 1,
+        "current_limit_signature": 1,
+        "diode_leakage_reverse": 1,
+        "feedback_loop_instability": 1,
+        "good_bad_channels": 28,
+        "i2c_bus_stuck": 1,
+        "insufficient_data": 28,
+        "logic_thresholds": 1,
+        "numeric_waveform": 28,
+        "opamp_output_current_limit": 1,
+        "pcb_short": 28,
+        "rcd_clamp": 1,
+        "schematic_symptom_measurements": 28,
+        "thermal_imaging_false_positive": 1,
+        "thermal_intermittent": 28
+      },
+      "category_templates": {
+        "bga_flex_fault": 2,
+        "bjt_switch": 1,
+        "body_diode": 1,
+        "borderline_sufficient": 3,
+        "brownout_waveform_signature": 1,
+        "capacitor_leakage": 2,
+        "ceramic_cap_crack": 1,
+        "comparator_propagation_glitch": 1,
+        "contamination_leakage": 1,
+        "current_limit_signature": 1,
+        "diode_leakage_reverse": 1,
+        "feedback_loop_instability": 1,
+        "good_bad_channels": 1,
+        "i2c_bus_stuck": 1,
+        "insufficient_data": 6,
+        "logic_thresholds": 1,
+        "numeric_waveform": 1,
+        "opamp_output_current_limit": 1,
+        "pcb_short": 1,
+        "rcd_clamp": 1,
+        "schematic_symptom_measurements": 1,
+        "thermal_imaging_false_positive": 1,
+        "thermal_intermittent": 6
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "QUARANTINE_CROSS_EVAL_TEMPLATE_OVERLAP",
+      "duplicate_groups": [
+        [
+          "ELEC42-train-ANA-1183",
+          "ELEC42-train-ANA-1196",
+          "ELEC42-train-ANA-1313",
+          "ELEC42-train-ANA-1209",
+          "ELEC42-train-ANA-1300",
+          "ELEC42-train-ANA-1092",
+          "ELEC42-train-ANA-1053",
+          "ELEC42-train-ANA-1001",
+          "ELEC42-train-ANA-1118",
+          "ELEC42-train-ANA-1144",
+          "ELEC42-train-ANA-1352",
+          "ELEC42-train-ANA-1235",
+          "ELEC42-train-ANA-1170",
+          "ELEC42-train-ANA-1339",
+          "ELEC42-train-ANA-1014",
+          "ELEC42-train-ANA-1066",
+          "ELEC42-train-ANA-1287",
+          "ELEC42-train-ANA-1079",
+          "ELEC42-train-ANA-1261",
+          "ELEC42-train-ANA-1105",
+          "ELEC42-train-ANA-1131",
+          "ELEC42-train-ANA-1326",
+          "ELEC42-train-ANA-1027",
+          "ELEC42-train-ANA-1040",
+          "ELEC42-train-ANA-1157",
+          "ELEC42-train-ANA-1248",
+          "ELEC42-train-ANA-1274",
+          "ELEC42-train-ANA-1222"
+        ],
+        [
+          "ELEC42-train-SUP-1013",
+          "ELEC42-train-SUP-1273",
+          "ELEC42-train-SUP-1091",
+          "ELEC42-train-SUP-1065",
+          "ELEC42-train-SUP-1026",
+          "ELEC42-train-SUP-1052",
+          "ELEC42-train-SUP-1000",
+          "ELEC42-train-SUP-1169",
+          "ELEC42-train-SUP-1156",
+          "ELEC42-train-SUP-1260",
+          "ELEC42-train-SUP-1182",
+          "ELEC42-train-SUP-1104",
+          "ELEC42-train-SUP-1312",
+          "ELEC42-train-SUP-1039",
+          "ELEC42-train-SUP-1247",
+          "ELEC42-train-SUP-1130",
+          "ELEC42-train-SUP-1221",
+          "ELEC42-train-SUP-1325",
+          "ELEC42-train-SUP-1143",
+          "ELEC42-train-SUP-1234",
+          "ELEC42-train-SUP-1117",
+          "ELEC42-train-SUP-1351",
+          "ELEC42-train-SUP-1286",
+          "ELEC42-train-SUP-1208",
+          "ELEC42-train-SUP-1338",
+          "ELEC42-train-SUP-1195",
+          "ELEC42-train-SUP-1299",
+          "ELEC42-train-SUP-1078"
+        ],
+        [
+          "ELEC42-train-WAV-1314",
+          "ELEC42-train-WAV-1080",
+          "ELEC42-train-WAV-1327",
+          "ELEC42-train-WAV-1236",
+          "ELEC42-train-WAV-1301",
+          "ELEC42-train-WAV-1288",
+          "ELEC42-train-WAV-1171",
+          "ELEC42-train-WAV-1158",
+          "ELEC42-train-WAV-1041",
+          "ELEC42-train-WAV-1054",
+          "ELEC42-train-WAV-1275",
+          "ELEC42-train-WAV-1340",
+          "ELEC42-train-WAV-1028",
+          "ELEC42-train-WAV-1132",
+          "ELEC42-train-WAV-1197",
+          "ELEC42-train-WAV-1093",
+          "ELEC42-train-WAV-1119",
+          "ELEC42-train-WAV-1223",
+          "ELEC42-train-WAV-1015",
+          "ELEC42-train-WAV-1106",
+          "ELEC42-train-WAV-1002",
+          "ELEC42-train-WAV-1210",
+          "ELEC42-train-WAV-1249",
+          "ELEC42-train-WAV-1184",
+          "ELEC42-train-WAV-1067",
+          "ELEC42-train-WAV-1353",
+          "ELEC42-train-WAV-1145",
+          "ELEC42-train-WAV-1262"
+        ],
+        [
+          "ELEC42-train-SHT-1303",
+          "ELEC42-train-SHT-1264",
+          "ELEC42-train-SHT-1173",
+          "ELEC42-train-SHT-1095",
+          "ELEC42-train-SHT-1082",
+          "ELEC42-train-SHT-1290",
+          "ELEC42-train-SHT-1160",
+          "ELEC42-train-SHT-1251",
+          "ELEC42-train-SHT-1329",
+          "ELEC42-train-SHT-1342",
+          "ELEC42-train-SHT-1134",
+          "ELEC42-train-SHT-1108",
+          "ELEC42-train-SHT-1316",
+          "ELEC42-train-SHT-1043",
+          "ELEC42-train-SHT-1147",
+          "ELEC42-train-SHT-1225",
+          "ELEC42-train-SHT-1277",
+          "ELEC42-train-SHT-1238",
+          "ELEC42-train-SHT-1017",
+          "ELEC42-train-SHT-1069",
+          "ELEC42-train-SHT-1030",
+          "ELEC42-train-SHT-1186",
+          "ELEC42-train-SHT-1121",
+          "ELEC42-train-SHT-1212",
+          "ELEC42-train-SHT-1056",
+          "ELEC42-train-SHT-1004",
+          "ELEC42-train-SHT-1355",
+          "ELEC42-train-SHT-1199"
+        ],
+        [
+          "ELEC42-train-THM-1315",
+          "ELEC42-train-THM-1237",
+          "ELEC42-train-THM-1081",
+          "ELEC42-train-THM-1159",
+          "ELEC42-train-THM-1003"
+        ],
+        [
+          "ELEC42-train-UNK-1356",
+          "ELEC42-train-UNK-1122",
+          "ELEC42-train-UNK-1200",
+          "ELEC42-train-UNK-1278",
+          "ELEC42-train-UNK-1044"
+        ],
+        [
+          "ELEC42-train-THM-1185",
+          "ELEC42-train-THM-1107",
+          "ELEC42-train-THM-1029",
+          "ELEC42-train-THM-1263",
+          "ELEC42-train-THM-1341"
+        ],
+        [
+          "ELEC42-train-BND-1721",
+          "ELEC42-train-BND-1712",
+          "ELEC42-train-BND-1703",
+          "ELEC42-train-BND-1718",
+          "ELEC42-train-BND-1709",
+          "ELEC42-train-BND-1715",
+          "ELEC42-train-BND-1700",
+          "ELEC42-train-BND-1706"
+        ],
+        [
+          "ELEC42-train-UNK-1161",
+          "ELEC42-train-UNK-1005",
+          "ELEC42-train-UNK-1239",
+          "ELEC42-train-UNK-1317",
+          "ELEC42-train-UNK-1083"
+        ],
+        [
+          "ELEC42-train-UNK-1148",
+          "ELEC42-train-UNK-1070",
+          "ELEC42-train-UNK-1304",
+          "ELEC42-train-UNK-1226"
+        ],
+        [
+          "ELEC42-train-BND-1713",
+          "ELEC42-train-BND-1707",
+          "ELEC42-train-BND-1701",
+          "ELEC42-train-BND-1719",
+          "ELEC42-train-BND-1710",
+          "ELEC42-train-BND-1722",
+          "ELEC42-train-BND-1704",
+          "ELEC42-train-BND-1716"
+        ],
+        [
+          "ELEC42-train-UNK-1343",
+          "ELEC42-train-UNK-1031",
+          "ELEC42-train-UNK-1187",
+          "ELEC42-train-UNK-1265",
+          "ELEC42-train-UNK-1109"
+        ],
+        [
+          "ELEC42-train-THM-1094",
+          "ELEC42-train-THM-1250",
+          "ELEC42-train-THM-1016",
+          "ELEC42-train-THM-1328",
+          "ELEC42-train-THM-1172"
+        ],
+        [
+          "ELEC42-train-THM-1354",
+          "ELEC42-train-THM-1120",
+          "ELEC42-train-THM-1276",
+          "ELEC42-train-THM-1198",
+          "ELEC42-train-THM-1042"
+        ],
+        [
+          "ELEC42-train-THM-1302",
+          "ELEC42-train-THM-1224",
+          "ELEC42-train-THM-1068",
+          "ELEC42-train-THM-1146"
+        ],
+        [
+          "ELEC42-train-THM-1289",
+          "ELEC42-train-THM-1055",
+          "ELEC42-train-THM-1211",
+          "ELEC42-train-THM-1133"
+        ],
+        [
+          "ELEC42-train-UNK-1252",
+          "ELEC42-train-UNK-1018",
+          "ELEC42-train-UNK-1096",
+          "ELEC42-train-UNK-1174",
+          "ELEC42-train-UNK-1330"
+        ],
+        [
+          "ELEC42-train-BND-1714",
+          "ELEC42-train-BND-1717",
+          "ELEC42-train-BND-1708",
+          "ELEC42-train-BND-1723",
+          "ELEC42-train-BND-1702",
+          "ELEC42-train-BND-1720",
+          "ELEC42-train-BND-1711",
+          "ELEC42-train-BND-1705"
+        ],
+        [
+          "ELEC42-train-UNK-1291",
+          "ELEC42-train-UNK-1135",
+          "ELEC42-train-UNK-1213",
+          "ELEC42-train-UNK-1057"
+        ]
+      ],
+      "exact_duplicate_rows": 63,
+      "exact_unique_prompts": 147,
+      "largest_template_share": 0.13333333333333333,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 173,
+      "normalized_unique_prompts": 37,
+      "path": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_replay_train.jsonl",
+      "records": 210,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "f7026e0eb35c49ec5cb4f8f5169bf6a247a9aa2147107ac95ea47640fd893c15",
+      "template_effective_n": 12.21606648199446,
+      "template_entropy_bits": 4.212812779256855,
+      "train_eval_overlap": true,
+      "within_file_near_template_pairs_at_082": 15
+    },
+    "deploy/stage-p5/training/electronics_v4_2/targeted_v42_train.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "borderline_sufficient": 24,
+        "good_bad_channels": 28,
+        "insufficient_data": 28,
+        "numeric_waveform": 28,
+        "pcb_short": 28,
+        "schematic_symptom_measurements": 28,
+        "thermal_intermittent": 28
+      },
+      "category_templates": {
+        "borderline_sufficient": 3,
+        "good_bad_channels": 1,
+        "insufficient_data": 6,
+        "numeric_waveform": 1,
+        "pcb_short": 1,
+        "schematic_symptom_measurements": 1,
+        "thermal_intermittent": 6
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "QUARANTINE_CROSS_EVAL_TEMPLATE_OVERLAP",
+      "duplicate_groups": [
+        [
+          "ELEC42-train-SUP-1000",
+          "ELEC42-train-SUP-1013",
+          "ELEC42-train-SUP-1026",
+          "ELEC42-train-SUP-1039",
+          "ELEC42-train-SUP-1052",
+          "ELEC42-train-SUP-1065",
+          "ELEC42-train-SUP-1078",
+          "ELEC42-train-SUP-1091",
+          "ELEC42-train-SUP-1104",
+          "ELEC42-train-SUP-1117",
+          "ELEC42-train-SUP-1130",
+          "ELEC42-train-SUP-1143",
+          "ELEC42-train-SUP-1156",
+          "ELEC42-train-SUP-1169",
+          "ELEC42-train-SUP-1182",
+          "ELEC42-train-SUP-1195",
+          "ELEC42-train-SUP-1208",
+          "ELEC42-train-SUP-1221",
+          "ELEC42-train-SUP-1234",
+          "ELEC42-train-SUP-1247",
+          "ELEC42-train-SUP-1260",
+          "ELEC42-train-SUP-1273",
+          "ELEC42-train-SUP-1286",
+          "ELEC42-train-SUP-1299",
+          "ELEC42-train-SUP-1312",
+          "ELEC42-train-SUP-1325",
+          "ELEC42-train-SUP-1338",
+          "ELEC42-train-SUP-1351"
+        ],
+        [
+          "ELEC42-train-ANA-1001",
+          "ELEC42-train-ANA-1014",
+          "ELEC42-train-ANA-1027",
+          "ELEC42-train-ANA-1040",
+          "ELEC42-train-ANA-1053",
+          "ELEC42-train-ANA-1066",
+          "ELEC42-train-ANA-1079",
+          "ELEC42-train-ANA-1092",
+          "ELEC42-train-ANA-1105",
+          "ELEC42-train-ANA-1118",
+          "ELEC42-train-ANA-1131",
+          "ELEC42-train-ANA-1144",
+          "ELEC42-train-ANA-1157",
+          "ELEC42-train-ANA-1170",
+          "ELEC42-train-ANA-1183",
+          "ELEC42-train-ANA-1196",
+          "ELEC42-train-ANA-1209",
+          "ELEC42-train-ANA-1222",
+          "ELEC42-train-ANA-1235",
+          "ELEC42-train-ANA-1248",
+          "ELEC42-train-ANA-1261",
+          "ELEC42-train-ANA-1274",
+          "ELEC42-train-ANA-1287",
+          "ELEC42-train-ANA-1300",
+          "ELEC42-train-ANA-1313",
+          "ELEC42-train-ANA-1326",
+          "ELEC42-train-ANA-1339",
+          "ELEC42-train-ANA-1352"
+        ],
+        [
+          "ELEC42-train-WAV-1002",
+          "ELEC42-train-WAV-1015",
+          "ELEC42-train-WAV-1028",
+          "ELEC42-train-WAV-1041",
+          "ELEC42-train-WAV-1054",
+          "ELEC42-train-WAV-1067",
+          "ELEC42-train-WAV-1080",
+          "ELEC42-train-WAV-1093",
+          "ELEC42-train-WAV-1106",
+          "ELEC42-train-WAV-1119",
+          "ELEC42-train-WAV-1132",
+          "ELEC42-train-WAV-1145",
+          "ELEC42-train-WAV-1158",
+          "ELEC42-train-WAV-1171",
+          "ELEC42-train-WAV-1184",
+          "ELEC42-train-WAV-1197",
+          "ELEC42-train-WAV-1210",
+          "ELEC42-train-WAV-1223",
+          "ELEC42-train-WAV-1236",
+          "ELEC42-train-WAV-1249",
+          "ELEC42-train-WAV-1262",
+          "ELEC42-train-WAV-1275",
+          "ELEC42-train-WAV-1288",
+          "ELEC42-train-WAV-1301",
+          "ELEC42-train-WAV-1314",
+          "ELEC42-train-WAV-1327",
+          "ELEC42-train-WAV-1340",
+          "ELEC42-train-WAV-1353"
+        ],
+        [
+          "ELEC42-train-THM-1003",
+          "ELEC42-train-THM-1081",
+          "ELEC42-train-THM-1159",
+          "ELEC42-train-THM-1237",
+          "ELEC42-train-THM-1315"
+        ],
+        [
+          "ELEC42-train-SHT-1004",
+          "ELEC42-train-SHT-1017",
+          "ELEC42-train-SHT-1030",
+          "ELEC42-train-SHT-1043",
+          "ELEC42-train-SHT-1056",
+          "ELEC42-train-SHT-1069",
+          "ELEC42-train-SHT-1082",
+          "ELEC42-train-SHT-1095",
+          "ELEC42-train-SHT-1108",
+          "ELEC42-train-SHT-1121",
+          "ELEC42-train-SHT-1134",
+          "ELEC42-train-SHT-1147",
+          "ELEC42-train-SHT-1160",
+          "ELEC42-train-SHT-1173",
+          "ELEC42-train-SHT-1186",
+          "ELEC42-train-SHT-1199",
+          "ELEC42-train-SHT-1212",
+          "ELEC42-train-SHT-1225",
+          "ELEC42-train-SHT-1238",
+          "ELEC42-train-SHT-1251",
+          "ELEC42-train-SHT-1264",
+          "ELEC42-train-SHT-1277",
+          "ELEC42-train-SHT-1290",
+          "ELEC42-train-SHT-1303",
+          "ELEC42-train-SHT-1316",
+          "ELEC42-train-SHT-1329",
+          "ELEC42-train-SHT-1342",
+          "ELEC42-train-SHT-1355"
+        ],
+        [
+          "ELEC42-train-UNK-1005",
+          "ELEC42-train-UNK-1083",
+          "ELEC42-train-UNK-1161",
+          "ELEC42-train-UNK-1239",
+          "ELEC42-train-UNK-1317"
+        ],
+        [
+          "ELEC42-train-THM-1016",
+          "ELEC42-train-THM-1094",
+          "ELEC42-train-THM-1172",
+          "ELEC42-train-THM-1250",
+          "ELEC42-train-THM-1328"
+        ],
+        [
+          "ELEC42-train-UNK-1018",
+          "ELEC42-train-UNK-1096",
+          "ELEC42-train-UNK-1174",
+          "ELEC42-train-UNK-1252",
+          "ELEC42-train-UNK-1330"
+        ],
+        [
+          "ELEC42-train-THM-1029",
+          "ELEC42-train-THM-1107",
+          "ELEC42-train-THM-1185",
+          "ELEC42-train-THM-1263",
+          "ELEC42-train-THM-1341"
+        ],
+        [
+          "ELEC42-train-UNK-1031",
+          "ELEC42-train-UNK-1109",
+          "ELEC42-train-UNK-1187",
+          "ELEC42-train-UNK-1265",
+          "ELEC42-train-UNK-1343"
+        ],
+        [
+          "ELEC42-train-THM-1042",
+          "ELEC42-train-THM-1120",
+          "ELEC42-train-THM-1198",
+          "ELEC42-train-THM-1276",
+          "ELEC42-train-THM-1354"
+        ],
+        [
+          "ELEC42-train-UNK-1044",
+          "ELEC42-train-UNK-1122",
+          "ELEC42-train-UNK-1200",
+          "ELEC42-train-UNK-1278",
+          "ELEC42-train-UNK-1356"
+        ],
+        [
+          "ELEC42-train-THM-1055",
+          "ELEC42-train-THM-1133",
+          "ELEC42-train-THM-1211",
+          "ELEC42-train-THM-1289"
+        ],
+        [
+          "ELEC42-train-UNK-1057",
+          "ELEC42-train-UNK-1135",
+          "ELEC42-train-UNK-1213",
+          "ELEC42-train-UNK-1291"
+        ],
+        [
+          "ELEC42-train-THM-1068",
+          "ELEC42-train-THM-1146",
+          "ELEC42-train-THM-1224",
+          "ELEC42-train-THM-1302"
+        ],
+        [
+          "ELEC42-train-UNK-1070",
+          "ELEC42-train-UNK-1148",
+          "ELEC42-train-UNK-1226",
+          "ELEC42-train-UNK-1304"
+        ],
+        [
+          "ELEC42-train-BND-1700",
+          "ELEC42-train-BND-1703",
+          "ELEC42-train-BND-1706",
+          "ELEC42-train-BND-1709",
+          "ELEC42-train-BND-1712",
+          "ELEC42-train-BND-1715",
+          "ELEC42-train-BND-1718",
+          "ELEC42-train-BND-1721"
+        ],
+        [
+          "ELEC42-train-BND-1701",
+          "ELEC42-train-BND-1704",
+          "ELEC42-train-BND-1707",
+          "ELEC42-train-BND-1710",
+          "ELEC42-train-BND-1713",
+          "ELEC42-train-BND-1716",
+          "ELEC42-train-BND-1719",
+          "ELEC42-train-BND-1722"
+        ],
+        [
+          "ELEC42-train-BND-1702",
+          "ELEC42-train-BND-1705",
+          "ELEC42-train-BND-1708",
+          "ELEC42-train-BND-1711",
+          "ELEC42-train-BND-1714",
+          "ELEC42-train-BND-1717",
+          "ELEC42-train-BND-1720",
+          "ELEC42-train-BND-1723"
+        ]
+      ],
+      "exact_duplicate_rows": 63,
+      "exact_unique_prompts": 129,
+      "largest_template_share": 0.14583333333333334,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 173,
+      "normalized_unique_prompts": 19,
+      "path": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_train.jsonl",
+      "records": 192,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "ef6a1e9ce039b92fc03bd3be20061183583293f6401addfe3c43dda9be6278da",
+      "template_effective_n": 10.262806236080179,
+      "template_entropy_bits": 3.7552704430860198,
+      "train_eval_overlap": true,
+      "within_file_near_template_pairs_at_082": 15
+    },
+    "deploy/stage-p5/training/fixtures/automotive_curriculum_seed_v1.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "bench_wakeup_unknown": 1,
+        "can_dominant": 1,
+        "can_no_frames": 1,
+        "clone_identity": 1,
+        "clone_readback": 1,
+        "current_sense": 1,
+        "eeprom_patch": 1,
+        "high_side_output_low": 1,
+        "high_side_stuck_high": 1,
+        "insufficient_evidence": 1,
+        "lin_no_comm": 1,
+        "open_vs_short": 1,
+        "partial_verification": 1,
+        "power_crank": 1,
+        "pwm_absent": 1,
+        "replace_pressure": 1,
+        "schematic_trace": 1,
+        "sensor_5v_rail": 1,
+        "temperature_fault": 1,
+        "watchdog_reset": 1
+      },
+      "category_templates": {
+        "bench_wakeup_unknown": 1,
+        "can_dominant": 1,
+        "can_no_frames": 1,
+        "clone_identity": 1,
+        "clone_readback": 1,
+        "current_sense": 1,
+        "eeprom_patch": 1,
+        "high_side_output_low": 1,
+        "high_side_stuck_high": 1,
+        "insufficient_evidence": 1,
+        "lin_no_comm": 1,
+        "open_vs_short": 1,
+        "partial_verification": 1,
+        "power_crank": 1,
+        "pwm_absent": 1,
+        "replace_pressure": 1,
+        "schematic_trace": 1,
+        "sensor_5v_rail": 1,
+        "temperature_fault": 1,
+        "watchdog_reset": 1
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "ROW_LEVEL_REVIEW_REQUIRED",
+      "duplicate_groups": [],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 20,
+      "largest_template_share": 0.05,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 0,
+      "normalized_unique_prompts": 20,
+      "path": "deploy/stage-p5/training/fixtures/automotive_curriculum_seed_v1.jsonl",
+      "records": 20,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "367920c9e9e4a2318aac8a722c48b708de193cd62a5718a993ac8252e9d52659",
+      "template_effective_n": 20.0,
+      "template_entropy_bits": 4.321928094887363,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 0
+    },
+    "deploy/stage-p5/training/fixtures/automotive_curriculum_v2.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "adc_channel_fault": 5,
+        "bench_only_limit": 5,
+        "bench_wakeup_unknown": 1,
+        "can_dominant": 1,
+        "can_no_frames": 1,
+        "can_noise_dynamic": 5,
+        "can_termination_fault": 5,
+        "clone_identity": 1,
+        "clone_readback": 1,
+        "crank_ground_drop": 5,
+        "current_measurement_disagreement": 5,
+        "current_sense": 1,
+        "customer_replaced_parts": 5,
+        "dtc_no_measurements": 5,
+        "eeprom_patch": 1,
+        "eeprom_unknown_structure": 5,
+        "flash_program_verify": 5,
+        "ground_offset": 5,
+        "high_side_no_output": 5,
+        "high_side_output_low": 1,
+        "high_side_stuck_high": 1,
+        "inductive_flyback_fault": 5,
+        "insufficient_evidence": 1,
+        "intermittent_no_repro": 5,
+        "j1939_no_tx_generic": 5,
+        "lin_no_comm": 1,
+        "lin_wakeup_unknown": 5,
+        "low_side_no_output": 5,
+        "open_vs_short": 1,
+        "output_intermit_vibration": 5,
+        "partial_verification": 1,
+        "power_crank": 1,
+        "power_reverse_aftereffect": 5,
+        "pwm_absent": 1,
+        "pwm_low_duty": 5,
+        "reference_rail_overload": 5,
+        "replace_pressure": 1,
+        "schematic_missing": 5,
+        "schematic_trace": 1,
+        "sensor_5v_rail": 1,
+        "sensor_signal_high_generic": 5,
+        "sensor_signal_low_generic": 5,
+        "temperature_fault": 1,
+        "temperature_supply_fault": 5,
+        "thermal_localization_incomplete": 5,
+        "unknown_pinout_fail_closed": 5,
+        "watchdog_reset": 1
+      },
+      "category_templates": {
+        "adc_channel_fault": 5,
+        "bench_only_limit": 5,
+        "bench_wakeup_unknown": 1,
+        "can_dominant": 1,
+        "can_no_frames": 1,
+        "can_noise_dynamic": 5,
+        "can_termination_fault": 5,
+        "clone_identity": 1,
+        "clone_readback": 1,
+        "crank_ground_drop": 5,
+        "current_measurement_disagreement": 5,
+        "current_sense": 1,
+        "customer_replaced_parts": 5,
+        "dtc_no_measurements": 5,
+        "eeprom_patch": 1,
+        "eeprom_unknown_structure": 5,
+        "flash_program_verify": 5,
+        "ground_offset": 5,
+        "high_side_no_output": 5,
+        "high_side_output_low": 1,
+        "high_side_stuck_high": 1,
+        "inductive_flyback_fault": 5,
+        "insufficient_evidence": 1,
+        "intermittent_no_repro": 5,
+        "j1939_no_tx_generic": 5,
+        "lin_no_comm": 1,
+        "lin_wakeup_unknown": 5,
+        "low_side_no_output": 5,
+        "open_vs_short": 1,
+        "output_intermit_vibration": 5,
+        "partial_verification": 1,
+        "power_crank": 1,
+        "power_reverse_aftereffect": 5,
+        "pwm_absent": 1,
+        "pwm_low_duty": 5,
+        "reference_rail_overload": 5,
+        "replace_pressure": 1,
+        "schematic_missing": 5,
+        "schematic_trace": 1,
+        "sensor_5v_rail": 1,
+        "sensor_signal_high_generic": 5,
+        "sensor_signal_low_generic": 5,
+        "temperature_fault": 1,
+        "temperature_supply_fault": 5,
+        "thermal_localization_incomplete": 5,
+        "unknown_pinout_fail_closed": 5,
+        "watchdog_reset": 1
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "ROW_LEVEL_REVIEW_REQUIRED",
+      "duplicate_groups": [],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 155,
+      "largest_template_share": 0.0064516129032258064,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 0,
+      "normalized_unique_prompts": 155,
+      "path": "deploy/stage-p5/training/fixtures/automotive_curriculum_v2.jsonl",
+      "records": 155,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "b9f3b85afd10d0bcbc286b95c1f2f8b4135f095ca8911b2f8780235c8e6190cc",
+      "template_effective_n": 155.0,
+      "template_entropy_bits": 7.2761244052742375,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 0
+    },
+    "deploy/stage-p5/training/fixtures/microtrain_feasibility_v1.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "unknown": 8
+      },
+      "category_templates": {
+        "unknown": 8
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "ROW_LEVEL_REVIEW_REQUIRED",
+      "duplicate_groups": [],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 8,
+      "largest_template_share": 0.125,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 0,
+      "normalized_unique_prompts": 8,
+      "path": "deploy/stage-p5/training/fixtures/microtrain_feasibility_v1.jsonl",
+      "records": 8,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "dba7c6f1c11080847b4b5b89082c01d0e31beaea46d4a5c19f56161615562e5d",
+      "template_effective_n": 8.0,
+      "template_entropy_bits": 3.0,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 0
+    },
+    "deploy/stage-p5/training/p57/p57_balanced_train.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "analog": 8,
+        "analog_mux_leakage": 1,
+        "borderline_sufficient": 8,
+        "buck_basic": 1,
+        "capacitive_coupling": 1,
+        "capacitor_leakage": 1,
+        "ceramic_cap_crack": 2,
+        "comparative_channel_diagnosis": 1,
+        "contamination_leakage": 2,
+        "current_injection_millivolt_mapping": 1,
+        "current_limit_signature": 1,
+        "diode_leakage_reverse": 2,
+        "feedback_loop_instability": 1,
+        "gate_driver_uvlo": 1,
+        "good_bad_channels": 10,
+        "hbridge_recirculation": 4,
+        "inductive_coupling": 1,
+        "insufficient_data": 18,
+        "latchup_signature": 1,
+        "numeric_waveform": 10,
+        "pcb_short": 10,
+        "pcb_voltage_drop_tracing": 1,
+        "power_sequence_dependency": 1,
+        "reference_noise": 1,
+        "schematic_symptom_measurements": 10,
+        "short": 8,
+        "solder_joint_crack": 1,
+        "supply": 8,
+        "thermal": 8,
+        "thermal_intermittent": 10,
+        "thermal_resistance": 1,
+        "uart_level_fault": 2,
+        "waveform": 8
+      },
+      "category_templates": {
+        "analog": 4,
+        "analog_mux_leakage": 1,
+        "borderline_sufficient": 3,
+        "buck_basic": 1,
+        "capacitive_coupling": 1,
+        "capacitor_leakage": 1,
+        "ceramic_cap_crack": 2,
+        "comparative_channel_diagnosis": 1,
+        "contamination_leakage": 2,
+        "current_injection_millivolt_mapping": 1,
+        "current_limit_signature": 1,
+        "diode_leakage_reverse": 2,
+        "feedback_loop_instability": 1,
+        "gate_driver_uvlo": 1,
+        "good_bad_channels": 1,
+        "hbridge_recirculation": 4,
+        "inductive_coupling": 1,
+        "insufficient_data": 9,
+        "latchup_signature": 1,
+        "numeric_waveform": 1,
+        "pcb_short": 1,
+        "pcb_voltage_drop_tracing": 1,
+        "power_sequence_dependency": 1,
+        "reference_noise": 1,
+        "schematic_symptom_measurements": 1,
+        "short": 1,
+        "solder_joint_crack": 1,
+        "supply": 1,
+        "thermal": 6,
+        "thermal_intermittent": 5,
+        "thermal_resistance": 1,
+        "uart_level_fault": 2,
+        "waveform": 1
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "QUARANTINE_CROSS_EVAL_TEMPLATE_OVERLAP",
+      "duplicate_groups": [
+        [
+          "P57-TRAIN-0001",
+          "P57-TRAIN-0015",
+          "P57-TRAIN-0029",
+          "P57-TRAIN-0043",
+          "P57-TRAIN-0057",
+          "P57-TRAIN-0071",
+          "P57-TRAIN-0085",
+          "P57-TRAIN-0099",
+          "P57-TRAIN-0113",
+          "P57-TRAIN-0120"
+        ],
+        [
+          "P57-TRAIN-0002",
+          "P57-TRAIN-0016",
+          "P57-TRAIN-0030",
+          "P57-TRAIN-0044",
+          "P57-TRAIN-0058",
+          "P57-TRAIN-0072",
+          "P57-TRAIN-0086",
+          "P57-TRAIN-0100",
+          "P57-TRAIN-0114",
+          "P57-TRAIN-0121"
+        ],
+        [
+          "P57-TRAIN-0003",
+          "P57-TRAIN-0017",
+          "P57-TRAIN-0031",
+          "P57-TRAIN-0045",
+          "P57-TRAIN-0059",
+          "P57-TRAIN-0073",
+          "P57-TRAIN-0087",
+          "P57-TRAIN-0101",
+          "P57-TRAIN-0115",
+          "P57-TRAIN-0122"
+        ],
+        [
+          "P57-TRAIN-0004",
+          "P57-TRAIN-0018",
+          "P57-TRAIN-0102"
+        ],
+        [
+          "P57-TRAIN-0005",
+          "P57-TRAIN-0019",
+          "P57-TRAIN-0033",
+          "P57-TRAIN-0047",
+          "P57-TRAIN-0061",
+          "P57-TRAIN-0075",
+          "P57-TRAIN-0089",
+          "P57-TRAIN-0103",
+          "P57-TRAIN-0117",
+          "P57-TRAIN-0124"
+        ],
+        [
+          "P57-TRAIN-0006",
+          "P57-TRAIN-0076",
+          "P57-TRAIN-0125"
+        ],
+        [
+          "P57-TRAIN-0007",
+          "P57-TRAIN-0035",
+          "P57-TRAIN-0077"
+        ],
+        [
+          "P57-TRAIN-0008",
+          "P57-TRAIN-0022",
+          "P57-TRAIN-0036",
+          "P57-TRAIN-0050",
+          "P57-TRAIN-0064",
+          "P57-TRAIN-0078",
+          "P57-TRAIN-0092",
+          "P57-TRAIN-0106"
+        ],
+        [
+          "P57-TRAIN-0009",
+          "P57-TRAIN-0051"
+        ],
+        [
+          "P57-TRAIN-0010",
+          "P57-TRAIN-0024",
+          "P57-TRAIN-0038",
+          "P57-TRAIN-0052",
+          "P57-TRAIN-0066",
+          "P57-TRAIN-0080",
+          "P57-TRAIN-0094",
+          "P57-TRAIN-0108"
+        ],
+        [
+          "P57-TRAIN-0012",
+          "P57-TRAIN-0026",
+          "P57-TRAIN-0040",
+          "P57-TRAIN-0054",
+          "P57-TRAIN-0068",
+          "P57-TRAIN-0082",
+          "P57-TRAIN-0096",
+          "P57-TRAIN-0110"
+        ],
+        [
+          "P57-TRAIN-0013",
+          "P57-TRAIN-0097"
+        ],
+        [
+          "P57-TRAIN-0021",
+          "P57-TRAIN-0049",
+          "P57-TRAIN-0091"
+        ],
+        [
+          "P57-TRAIN-0023",
+          "P57-TRAIN-0037",
+          "P57-TRAIN-0107"
+        ],
+        [
+          "P57-TRAIN-0025",
+          "P57-TRAIN-0039"
+        ],
+        [
+          "P57-TRAIN-0027",
+          "P57-TRAIN-0069"
+        ],
+        [
+          "P57-TRAIN-0032",
+          "P57-TRAIN-0116"
+        ],
+        [
+          "P57-TRAIN-0034",
+          "P57-TRAIN-0062"
+        ],
+        [
+          "P57-TRAIN-0041",
+          "P57-TRAIN-0083"
+        ],
+        [
+          "P57-TRAIN-0046",
+          "P57-TRAIN-0074",
+          "P57-TRAIN-0088"
+        ],
+        [
+          "P57-TRAIN-0053",
+          "P57-TRAIN-0109"
+        ],
+        [
+          "P57-TRAIN-0055",
+          "P57-TRAIN-0090",
+          "P57-TRAIN-0104",
+          "P57-TRAIN-0118"
+        ],
+        [
+          "P57-TRAIN-0063",
+          "P57-TRAIN-0105"
+        ],
+        [
+          "P57-TRAIN-0079",
+          "P57-TRAIN-0093"
+        ]
+      ],
+      "exact_duplicate_rows": 18,
+      "exact_unique_prompts": 126,
+      "largest_template_share": 0.06944444444444445,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 82,
+      "normalized_unique_prompts": 62,
+      "path": "deploy/stage-p5/training/p57/p57_balanced_train.jsonl",
+      "records": 144,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "f8ba03cddf116f15bda39c503be006a38911b6e270d76646406b8d79fcba2216",
+      "template_effective_n": 28.021621621621623,
+      "template_entropy_bits": 5.354602440272345,
+      "train_eval_overlap": true,
+      "within_file_near_template_pairs_at_082": 30
+    },
+    "deploy/stage-p5/training/p57/p57_dev_v1.jsonl": {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "categories": {
+        "good_bad_channel_comparison": 4,
+        "good_bad_channels": 4,
+        "insufficient_data": 4,
+        "numeric_waveform": 4,
+        "pcb_short": 4,
+        "schematic_symptom_measurements": 4,
+        "thermal_intermittent": 4
+      },
+      "category_templates": {
+        "good_bad_channel_comparison": 4,
+        "good_bad_channels": 1,
+        "insufficient_data": 4,
+        "numeric_waveform": 1,
+        "pcb_short": 1,
+        "schematic_symptom_measurements": 1,
+        "thermal_intermittent": 4
+      },
+      "declared_role": "exposed_evaluation_only",
+      "disposition": "NOT_UNUSED_NO_SELECTION_OR_FINAL_CLAIM",
+      "duplicate_groups": [
+        [
+          "P57-DEV-SUP-00",
+          "P57-DEV-SUP-01",
+          "P57-DEV-SUP-02",
+          "P57-DEV-SUP-03"
+        ],
+        [
+          "P57-DEV-ANA-00",
+          "P57-DEV-ANA-01",
+          "P57-DEV-ANA-02",
+          "P57-DEV-ANA-03"
+        ],
+        [
+          "P57-DEV-WAV-00",
+          "P57-DEV-WAV-01",
+          "P57-DEV-WAV-02",
+          "P57-DEV-WAV-03"
+        ],
+        [
+          "P57-DEV-SHT-00",
+          "P57-DEV-SHT-01",
+          "P57-DEV-SHT-02",
+          "P57-DEV-SHT-03"
+        ]
+      ],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 28,
+      "largest_template_share": 0.14285714285714285,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 12,
+      "normalized_unique_prompts": 16,
+      "path": "deploy/stage-p5/training/p57/p57_dev_v1.jsonl",
+      "records": 28,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "feee8aebc9db6e66a60efe027787d989728ce0b8eaaff874860884d9203c9bd5",
+      "template_effective_n": 10.31578947368421,
+      "template_entropy_bits": 3.6644977792004614,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 12
+    },
+    "deploy/stage-p5/training/p57/p57_mini_dev_v1.jsonl": {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "categories": {
+        "good_bad_channel_comparison": 2,
+        "good_bad_channels": 2,
+        "insufficient_data": 2,
+        "numeric_waveform": 2,
+        "pcb_short": 2,
+        "schematic_symptom_measurements": 2,
+        "thermal_intermittent": 2
+      },
+      "category_templates": {
+        "good_bad_channel_comparison": 2,
+        "good_bad_channels": 1,
+        "insufficient_data": 2,
+        "numeric_waveform": 1,
+        "pcb_short": 1,
+        "schematic_symptom_measurements": 1,
+        "thermal_intermittent": 2
+      },
+      "declared_role": "exposed_evaluation_only",
+      "disposition": "NOT_UNUSED_NO_SELECTION_OR_FINAL_CLAIM",
+      "duplicate_groups": [
+        [
+          "P57-DEV-SUP-00",
+          "P57-DEV-SUP-02"
+        ],
+        [
+          "P57-DEV-ANA-00",
+          "P57-DEV-ANA-02"
+        ],
+        [
+          "P57-DEV-WAV-00",
+          "P57-DEV-WAV-02"
+        ],
+        [
+          "P57-DEV-SHT-00",
+          "P57-DEV-SHT-02"
+        ]
+      ],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 14,
+      "largest_template_share": 0.14285714285714285,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 4,
+      "normalized_unique_prompts": 10,
+      "path": "deploy/stage-p5/training/p57/p57_mini_dev_v1.jsonl",
+      "records": 14,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "1e437d58c58f838826b1ed56817c36a8aea3e93fdd181412ec296850eb9d6991",
+      "template_effective_n": 8.909090909090908,
+      "template_entropy_bits": 3.2359263506290326,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 2
+    },
+    "deploy/stage-p5/training/p57/p57_regression_slice_v1.jsonl": {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "categories": {
+        "ceramic_microphonic": 1,
+        "charge_pump": 1,
+        "common_mode_choke": 1,
+        "contamination_surface_leakage_humidity": 1,
+        "current_injection_parallel_paths": 1,
+        "current_sense_holdout": 1,
+        "i2c_pullup_capacitance": 1,
+        "insufficient": 1,
+        "loaded_divider": 1,
+        "mosfet_body_holdout": 1,
+        "short": 1,
+        "stub_reflection": 1,
+        "supply": 1,
+        "tia_photodiode": 1,
+        "unknown_component_holdout": 1,
+        "waveform": 1
+      },
+      "category_templates": {
+        "ceramic_microphonic": 1,
+        "charge_pump": 1,
+        "common_mode_choke": 1,
+        "contamination_surface_leakage_humidity": 1,
+        "current_injection_parallel_paths": 1,
+        "current_sense_holdout": 1,
+        "i2c_pullup_capacitance": 1,
+        "insufficient": 1,
+        "loaded_divider": 1,
+        "mosfet_body_holdout": 1,
+        "short": 1,
+        "stub_reflection": 1,
+        "supply": 1,
+        "tia_photodiode": 1,
+        "unknown_component_holdout": 1,
+        "waveform": 1
+      },
+      "declared_role": "exposed_evaluation_only",
+      "disposition": "NOT_UNUSED_NO_SELECTION_OR_FINAL_CLAIM",
+      "duplicate_groups": [],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 16,
+      "largest_template_share": 0.0625,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 0,
+      "normalized_unique_prompts": 16,
+      "path": "deploy/stage-p5/training/p57/p57_regression_slice_v1.jsonl",
+      "records": 16,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "d2f34d7caf370a6ec429df58fabd479f48ffcfc03f33396312a321b0f8e179c0",
+      "template_effective_n": 16.0,
+      "template_entropy_bits": 4.0,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 0
+    },
+    "deploy/stage-p5/training/p58/p58_curriculum_train.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "borderline_sufficient": 10,
+        "comparative_channel_diagnosis": 5,
+        "good_bad_channel_comparison": 10,
+        "insufficient_data": 10,
+        "pcb_short": 10,
+        "pcb_voltage_drop_tracing": 5,
+        "schematic_symptom_measurements": 20,
+        "thermal_intermittent": 10
+      },
+      "category_templates": {
+        "borderline_sufficient": 4,
+        "comparative_channel_diagnosis": 5,
+        "good_bad_channel_comparison": 4,
+        "insufficient_data": 4,
+        "pcb_short": 1,
+        "pcb_voltage_drop_tracing": 5,
+        "schematic_symptom_measurements": 8,
+        "thermal_intermittent": 4
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "ROW_LEVEL_REVIEW_REQUIRED",
+      "duplicate_groups": [
+        [
+          "P58-TRAIN-SUP-00-0",
+          "P58-TRAIN-SUP-04-0",
+          "P58-TRAIN-SUP-08-0"
+        ],
+        [
+          "P58-TRAIN-SUP-00-1",
+          "P58-TRAIN-SUP-04-1",
+          "P58-TRAIN-SUP-08-1"
+        ],
+        [
+          "P58-TRAIN-THM-00",
+          "P58-TRAIN-THM-04",
+          "P58-TRAIN-THM-08"
+        ],
+        [
+          "P58-TRAIN-SHT-00",
+          "P58-TRAIN-SHT-01",
+          "P58-TRAIN-SHT-02",
+          "P58-TRAIN-SHT-03",
+          "P58-TRAIN-SHT-04",
+          "P58-TRAIN-SHT-05",
+          "P58-TRAIN-SHT-06",
+          "P58-TRAIN-SHT-07",
+          "P58-TRAIN-SHT-08",
+          "P58-TRAIN-SHT-09"
+        ],
+        [
+          "P58-TRAIN-CMP-00",
+          "P58-TRAIN-CMP-04",
+          "P58-TRAIN-CMP-08"
+        ],
+        [
+          "P58-TRAIN-ABT-00",
+          "P58-TRAIN-ABT-04",
+          "P58-TRAIN-ABT-08"
+        ],
+        [
+          "P58-TRAIN-ABF-00",
+          "P58-TRAIN-ABF-04",
+          "P58-TRAIN-ABF-08"
+        ],
+        [
+          "P58-TRAIN-SUP-01-0",
+          "P58-TRAIN-SUP-05-0",
+          "P58-TRAIN-SUP-09-0"
+        ],
+        [
+          "P58-TRAIN-SUP-01-1",
+          "P58-TRAIN-SUP-05-1",
+          "P58-TRAIN-SUP-09-1"
+        ],
+        [
+          "P58-TRAIN-THM-01",
+          "P58-TRAIN-THM-05",
+          "P58-TRAIN-THM-09"
+        ],
+        [
+          "P58-TRAIN-CMP-01",
+          "P58-TRAIN-CMP-05",
+          "P58-TRAIN-CMP-09"
+        ],
+        [
+          "P58-TRAIN-ABT-01",
+          "P58-TRAIN-ABT-05",
+          "P58-TRAIN-ABT-09"
+        ],
+        [
+          "P58-TRAIN-ABF-01",
+          "P58-TRAIN-ABF-05",
+          "P58-TRAIN-ABF-09"
+        ],
+        [
+          "P58-TRAIN-SUP-02-0",
+          "P58-TRAIN-SUP-06-0"
+        ],
+        [
+          "P58-TRAIN-SUP-02-1",
+          "P58-TRAIN-SUP-06-1"
+        ],
+        [
+          "P58-TRAIN-THM-02",
+          "P58-TRAIN-THM-06"
+        ],
+        [
+          "P58-TRAIN-CMP-02",
+          "P58-TRAIN-CMP-06"
+        ],
+        [
+          "P58-TRAIN-ABT-02",
+          "P58-TRAIN-ABT-06"
+        ],
+        [
+          "P58-TRAIN-ABF-02",
+          "P58-TRAIN-ABF-06"
+        ],
+        [
+          "P58-TRAIN-SUP-03-0",
+          "P58-TRAIN-SUP-07-0"
+        ],
+        [
+          "P58-TRAIN-SUP-03-1",
+          "P58-TRAIN-SUP-07-1"
+        ],
+        [
+          "P58-TRAIN-THM-03",
+          "P58-TRAIN-THM-07"
+        ],
+        [
+          "P58-TRAIN-CMP-03",
+          "P58-TRAIN-CMP-07"
+        ],
+        [
+          "P58-TRAIN-ABT-03",
+          "P58-TRAIN-ABT-07"
+        ],
+        [
+          "P58-TRAIN-ABF-03",
+          "P58-TRAIN-ABF-07"
+        ]
+      ],
+      "exact_duplicate_rows": 23,
+      "exact_unique_prompts": 57,
+      "largest_template_share": 0.125,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 45,
+      "normalized_unique_prompts": 35,
+      "path": "deploy/stage-p5/training/p58/p58_curriculum_train.jsonl",
+      "records": 80,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "6967d2c7660f32693f374cc5a4b5a573832fe7f1b17e0960d3cdbcdfe4bce216",
+      "template_effective_n": 24.06015037593985,
+      "template_entropy_bits": 4.893453957701922,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 24
+    },
+    "deploy/stage-p5/training/p58/p58_dev_v1.jsonl": {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "categories": {
+        "borderline_sufficient": 3,
+        "good_bad_channel_comparison": 6,
+        "good_bad_channels": 6,
+        "insufficient_data": 3,
+        "numeric_waveform": 6,
+        "pcb_short": 6,
+        "schematic_symptom_measurements": 6,
+        "thermal_intermittent": 6
+      },
+      "category_templates": {
+        "borderline_sufficient": 1,
+        "good_bad_channel_comparison": 1,
+        "good_bad_channels": 4,
+        "insufficient_data": 1,
+        "numeric_waveform": 1,
+        "pcb_short": 1,
+        "schematic_symptom_measurements": 4,
+        "thermal_intermittent": 4
+      },
+      "declared_role": "exposed_evaluation_only",
+      "disposition": "NOT_UNUSED_NO_SELECTION_OR_FINAL_CLAIM",
+      "duplicate_groups": [
+        [
+          "P58-DEV-SUP-20",
+          "P58-DEV-SUP-24"
+        ],
+        [
+          "P58-DEV-SUP-21",
+          "P58-DEV-SUP-25"
+        ],
+        [
+          "P58-DEV-ANA-20",
+          "P58-DEV-ANA-24"
+        ],
+        [
+          "P58-DEV-ANA-21",
+          "P58-DEV-ANA-25"
+        ],
+        [
+          "P58-DEV-WAV-20",
+          "P58-DEV-WAV-21",
+          "P58-DEV-WAV-22",
+          "P58-DEV-WAV-23",
+          "P58-DEV-WAV-24",
+          "P58-DEV-WAV-25"
+        ],
+        [
+          "P58-DEV-THM-20",
+          "P58-DEV-THM-24"
+        ],
+        [
+          "P58-DEV-THM-21",
+          "P58-DEV-THM-25"
+        ],
+        [
+          "P58-DEV-SHT-20",
+          "P58-DEV-SHT-21",
+          "P58-DEV-SHT-22",
+          "P58-DEV-SHT-23",
+          "P58-DEV-SHT-24",
+          "P58-DEV-SHT-25"
+        ],
+        [
+          "P58-DEV-CMP-20",
+          "P58-DEV-CMP-21",
+          "P58-DEV-CMP-22",
+          "P58-DEV-CMP-23",
+          "P58-DEV-CMP-24",
+          "P58-DEV-CMP-25"
+        ],
+        [
+          "P58-DEV-UNK-20",
+          "P58-DEV-UNK-22",
+          "P58-DEV-UNK-24"
+        ],
+        [
+          "P58-DEV-UNK-21",
+          "P58-DEV-UNK-23",
+          "P58-DEV-UNK-25"
+        ]
+      ],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 42,
+      "largest_template_share": 0.14285714285714285,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 25,
+      "normalized_unique_prompts": 17,
+      "path": "deploy/stage-p5/training/p58/p58_dev_v1.jsonl",
+      "records": 42,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "d3bb154b10ae43609585753273e45067bc53b5b0cbd31a2012d62a6d3dd663d9",
+      "template_effective_n": 11.307692307692308,
+      "template_entropy_bits": 3.7723388509380995,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 13
+    },
+    "deploy/stage-p5/training/p58/p58_mini_dev_v1.jsonl": {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "categories": {
+        "borderline_sufficient": 1,
+        "good_bad_channel_comparison": 2,
+        "good_bad_channels": 2,
+        "insufficient_data": 1,
+        "numeric_waveform": 2,
+        "pcb_short": 2,
+        "schematic_symptom_measurements": 2,
+        "thermal_intermittent": 2
+      },
+      "category_templates": {
+        "borderline_sufficient": 1,
+        "good_bad_channel_comparison": 1,
+        "good_bad_channels": 2,
+        "insufficient_data": 1,
+        "numeric_waveform": 1,
+        "pcb_short": 1,
+        "schematic_symptom_measurements": 2,
+        "thermal_intermittent": 2
+      },
+      "declared_role": "exposed_evaluation_only",
+      "disposition": "NOT_UNUSED_NO_SELECTION_OR_FINAL_CLAIM",
+      "duplicate_groups": [
+        [
+          "P58-DEV-WAV-20",
+          "P58-DEV-WAV-23"
+        ],
+        [
+          "P58-DEV-SHT-20",
+          "P58-DEV-SHT-23"
+        ],
+        [
+          "P58-DEV-CMP-20",
+          "P58-DEV-CMP-23"
+        ]
+      ],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 14,
+      "largest_template_share": 0.14285714285714285,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 3,
+      "normalized_unique_prompts": 11,
+      "path": "deploy/stage-p5/training/p58/p58_mini_dev_v1.jsonl",
+      "records": 14,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "3eb4a12f2f8643278b195ef248a475dc96c658f82083739fb612439355deca74",
+      "template_effective_n": 9.8,
+      "template_entropy_bits": 3.3787834934861753,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 3
+    },
+    "deploy/stage-p5/training/p59/p59_thermal_dev_v1.jsonl": {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "categories": {
+        "insufficient_data": 4,
+        "thermal_intermittent": 24
+      },
+      "category_templates": {
+        "insufficient_data": 1,
+        "thermal_intermittent": 6
+      },
+      "declared_role": "exposed_evaluation_only",
+      "disposition": "NOT_UNUSED_NO_SELECTION_OR_FINAL_CLAIM",
+      "duplicate_groups": [
+        [
+          "P59-DEV-THM-5000",
+          "P59-DEV-THM-5006",
+          "P59-DEV-THM-5012",
+          "P59-DEV-THM-5018"
+        ],
+        [
+          "P59-DEV-THM-5001",
+          "P59-DEV-THM-5007",
+          "P59-DEV-THM-5013",
+          "P59-DEV-THM-5019"
+        ],
+        [
+          "P59-DEV-THM-5002",
+          "P59-DEV-THM-5008",
+          "P59-DEV-THM-5014",
+          "P59-DEV-THM-5020"
+        ],
+        [
+          "P59-DEV-THM-5003",
+          "P59-DEV-THM-5009",
+          "P59-DEV-THM-5015",
+          "P59-DEV-THM-5021"
+        ],
+        [
+          "P59-DEV-THM-5004",
+          "P59-DEV-THM-5010",
+          "P59-DEV-THM-5016",
+          "P59-DEV-THM-5022"
+        ],
+        [
+          "P59-DEV-THM-5005",
+          "P59-DEV-THM-5011",
+          "P59-DEV-THM-5017",
+          "P59-DEV-THM-5023"
+        ],
+        [
+          "P59-DEV-UNK-5900",
+          "P59-DEV-UNK-5901",
+          "P59-DEV-UNK-5902",
+          "P59-DEV-UNK-5903"
+        ]
+      ],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 28,
+      "largest_template_share": 0.14285714285714285,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 21,
+      "normalized_unique_prompts": 7,
+      "path": "deploy/stage-p5/training/p59/p59_thermal_dev_v1.jsonl",
+      "records": 28,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "ca941010f9ea218259c867d3d283690c590417c521808e92f0a0957126010669",
+      "template_effective_n": 7.0,
+      "template_entropy_bits": 2.8073549220576037,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 0
+    },
+    "deploy/stage-p5/training/p59/p59_thermal_mini_dev_v1.jsonl": {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "categories": {
+        "insufficient_data": 2,
+        "thermal_intermittent": 12
+      },
+      "category_templates": {
+        "insufficient_data": 1,
+        "thermal_intermittent": 3
+      },
+      "declared_role": "exposed_evaluation_only",
+      "disposition": "NOT_UNUSED_NO_SELECTION_OR_FINAL_CLAIM",
+      "duplicate_groups": [
+        [
+          "P59-DEV-THM-5000",
+          "P59-DEV-THM-5006",
+          "P59-DEV-THM-5012",
+          "P59-DEV-THM-5018"
+        ],
+        [
+          "P59-DEV-THM-5002",
+          "P59-DEV-THM-5008",
+          "P59-DEV-THM-5014",
+          "P59-DEV-THM-5020"
+        ],
+        [
+          "P59-DEV-THM-5004",
+          "P59-DEV-THM-5010",
+          "P59-DEV-THM-5016",
+          "P59-DEV-THM-5022"
+        ],
+        [
+          "P59-DEV-UNK-5900",
+          "P59-DEV-UNK-5902"
+        ]
+      ],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 14,
+      "largest_template_share": 0.2857142857142857,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 10,
+      "normalized_unique_prompts": 4,
+      "path": "deploy/stage-p5/training/p59/p59_thermal_mini_dev_v1.jsonl",
+      "records": 14,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "f02ce4ae866f8e4abe739de7bbd149ad97f6c32ff15a72438f4036c1bc424c1f",
+      "template_effective_n": 3.769230769230769,
+      "template_entropy_bits": 1.9502120649147467,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 0
+    },
+    "deploy/stage-p5/training/p59/p59_thermal_train.jsonl": {
+      "allowed_roles": [],
+      "categories": {
+        "borderline_sufficient": 1,
+        "good_bad_channel_comparison": 1,
+        "insufficient_data": 8,
+        "pcb_short": 2,
+        "schematic_symptom_measurements": 4,
+        "thermal_intermittent": 48
+      },
+      "category_templates": {
+        "borderline_sufficient": 1,
+        "good_bad_channel_comparison": 1,
+        "insufficient_data": 8,
+        "pcb_short": 1,
+        "schematic_symptom_measurements": 4,
+        "thermal_intermittent": 21
+      },
+      "declared_role": "train_candidate_requires_review",
+      "disposition": "ROW_LEVEL_REVIEW_REQUIRED",
+      "duplicate_groups": [
+        [
+          "P59-TRAIN-THM-00-0",
+          "P59-TRAIN-THM-06-0"
+        ],
+        [
+          "P59-TRAIN-THM-00-1",
+          "P59-TRAIN-THM-06-1"
+        ],
+        [
+          "P59-TRAIN-THM-00-2",
+          "P59-TRAIN-THM-01-2",
+          "P59-TRAIN-THM-02-2",
+          "P59-TRAIN-THM-03-2",
+          "P59-TRAIN-THM-04-2",
+          "P59-TRAIN-THM-05-2",
+          "P59-TRAIN-THM-06-2",
+          "P59-TRAIN-THM-07-2"
+        ],
+        [
+          "P59-TRAIN-THM-00-3",
+          "P59-TRAIN-THM-01-3",
+          "P59-TRAIN-THM-02-3",
+          "P59-TRAIN-THM-03-3",
+          "P59-TRAIN-THM-04-3",
+          "P59-TRAIN-THM-05-3",
+          "P59-TRAIN-THM-06-3",
+          "P59-TRAIN-THM-07-3"
+        ],
+        [
+          "P59-TRAIN-THM-00-4",
+          "P59-TRAIN-THM-06-4"
+        ],
+        [
+          "P59-TRAIN-THM-00-5",
+          "P59-TRAIN-THM-01-5",
+          "P59-TRAIN-THM-02-5",
+          "P59-TRAIN-THM-03-5",
+          "P59-TRAIN-THM-04-5",
+          "P59-TRAIN-THM-05-5",
+          "P59-TRAIN-THM-06-5",
+          "P59-TRAIN-THM-07-5"
+        ],
+        [
+          "P59-TRAIN-THM-01-0",
+          "P59-TRAIN-THM-07-0"
+        ],
+        [
+          "P59-TRAIN-THM-01-1",
+          "P59-TRAIN-THM-07-1"
+        ],
+        [
+          "P59-TRAIN-THM-01-4",
+          "P59-TRAIN-THM-07-4"
+        ],
+        [
+          "P59-TRAIN-REPLAY-02",
+          "P59-TRAIN-REPLAY-07"
+        ]
+      ],
+      "exact_duplicate_rows": 0,
+      "exact_unique_prompts": 64,
+      "largest_template_share": 0.125,
+      "missing_prompts": 0,
+      "normalized_duplicate_rows": 28,
+      "normalized_unique_prompts": 36,
+      "path": "deploy/stage-p5/training/p59/p59_thermal_train.jsonl",
+      "records": 64,
+      "semantic_independence": "NOT_CERTIFIED_REQUIRES_CAUSAL_SCENARIO_REVIEW",
+      "sha256": "a1c7ed5c6c7e8c145d2323d1b84926b9f9fa3a6209110d9561f0ccd8dbbb01e2",
+      "template_effective_n": 16.650406504065042,
+      "template_entropy_bits": 4.65625,
+      "train_eval_overlap": false,
+      "within_file_near_template_pairs_at_082": 24
+    }
+  }
+}

@@ -1,240 +1,157 @@
 #!/usr/bin/env python3
+"""Experimental, case-specific rubric scorer. Never authorizes training or final access.
+
+Rules express complete causal propositions, measurement setup and predicted branches.
+Equivalent phrasings are explicit alternatives. Unmatched text requires review; embedding
+similarity and category keywords cannot override a missing/contradicted proposition.
+"""
+from __future__ import annotations
+import argparse
+import hashlib
+import json
+import math
+import re
 from pathlib import Path
-import argparse,json,math,re,urllib.request
 
-FIELDS=("diagnostic_model","discriminating_measurement","predicted_result")
-ACTION_WORDS=("zmierz","mierz","porówn","rejestr","zapis","obserw","wykon","monitor","sprawd","wstrzy","ogrze","chłod","zadaj","test","zasil","odłącz","odlacz")
-BRANCH_WORDS=("jeśli","jezeli","gdy","wtedy","wskazuje","wskaże","wskaze","zawęża","zaweza","potwierdza","wyklucza",
-              "przenosi","rozróż","rozroz","lokaliz","pierwsz","przy stabil","przy spad","brak zmiany","zmiana zasil")
-CERTAINTY=("na pewno","jednoznacznie winny","z całą pewnością","z cala pewnoscia","definitywnie","wymień ","wymien ")
+FIELDS = ('diagnostic_model', 'discriminating_measurement', 'predicted_result')
+DIMENSIONS = ('diagnostic_model_pass', 'measurement_pass', 'prediction_pass',
+              'no_guessing_pass', 'abstain_ok')
+SCORER = 'case-rubric-v5.1-experimental'
 
-def norm(s):
-    return re.sub(r"\s+"," ",str(s).lower()).strip()
+
+def digest(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def read_public(path):
+    names = (str(path).lower(), str(Path(path).resolve()).lower())
+    if any(any(t in n for t in ('final', 'golden', 'sealed', 'test', 'p57-regression', 'parent-p57'))
+           for n in names):
+        raise ValueError('protected content is not accepted by the P510 development scorer')
+    return [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
+
 
 def wilson(successes, total, z=1.959963984540054):
-    if total <= 0:
-        return {"score": 0.0, "low": 0.0, "high": 1.0, "n": 0}
-    phat = successes / total
-    den = 1.0 + z * z / total
-    center = (phat + z * z / (2 * total)) / den
-    radius = z * math.sqrt((phat * (1 - phat) + z * z / (4 * total)) / total) / den
-    return {"score": phat, "low": max(0.0, center - radius), "high": min(1.0, center + radius), "n": total}
+    if total == 0:
+        return {'score': None, 'low': 0.0, 'high': 1.0, 'n': 0}
+    if not 0 <= successes <= total:
+        raise ValueError('invalid binomial counts')
+    p = successes / total
+    den = 1 + z*z/total
+    center = (p + z*z/(2*total))/den
+    radius = z * math.sqrt((p*(1-p)+z*z/(4*total))/total)/den
+    return {'score': p, 'low': max(0., center-radius), 'high': min(1., center+radius), 'n': total}
 
-def embed(texts):
-    data=json.dumps({"model":"bge-m3","input":texts}).encode()
-    req=urllib.request.Request("http://127.0.0.1:11434/api/embed",data=data,headers={"Content-Type":"application/json"})
-    with urllib.request.urlopen(req,timeout=180) as r:
-        return json.load(r)["embeddings"]
 
-def cos(a,b):
-    d=sum(x*y for x,y in zip(a,b))
-    na=math.sqrt(sum(x*x for x in a)); nb=math.sqrt(sum(y*y for y in b))
-    return d/(na*nb) if na and nb else 0.0
+def indexed(rows):
+    out = {}
+    for row in rows:
+        key = row.get('case_id')
+        if not isinstance(key, str) or not key or key in out:
+            raise ValueError('missing or duplicate case_id')
+        out[key] = row
+    if not out:
+        raise ValueError('empty dataset/results')
+    return out
 
-def contains_any(s,words):
-    s=norm(s)
-    return any(w in s for w in words)
 
-def tokenish_len(s):
-    return len(re.findall(r"\w+",norm(s),re.UNICODE))
+def validate_rule(rule):
+    # Every group is a required proposition; patterns within a group are alternatives.
+    if not isinstance(rule, dict) or not rule.get('all_of') or 'none_of' not in rule:
+        raise ValueError('rubric requires all_of and none_of')
+    if not isinstance(rule['all_of'], list) or not isinstance(rule['none_of'], list):
+        raise ValueError('invalid rubric lists')
+    for group in rule['all_of']:
+        if not isinstance(group, list) or not group:
+            raise ValueError('empty proposition')
+    for pattern in [p for group in rule['all_of'] for p in group] + rule['none_of']:
+        if not isinstance(pattern, str) or not pattern.strip():
+            raise ValueError('empty rubric pattern')
+        compiled = re.compile(pattern, re.I)
+        if compiled.search(''):
+            raise ValueError('pattern matches empty text')
 
-def has(s,*needles):
-    s=norm(s)
-    return any(n in s for n in needles)
 
-def count_concepts(s,groups):
-    s=norm(s)
-    return sum(any(w in s for w in g) for g in groups)
+def match_rule(text, rule):
+    validate_rule(rule)
+    text = ' '.join(text.lower().split())
+    contradicted = any(re.search(p, text, re.I) for p in rule['none_of'])
+    matched = all(any(re.search(p, text, re.I) for p in group) for group in rule['all_of'])
+    return matched and not contradicted, contradicted
 
-def diagnostic_concept_pass(category,text,must_abstain=False):
-    s=norm(text)
-    if must_abstain:
-        return has(s,"niewystar","brakuje","brak danych","nie pozwala","nie można","nie mozna","kilka hipotez")
-    if category=="schematic_symptom_measurements":
-        regulator=has(s,"regulator","przetworn","stabiliz")
-        separation=count_concepts(s,[
-            ("upstream","przed regulat","tor zasil","wejści","wejsci"),
-            ("downstream","obciąż","obciaz","odbior"),
-            ("regulator","przetworn","stabiliz")
-        ])
-        return regulator and separation>=2
-    if category in ("good_bad_channels","good_bad_channel_comparison"):
-        return has(s,"kanał","kanal") and (
-            has(s,"lokal","rozbież","rozbiez","rozjazd","pierwsz","wspóln","wspoln","za wspóln","za wspoln")
-        )
-    if category=="numeric_waveform":
-        return count_concepts(s,[
-            ("mcu","sterując","sterujac","wejści","wejsci"),
-            ("driver","bramk","gate"),
-            ("vdd","zasil"),
-            ("obciąż","obciaz","prąd bram","prad bram")
-        ])>=2
-    if category=="thermal_intermittent":
-        return count_concepts(s,[
-            ("term","temper","chłod","chlod","nagrz"),
-            ("sekcj","stref","obszar"),
-            ("zasil","vdd"),
-            ("element","driver","układ","uklad"),
-            ("połąc","polacz","lut","via")
-        ])>=3
-    if category=="pcb_short":
-        return has(s,"zwar","upływ","uplyw","niska rezyst") and has(s,"gałę","galez","szyn","rail")
-    if category=="borderline_sufficient":
-        return has(s,"zawęż","zawez","lokal","stop","downstream","upstream","wystarcz")
-    return False
 
-def prediction_structured(text,must_abstain=False):
-    s=norm(text)
-    if must_abstain:
-        return tokenish_len(s)>=4
-    if contains_any(s,BRANCH_WORDS) and tokenish_len(s)>=5:
-        return True
-    clauses=[x.strip() for x in re.split(r"[;:]",s) if x.strip()]
-    if len(clauses)>=2:
-        cue=("spad","stabil","brak","zmian","róż","rozjaz","rozbie","wspóln","wspoln","wejści","wejsci","wyjści","wyjsci","błąd","blad")
-        if sum(any(c in cl for c in cue) for cl in clauses)>=2:
-            return True
-    return False
+def score_case(case, result):
+    rubric = case.get('rubric', {})
+    if type(case.get('must_abstain')) is not bool:
+        raise ValueError('must_abstain must be boolean')
+    for field in (*FIELDS, 'no_guessing'):
+        validate_rule(rubric.get(field))
+    parsed = result.get('parsed')
+    valid = (isinstance(parsed, dict) and type(parsed.get('abstain')) is bool
+             and all(isinstance(parsed.get(f), str) and parsed[f].strip() for f in FIELDS))
+    row = {k: case[k] for k in ('case_id', 'scenario_id', 'category')}
+    row.update(raw_parse_ok=result.get('raw_parse_ok') is True, final_parse_ok=valid,
+               must_abstain=case['must_abstain'], review_required=False)
+    row.update({key: False for key in DIMENSIONS})
+    if not valid:
+        return row
+    for field, dim in zip(FIELDS, DIMENSIONS):
+        passed, contradicted = match_rule(parsed[field], rubric[field])
+        row[dim] = passed
+        row['review_required'] |= not passed and not contradicted
+    passed, contradicted = match_rule(' '.join(parsed[f] for f in FIELDS), rubric['no_guessing'])
+    row['no_guessing_pass'] = passed and (not case['must_abstain'] or parsed['abstain'])
+    row['review_required'] |= not passed and not contradicted
+    row['abstain_ok'] = parsed['abstain'] == case['must_abstain']
+    return row
 
-def prediction_concept_pass(category,text,must_abstain=False):
-    s=norm(text)
-    if must_abstain:
-        return has(s,"dopiero","jeśli","jezeli","gdy","pierwsz","kolejno","wskazuje","pozwol","rozróż","rozroz","brak","spad")
-    if category=="schematic_symptom_measurements":
-        return count_concepts(s,[
-            ("wejści","wejsci","upstream","przed regulat"),
-            ("regulator","przetworn","stabiliz"),
-            ("downstream","obciąż","obciaz","odbior")
-        ])>=2
-    if category in ("good_bad_channels","good_bad_channel_comparison"):
-        return has(s,"pierwsz","rozjaz","rozbież","rozbiez","róż","rozn","wspóln","wspoln") and has(s,"lokal","wskaz","stop","element","gałę","galez","kanał","kanal")
-    if category=="numeric_waveform":
-        return count_concepts(s,[
-            ("vdd","zasil"),
-            ("driver","bramk","gate"),
-            ("obciąż","obciaz","prąd","prad"),
-            ("spad","stabil","zmian")
-        ])>=2
-    if category=="thermal_intermittent":
-        return count_concepts(s,[
-            ("vdd","zasil"),
-            ("element","driver","układ","uklad"),
-            ("połąc","polacz","lut"),
-            ("spad","stabil","zmian","pierwsz")
-        ])>=2
-    if category=="pcb_short":
-        return has(s,"gałę","galez","segment","gradient","hotspot","rezyst") and has(s,"zawęż","zawez","wskaz","potwier","brak","zmian")
-    if category=="borderline_sufficient":
-        return has(s,"stop","downstream","obciąż","obciaz","wskaz","zawęż","zawez","przenos")
-    return False
+
+def aggregate(details):
+    fields = {'raw_parse_rate': 'raw_parse_ok', 'final_parse_rate': 'final_parse_ok',
+              'diagnostic_model_pass_rate': DIMENSIONS[0], 'measurement_pass_rate': DIMENSIONS[1],
+              'prediction_pass_rate': DIMENSIONS[2], 'no_guessing_pass_rate': DIMENSIONS[3],
+              'abstention_accuracy': DIMENSIONS[4]}
+    cis = {k: wilson(sum(r[f] for r in details), len(details)) for k, f in fields.items()}
+    for name, must in (('insufficient_data_abstention_rate', True), ('sufficient_data_answer_rate', False)):
+        subset = [r for r in details if r['must_abstain'] is must]
+        cis[name] = wilson(sum(r['abstain_ok'] for r in subset), len(subset))
+    metrics = {k: v['score'] for k, v in cis.items()}
+    metrics['records'] = len(details)
+    metrics['selection_score'] = sum(sum(r[k] for k in DIMENSIONS)/5 for r in details)/len(details)
+    return metrics, cis
+
+
+def score(cases, results):
+    cs, rs = indexed(cases), indexed(results)
+    if cs.keys() != rs.keys():
+        raise ValueError('results must cover every case exactly once; no extras')
+    scenarios = [c.get('scenario_id') for c in cases]
+    if any(not isinstance(s, str) or not s for s in scenarios) or len(set(scenarios)) != len(scenarios):
+        raise ValueError('one row per independent scenario required; IDs alone do not certify independence')
+    if any(not isinstance(c.get('category'), str) or not c['category'] for c in cases):
+        raise ValueError('missing category')
+    details = [score_case(cs[k], rs[k]) for k in sorted(cs)]
+    metrics, cis = aggregate(details)
+    categories = {c: aggregate([r for r in details if r['category'] == c])
+                  for c in sorted({r['category'] for r in details})}
+    return {'status': 'SCORED_REVIEW_REQUIRED' if any(r['review_required'] for r in details) else 'SCORED',
+            'scorer': SCORER, 'acceptance_authorized': False,
+            'metrics': metrics, 'metric_intervals_95': cis,
+            'category_metrics': {c: v[0] for c, v in categories.items()},
+            'category_intervals_95': {c: v[1] for c, v in categories.items()}, 'details': details}
+
 
 def main():
-    ap=argparse.ArgumentParser()
-    ap.add_argument("--dataset",required=True); ap.add_argument("--results",required=True); ap.add_argument("--output",required=True)
-    ap.add_argument("--diag-threshold",type=float,default=0.56)
-    ap.add_argument("--measurement-threshold",type=float,default=0.55)
-    ap.add_argument("--prediction-threshold",type=float,default=0.53)
-    a=ap.parse_args()
+    ap = argparse.ArgumentParser(description=__doc__)
+    for name in ('dataset', 'results', 'output'):
+        ap.add_argument('--'+name, required=True)
+    a = ap.parse_args()
+    out = score(read_public(a.dataset), read_public(a.results))
+    out['bindings'] = {'dataset_sha256': digest(a.dataset), 'results_sha256': digest(a.results),
+                       'scorer_sha256': digest(__file__)}
+    Path(a.output).write_text(json.dumps(out, indent=2, ensure_ascii=False, allow_nan=False)+'\n')
+    print(json.dumps({'status': out['status'], 'metrics': out['metrics']}))
 
-    cases={r["case_id"]:r for r in (json.loads(x) for x in Path(a.dataset).read_text().splitlines() if x.strip())}
-    results=[json.loads(x) for x in Path(a.results).read_text().splitlines() if x.strip()]
-    details=[]; texts=[]; pairs=[]
-    for r in results:
-        c=cases[r["case_id"]]; p=r.get("parsed")
-        d={"case_id":r["case_id"],"category":c["category"],
-           "raw_parse_ok":bool(r.get("raw_parse_ok",p is not None)),
-           "final_parse_ok":isinstance(p,dict),"repaired":bool(r.get("repaired",False))}
-        if isinstance(p,dict):
-            for f in FIELDS:
-                texts += [str(p.get(f,"")),str(c["reference"][f])]
-                pairs.append((len(details),f,len(texts)-2,len(texts)-1))
-        details.append(d)
 
-    embs=embed(texts) if texts else []
-    for di,f,ia,ib in pairs:
-        details[di][f+"_similarity"]=cos(embs[ia],embs[ib])
-
-    for d,r in zip(details,results):
-        c=cases[d["case_id"]]; p=r.get("parsed")
-        if not isinstance(p,dict):
-            for k in ("diagnostic_model_pass","measurement_pass","prediction_pass","no_guessing_pass","abstain_ok"):
-                d[k]=False
-            continue
-
-        must=bool(c["reference"].get("abstain",c["reference"].get("must_abstain",False)))
-        abst=bool(p.get("abstain"))
-        ds=norm(p.get("diagnostic_model","")); ms=norm(p.get("discriminating_measurement","")); ps=norm(p.get("predicted_result",""))
-        d["abstain_ok"]=abst==must
-        d["no_guessing_pass"]=not contains_any(ds,CERTAINTY) and (not must or abst)
-
-        d["diagnostic_concept_pass"]=diagnostic_concept_pass(c["category"],ds,must)
-        d["diagnostic_semantic_pass"]=d.get("diagnostic_model_similarity",0)>=a.diag_threshold
-        d["diagnostic_model_pass"]=(d["diagnostic_semantic_pass"] or d["diagnostic_concept_pass"]) and tokenish_len(ds)>=4
-
-        d["measurement_actionable"]=contains_any(ms,ACTION_WORDS) and tokenish_len(ms)>=4
-        d["measurement_pass"]=d.get("discriminating_measurement_similarity",0)>=a.measurement_threshold and d["measurement_actionable"]
-
-        d["prediction_structured"]=prediction_structured(ps,must) and (abst if must else True)
-        d["prediction_concept_pass"]=prediction_concept_pass(c["category"],ps,must)
-        d["prediction_semantic_pass"]=d.get("predicted_result_similarity",0)>=a.prediction_threshold
-        d["prediction_pass"]=(d["prediction_semantic_pass"] or d["prediction_concept_pass"]) and d["prediction_structured"]
-
-    def rate(k):
-        return sum(bool(x.get(k)) for x in details)/len(details) if details else 0.0
-
-    abst_cases=[x for x in details if bool(cases[x["case_id"]]["reference"].get("abstain",cases[x["case_id"]]["reference"].get("must_abstain",False)))]
-    metrics={"records":len(details),"raw_parse_rate":rate("raw_parse_ok"),"final_parse_rate":rate("final_parse_ok"),
-      "diagnostic_model_pass_rate":rate("diagnostic_model_pass"),"measurement_pass_rate":rate("measurement_pass"),
-      "prediction_pass_rate":rate("prediction_pass"),"no_guessing_pass_rate":rate("no_guessing_pass"),
-      "insufficient_data_abstention_rate":sum(bool(x.get("abstain_ok")) for x in abst_cases)/len(abst_cases) if abst_cases else 1.0}
-    metrics["overall_dimension_pass_rate"]=sum(sum(bool(x.get(k)) for k in ("diagnostic_model_pass","measurement_pass","prediction_pass","no_guessing_pass")) for x in details)/(4*len(details)) if details else 0
-    metrics["selection_score"]=0.25*metrics["diagnostic_model_pass_rate"]+0.30*metrics["measurement_pass_rate"]+0.30*metrics["prediction_pass_rate"]+0.15*metrics["no_guessing_pass_rate"]
-
-    metric_fields={
-      "raw_parse_rate":"raw_parse_ok",
-      "final_parse_rate":"final_parse_ok",
-      "diagnostic_model_pass_rate":"diagnostic_model_pass",
-      "measurement_pass_rate":"measurement_pass",
-      "prediction_pass_rate":"prediction_pass",
-      "no_guessing_pass_rate":"no_guessing_pass"
-    }
-    metric_intervals={}
-    for key,field in metric_fields.items():
-        metric_intervals[key]=wilson(sum(bool(x.get(field)) for x in details),len(details))
-    metric_intervals["insufficient_data_abstention_rate"]=wilson(
-        sum(bool(x.get("abstain_ok")) for x in abst_cases),len(abst_cases))
-
-    category_metrics={}
-    category_intervals={}
-    for cat in sorted({x["category"] for x in details}):
-        xs=[x for x in details if x["category"]==cat]
-        category_metrics[cat]={
-          "records":len(xs),
-          "diagnostic_model_pass_rate":sum(bool(x.get("diagnostic_model_pass")) for x in xs)/len(xs),
-          "measurement_pass_rate":sum(bool(x.get("measurement_pass")) for x in xs)/len(xs),
-          "prediction_pass_rate":sum(bool(x.get("prediction_pass")) for x in xs)/len(xs),
-          "no_guessing_pass_rate":sum(bool(x.get("no_guessing_pass")) for x in xs)/len(xs)
-        }
-        category_intervals[cat]={
-          key:wilson(sum(bool(x.get(field)) for x in xs),len(xs))
-          for key,field in {
-            "diagnostic_model_pass_rate":"diagnostic_model_pass",
-            "measurement_pass_rate":"measurement_pass",
-            "prediction_pass_rate":"prediction_pass",
-            "no_guessing_pass_rate":"no_guessing_pass"
-          }.items()
-        }
-
-    out={"status":"SCORED","scorer":"semantic-causal-v5-confidence",
-      "thresholds":{"diagnostic":a.diag_threshold,"measurement":a.measurement_threshold,
-                    "prediction":a.prediction_threshold},
-      "metrics":metrics,"metric_intervals_95":metric_intervals,
-      "category_metrics":category_metrics,"category_intervals_95":category_intervals,
-      "details":details}
-    Path(a.output).write_text(json.dumps(out,indent=2,ensure_ascii=False)+"\n")
-    print(json.dumps({"status":out["status"],"metrics":metrics,
-                      "metric_intervals_95":metric_intervals},ensure_ascii=False))
-    print("P510_QUALITY_V5=SCORED")
-
-if __name__=="__main__":
+if __name__ == '__main__':
     main()

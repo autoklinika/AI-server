@@ -1,104 +1,104 @@
 #!/usr/bin/env python3
+"""Paired evidence report, not a launch/prefinal gate. Fixed thresholds, no CLI overrides."""
 from __future__ import annotations
-
 import argparse
+import hashlib
+import importlib.util
 import json
 import random
 from pathlib import Path
 
-WEIGHTS = {
-    "diagnostic_model_pass": 0.25,
-    "measurement_pass": 0.30,
-    "prediction_pass": 0.30,
-    "no_guessing_pass": 0.15,
-}
-CORE = (
-    "diagnostic_model_pass_rate",
-    "measurement_pass_rate",
-    "prediction_pass_rate",
-    "no_guessing_pass_rate",
-    "insufficient_data_abstention_rate",
-    "overall_dimension_pass_rate",
-)
+SCORER_PATH = Path(__file__).resolve().parents[2] / 'benchmark/score_quality_benchmark_v5.py'
+spec = importlib.util.spec_from_file_location('p510_scorer', SCORER_PATH)
+scorer = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(scorer)
+DIMENSIONS = scorer.DIMENSIONS
 
-def load(path):
-    return json.loads(Path(path).read_text())
 
 def case_score(row):
-    return sum(weight * float(bool(row.get(key))) for key, weight in WEIGHTS.items())
+    return sum(row[k] for k in DIMENSIONS)/len(DIMENSIONS)
 
-def bootstrap_ci(values, resamples=5000, seed=20261001):
-    if not values:
-        return {"mean": 0.0, "low": 0.0, "high": 0.0, "n": 0}
+
+def bootstrap_ci(values, resamples=5000, seed=20261001, alpha=0.05):
+    if not values or resamples < 1000 or not 0 < alpha < 1:
+        raise ValueError('nonempty paired values and >=1000 resamples required')
     rng = random.Random(seed)
     n = len(values)
-    means = []
-    for _ in range(resamples):
-        means.append(sum(values[rng.randrange(n)] for _ in range(n)) / n)
-    means.sort()
-    lo = means[int(0.025 * (resamples - 1))]
-    hi = means[int(0.975 * (resamples - 1))]
-    return {"mean": sum(values) / n, "low": lo, "high": hi, "n": n}
+    means = sorted(sum(values[rng.randrange(n)] for _ in range(n))/n for _ in range(resamples))
+    return {'mean': sum(values)/n, 'low': means[int(alpha/2*(resamples-1))],
+            'high': means[int((1-alpha/2)*(resamples-1))], 'n': n, 'alpha': alpha}
+
+
+def validate_report(report):
+    if report.get('scorer') != scorer.SCORER or report.get('status') != 'SCORED':
+        raise ValueError('requires current scorer with no unresolved review')
+    rows = scorer.indexed(report['details'])
+    for row in rows.values():
+        if any(type(row.get(k)) is not bool for k in (*DIMENSIONS, 'must_abstain', 'raw_parse_ok', 'final_parse_ok')):
+            raise ValueError('nonboolean case score')
+        if row.get('review_required') is not False:
+            raise ValueError('unresolved review')
+    ids = [r.get('scenario_id') for r in rows.values()]
+    if any(not isinstance(x, str) or not x for x in ids) or len(set(ids)) != len(ids):
+        raise ValueError('missing/repeated scenarios')
+    if report['metrics'] != scorer.aggregate(list(rows.values()))[0]:
+        raise ValueError('aggregate does not match per-case scores')
+    binding = report.get('bindings', {})
+    for key in ('dataset_sha256', 'scorer_sha256', 'results_sha256'):
+        value = binding.get(key)
+        if not isinstance(value, str) or len(value) != 64 or any(c not in '0123456789abcdef' for c in value):
+            raise ValueError('missing/invalid digest binding')
+    if binding['scorer_sha256'] != scorer.digest(SCORER_PATH):
+        raise ValueError('scorer implementation changed')
+    return rows
+
+
+def compare(parent, candidate):
+    pd, cd = validate_report(parent), validate_report(candidate)
+    if pd.keys() != cd.keys():
+        raise ValueError('case sets differ')
+    for key in ('dataset_sha256', 'scorer_sha256'):
+        if parent['bindings'][key] != candidate['bindings'][key]:
+            raise ValueError('dataset/scorer binding differs')
+    for key in pd:
+        for field in ('scenario_id', 'category', 'must_abstain'):
+            if pd[key][field] != cd[key][field]:
+                raise ValueError('case metadata differs')
+    # Five candidates -> ten pairwise comparisons; six statistics per pair.
+    # Simultaneous conservative family-wise intervals; no winner from point noise.
+    alpha = .05 / (10 * 6)
+    ids = sorted(pd)
+    paired = bootstrap_ci([case_score(cd[k])-case_score(pd[k]) for k in ids], resamples=20000, alpha=alpha)
+    dimensions = {d: bootstrap_ci([int(cd[k][d])-int(pd[k][d]) for k in ids],
+                                  resamples=20000, alpha=alpha) for d in DIMENSIONS}
+    cm = candidate['metrics']
+    checks = {'at_least_240_scenarios': len(ids) >= 240,
+              'raw_and_final_parse': cm['raw_parse_rate'] == cm['final_parse_rate'] == 1.,
+              'no_guessing': cm['no_guessing_pass_rate'] >= .98,
+              'abstention': cm['insufficient_data_abstention_rate'] is not None and cm['insufficient_data_abstention_rate'] >= .95,
+              'sufficient_answers': cm['sufficient_data_answer_rate'] is not None and cm['sufficient_data_answer_rate'] >= .95,
+              'paired_improvement': paired['low'] > 0,
+              'dimension_noninferiority': all(x['low'] >= -.02 for x in dimensions.values())}
+    return {'status': 'EVIDENCE_FAVORS_CANDIDATE' if all(checks.values()) else 'INCONCLUSIVE_OR_REGRESSED',
+            'acceptance_authorized': False, 'checks': checks,
+            'paired_composite_delta': paired, 'paired_dimension_deltas': dimensions,
+            'bindings': {'parent': parent['bindings'], 'candidate': candidate['bindings']},
+            'limitations': ['Conditional on externally reviewed independent scenarios; IDs are not proof.',
+                           'Bootstrap intervals are approximate, including degenerate all-tie samples.',
+                           'Legacy regression, provenance, calibration and preflight remain separate mandatory checks.']}
+
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--parent", required=True)
-    ap.add_argument("--candidate", required=True)
-    ap.add_argument("--output", required=True)
-    ap.add_argument("--min-records", type=int, default=64)
-    ap.add_argument("--max-core-regression", type=float, default=0.03)
-    ap.add_argument("--noninferiority-margin", type=float, default=0.01)
-    ap.add_argument("--min-no-guessing", type=float, default=0.98)
-    ap.add_argument("--min-abstention", type=float, default=0.95)
-    ap.add_argument("--resamples", type=int, default=5000)
+    ap = argparse.ArgumentParser(description=__doc__)
+    for key in ('parent', 'candidate', 'output'):
+        ap.add_argument('--'+key, required=True)
     args = ap.parse_args()
+    out = compare(json.loads(Path(args.parent).read_text()), json.loads(Path(args.candidate).read_text()))
+    Path(args.output).write_text(json.dumps(out, indent=2, allow_nan=False)+'\n')
+    print(out['status'])
+    # An evidence report is never a PASS token for a runner.
+    raise SystemExit(2)
 
-    parent = load(args.parent)
-    candidate = load(args.candidate)
-    pd = {x["case_id"]: x for x in parent["details"]}
-    cd = {x["case_id"]: x for x in candidate["details"]}
-    same_cases = set(pd) == set(cd)
 
-    common = sorted(set(pd) & set(cd))
-    deltas = [case_score(cd[k]) - case_score(pd[k]) for k in common]
-    paired = bootstrap_ci(deltas, args.resamples)
-    pm, cm = parent["metrics"], candidate["metrics"]
-    metric_delta = {k: float(cm[k]) - float(pm[k]) for k in CORE}
-
-    checks = {
-        "same_cases": same_cases,
-        "minimum_records": len(common) >= args.min_records,
-        "candidate_parse": float(cm["final_parse_rate"]) >= 1.0,
-        "candidate_no_guessing": float(cm["no_guessing_pass_rate"]) >= args.min_no_guessing,
-        "candidate_abstention": float(cm["insufficient_data_abstention_rate"]) >= args.min_abstention,
-        "point_improvement": float(cm["selection_score"]) > float(pm["selection_score"]),
-        "paired_noninferior": paired["low"] >= -args.noninferiority_margin,
-        "core_regression_guard": all(v >= -args.max_core_regression for v in metric_delta.values()),
-    }
-    status = "PASS" if all(checks.values()) else "FAIL"
-    out = {
-        "status": status,
-        "checks": checks,
-        "records": len(common),
-        "parent_selection_score": pm["selection_score"],
-        "candidate_selection_score": cm["selection_score"],
-        "selection_score_delta": float(cm["selection_score"]) - float(pm["selection_score"]),
-        "paired_case_score_delta_95": paired,
-        "metric_delta": metric_delta,
-        "thresholds": {
-            "min_records": args.min_records,
-            "max_core_regression": args.max_core_regression,
-            "noninferiority_margin": args.noninferiority_margin,
-            "min_no_guessing": args.min_no_guessing,
-            "min_abstention": args.min_abstention,
-        },
-    }
-
-    Path(args.output).write_text(json.dumps(out, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
-    print(json.dumps(out, ensure_ascii=False, sort_keys=True))
-    print("P510_PAIRED_GATE=" + status)
-    if status != "PASS":
-        raise SystemExit(1)
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
