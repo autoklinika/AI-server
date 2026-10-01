@@ -241,7 +241,7 @@ def main():
       "parent_adapter":"/srv/ai-data/training/p5/checkpoints/p58-p58-seed1-20261001/step-008",
       "train_records":len(train),"dev_records":len(dev),"mini_dev_records":len(mini),
       "thermal_train_records":sum(r["metadata"]["category"]=="thermal_intermittent" for r in train),
-      "checkpoint_interval":8,"max_checkpoints":4,"early_stop_patience":2,
+      "checkpoint_interval":8,"max_checkpoints":8,"early_stop_patience":2,
       "lr":0.0000003,
       "selection_focus":"thermal predicted_result first; preserve diagnostic/measurement/no_guessing",
       "p58_dev_role":"revealed regression and prefinal gate only",

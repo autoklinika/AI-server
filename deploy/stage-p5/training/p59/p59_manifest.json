@@ -4,7 +4,7 @@
   "dev_sha256": "ca941010f9ea218259c867d3d283690c590417c521808e92f0a0957126010669",
   "early_stop_patience": 2,
   "lr": 3e-07,
-  "max_checkpoints": 4,
+  "max_checkpoints": 8,
   "mini_dev_records": 14,
   "mini_dev_sha256": "f02ce4ae866f8e4abe739de7bbd149ad97f6c32ff15a72438f4036c1bc424c1f",
   "p58_dev_role": "revealed regression and prefinal gate only",
