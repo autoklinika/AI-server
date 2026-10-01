@@ -67,6 +67,22 @@ def notify(event: str, message: str) -> None:
         return
 
 
+EXPECTED_SOURCE = "//globalnas.local/AI_Platform"
+EXPECTED_FS = "cifs"
+
+
+def select_globalnas_mount(findmnt_output: str) -> tuple[str, str] | None:
+    matches: list[tuple[str, str]] = []
+    for raw in findmnt_output.splitlines():
+        fields = raw.split()
+        if len(fields) != 2:
+            continue
+        source, fs_type = fields
+        if source == EXPECTED_SOURCE and fs_type == EXPECTED_FS:
+            matches.append((source, fs_type))
+    return matches[-1] if matches else None
+
+
 def mount_state() -> tuple[bool, str]:
     result = subprocess.run(
         ["findmnt", "-T", str(TARGET_ROOT), "-n", "-o", "SOURCE,FSTYPE"],
@@ -77,12 +93,10 @@ def mount_state() -> tuple[bool, str]:
     )
     if result.returncode != 0:
         return False, "GlobalNAS mount unavailable"
-    fields = result.stdout.split()
-    if len(fields) != 2:
-        return False, "GlobalNAS mount state invalid"
-    source, fs_type = fields
-    if source != "//globalnas.local/AI_Platform" or fs_type != "cifs":
+    selected = select_globalnas_mount(result.stdout)
+    if selected is None:
         return False, "GlobalNAS mount source/type mismatch"
+    source, _ = selected
     return True, source
 def check() -> dict[str, object]:
     STATUS_ROOT.mkdir(parents=True, exist_ok=True)

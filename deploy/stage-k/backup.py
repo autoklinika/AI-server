@@ -38,6 +38,13 @@ MARKER_SCHEMA_VERSION = 1
 MIN_TARGET_FREE_BYTES = 1024 * 1024 * 1024
 
 
+def select_network_fs(findmnt_output: str) -> str:
+    layers = [line.strip() for line in findmnt_output.splitlines() if line.strip()]
+    approved = [fs_type for fs_type in layers if fs_type in NETWORK_FS]
+    require(approved, f"target is not approved network FS: {','.join(layers) or '<none>'}")
+    return approved[-1]
+
+
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -56,10 +63,9 @@ def verify_target(root: Path, allow_local: bool) -> dict[str, object]:
             "NAS marker purpose mismatch")
     require(marker_data.get("schema_version") == MARKER_SCHEMA_VERSION,
             "NAS marker schema mismatch")
-    fs_type = run([
+    fs_type = select_network_fs(run([
         "findmnt", "-T", str(root), "-n", "-o", "FSTYPE"
-    ]).strip()
-    require(fs_type in NETWORK_FS, f"target is not approved network FS: {fs_type}")
+    ]))
 
     usage = os.statvfs(root)
     free_bytes = usage.f_bavail * usage.f_frsize
