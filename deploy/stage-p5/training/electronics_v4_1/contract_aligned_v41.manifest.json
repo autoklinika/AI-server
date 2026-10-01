@@ -1,0 +1,18 @@
+{
+  "abstain_false_train": 120,
+  "abstain_true_train": 24,
+  "dataset_id": "contract-aligned-v4.1",
+  "holdout_records": 48,
+  "holdout_sha256": "002a2bf220e89bd84979eaec66c73181c9c4ed957ca16a905d675264e5d7606f",
+  "mixed_records": 168,
+  "mixed_sha256": "17bce069ec1bdc267ac02a8c9160307984ff3e4307eca76827715023b19a9e99",
+  "p55_frozen_sha256": "8ba6b0a767c4649949a399e38e276287cc3058d89e89fca86d44b3ddb1858fa5",
+  "p55_training_exclusion": true,
+  "parent_adapter": "electronics-v4-measurement-r3-20261001",
+  "principle": "one case = one production-contract JSON; explicit calibrated abstention; v3 replay",
+  "replay_records": 24,
+  "schema_version": 1,
+  "system_contract_sha256": "dddd0cd48a57ada48838c3162fabc7cfeb5b881604e73d297e5f40244070636c",
+  "train_records": 144,
+  "train_sha256": "0bcbd7d1edb2fb38cb56779cbb77c54ce97ff1db8aaa369f0ee22e00fd93dfea"
+}
