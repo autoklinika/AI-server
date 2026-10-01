@@ -42,7 +42,7 @@ def main():
         if not isinstance(p,dict):
             for k in ("diagnostic_model_pass","measurement_pass","prediction_pass","no_guessing_pass","abstain_ok"): d[k]=False
             continue
-        must=bool(c["reference"]["abstain"]); abst=bool(p.get("abstain"))
+        must=bool(c["reference"].get("abstain",c["reference"].get("must_abstain",False))); abst=bool(p.get("abstain"))
         ds=norm(p.get("diagnostic_model","")); ms=norm(p.get("discriminating_measurement","")); ps=norm(p.get("predicted_result",""))
         d["abstain_ok"]=abst==must
         d["no_guessing_pass"]=not contains_any(ds,CERTAINTY) and (not must or abst)
@@ -55,7 +55,7 @@ def main():
             d["prediction_structured"]=contains_any(ps,BRANCH_WORDS) and tokenish_len(ps)>=5
         d["prediction_pass"]=d.get("predicted_result_similarity",0)>=a.prediction_threshold and d["prediction_structured"]
     def rate(k): return sum(bool(x.get(k)) for x in details)/len(details) if details else 0.0
-    abst_cases=[x for x in details if bool(cases[x["case_id"]]["reference"]["abstain"])]
+    abst_cases=[x for x in details if bool(cases[x["case_id"]]["reference"].get("abstain",cases[x["case_id"]]["reference"].get("must_abstain",False)))]
     metrics={"records":len(details),"raw_parse_rate":rate("raw_parse_ok"),"final_parse_rate":rate("final_parse_ok"),
       "diagnostic_model_pass_rate":rate("diagnostic_model_pass"),"measurement_pass_rate":rate("measurement_pass"),
       "prediction_pass_rate":rate("prediction_pass"),"no_guessing_pass_rate":rate("no_guessing_pass"),
