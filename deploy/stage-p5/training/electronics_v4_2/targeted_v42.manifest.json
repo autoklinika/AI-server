@@ -1,0 +1,22 @@
+{
+  "abstain_false_train": 164,
+  "abstain_true_train": 28,
+  "dataset_id": "targeted-v4.2",
+  "focus": [
+    "discriminating_measurement",
+    "conditional_predicted_result",
+    "abstention_calibration"
+  ],
+  "holdout_records": 57,
+  "holdout_sha256": "ee3cb7743f4813c0a0f0f1a2fb55396b05aeccca28f2d68c65e192db24e0368d",
+  "mixed_records": 210,
+  "mixed_sha256": "f7026e0eb35c49ec5cb4f8f5169bf6a247a9aa2147107ac95ea47640fd893c15",
+  "p55_frozen_sha256": "8ba6b0a767c4649949a399e38e276287cc3058d89e89fca86d44b3ddb1858fa5",
+  "p55_training_exclusion": true,
+  "parent_adapter": "electronics-v4.1-contract-r1-20261001",
+  "protected_skill": "good_bad_channel_comparison",
+  "replay_records": 18,
+  "schema_version": 1,
+  "train_records": 192,
+  "train_sha256": "ef6a1e9ce039b92fc03bd3be20061183583293f6401addfe3c43dda9be6278da"
+}
