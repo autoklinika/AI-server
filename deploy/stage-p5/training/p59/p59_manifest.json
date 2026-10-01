@@ -1,0 +1,20 @@
+{
+  "checkpoint_interval": 8,
+  "dev_records": 28,
+  "dev_sha256": "ca941010f9ea218259c867d3d283690c590417c521808e92f0a0957126010669",
+  "early_stop_patience": 2,
+  "lr": 3e-07,
+  "max_checkpoints": 4,
+  "mini_dev_records": 14,
+  "mini_dev_sha256": "f02ce4ae866f8e4abe739de7bbd149ad97f6c32ff15a72438f4036c1bc424c1f",
+  "p58_dev_role": "revealed regression and prefinal gate only",
+  "p58_final_role": "sealed final; never used for training, selection, threshold tuning, or early stopping",
+  "p58_final_sha256": "c6b3887accf6f3778be121011b15accb86339002c70c3e6dd50a6f524a9c420d",
+  "parent_adapter": "/srv/ai-data/training/p5/checkpoints/p58-p58-seed1-20261001/step-008",
+  "pipeline_id": "P5.9-thermal-causal-v1",
+  "schema_version": 1,
+  "selection_focus": "thermal predicted_result first; preserve diagnostic/measurement/no_guessing",
+  "thermal_train_records": 48,
+  "train_records": 64,
+  "train_sha256": "a90f31af5e1fe39e89c27ee3c68dbae82c95692ee27de52eb4e6ba5493a6e696"
+}
