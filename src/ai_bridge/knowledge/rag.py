@@ -102,8 +102,10 @@ def build_rag_prompt(
         "missing in insufficiency_reason, and include only claims that are still directly supported. "
         "Prefer exact identifiers, measurements, pins, DTCs and conditions from sources. "
         "Keep the response concise: one technical point per claim, no repeated claims, "
-        "no repeated insufficiency explanation. If context is insufficient, explain "
-        "what is missing in at most two short sentences."
+        "and no more than 12 claims total. Use no more than 8 unique source refs per claim. "
+        "When the question explicitly asks for one fact or one technical point, return exactly "
+        "one claim. Do not repeat the insufficiency explanation. If context is insufficient, "
+        "explain what is missing in at most two short sentences."
     )
     user = f"QUESTION:\n{question.strip()}\n\nSOURCES:\n{source_text}"
     return RAGPrompt(

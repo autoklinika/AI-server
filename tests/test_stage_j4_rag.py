@@ -98,4 +98,7 @@ def test_rag_prompt_requires_concise_non_repeating_output():
     system = prompt.messages[0]["content"]
     assert "Keep the response concise" in system
     assert "no repeated claims" in system
+    assert "no more than 12 claims total" in system
+    assert "no more than 8 unique source refs per claim" in system
+    assert "return exactly one claim" in system
     assert "at most two short sentences" in system
