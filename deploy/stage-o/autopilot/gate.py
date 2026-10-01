@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import fcntl
 import importlib.util
+import json
 import os
 from pathlib import Path
 import re
@@ -32,6 +33,9 @@ CRT_TABLES = {
     "crt_ers_links",
     "crt_ai_findings",
 }
+DEFAULT_LLM_MODEL = "qwen3.8:27b-p4-64k-gpu"
+OLLAMA_PRELOAD_UNIT = Path("/etc/systemd/system/ollama-preload.service")
+OLLAMA_PRELOAD_GENERIC = Path("/usr/local/sbin/ollama-preload-default")
 
 _original_verify = e.verify_release
 e.D6 = INITIAL_BASE
@@ -185,6 +189,80 @@ def atomic_current(target: Path) -> None:
     os.replace(temporary, e.CURRENT)
 
 
+def release_llm_model(release: Path) -> str:
+    manifest = (release / "metadata/release-manifest.yaml").read_text(encoding="utf-8")
+    match = re.search(
+        r"(?m)^  llm_model: ([A-Za-z0-9][A-Za-z0-9_.:/-]{0,127})$",
+        manifest,
+    )
+    require(match is not None)
+    return match.group(1)
+
+
+def preload_script_text() -> str:
+    return """#!/usr/bin/env bash
+set -euo pipefail
+
+MODEL="${AI_PLATFORM_DEFAULT_OLLAMA_MODEL:?missing AI_PLATFORM_DEFAULT_OLLAMA_MODEL}"
+URL="http://127.0.0.1:11434"
+
+for i in $(seq 1 60); do
+    if curl -fsS "$URL/api/version" >/dev/null 2>&1; then
+        printf '%s\\n' "{\\\"model\\\":\\\"$MODEL\\\",\\\"keep_alive\\\":-1}" \\
+        | curl -fsS "$URL/api/generate" \\
+            -H 'Content-Type: application/json' \\
+            --data-binary @-
+        exit $?
+    fi
+    sleep 1
+done
+
+echo "ERROR: Ollama API not ready" >&2
+exit 1
+"""
+
+
+def preload_unit_text(model: str) -> str:
+    require(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}", model) is not None)
+    return f"""[Unit]
+Description=Preload default AI Platform LLM into Ollama
+Requires=ollama.service
+After=ollama.service
+
+[Service]
+Type=oneshot
+Environment="AI_PLATFORM_DEFAULT_OLLAMA_MODEL={model}"
+ExecStart=/usr/local/sbin/ollama-preload-default
+TimeoutStartSec=240
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+"""
+
+
+def configure_preload_model(model: str) -> None:
+    OLLAMA_PRELOAD_GENERIC.write_text(preload_script_text(), encoding="utf-8")
+    os.chmod(OLLAMA_PRELOAD_GENERIC, 0o755)
+    OLLAMA_PRELOAD_UNIT.write_text(preload_unit_text(model), encoding="utf-8")
+    os.chmod(OLLAMA_PRELOAD_UNIT, 0o644)
+    e.run(["systemctl", "daemon-reload"])
+    e.run(["systemctl", "restart", "ollama-preload.service"], timeout=300)
+    loaded = json.loads(
+        e.run(["curl", "-fsS", "http://127.0.0.1:11434/api/ps"])
+    ).get("models", [])
+    require(
+        any(item.get("name") == model or item.get("model") == model for item in loaded)
+    )
+
+
+def restore_preload_baseline(baseline: dict) -> None:
+    OLLAMA_PRELOAD_UNIT.write_text(baseline["preload_unit"], encoding="utf-8")
+    os.chmod(OLLAMA_PRELOAD_UNIT, 0o644)
+    e.run(["systemctl", "daemon-reload"])
+    e.run(["systemctl", "restart", "ollama-preload.service"], timeout=300)
+
+
 def switch(target: Path, candidate: Path, cfg: dict, baseline: dict) -> None:
     rollback, _stamp = baseline_release(baseline)
     require(e.CURRENT.resolve(strict=False) in (rollback, candidate))
@@ -208,6 +286,12 @@ def switch(target: Path, candidate: Path, cfg: dict, baseline: dict) -> None:
         mutating = True
         e.run(["systemctl", "stop", "ai-gateway.service", "ai-bridge.service"])
         atomic_current(target)
+        if target == candidate:
+            model = release_llm_model(candidate)
+            require(model == DEFAULT_LLM_MODEL)
+            configure_preload_model(model)
+        else:
+            restore_preload_baseline(baseline)
         e.run(["systemctl", "start", "ai-gateway.service", "ai-bridge.service"])
         for _ in range(45):
             try:
@@ -581,6 +665,7 @@ def main(step: str) -> None:
                     "systemctl", "show", "ai-bridge-analysis.timer",
                     "-p", "ActiveState", "--value",
                 ]),
+                "preload_unit": OLLAMA_PRELOAD_UNIT.read_text(encoding="utf-8"),
                 "rollback_checksums": e.digest(rollback / "metadata/SHA256SUMS"),
                 "schema": schema_version(),
             }
