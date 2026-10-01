@@ -58,39 +58,43 @@ ZONES=("driver bramki","sekcja wejścia analogowego","lokalny regulator",
        "bufor wyjściowy","okolica złącza","obszar via pod układem")
 TEMPS=(48,56,63,71,79,86)
 RAILS=(1.8,2.5,3.3,5.0,8.0,12.0)
+DWELLS=(9,14,21,29,38,49,61,74)
+LOADS=(25,35,45,55,65,75,85,95)
 
 def thermal_case(block,kind):
     zone=ZONES[(block+kind)%len(ZONES)]
     temp=TEMPS[(2*block+kind)%len(TEMPS)]
     rail=RAILS[(block+2*kind)%len(RAILS)]
+    dwell=DWELLS[block]
+    load=LOADS[block]
     rid=f"P59-TRAIN-THM-{block:02d}-{kind}"
     if kind==0:
-        user=f"Po osiągnięciu około {temp}°C zanika funkcja w strefie {zone}. Komenda wejściowa pozostaje poprawna. Trzeba rozdzielić lokalne VDD, sam stopień i połączenie."
+        user=f"Po osiągnięciu około {temp}°C i {dwell} s stabilizacji zanika funkcja w strefie {zone}. Komenda wejściowa pozostaje poprawna. Trzeba rozdzielić lokalne VDD, sam stopień i połączenie."
         model="usterka jest termicznie lokalna; nadal trzeba rozdzielić lokalne zasilanie, element aktywny i połączenie"
         test="podczas kontrolowanego heat/cool mierz jednocześnie lokalne VDD oraz wejście i wyjście badanego stopnia"
         pred="jeśli pierwsze zmienia się VDD, kierunek jest zasilaniowy; jeśli VDD i wejście są stabilne, a zmienia się wyjście, zawęź element lub jego połączenie"
     elif kind==1:
-        user=f"W strefie „{zone}” selektywne chłodzenie natychmiast przywraca działanie przy {temp}°C. Sam sygnał sterujący przed strefą nie zmienia się."
+        user=f"W strefie „{zone}” selektywne chłodzenie natychmiast przywraca działanie przy {temp}°C i obciążeniu {load}%. Sam sygnał sterujący przed strefą nie zmienia się."
         model="lokalizacja termiczna jest wiarygodna, ale przyczyną może być lokalne zasilanie, aktywny stopień albo interconnect"
         test="rejestruj równolegle zasilanie strefy, sygnał przed stopniem i sygnał po stopniu podczas cyklu ogrzewanie-chłodzenie"
         pred="jeśli zmienia się zasilanie strefy, badaj regulator lub tor zasilania; jeśli zasilanie i wejście są stabilne, a wyjście reaguje, problem jest w stopniu lub interconnect"
     elif kind==2:
-        user=f"Na gorąco około {temp}°C wejście drivera pozostaje poprawne, lecz amplituda wyjścia maleje. Lokalna szyna ma nominalnie {rail:g} V."
+        user=f"Na gorąco około {temp}°C przy obciążeniu {load}% wejście drivera pozostaje poprawne, lecz amplituda wyjścia maleje. Lokalna szyna ma nominalnie {rail:g} V."
         model="problem jest za wejściem drivera i trzeba rozdzielić termiczny spadek VDD, sam driver oraz zwiększone obciążenie wyjścia"
         test="mierz równocześnie IN, lokalne VDD, OUT lub VGS oraz prąd obciążenia podczas przejścia przez temperaturę objawu"
         pred="jeśli VDD spada, badaj zasilanie; jeśli IN i VDD są stabilne, a rośnie prąd obciążenia przy spadku OUT, podejrzewaj downstream, w przeciwnym razie driver"
     elif kind==3:
-        user=f"Tor analogowy zaczyna dryfować dopiero przy {temp}°C. Vref i sygnał wejściowy można mierzyć równocześnie z wyjściem."
+        user=f"Tor analogowy K{block+1} zaczyna dryfować dopiero przy {temp}°C. Vref i sygnał wejściowy można mierzyć równocześnie z wyjściem."
         model="dryft termiczny może pochodzić z Vref, badanego stopnia analogowego albo jego połączenia, więc trzeba obserwować kolejność zmian"
         test="w czasie kontrolowanego nagrzewania rejestruj Vref, wejście i wyjście stopnia w tej samej osi czasu"
         pred="jeśli pierwsze dryfuje Vref, przyczyna jest referencyjna; jeśli Vref i wejście są stabilne, a dryfuje wyjście, zawęź stopień lub jego połączenie"
     elif kind==4:
-        user=f"Po nagrzaniu {zone} do około {temp}°C pojawia się przerwa chwilowa. Docisk mechaniczny czasem zmienia objaw, ale nie jest to rozstrzygające."
+        user=f"Po nagrzaniu {zone} do około {temp}°C przez {dwell} s pojawia się przerwa chwilowa. Docisk mechaniczny czasem zmienia objaw, ale nie jest to rozstrzygające."
         model="usterka może być połączeniem termomechanicznym albo elementem aktywnym w tej samej strefie; sam efekt docisku nie rozstrzyga"
         test="podczas heat/cool mierz czteroprzewodowy spadek na podejrzanym połączeniu oraz wejście i wyjście stopnia bez zmiany punktów sondowania"
         pred="jeśli skok spadku na połączeniu wyprzedza utratę funkcji, kierunek jest interconnect; jeśli spadek pozostaje stabilny, a zmienia się wyjście przy stabilnym wejściu, kierunek jest aktywny stopień"
     else:
-        user=f"Lokalny regulator {rail:g} V działa na zimno, a po ogrzaniu do {temp}°C funkcja downstream zanika. Napięcie przed regulatorem jest dostępne do pomiaru."
+        user=f"Lokalny regulator {rail:g} V działa na zimno, a po ogrzaniu do {temp}°C przy obciążeniu {load}% funkcja downstream zanika. Napięcie przed regulatorem jest dostępne do pomiaru."
         model="trzeba rozdzielić termiczną niewydolność regulatora od upstream oraz od przeciążenia downstream"
         test="podczas narastania temperatury rejestruj wejście regulatora, jego wyjście i prąd downstream"
         pred="jeśli spada wejście regulatora, problem jest upstream; jeśli wejście jest stabilne i wyjście spada przy prawidłowym prądzie, podejrzewaj regulator, a wzrost prądu wskazuje downstream"
@@ -103,7 +107,31 @@ ABSTAIN_CASES=(
  ("Klient mówi tylko, że po schłodzeniu moduł wraca do pracy; brak lokalizacji termicznej i brak pomiarów z czasu awarii.",
   "sama zależność od temperatury nie wystarcza do lokalizacji przyczyny",
   "wykonaj selektywny heat/cool stref i rejestruj zasilania oraz krytyczne wejścia i wyjścia",
-  "jeśli jedna strefa i jeden sygnał korelują z objawem, można dopiero zawężać tę gałąź")
+  "jeśli jedna strefa i jeden sygnał korelują z objawem, można dopiero zawężać tę gałąź"),
+ ("Moduł resetuje się po nagrzaniu, ale nie zapisano przebiegu głównych szyn, RESET ani zegara w chwili resetu.",
+  "brakuje danych potrzebnych do rozdzielenia brownoutu, toru resetu i problemu zegara",
+  "zarejestruj równocześnie główne szyny, RESET i zegar podczas kontrolowanego cyklu temperaturowego",
+  "pierwszy sygnał, który odchyli się przed resetem, wyznaczy właściwą gałąź diagnostyczną"),
+ ("Kanał analogowy dryfuje na gorąco, ale brak jednoczesnego pomiaru Vref, wejścia i pewnego kanału referencyjnego.",
+  "nie ma wystarczających danych, aby odróżnić dryft referencji od lokalnego toru analogowego",
+  "zmierz Vref, wejście badanego kanału i pewny kanał referencyjny w tej samej osi czasu podczas heat/cool",
+  "dopiero porównanie kolejności dryftu pokaże, czy problem jest wspólny czy lokalny"),
+ ("Po nagrzaniu zrywa się komunikacja, lecz nie ma przebiegów magistrali ani pomiaru zasilania transceivera z chwili błędu.",
+  "sam fakt utraty komunikacji nie rozdziela transceivera, zasilania i problemu po stronie sterownika",
+  "rejestruj magistralę, lokalne VDD transceivera oraz sygnały logiczne TX/RX w chwili wystąpienia błędu",
+  "pierwsza nieprawidłowość pozwoli rozdzielić zasilanie, warstwę fizyczną i sterowanie"),
+ ("Wyjście mocy zanika po nagrzaniu, ale nie wiadomo czy w tej chwili obecna jest komenda wejściowa ani VDD drivera.",
+  "bez komendy i lokalnego zasilania nie można zawęzić problemu do drivera lub downstream",
+  "zmierz równocześnie komendę, VDD drivera i wyjście podczas termicznego odtworzenia objawu",
+  "dopiero zestaw tych trzech sygnałów pozwoli wskazać etap, na którym pojawia się pierwsza nieprawidłowość"),
+ ("Pobór prądu modułu rośnie na gorąco, ale nie ma pomiaru prądów gałęzi ani lokalizacji strefy, która reaguje na temperaturę.",
+  "wzrost prądu całego modułu nie wystarcza do wskazania gałęzi lub elementu",
+  "wykonaj selektywny heat/cool i porównaj prądy głównych gałęzi z lokalnymi spadkami napięcia",
+  "gałąź, której prąd lub spadek zmieni się jako pierwszy razem z temperaturą, stanie się kandydatem do dalszej diagnostyki"),
+ ("Po rozgrzaniu pojawia się błąd czujnika, ale nie ma wartości surowej, napięcia referencyjnego ani porównania z drugim kanałem.",
+  "kod błędu bez danych surowych nie rozdziela czujnika, referencji i toru wejściowego",
+  "zarejestruj wartość surową, Vref i drugi pewny kanał podczas kontrolowanego nagrzewania",
+  "dopiero zgodność lub rozjazd tych sygnałów pozwoli rozdzielić źródło błędu")
 )
 
 def abstain_case(block):
