@@ -185,11 +185,36 @@ def main():
       "prediction_pass_rate":0.90,"no_guessing_pass_rate":0.98,"insufficient_data_abstention_rate":1.0,
       "overall_dimension_pass_rate":0.90}
     failed={k:{"actual":metrics[k],"required":v} for k,v in gates.items() if metrics[k]+1e-12<v}
-    out={"status":"PASS" if not failed else "FAIL","scorer":"semantic-causal-v4",
-      "thresholds":{"diagnostic":a.diag_threshold,"measurement":a.measurement_threshold,"prediction":a.prediction_threshold},
-      "metrics":metrics,"gates":gates,"failed_gates":failed,"details":details}
+
+    category_metrics={}
+    for cat in sorted({x["category"] for x in details}):
+        xs=[x for x in details if x["category"]==cat]
+        category_metrics[cat]={
+          "records":len(xs),
+          "diagnostic_model_pass_rate":sum(bool(x.get("diagnostic_model_pass")) for x in xs)/len(xs),
+          "measurement_pass_rate":sum(bool(x.get("measurement_pass")) for x in xs)/len(xs),
+          "prediction_pass_rate":sum(bool(x.get("prediction_pass")) for x in xs)/len(xs),
+          "no_guessing_pass_rate":sum(bool(x.get("no_guessing_pass")) for x in xs)/len(xs)
+        }
+
+    category_floor=0.80
+    failed_category_gates={}
+    for cat,m in category_metrics.items():
+        if m["records"] < 5:
+            continue
+        for k in ("diagnostic_model_pass_rate","measurement_pass_rate","prediction_pass_rate"):
+            if m[k]+1e-12 < category_floor:
+                failed_category_gates[f"{cat}.{k}"]={"actual":m[k],"required":category_floor}
+
+    status="PASS" if not failed and not failed_category_gates else "FAIL"
+    out={"status":status,"scorer":"semantic-causal-v4",
+      "thresholds":{"diagnostic":a.diag_threshold,"measurement":a.measurement_threshold,
+                    "prediction":a.prediction_threshold,"category_floor":category_floor},
+      "metrics":metrics,"category_metrics":category_metrics,"gates":gates,"failed_gates":failed,
+      "failed_category_gates":failed_category_gates,"details":details}
     Path(a.output).write_text(json.dumps(out,indent=2,ensure_ascii=False)+"\n")
-    print(json.dumps({"status":out["status"],"metrics":metrics,"failed_gates":failed},ensure_ascii=False))
+    print(json.dumps({"status":out["status"],"metrics":metrics,"failed_gates":failed,
+                      "failed_category_gates":failed_category_gates},ensure_ascii=False))
     print("P59_QUALITY_V4="+out["status"])
 
 if __name__=="__main__":
