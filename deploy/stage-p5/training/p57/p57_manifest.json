@@ -1,0 +1,22 @@
+{
+  "checkpoint_interval": 8,
+  "dev_records": 28,
+  "dev_sha256": "feee8aebc9db6e66a60efe027787d989728ce0b8eaaff874860884d9203c9bd5",
+  "early_stop_patience": 2,
+  "final_policy": "never used for training, checkpoint selection, threshold tuning, or early stopping",
+  "final_records": 56,
+  "final_sha256": "5a09c4d53ff4f961402d57aaf03347d9f36bb5c10d1ecc7a7fc3243d6f987059",
+  "legacy_p55_role": "regression_only",
+  "legacy_p55_sha256": "8ba6b0a767c4649949a399e38e276287cc3058d89e89fca86d44b3ddb1858fa5",
+  "max_checkpoints": 8,
+  "max_regression": 0.02,
+  "mini_dev_records": 14,
+  "mini_dev_sha256": "1e437d58c58f838826b1ed56817c36a8aea3e93fdd181412ec296850eb9d6991",
+  "parent_adapter": "electronics-v4.1-contract-r1-20261001",
+  "pipeline_id": "P5.7-stable-training-v1",
+  "regression_sha256": "d2f34d7caf370a6ec429df58fabd479f48ffcfc03f33396312a321b0f8e179c0",
+  "regression_slice_records": 16,
+  "schema_version": 1,
+  "train_records": 144,
+  "train_sha256": "f8ba03cddf116f15bda39c503be006a38911b6e270d76646406b8d79fcba2216"
+}
