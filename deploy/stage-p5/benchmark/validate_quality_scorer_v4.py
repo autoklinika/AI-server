@@ -50,6 +50,14 @@ def main():
     check("vague_generic_prediction",
           v4.prediction_structured("Ten test pozwoli znaleźć problem."), False)
 
+    # Active injection/isolation are valid actionable diagnostic operations.
+    check("active_injection_action",
+          v4.contains_any("Zasilaj kontrolowanym napięciem z limitem prądu.",v4.ACTION_WORDS), True)
+    check("isolation_action",
+          v4.contains_any("Odłącz badaną gałąź i powtórz pomiar.",v4.ACTION_WORDS), True)
+    check("non_actionable_measurement",
+          v4.contains_any("Należy rozważyć dalszą diagnostykę.",v4.ACTION_WORDS), False)
+
     # Abstention concept should distinguish missing evidence from confident guessing.
     check("abstain_diag_valid",
           v4.diagnostic_concept_pass("insufficient_data",
