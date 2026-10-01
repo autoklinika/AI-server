@@ -43,6 +43,8 @@ def main():
       "dev_sha":sha(files["dev"])==m["dev_sha256"],
       "mini_sha":sha(files["mini"])==m["mini_dev_sha256"],
       "p58_final_sha":sha(P58_FINAL)==m["p58_final_sha256"],
+      "unique_train_prompts":len(ttext)==len(train),
+      "unique_dev_prompts":len(dtext)==len(dev),
       "train_dev_disjoint":not bool(ttext & dtext),
       "train_final_disjoint":not bool(ttext & ftext),
       "dev_final_disjoint":not bool(dtext & ftext),
