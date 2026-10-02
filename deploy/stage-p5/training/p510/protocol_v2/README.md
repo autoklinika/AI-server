@@ -130,3 +130,11 @@ The next external dependency is a named independent domain reviewer/custodian wh
 assess causal correctness and exposure. Review alone cannot turn this packet into 880
 cases: the full disjoint pools, independent calibration and execution/gate implementation
 are also outstanding. No final/test/golden content is needed for that preparatory work.
+
+## Automotive acquisition tranche — 2026-10-02
+
+The fail-closed acquisition packet now adds 32 primary technical source families and 40 automotive-first causal-family candidates, exactly 5 per domain. Seventeen source responses are fetched and hash-bound; 15 raw fetch attempts failed and carry no fabricated payload hash.
+
+All 40 candidates remain QUARANTINE / NOT_CERTIFIED with unknown exposure for all five adapter lineages. Twenty candidates have explicit possible-overlap review holds. None are assigned to parent-selection, selection-dev or prefinal.
+
+The packet is validated by `acquisition.py` and adversarial `test_acquisition.py`. Automated review cannot authorize training or replace an independent technical reviewer/custodian. See `ACQUISITION_REPORT.md` for the exact disposition and remaining gate.

@@ -13,11 +13,14 @@ sys.path.insert(0, str(HERE.parent))
 import compare_quality_v5 as compare
 try:
     from protocol_v2 import simulation_evidence as simulation
+    from protocol_v2 import acquisition
 except ModuleNotFoundError:
     import simulation_evidence as simulation
+    import acquisition
 
 FILES = ('protocol.json', 'sources.json', 'families.json', 'exposure_ledger.json',
-         'calibration.json', 'precision.json', 'simulation_evidence.json')
+         'calibration.json', 'precision.json', 'simulation_evidence.json',
+         'acquisition_sources.json', 'acquisition_candidates.json')
 DOMAINS = {'power_integrity', 'analog_sensor_chain', 'actuator_power_stage',
            'digital_timing_reset', 'vehicle_network', 'pcb_fault_localization',
            'intermittent_environmental', 'ecu_system_isolation'}
@@ -51,6 +54,7 @@ def split_guard(rows):
                 raise ValueError('missing causal metadata: ' + field)
         keys = [('source', r['source_family_id']), ('cluster', r['causal_cluster_id']),
                 ('causal_fingerprint', normalized(r['topology'] + ' ' + r['mechanism']))]
+        keys.extend(('source', source) for source in r.get('source_family_ids', []))
         for key in keys:
             if key in owners and owners[key] != r['role']:
                 raise ValueError('cross-role source/causal-family reuse')
@@ -122,8 +126,11 @@ def inspect(bundle):
             or led_sim.get('real_world_representativeness_certified') is not False
             or led_sim.get('eligible_roles') != []):
         raise ValueError('simulation exposure ledger overclaims evidence')
+    acquired = acquisition.inspect(bundle['acquisition_sources.json'], bundle['acquisition_candidates.json'],
+                                   src, rows, DOMAINS, record_hash, split_guard, normalized)
     return {'status': 'BLOCKED_INDEPENDENT_EVIDENCE', 'acceptance_authorized': False,
             'automated_checks_only': True, 'seed_families': len(rows),
+            'acquisition': acquired,
             'domains': dict(sorted(Counter(r['domain'] for r in rows).items())),
             'certified_scenarios': 0, 'simulation_verified_quarantine_families': 8, 'parent': None, 'sealed_final': 'UNOPENED',
             'blockers': ['Eight executable mathematical oracles are verified, but P5 exposure and real-world representativeness remain uncertified; all seeds stay quarantined.',

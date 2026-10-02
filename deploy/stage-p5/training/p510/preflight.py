@@ -30,6 +30,9 @@ ARTIFACTS.update({
 })
 ARTIFACTS.update({
     'protocol_v2_validator': PREFIX + 'protocol_v2/validate_protocol.py',
+    'protocol_v2_acquisition_validator': PREFIX + 'protocol_v2/acquisition.py',
+    'protocol_v2_acquisition_tests': PREFIX + 'test_acquisition.py',
+    'protocol_v2_acquisition_report': PREFIX + 'protocol_v2/ACQUISITION_REPORT.md',
     'protocol_v2_tests': PREFIX + 'test_protocol_v2.py',
     'protocol_v2_notes': PREFIX + 'protocol_v2/README.md',
     'protocol_v2_simulation_code': PREFIX + 'protocol_v2/simulation_evidence.py',

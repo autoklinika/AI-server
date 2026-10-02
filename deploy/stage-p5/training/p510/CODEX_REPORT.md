@@ -117,3 +117,13 @@ mechanism exists”. It does not satisfy causal/exposure independence, real-worl
 representativeness, complete 240/240/400 disjoint case pools, independent scorer review,
 custodian exclusion, frozen execution bindings, or the parent tournament. GPU training
 therefore remains NOT_RUN and sealed final remains UNOPENED.
+
+## 2026-10-02 automotive-first acquisition continuation
+
+Prepared the next P5.10 acquisition tranche before any further Qwen3.8 electronics training. It contains 32 new primary technical source families from 13 vendors and 40 authored diagnostic causal-family candidates, balanced at 5 candidates for each of the 8 fixed domains. Retrieval disposition is 17 fetched/hash-bound responses and 15 raw-fetch failures recorded without invented hashes. Twenty candidates carry explicit possible-overlap review holds.
+
+Added fail-closed acquisition provenance validation and adversarial tests covering duplicate source identity, URL aliases, renamed causal families, source rebinding, fabricated hash/review/exposure claims, role promotion, transitive overlap holds and unbound sources.
+
+Validation after reconciliation: 77/77 unit tests PASS. Direct protocol validation remains intentionally BLOCKED_INDEPENDENT_EVIDENCE with 0 certified scenarios, parent NONE and sealed final UNOPENED.
+
+No GPU/model inference/training/tournament ran. This tranche improves breadth—especially automotive power, sensors, drivers, CAN/LIN, PCB/environmental faults and ECU isolation—but does not replace independent technical review, P5 exposure exclusion, the full 240/240/400 disjoint pools, independent Polish scorer calibration or custodian attestation.

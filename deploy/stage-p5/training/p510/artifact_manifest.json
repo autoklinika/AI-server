@@ -37,9 +37,34 @@
       "sha256": "05c4305d9edb430f533a6a369828cc0f31096d9c6a90a351876ae053739bc0d6"
     },
     "preflight": {
-      "bytes": 6112,
+      "bytes": 6345,
       "path": "deploy/stage-p5/training/p510/preflight.py",
-      "sha256": "54ae2f8cceb78d2c416073b3269386d5e24f20111d082ddaea23c2b9e4f3c4dd"
+      "sha256": "b5ecfe8f40fd91f9b3cad5b905e4d4261a62c385e0b67fb2251f0b92c7e1080a"
+    },
+    "protocol_v2_acquisition_candidates": {
+      "bytes": 211296,
+      "path": "deploy/stage-p5/training/p510/protocol_v2/acquisition_candidates.json",
+      "sha256": "f96194aa4a2d31e40ed80b545499f53de2119bbfba0bea0d633e865d71e33308"
+    },
+    "protocol_v2_acquisition_report": {
+      "bytes": 2584,
+      "path": "deploy/stage-p5/training/p510/protocol_v2/ACQUISITION_REPORT.md",
+      "sha256": "8db09f18331938756be504e9104c15f0e4b16d938a45b5059ae95d71a2037e18"
+    },
+    "protocol_v2_acquisition_sources": {
+      "bytes": 49741,
+      "path": "deploy/stage-p5/training/p510/protocol_v2/acquisition_sources.json",
+      "sha256": "a8d03dc5b7beee4bd5d46814bd0b7156a673eab21ac267345d15b277cda04951"
+    },
+    "protocol_v2_acquisition_tests": {
+      "bytes": 10972,
+      "path": "deploy/stage-p5/training/p510/test_acquisition.py",
+      "sha256": "f3dac784517899b490db65274e15e89f780881e62b12a0aff98bda4ed538b643"
+    },
+    "protocol_v2_acquisition_validator": {
+      "bytes": 12057,
+      "path": "deploy/stage-p5/training/p510/protocol_v2/acquisition.py",
+      "sha256": "56d6b9d60d9d7e19c9a3a29285c3acbba8c7e603967b5268c0860c565f65f3ab"
     },
     "protocol_v2_calibration": {
       "bytes": 25192,
@@ -57,9 +82,9 @@
       "sha256": "c72ece775c010b0ac86ea2b67b62a8509b6a37f89f67be4ee0436da04763e77b"
     },
     "protocol_v2_notes": {
-      "bytes": 8619,
+      "bytes": 9437,
       "path": "deploy/stage-p5/training/p510/protocol_v2/README.md",
-      "sha256": "8d543751d773d39d9ea58932e02cd5d597bcef2ff25b5deba45ee876bd6f39f5"
+      "sha256": "bdd67ad571456fa84b581a80a70a93c77d48610aa132c5b9f537293cd6a9ceac"
     },
     "protocol_v2_precision": {
       "bytes": 934,
@@ -97,14 +122,14 @@
       "sha256": "7ff58bca58acfde8b2a40863e2a53235133207625f00d03b4825f65c9d48353e"
     },
     "protocol_v2_validator": {
-      "bytes": 8461,
+      "bytes": 8917,
       "path": "deploy/stage-p5/training/p510/protocol_v2/validate_protocol.py",
-      "sha256": "185dc5630a0d0fb869787a9c583046370d087d4ac749aa893d3481e75b836c85"
+      "sha256": "bf8a3c52d1ec91c142ed8d986c71d9d5026db5f1a9b317da9ee846102cd0c9bc"
     },
     "report": {
-      "bytes": 8160,
+      "bytes": 9500,
       "path": "deploy/stage-p5/training/p510/CODEX_REPORT.md",
-      "sha256": "bf6b19158865efed5ec502e427768359c9eeea0104c882e719bba13c17edbcd6"
+      "sha256": "2ec9457421460bae39615f29216db18666ab8928249142fecf7684e05aa3d2d0"
     },
     "scorer": {
       "bytes": 9134,
