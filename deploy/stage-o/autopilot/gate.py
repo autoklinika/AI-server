@@ -33,7 +33,9 @@ CRT_TABLES = {
     "crt_ers_links",
     "crt_ai_findings",
 }
-DEFAULT_LLM_MODEL = "qwen3.8:27b-p4-64k-gpu"
+DEFAULT_LLM_MODEL = "qwen3.8:27b-p4-64k-gpu-p511"
+DEFAULT_LLM_ADAPTER_SOURCE_SHA256 = "46f38a1d4a4c26ce7800a4e05be8cbcb23da8b8f460e6f7faa8a73d577defdcb"
+DEFAULT_LLM_ADAPTER_RUNTIME_SHA256 = "bb4966fa3d8a5a71a7e21b159235cc5e00f0282ff6c50ce6c1c41eca2dbba8a7"
 OLLAMA_PRELOAD_UNIT = Path("/etc/systemd/system/ollama-preload.service")
 OLLAMA_PRELOAD_GENERIC = Path("/usr/local/sbin/ollama-preload-default")
 
@@ -168,6 +170,7 @@ def preflight(cfg: dict) -> tuple[Path, dict]:
     )
     e.hermes_state()
     e.media_preflight()
+    verify_default_ollama_adapter(DEFAULT_LLM_MODEL)
     return rollback, stamp
 
 
@@ -197,6 +200,16 @@ def release_llm_model(release: Path) -> str:
     )
     require(match is not None)
     return match.group(1)
+
+
+def verify_default_ollama_adapter(model: str) -> None:
+    require(model == DEFAULT_LLM_MODEL)
+    modelfile = e.run(["ollama", "show", "--modelfile", model], timeout=30)
+    expected = (
+        "ADAPTER /usr/share/ollama/.ollama/models/blobs/sha256-"
+        + DEFAULT_LLM_ADAPTER_RUNTIME_SHA256
+    )
+    require(expected in modelfile)
 
 
 def preload_script_text() -> str:
@@ -242,6 +255,7 @@ WantedBy=multi-user.target
 
 
 def configure_preload_model(model: str) -> None:
+    verify_default_ollama_adapter(model)
     OLLAMA_PRELOAD_GENERIC.write_text(preload_script_text(), encoding="utf-8")
     os.chmod(OLLAMA_PRELOAD_GENERIC, 0o755)
     OLLAMA_PRELOAD_UNIT.write_text(preload_unit_text(model), encoding="utf-8")
@@ -254,6 +268,7 @@ def configure_preload_model(model: str) -> None:
     require(
         any(item.get("name") == model or item.get("model") == model for item in loaded)
     )
+    verify_default_ollama_adapter(model)
 
 
 def restore_preload_baseline(baseline: dict) -> None:
@@ -761,6 +776,9 @@ def main(step: str) -> None:
                 "schema": TARGET_REVISION,
                 "control_center_contract_version": 1,
                 "technical_conversation_contract_version": 1,
+                "llm_model": DEFAULT_LLM_MODEL,
+                "llm_adapter_source_sha256": DEFAULT_LLM_ADAPTER_SOURCE_SHA256,
+                "llm_adapter_runtime_sha256": DEFAULT_LLM_ADAPTER_RUNTIME_SHA256,
                 "time": int(time.time()),
             }
             if not (state / "accepted.json").exists():

@@ -76,7 +76,7 @@ release:
   source_git_sha: $SOURCE_SHA
   config_schema_version: 4
   migration_version: $MIGRATION
-  provider_model_config_version: qwen36-hermes64k-gpu-20260919-v1
+  provider_model_config_version: qwen38-p511-automotive-gpu-20261002-v1
   changed_components:
     - ai-bridge
     - ai-gateway
@@ -113,7 +113,10 @@ hermes:
 
 provider_model_config:
   llm_provider: OllamaAdapter
-  llm_model: qwen3.8:27b-p4-64k-gpu
+  llm_model: qwen3.8:27b-p4-64k-gpu-p511
+  llm_adapter: automotive-specialization-v1
+  llm_adapter_source_digest: 46f38a1d4a4c26ce7800a4e05be8cbcb23da8b8f460e6f7faa8a73d577defdcb
+  llm_adapter_runtime_digest: bb4966fa3d8a5a71a7e21b159235cc5e00f0282ff6c50ce6c1c41eca2dbba8a7
   agent_provider: HermesAdapter
   media_provider: ComfyUIAdapter
   embedding_provider: contract-only
@@ -169,7 +172,7 @@ job_state_contract_version=1
 provider_registry_schema_version=1
 unified_admission_contract_version=1
 compatibility_contract_version=1
-provider_model_config_version=qwen36-hermes64k-gpu-20260919-v1
+provider_model_config_version=qwen38-p511-automotive-gpu-20261002-v1
 STAMP
 if [[ -n "$OBSERVABILITY_CONTRACT" ]]; then
   printf "observability_contract_version=%s\n" "$OBSERVABILITY_CONTRACT" >> "$DEST/RELEASE"
