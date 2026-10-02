@@ -1,0 +1,22 @@
+{
+  "automotive_curriculum_v2_records": 155,
+  "dataset_id": "automotive-specialization-v1",
+  "dataset_sha256": "038aa7c8422bcba1f5c8c2f1839469924e2defc16d3a7351a375703080982f04",
+  "diagnostic_knowledge_input_sha256": "7ea3318151071f0a27ca7799d97b22d2dcd5485f2a9ad7aaa04903f2de27b9ae",
+  "diagnostic_knowledge_paraphrase_records": 28,
+  "knowledge_fields_used": [
+    "topic",
+    "subtopic",
+    "generalizable_pattern",
+    "diagnostic_use",
+    "source_id"
+  ],
+  "new_records": 183,
+  "protected_eval_material_used": false,
+  "quality_acceptance": "PENDING_FUTURE_INDEPENDENT_EVALUATION",
+  "records": 183,
+  "schema_version": 1,
+  "source_fact_used": false,
+  "source_fixture_sha256": "b9f3b85afd10d0bcbc286b95c1f2f8b4135f095ca8911b2f8780235c8e6190cc",
+  "status": "TRAINING_DATA_READY_NO_QUALITY_ACCEPTANCE"
+}

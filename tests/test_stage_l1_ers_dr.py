@@ -375,3 +375,46 @@ def test_stage_k_release_identity_accepts_stage_o(tmp_path, monkeypatch):
     identity = backup.release_identity()
     assert identity["stage"] == "O"
     assert identity["source_git_sha"] == "d" * 40
+
+
+def test_restore_rag_probe_retries_one_invalid_structured_response():
+    class Generated:
+        def __init__(self, content):
+            self.content = content
+
+    class Provider:
+        def __init__(self):
+            self.calls = 0
+
+        def generate(self, request):
+            self.calls += 1
+            return Generated("bad" if self.calls == 1 else "good")
+
+    provider = Provider()
+
+    def parse(content, prompt):
+        if content == "bad":
+            raise ValueError("invalid structured response")
+        return {"parsed": content}
+
+    generated, parsed, attempts = restore_validate.generate_rag_probe(
+        provider, object(), object(), parse, max_attempts=2,
+    )
+    assert provider.calls == 2
+    assert generated.content == "good"
+    assert parsed == {"parsed": "good"}
+    assert attempts == 2
+
+
+def test_restore_rag_probe_still_fails_after_retry_budget():
+    class Provider:
+        def generate(self, request):
+            return type("Generated", (), {"content": "bad"})()
+
+    def parse(content, prompt):
+        raise ValueError("invalid structured response")
+
+    with pytest.raises(ValueError, match="invalid structured response"):
+        restore_validate.generate_rag_probe(
+            Provider(), object(), object(), parse, max_attempts=2,
+        )
