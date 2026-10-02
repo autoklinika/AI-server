@@ -57,7 +57,7 @@ class KnowledgeRuntime(AbstractContextManager["KnowledgeRuntime"]):
             return self.service.search(query)
 
         requested_limit = query.limit
-        candidate_limit = min(100, max(requested_limit * 4, 20))
+        candidate_limit = min(100, max(requested_limit * 4, 40))
         candidate_query = replace(query, limit=candidate_limit)
         result = self.service.search(candidate_query)
         reranked = self.reranker.rerank(
