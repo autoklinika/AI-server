@@ -178,7 +178,7 @@ docker run --rm --name "$CONTAINER_NAME"   --network=none   --memory="$CGROUP_ME
 TRAIN_RC=${PIPESTATUS[0]}
 set -e
 
-kill -0 "$MON_PID" || { echo "watchdog_died" >"$FAIL_MARKER"; }
+kill -0 "$MON_PID" || { [[ -f "$FAIL_MARKER" ]] || echo "watchdog_died" >"$FAIL_MARKER"; }
 cleanup_monitor
 trap - EXIT INT TERM
 
