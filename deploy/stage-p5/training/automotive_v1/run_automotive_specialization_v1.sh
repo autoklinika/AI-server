@@ -223,7 +223,20 @@ released=0
 for ((i=0; i<RELEASE_TIMEOUT; i++)); do
   vu="$(vram_used)"
   owners="$(lsof -t /dev/kfd 2>/dev/null | sort -u | tr '\n' ' ' || true)"
-  if (( vu <= MAX_INITIAL_VRAM )) && [ -z "${owners// }" ]; then
+  blockers="$owners"
+  if [ "$ALLOW_QUIESCED_COMFYUI" = "1" ] && [ -n "${owners// }" ]; then
+    blockers=""
+    for pid in $owners; do
+      state="$(awk '/^State:/ {print $2}' "/proc/$pid/status" 2>/dev/null || true)"
+      owner_uid="$(stat -c '%u' "/proc/$pid" 2>/dev/null || true)"
+      cgroup="$(cat "/proc/$pid/cgroup" 2>/dev/null || true)"
+      if [ "$owner_uid" = "$(id -u)" ] && { [ "$state" = "T" ] || [ "$state" = "t" ]; } && printf '%s\n' "$cgroup" | grep -qx '0::/system.slice/comfyui.service'; then
+        continue
+      fi
+      blockers="$blockers $pid"
+    done
+  fi
+  if (( vu <= MAX_INITIAL_VRAM )) && [ -z "${blockers// }" ]; then
     released=1
     break
   fi
