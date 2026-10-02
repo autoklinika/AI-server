@@ -15,6 +15,7 @@ CGROUP_MEMORY="${P5_CGROUP_MEMORY:-48g}"
 CGROUP_SWAP="${P5_CGROUP_SWAP:-$CGROUP_MEMORY}"
 MIN_HOST_AVAILABLE_KIB="${P5_MIN_HOST_AVAILABLE_KIB:-8388608}"
 MAX_INITIAL_VRAM="${P5_MAX_INITIAL_VRAM:-2147483648}"
+ALLOW_QUIESCED_COMFYUI="${P5_ALLOW_QUIESCED_COMFYUI:-0}"
 RELEASE_TIMEOUT="${P5_RELEASE_TIMEOUT_SECONDS:-120}"
 RUN_ID="${P5_RUN_ID:-automotive-v1-$(date -u +%Y%m%dT%H%M%SZ)}"
 CONTAINER_NAME="p511-$RUN_ID"
@@ -65,6 +66,19 @@ VRAM_BEFORE="$(vram_used)"
 MEM_BEFORE="$(mem_available_kib)"
 OLLAMA_BEFORE="$(ollama ps 2>/dev/null || true)"
 KFD_OWNERS="$(lsof -t /dev/kfd 2>/dev/null | sort -u | tr '\n' ' ' || true)"
+KFD_BLOCKERS="$KFD_OWNERS"
+if [ "$ALLOW_QUIESCED_COMFYUI" = "1" ] && [ -n "${KFD_OWNERS// }" ]; then
+  KFD_BLOCKERS=""
+  for pid in $KFD_OWNERS; do
+    state="$(awk '/^State:/ {print $2}' "/proc/$pid/status" 2>/dev/null || true)"
+    owner_uid="$(stat -c '%u' "/proc/$pid" 2>/dev/null || true)"
+    cgroup="$(cat "/proc/$pid/cgroup" 2>/dev/null || true)"
+    if [ "$owner_uid" = "$(id -u)" ] && { [ "$state" = "T" ] || [ "$state" = "t" ]; } && printf '%s\n' "$cgroup" | grep -qx '0::/system.slice/comfyui.service'; then
+      continue
+    fi
+    KFD_BLOCKERS="$KFD_BLOCKERS $pid"
+  done
+fi
 GPU_BASELINE="$(count_gpu_errors)"
 snapshot_gpu_errors >"$EVIDENCE/kernel_gpu_errors_before.txt"
 {
@@ -75,6 +89,8 @@ snapshot_gpu_errors >"$EVIDENCE/kernel_gpu_errors_before.txt"
   echo "gpu_busy_before=$(gpu_busy)"
   echo "gpu_error_baseline=$GPU_BASELINE"
   echo "kfd_owners=${KFD_OWNERS:-none}"
+  echo "kfd_blockers=${KFD_BLOCKERS:-none}"
+  echo "allow_quiesced_comfyui=$ALLOW_QUIESCED_COMFYUI"
   printf 'ollama_ps_before=%q\n' "$OLLAMA_BEFORE"
   echo "parent_adapter=$BASE_ADAPTER_REAL"
   echo "dataset=$DATASET"
@@ -93,8 +109,8 @@ if (( MEM_BEFORE < MIN_HOST_AVAILABLE_KIB )); then
   echo "P5_11=BLOCKED mem_available_kib=$MEM_BEFORE" >&2
   exit 44
 fi
-if [ -n "${KFD_OWNERS// }" ]; then
-  echo "P5_11=BLOCKED unexpected_kfd_owner=$KFD_OWNERS" >&2
+if [ -n "${KFD_BLOCKERS// }" ]; then
+  echo "P5_11=BLOCKED unexpected_kfd_owner=$KFD_BLOCKERS" >&2
   exit 45
 fi
 
