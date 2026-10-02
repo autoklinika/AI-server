@@ -1,0 +1,25 @@
+{
+  "policy": "Explicit user-authorized sources only; replay paths are original TRAIN partitions.",
+  "sources": [
+    {
+      "path": "deploy/stage-p5/training/fixtures/automotive_curriculum_v2.jsonl",
+      "sha256": "b9f3b85afd10d0bcbc286b95c1f2f8b4135f095ca8911b2f8780235c8e6190cc"
+    },
+    {
+      "path": "/home/harrypotter/EcuRepairService/sources/automotive-semiconductor-corpus-v0/DIAGNOSTIC_KNOWLEDGE.jsonl",
+      "sha256": "7ea3318151071f0a27ca7799d97b22d2dcd5485f2a9ad7aaa04903f2de27b9ae"
+    },
+    {
+      "path": "deploy/stage-p5/training/electronics/electronics_foundation_train_v1.jsonl",
+      "sha256": "7c11610a9e2c6a6ce373038164cb3427c89c16bb64a07122218cc40df525a7ac"
+    },
+    {
+      "path": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_train.jsonl",
+      "sha256": "bbead16839dccbecf8fb4b4f0373d80c88bc9cb98540a1dd40b7ec448dfe061a"
+    },
+    {
+      "path": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_train.jsonl",
+      "sha256": "c7c618e66e23b141fb9bcfff8c898f6761f065986688519148c86c341344f02d"
+    }
+  ]
+}
