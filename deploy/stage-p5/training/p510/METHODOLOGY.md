@@ -153,3 +153,50 @@ Preflight verifies locked artifact hashes and always exits 2 for this blocked sn
 It cannot launch a GPU job or unlock final content. `artifact_manifest.json` binds the
 snapshot, not an executable training authorization. Completing the missing acquisition,
 review and calibration requires a new reviewed protocol snapshot, not flipping a status bit.
+
+## Provenance acquisition revision (2026-10-02)
+
+`protocol_v2/README.md` and `protocol_v2/protocol.json` now define a hashed, reviewable
+acquisition draft. They supersede the absence of a source/exposure ledger described
+above, but do **not** supersede the missing independent evidence. Sixteen causal-family
+seeds cover eight domains, backed by eight primary-source records and an exposure ledger
+bound to the historical audit and five adapter identities. All seeds remain quarantined,
+with zero certified scenarios and no evaluation payload. Sources justify background;
+the authored causal inferences have no external technical review. Calibration-exposed
+families must never enter evaluation under another ID.
+
+The new split guard checks whole source families, causal cluster IDs and numeric causal
+fingerprints. Independent review still has to identify semantic aliases. Software tests
+cover Polish scorer responses and expose a remaining negation/scope false positive.
+Independent calibration is therefore concretely blocked, not satisfied by the tests.
+The numerical prefinal diagnostic implements fixed floors/coverage/Wilson checks but
+cannot issue an access token. Executable final authorization remains unimplemented.
+`precision.json` documents uncertainty without using model outputs or protected material.
+
+The current user instruction is stricter than the historical inconclusive-selection
+fallback: **no decisive parent evidence means no training**. No candidate is selected
+from historical scores or simplicity. A future protocol must freeze common execution
+hashes and checkpoint multiplicity before outputs; unresolved values explicitly block
+launch. v1–v4 regressions, 25% reviewed replay, rank-8 all-language-linear BF16, no merge,
+MES/reset/telemetry fail-closed behavior and final locking are preserved.
+
+Reproduce the expanded tests with `python3 -m unittest discover -s
+ deploy/stage-p5/training/p510 -p 'test*.py' -v` (one shell line). The root `preflight.py`
+now validates the acquisition draft and its audit/inventory ledger bindings as well as
+the fixed artifact allowlist. It still exits 2. `freeze_snapshot.py` reproducibly binds
+the blocked snapshot; changing hashes or flags cannot provide independent review.
+
+
+## 10. Executable ground-truth PoC (2026-10-02)
+
+P5.10 now includes a deterministic eight-domain simulation proof-of-concept. It uses one
+existing quarantined causal family per domain and a different equation/state-machine oracle
+for each mechanism. Regeneration must be byte-semantically equivalent under the bound code
+hash; metamorphic checks verify the intended intervention direction.
+
+A simulation PASS means only that the stated simplified model and its invariant are
+self-consistent. It does **not** certify that the family was absent from P5 training or prior
+evaluation, that it is representative of a real ECU failure distribution, or that it may be
+used for parent/checkpoint/final selection. Therefore all eight simulation rows remain
+SIMULATION_VERIFIED_QUARANTINE and count as zero certified evaluation scenarios. The fixed
+240 parent-selection + 240 selection-dev + 400 prefinal requirements are unchanged.

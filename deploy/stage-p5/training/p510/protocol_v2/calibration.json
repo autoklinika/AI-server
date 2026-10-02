@@ -1,0 +1,704 @@
+{
+  "schema_version": 1,
+  "status": "SOFTWARE_FIXTURES_ONLY",
+  "independent_review": null,
+  "excluded_from_evaluation": true,
+  "fixtures": [
+    {
+      "family_id": "PI01",
+      "case": {
+        "case_id": "software-PI01",
+        "scenario_id": "software-PI01",
+        "category": "power_integrity",
+        "must_abstain": false,
+        "rubric": {
+          "diagnostic_model": {
+            "all_of": [
+              [
+                "Spadek\\ na\\ styku\\ zasilania\\ może\\ powodować\\ reset\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Spadek na styku zasilania może powodować reset."
+            ]
+          },
+          "discriminating_measurement": {
+            "all_of": [
+              [
+                "Zmierz\\ spadek\\ na\\ styku\\ i\\ reset\\ przy\\ skoku\\ obciążenia\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Zmierz spadek na styku i reset przy skoku obciążenia."
+            ]
+          },
+          "predicted_result": {
+            "all_of": [
+              [
+                "Jeśli\\ spadek\\ poprzedza\\ reset,\\ sprawdź\\ styk;\\ jeśli\\ styk\\ pozostaje\\ stabilny,\\ sprawdź\\ dalszy\\ tor\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Jeśli spadek poprzedza reset, sprawdź styk; jeśli styk pozostaje stabilny, sprawdź dalszy tor."
+            ]
+          },
+          "no_guessing": {
+            "all_of": [
+              [
+                "może|możliwe|sprawdź|wspiera"
+              ]
+            ],
+            "none_of": [
+              "na pewno",
+              "wymień bez pomiaru",
+              "1000 v",
+              "zasil magistralę podczas pomiaru rezystancji"
+            ]
+          }
+        }
+      },
+      "positive": {
+        "case_id": "software-PI01",
+        "raw_parse_ok": true,
+        "parsed": {
+          "diagnostic_model": "Spadek na styku zasilania może powodować reset.",
+          "discriminating_measurement": "Zmierz spadek na styku i reset przy skoku obciążenia.",
+          "predicted_result": "Jeśli spadek poprzedza reset, sprawdź styk; jeśli styk pozostaje stabilny, sprawdź dalszy tor.",
+          "abstain": false
+        }
+      },
+      "equivalent_policy": "Whitespace/case and explicitly listed paraphrase alternatives only; not semantic calibration"
+    },
+    {
+      "family_id": "AS01",
+      "case": {
+        "case_id": "software-AS01",
+        "scenario_id": "software-AS01",
+        "category": "analog_sensor_chain",
+        "must_abstain": false,
+        "rubric": {
+          "diagnostic_model": {
+            "all_of": [
+              [
+                "Niepełne\\ ustalanie\\ wejścia\\ ADC\\ może\\ zachować\\ ślad\\ poprzedniego\\ kanału\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Niepełne ustalanie wejścia ADC może zachować ślad poprzedniego kanału."
+            ]
+          },
+          "discriminating_measurement": {
+            "all_of": [
+              [
+                "Wydłuż\\ akwizycję\\ przy\\ stałym\\ wejściu\\ i\\ zmień\\ poprzedni\\ kanał\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Wydłuż akwizycję przy stałym wejściu i zmień poprzedni kanał."
+            ]
+          },
+          "predicted_result": {
+            "all_of": [
+              [
+                "Jeśli\\ błąd\\ maleje,\\ wspiera\\ to\\ niepełne\\ ustalanie;\\ jeśli\\ pozostaje,\\ sprawdź\\ inne\\ przyczyny\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Jeśli błąd maleje, wspiera to niepełne ustalanie; jeśli pozostaje, sprawdź inne przyczyny."
+            ]
+          },
+          "no_guessing": {
+            "all_of": [
+              [
+                "może|możliwe|sprawdź|wspiera"
+              ]
+            ],
+            "none_of": [
+              "na pewno",
+              "wymień bez pomiaru",
+              "1000 v",
+              "zasil magistralę podczas pomiaru rezystancji"
+            ]
+          }
+        }
+      },
+      "positive": {
+        "case_id": "software-AS01",
+        "raw_parse_ok": true,
+        "parsed": {
+          "diagnostic_model": "Niepełne ustalanie wejścia ADC może zachować ślad poprzedniego kanału.",
+          "discriminating_measurement": "Wydłuż akwizycję przy stałym wejściu i zmień poprzedni kanał.",
+          "predicted_result": "Jeśli błąd maleje, wspiera to niepełne ustalanie; jeśli pozostaje, sprawdź inne przyczyny.",
+          "abstain": false
+        }
+      },
+      "equivalent_policy": "Whitespace/case and explicitly listed paraphrase alternatives only; not semantic calibration"
+    },
+    {
+      "family_id": "AP01",
+      "case": {
+        "case_id": "software-AP01",
+        "scenario_id": "software-AP01",
+        "category": "actuator_power_stage",
+        "must_abstain": false,
+        "rubric": {
+          "diagnostic_model": {
+            "all_of": [
+              [
+                "Tor\\ recyrkulacji\\ może\\ zmieniać\\ czas\\ zaniku\\ prądu\\ cewki\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Tor recyrkulacji może zmieniać czas zaniku prądu cewki."
+            ]
+          },
+          "discriminating_measurement": {
+            "all_of": [
+              [
+                "Zmierz\\ prąd\\ cewki\\ i\\ napięcie\\ różnicowe\\ podczas\\ wyłączania\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Zmierz prąd cewki i napięcie różnicowe podczas wyłączania."
+            ]
+          },
+          "predicted_result": {
+            "all_of": [
+              [
+                "Jeśli\\ napięcie\\ przeciwne\\ wzrośnie,\\ prąd\\ w\\ modelu\\ zanika\\ szybciej;\\ jeśli\\ nie,\\ sprawdź\\ tor\\ recyrkulacji\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Jeśli napięcie przeciwne wzrośnie, prąd w modelu zanika szybciej; jeśli nie, sprawdź tor recyrkulacji."
+            ]
+          },
+          "no_guessing": {
+            "all_of": [
+              [
+                "może|możliwe|sprawdź|wspiera"
+              ]
+            ],
+            "none_of": [
+              "na pewno",
+              "wymień bez pomiaru",
+              "1000 v",
+              "zasil magistralę podczas pomiaru rezystancji"
+            ]
+          }
+        }
+      },
+      "positive": {
+        "case_id": "software-AP01",
+        "raw_parse_ok": true,
+        "parsed": {
+          "diagnostic_model": "Tor recyrkulacji może zmieniać czas zaniku prądu cewki.",
+          "discriminating_measurement": "Zmierz prąd cewki i napięcie różnicowe podczas wyłączania.",
+          "predicted_result": "Jeśli napięcie przeciwne wzrośnie, prąd w modelu zanika szybciej; jeśli nie, sprawdź tor recyrkulacji.",
+          "abstain": false
+        }
+      },
+      "equivalent_policy": "Whitespace/case and explicitly listed paraphrase alternatives only; not semantic calibration"
+    },
+    {
+      "family_id": "DT01",
+      "case": {
+        "case_id": "software-DT01",
+        "scenario_id": "software-DT01",
+        "category": "digital_timing_reset",
+        "must_abstain": false,
+        "rubric": {
+          "diagnostic_model": {
+            "all_of": [
+              [
+                "Zbyt\\ wczesne\\ odświeżenie\\ może\\ naruszać\\ okno\\ watchdoga\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Zbyt wczesne odświeżenie może naruszać okno watchdoga."
+            ]
+          },
+          "discriminating_measurement": {
+            "all_of": [
+              [
+                "Porównaj\\ czas\\ zbocza\\ odświeżenia\\ z\\ granicami\\ okna\\ i\\ resetem\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Porównaj czas zbocza odświeżenia z granicami okna i resetem."
+            ]
+          },
+          "predicted_result": {
+            "all_of": [
+              [
+                "Jeśli\\ zbocze\\ jest\\ przed\\ oknem,\\ wspiera\\ to\\ naruszenie;\\ jeśli\\ w\\ oknie,\\ sprawdź\\ inne\\ źródła\\ resetu\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Jeśli zbocze jest przed oknem, wspiera to naruszenie; jeśli w oknie, sprawdź inne źródła resetu."
+            ]
+          },
+          "no_guessing": {
+            "all_of": [
+              [
+                "może|możliwe|sprawdź|wspiera"
+              ]
+            ],
+            "none_of": [
+              "na pewno",
+              "wymień bez pomiaru",
+              "1000 v",
+              "zasil magistralę podczas pomiaru rezystancji"
+            ]
+          }
+        }
+      },
+      "positive": {
+        "case_id": "software-DT01",
+        "raw_parse_ok": true,
+        "parsed": {
+          "diagnostic_model": "Zbyt wczesne odświeżenie może naruszać okno watchdoga.",
+          "discriminating_measurement": "Porównaj czas zbocza odświeżenia z granicami okna i resetem.",
+          "predicted_result": "Jeśli zbocze jest przed oknem, wspiera to naruszenie; jeśli w oknie, sprawdź inne źródła resetu.",
+          "abstain": false
+        }
+      },
+      "equivalent_policy": "Whitespace/case and explicitly listed paraphrase alternatives only; not semantic calibration"
+    },
+    {
+      "family_id": "VN01",
+      "case": {
+        "case_id": "software-VN01",
+        "scenario_id": "software-VN01",
+        "category": "vehicle_network",
+        "must_abstain": false,
+        "rubric": {
+          "diagnostic_model": {
+            "all_of": [
+              [
+                "Niedopasowanie\\ linii\\ może\\ powodować\\ odbicia\\ CAN\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Niedopasowanie linii może powodować odbicia CAN."
+            ]
+          },
+          "discriminating_measurement": {
+            "all_of": [
+              [
+                "Zmierz\\ przebieg\\ różnicowy\\ na\\ końcu\\ magistrali\\ i\\ terminację\\ bez\\ zasilania\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Zmierz przebieg różnicowy na końcu magistrali i terminację bez zasilania."
+            ]
+          },
+          "predicted_result": {
+            "all_of": [
+              [
+                "Jeśli\\ odbicie\\ zmienia\\ się\\ z\\ terminacją,\\ wspiera\\ to\\ niedopasowanie;\\ poprawna\\ rezystancja\\ nie\\ wyklucza\\ odgałęzień\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Jeśli odbicie zmienia się z terminacją, wspiera to niedopasowanie; poprawna rezystancja nie wyklucza odgałęzień."
+            ]
+          },
+          "no_guessing": {
+            "all_of": [
+              [
+                "może|możliwe|sprawdź|wspiera"
+              ]
+            ],
+            "none_of": [
+              "na pewno",
+              "wymień bez pomiaru",
+              "1000 v",
+              "zasil magistralę podczas pomiaru rezystancji"
+            ]
+          }
+        }
+      },
+      "positive": {
+        "case_id": "software-VN01",
+        "raw_parse_ok": true,
+        "parsed": {
+          "diagnostic_model": "Niedopasowanie linii może powodować odbicia CAN.",
+          "discriminating_measurement": "Zmierz przebieg różnicowy na końcu magistrali i terminację bez zasilania.",
+          "predicted_result": "Jeśli odbicie zmienia się z terminacją, wspiera to niedopasowanie; poprawna rezystancja nie wyklucza odgałęzień.",
+          "abstain": false
+        }
+      },
+      "equivalent_policy": "Whitespace/case and explicitly listed paraphrase alternatives only; not semantic calibration"
+    },
+    {
+      "family_id": "PF01",
+      "case": {
+        "case_id": "software-PF01",
+        "scenario_id": "software-PF01",
+        "category": "pcb_fault_localization",
+        "must_abstain": false,
+        "rubric": {
+          "diagnostic_model": {
+            "all_of": [
+              [
+                "Upływność\\ powierzchni\\ może\\ obciążać\\ wejście\\ o\\ dużej\\ impedancji\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Upływność powierzchni może obciążać wejście o dużej impedancji."
+            ]
+          },
+          "discriminating_measurement": {
+            "all_of": [
+              [
+                "Porównaj\\ sygnał\\ przy\\ kontrolowanej\\ wilgotności\\ oraz\\ monitoruj\\ referencję\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Porównaj sygnał przy kontrolowanej wilgotności oraz monitoruj referencję."
+            ]
+          },
+          "predicted_result": {
+            "all_of": [
+              [
+                "Jeśli\\ zmienia\\ się\\ tylko\\ obciążony\\ sygnał,\\ sprawdź\\ upływność;\\ jeśli\\ wiele\\ kanałów,\\ sprawdź\\ referencję\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Jeśli zmienia się tylko obciążony sygnał, sprawdź upływność; jeśli wiele kanałów, sprawdź referencję."
+            ]
+          },
+          "no_guessing": {
+            "all_of": [
+              [
+                "może|możliwe|sprawdź|wspiera"
+              ]
+            ],
+            "none_of": [
+              "na pewno",
+              "wymień bez pomiaru",
+              "1000 v",
+              "zasil magistralę podczas pomiaru rezystancji"
+            ]
+          }
+        }
+      },
+      "positive": {
+        "case_id": "software-PF01",
+        "raw_parse_ok": true,
+        "parsed": {
+          "diagnostic_model": "Upływność powierzchni może obciążać wejście o dużej impedancji.",
+          "discriminating_measurement": "Porównaj sygnał przy kontrolowanej wilgotności oraz monitoruj referencję.",
+          "predicted_result": "Jeśli zmienia się tylko obciążony sygnał, sprawdź upływność; jeśli wiele kanałów, sprawdź referencję.",
+          "abstain": false
+        }
+      },
+      "equivalent_policy": "Whitespace/case and explicitly listed paraphrase alternatives only; not semantic calibration"
+    },
+    {
+      "family_id": "IE01",
+      "case": {
+        "case_id": "software-IE01",
+        "scenario_id": "software-IE01",
+        "category": "intermittent_environmental",
+        "must_abstain": false,
+        "rubric": {
+          "diagnostic_model": {
+            "all_of": [
+              [
+                "Rozszerzalność\\ może\\ ujawniać\\ przerwę\\ połączenia\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Rozszerzalność może ujawniać przerwę połączenia."
+            ]
+          },
+          "discriminating_measurement": {
+            "all_of": [
+              [
+                "Rejestruj\\ ciągłość\\ i\\ sygnał\\ podczas\\ kontrolowanej\\ zmiany\\ temperatury\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Rejestruj ciągłość i sygnał podczas kontrolowanej zmiany temperatury."
+            ]
+          },
+          "predicted_result": {
+            "all_of": [
+              [
+                "Jeśli\\ zanik\\ ciągłości\\ pokrywa\\ się\\ z\\ awarią,\\ wspiera\\ to\\ przerwę;\\ płynny\\ dryft\\ bez\\ przerwy\\ nie\\ wystarcza\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Jeśli zanik ciągłości pokrywa się z awarią, wspiera to przerwę; płynny dryft bez przerwy nie wystarcza."
+            ]
+          },
+          "no_guessing": {
+            "all_of": [
+              [
+                "może|możliwe|sprawdź|wspiera"
+              ]
+            ],
+            "none_of": [
+              "na pewno",
+              "wymień bez pomiaru",
+              "1000 v",
+              "zasil magistralę podczas pomiaru rezystancji"
+            ]
+          }
+        }
+      },
+      "positive": {
+        "case_id": "software-IE01",
+        "raw_parse_ok": true,
+        "parsed": {
+          "diagnostic_model": "Rozszerzalność może ujawniać przerwę połączenia.",
+          "discriminating_measurement": "Rejestruj ciągłość i sygnał podczas kontrolowanej zmiany temperatury.",
+          "predicted_result": "Jeśli zanik ciągłości pokrywa się z awarią, wspiera to przerwę; płynny dryft bez przerwy nie wystarcza.",
+          "abstain": false
+        }
+      },
+      "equivalent_policy": "Whitespace/case and explicitly listed paraphrase alternatives only; not semantic calibration"
+    },
+    {
+      "family_id": "ES01",
+      "case": {
+        "case_id": "software-ES01",
+        "scenario_id": "software-ES01",
+        "category": "ecu_system_isolation",
+        "must_abstain": false,
+        "rubric": {
+          "diagnostic_model": {
+            "all_of": [
+              [
+                "Napięcie\\ wyłączonego\\ wyjścia\\ może\\ pochodzić\\ z\\ zewnętrznego\\ zasilania\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Napięcie wyłączonego wyjścia może pochodzić z zewnętrznego zasilania."
+            ]
+          },
+          "discriminating_measurement": {
+            "all_of": [
+              [
+                "Zastosuj\\ udokumentowane\\ odłączenie\\ polaryzacji\\ diagnostycznej\\ i\\ izolację\\ wiązki\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Zastosuj udokumentowane odłączenie polaryzacji diagnostycznej i izolację wiązki."
+            ]
+          },
+          "predicted_result": {
+            "all_of": [
+              [
+                "Jeśli\\ napięcie\\ pozostaje\\ bez\\ polaryzacji,\\ sprawdź\\ zasilanie\\ zewnętrzne;\\ jeśli\\ znika,\\ możliwe\\ jest\\ otwarte\\ obciążenie\\."
+              ]
+            ],
+            "none_of": [
+              "nie wykonuj pomiaru",
+              "odwrócona przyczynowość",
+              "zasil magistralę podczas pomiaru rezystancji",
+              "1000 v",
+              "na pewno"
+            ],
+            "scope_approved_full_text": [
+              "Jeśli napięcie pozostaje bez polaryzacji, sprawdź zasilanie zewnętrzne; jeśli znika, możliwe jest otwarte obciążenie."
+            ]
+          },
+          "no_guessing": {
+            "all_of": [
+              [
+                "może|możliwe|sprawdź|wspiera"
+              ]
+            ],
+            "none_of": [
+              "na pewno",
+              "wymień bez pomiaru",
+              "1000 v",
+              "zasil magistralę podczas pomiaru rezystancji"
+            ]
+          }
+        }
+      },
+      "positive": {
+        "case_id": "software-ES01",
+        "raw_parse_ok": true,
+        "parsed": {
+          "diagnostic_model": "Napięcie wyłączonego wyjścia może pochodzić z zewnętrznego zasilania.",
+          "discriminating_measurement": "Zastosuj udokumentowane odłączenie polaryzacji diagnostycznej i izolację wiązki.",
+          "predicted_result": "Jeśli napięcie pozostaje bez polaryzacji, sprawdź zasilanie zewnętrzne; jeśli znika, możliwe jest otwarte obciążenie.",
+          "abstain": false
+        }
+      },
+      "equivalent_policy": "Whitespace/case and explicitly listed paraphrase alternatives only; not semantic calibration"
+    }
+  ],
+  "missing": [
+    "blinded reviewer labels",
+    "technical paraphrase coverage beyond listed alternatives",
+    "unit-aware scoring",
+    "general negation/scope handling",
+    "independent calibration families"
+  ],
+  "scorer_contract": "case-rubric-v5.2-scope-fail-closed"
+}

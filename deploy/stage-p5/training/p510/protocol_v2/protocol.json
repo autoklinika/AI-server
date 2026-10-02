@@ -1,0 +1,125 @@
+{
+  "acceptance_authorized": false,
+  "category_core_wilson_lower": 0.8,
+  "domains": [
+    "actuator_power_stage",
+    "analog_sensor_chain",
+    "digital_timing_reset",
+    "ecu_system_isolation",
+    "intermittent_environmental",
+    "pcb_fault_localization",
+    "power_integrity",
+    "vehicle_network"
+  ],
+  "execution_contract": {
+    "base_sha256": null,
+    "generation_contract_sha256": null,
+    "historical_scorer_v5_1_sha256": "ac6e3b1317b39e4ba3bf3f1294edc0ff23d298ff71c5e51f0c44d78c16084435",
+    "policy": "Freeze identical base/tokenizer/prompt/generation/runtime for all five candidates before inference; unresolved hashes block launch.",
+    "scorer_contract": "case-rubric-v5.2-scope-fail-closed",
+    "scorer_sha256": "57404f3322739c4e564251f5989041b024d483d6c54f87279c3a2cb27a12fec5",
+    "selection_dev_max_looks": null,
+    "tokenizer_sha256": null
+  },
+  "gpu_requirements": [
+    "exclusive platform resource lease if required",
+    "no Ollama resident models or ComfyUI jobs",
+    "readable baseline and live kernel telemetry on same boot",
+    "abort and cleanup on new MES, reset, telemetry loss or lease loss"
+  ],
+  "independent_unit": "externally reviewed causal family; never a numeric or wording variant",
+  "legacy_max_relative_loss_increase": 0.02,
+  "paired_comparisons": {
+    "candidates": 5,
+    "familywise_alpha": 0.05,
+    "minimum_composite_lower": 0,
+    "minimum_dimension_lower": -0.02,
+    "pairs": 10,
+    "resamples": 20000,
+    "seed": 20261001,
+    "statistics": 6
+  },
+  "prefinal_floors": {
+    "diagnostic_model_pass_rate": 0.9,
+    "final_parse_rate": 1.0,
+    "insufficient_data_abstention_rate": 0.95,
+    "measurement_pass_rate": 0.9,
+    "no_guessing_pass_rate": 0.98,
+    "prediction_pass_rate": 0.9,
+    "raw_parse_rate": 1.0,
+    "sufficient_data_answer_rate": 0.95
+  },
+  "protocol_id": "p510-provenance-v2-draft",
+  "review_requirements": [
+    "named independent technical reviewer, separate from scenario/scorer author",
+    "correctness and causal-equivalence decisions bound to record hashes",
+    "all five candidate ancestry exposure mappings",
+    "custodian exclusion attestation without protected payload access",
+    "independent Polish calibration and blinded answer adjudication",
+    "frozen precision and checkpoint multiplicity plan"
+  ],
+  "roles": {
+    "calibration": {
+      "independent_review_required": true,
+      "production_language": "pl"
+    },
+    "parent_selection": {
+      "minimum_insufficient": 60,
+      "minimum_per_domain": 30,
+      "minimum_sufficient": 60
+    },
+    "prefinal": {
+      "minimum_insufficient": 60,
+      "minimum_per_domain": 50,
+      "minimum_sufficient": 60
+    },
+    "quarantine": {
+      "eligible": false
+    },
+    "sealed_final": {
+      "content_access": "AFTER_CHECKPOINT_BOUND_PREFINAL_PASS",
+      "custodian_only": true
+    },
+    "selection_dev": {
+      "minimum_insufficient": 60,
+      "minimum_per_domain": 30,
+      "minimum_sufficient": 60
+    },
+    "train": {
+      "replay_fraction": 0.25
+    }
+  },
+  "schema_version": 2,
+  "sealed_access_token_bindings": [
+    "checkpoint",
+    "protocol",
+    "scorer",
+    "all data splits",
+    "prefinal raw outputs",
+    "v1-v4 regression results"
+  ],
+  "simulation_evidence": {
+    "acceptance_authorized": false,
+    "eligible_for_parent_selection": false,
+    "family_count": 8,
+    "mathematical_ground_truth_verified": true,
+    "one_family_per_domain": true,
+    "p5_exposure_excluded": false,
+    "real_world_representativeness_certified": false,
+    "status": "SIMULATION_VERIFIED_QUARANTINE"
+  },
+  "split_unit": [
+    "source_family_id",
+    "causal_cluster_id"
+  ],
+  "status": "BLOCKED_INDEPENDENT_EVIDENCE",
+  "training": {
+    "dtype": "BF16",
+    "merge_into_base": false,
+    "on_prefinal_fail": "STOP_ERROR_ANALYSIS_NO_NEW_CORRECTIVE_STAGE",
+    "rank": 8,
+    "runs": 1,
+    "status": "NOT_AUTHORIZED",
+    "target_modules": "all-language-linear"
+  }
+}

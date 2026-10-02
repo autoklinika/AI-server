@@ -26,38 +26,103 @@
       "path": "deploy/stage-p5/training/p510/inventory_evidence.py",
       "sha256": "cc7aaf079be85520ee0f1768fc513e91b83c6570cec415c42363b0c8a549fce7"
     },
+    "manifest_builder": {
+      "bytes": 1487,
+      "path": "deploy/stage-p5/training/p510/freeze_snapshot.py",
+      "sha256": "95650694399c5686e701084708f3d9e165bbf12327ca7fc16209a2c8288d2a2a"
+    },
     "methodology": {
-      "bytes": 10921,
+      "bytes": 14090,
       "path": "deploy/stage-p5/training/p510/METHODOLOGY.md",
-      "sha256": "8768f8c5c767c8948c31e25182ebf0acf582e4cae9a52eb9ea95ea7a8e786ef5"
+      "sha256": "05c4305d9edb430f533a6a369828cc0f31096d9c6a90a351876ae053739bc0d6"
     },
     "preflight": {
-      "bytes": 4950,
+      "bytes": 6112,
       "path": "deploy/stage-p5/training/p510/preflight.py",
-      "sha256": "d1fc00c02c79866eb539077f7a620b6a5f81ffac524f578b3c3a4e4b5e5b1e59"
+      "sha256": "54ae2f8cceb78d2c416073b3269386d5e24f20111d082ddaea23c2b9e4f3c4dd"
     },
-    "report": {
-      "bytes": 3010,
-      "path": "deploy/stage-p5/training/p510/CODEX_REPORT.md",
-      "sha256": "ef46eeb58f88dbb093818cc446db3fba6bc34bcc428525d0d181ca350392db1e"
+    "protocol_v2_calibration": {
+      "bytes": 25192,
+      "path": "deploy/stage-p5/training/p510/protocol_v2/calibration.json",
+      "sha256": "0060dc35534c429f09721aaf6ab0dcdb563949c256f8a64eaf0822319f4eba5a"
     },
-    "scorer": {
+    "protocol_v2_exposure_ledger": {
+      "bytes": 13897,
+      "path": "deploy/stage-p5/training/p510/protocol_v2/exposure_ledger.json",
+      "sha256": "93e9c9635de5a05981680b37159e9d5e197b0ab504715327627579b5735d8024"
+    },
+    "protocol_v2_families": {
+      "bytes": 25235,
+      "path": "deploy/stage-p5/training/p510/protocol_v2/families.json",
+      "sha256": "c72ece775c010b0ac86ea2b67b62a8509b6a37f89f67be4ee0436da04763e77b"
+    },
+    "protocol_v2_notes": {
+      "bytes": 8619,
+      "path": "deploy/stage-p5/training/p510/protocol_v2/README.md",
+      "sha256": "8d543751d773d39d9ea58932e02cd5d597bcef2ff25b5deba45ee876bd6f39f5"
+    },
+    "protocol_v2_precision": {
+      "bytes": 934,
+      "path": "deploy/stage-p5/training/p510/protocol_v2/precision.json",
+      "sha256": "980505718bdf02b03fb0473e0cbc207c692a2015253810205745b7dc10c17f1e"
+    },
+    "protocol_v2_protocol": {
+      "bytes": 3959,
+      "path": "deploy/stage-p5/training/p510/protocol_v2/protocol.json",
+      "sha256": "8149a747bab1f7d5c622d1673d44ab7c014a7399f9aae8d230769b0be9d4ca0a"
+    },
+    "protocol_v2_scorer_v5_1_snapshot": {
       "bytes": 7319,
-      "path": "deploy/stage-p5/benchmark/score_quality_benchmark_v5.py",
+      "path": "deploy/stage-p5/training/p510/protocol_v2/scorer_v5_1_snapshot.py",
       "sha256": "ac6e3b1317b39e4ba3bf3f1294edc0ff23d298ff71c5e51f0c44d78c16084435"
     },
+    "protocol_v2_simulation_code": {
+      "bytes": 10614,
+      "path": "deploy/stage-p5/training/p510/protocol_v2/simulation_evidence.py",
+      "sha256": "f24b7244156faef7c6912e04d7e2a7283b5d73bee54a46a50f835ce6648e62b3"
+    },
+    "protocol_v2_simulation_evidence": {
+      "bytes": 7522,
+      "path": "deploy/stage-p5/training/p510/protocol_v2/simulation_evidence.json",
+      "sha256": "a5cf29db10a7b003c9ef21bda4e08989e86635de22df971e38534ee6890e1cbc"
+    },
+    "protocol_v2_sources": {
+      "bytes": 8348,
+      "path": "deploy/stage-p5/training/p510/protocol_v2/sources.json",
+      "sha256": "b7df3f7f2e1496c8fbdec49f9dc55e943dc24f6ab4f4cc49a1fa9bfca13cddac"
+    },
+    "protocol_v2_tests": {
+      "bytes": 9291,
+      "path": "deploy/stage-p5/training/p510/test_protocol_v2.py",
+      "sha256": "7ff58bca58acfde8b2a40863e2a53235133207625f00d03b4825f65c9d48353e"
+    },
+    "protocol_v2_validator": {
+      "bytes": 8461,
+      "path": "deploy/stage-p5/training/p510/protocol_v2/validate_protocol.py",
+      "sha256": "185dc5630a0d0fb869787a9c583046370d087d4ac749aa893d3481e75b836c85"
+    },
+    "report": {
+      "bytes": 8160,
+      "path": "deploy/stage-p5/training/p510/CODEX_REPORT.md",
+      "sha256": "bf6b19158865efed5ec502e427768359c9eeea0104c882e719bba13c17edbcd6"
+    },
+    "scorer": {
+      "bytes": 9134,
+      "path": "deploy/stage-p5/benchmark/score_quality_benchmark_v5.py",
+      "sha256": "57404f3322739c4e564251f5989041b024d483d6c54f87279c3a2cb27a12fec5"
+    },
     "task": {
-      "bytes": 6573,
+      "bytes": 7471,
       "path": "deploy/stage-p5/training/p510/CODEX_TASK.md",
-      "sha256": "df5f2795ed0925afa7a6504ccf9c4a97090e427f6fb8309e6304bed7431ad83f"
+      "sha256": "3e9c63ece6cb875cfc44f508d81642cd1722b3816cde5802d76a7d7af89e5732"
     },
     "unit_tests": {
-      "bytes": 12979,
+      "bytes": 13469,
       "path": "deploy/stage-p5/training/p510/test_foundation.py",
-      "sha256": "f8ac2563ae214120253f14111e5fbdf8e2e97cf846858bd3960adeea9497c7be"
+      "sha256": "bd61e1e375b6c439a380a0d8199416013a7fff9b3d7b97049963da19ae0bec64"
     }
   },
-  "blocker": "No provenance-backed independent evaluation exists: no frozen source/exposure ledger and independent causal-scenario review establish an unused case pool excluded from candidate training and prior evaluation. Independent scorer calibration and a validated prefinal gate are also missing.",
+  "blocker": "Eight-domain executable ground truth PoC passes, but zero scenarios are certified for evaluation. Independent causal/correctness/exposure review, full 240/240/400 pools, independent Polish scorer calibration, custodian exclusion and a frozen execution contract remain missing. Automated tests cannot authorize a run.",
   "candidate_status": "NOT_RUN",
   "independent_eval": null,
   "parent": null,

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "status": "DESIGN_DIAGNOSTICS_NOT_POWER_CERTIFICATE",
+  "method": "Wilson 95% binomial intervals; paired worst-case normal half-width for bounded delta [-1,1]; familywise alpha=.05/60",
+  "domain_parent_n30": {
+    "score": 0.9,
+    "low": 0.7437891742081593,
+    "high": 0.9654001112526658,
+    "n": 30
+  },
+  "domain_prefinal_n50": {
+    "score": 0.9,
+    "low": 0.7863976856252035,
+    "high": 0.9565242350681096,
+    "n": 50
+  },
+  "minimum_successes_n50_lower80": 46,
+  "global_parent_n240": {
+    "score": 0.9,
+    "low": 0.8555203944401756,
+    "high": 0.9318764696065774,
+    "n": 240
+  },
+  "paired_n240_worst_case_half_width_approx": 0.21566062266131633,
+  "interpretation": "30/domain is descriptive only; 240 scenarios may not distinguish small gains. Paired discordance and effective family count govern power. Do not tune sample count after candidate outputs. No final-derived assumptions."
+}

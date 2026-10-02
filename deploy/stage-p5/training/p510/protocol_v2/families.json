@@ -1,0 +1,550 @@
+{
+  "families": [
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "series_supply_impedance",
+      "correctness_review": null,
+      "domain": "power_integrity",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "PI01",
+      "historical_overlap_candidates": [
+        "brownout_waveform_signature"
+      ],
+      "independence_review": null,
+      "intervention": "Probe both ends of supply contact and reset with a common trigger.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "load step causes contact drop before reset",
+      "prediction": "Contact drop grows with load before reset; a stable contact with rail collapse favors a downstream cause.",
+      "record_sha256": "744fcca033f70962f451587cb46264e5adfae88af6bd9b6df0bea21dd158c374",
+      "role": "quarantine",
+      "safety": "Current-limited bench source; differential probes within ratings.",
+      "source_family_id": "TI-TPS3808",
+      "source_ids": [
+        "TI-TPS3808"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "source -> series contact -> rail -> supervisor"
+    },
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "supervisor_manual_reset",
+      "correctness_review": null,
+      "domain": "power_integrity",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "PI02",
+      "historical_overlap_candidates": [
+        "power_good_sequence"
+      ],
+      "independence_review": null,
+      "intervention": "Capture SENSE, MR and RESET together.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "manual-reset coupling can assert reset with a valid rail",
+      "prediction": "MR falls while SENSE stays valid for manual reset; SENSE crossing first favors undervoltage.",
+      "record_sha256": "0e8761652a9af06427811539470b4305e50a2eab11a03ff70d6ddfc2ed5f8d74",
+      "role": "quarantine",
+      "safety": "Do not bypass reset protection.",
+      "source_family_id": "TI-TPS3808",
+      "source_ids": [
+        "TI-TPS3808"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "stable rail + manual-reset input -> reset output"
+    },
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "sar_acquisition_memory",
+      "correctness_review": null,
+      "domain": "analog_sensor_chain",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "AS01",
+      "historical_overlap_candidates": [
+        "adc_quantization"
+      ],
+      "independence_review": null,
+      "intervention": "Hold input fixed; vary acquisition duration and preceding channel.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "finite settling retains previous-channel charge",
+      "prediction": "Error shrinks with longer acquisition if settling is causal; fixed offset persists under that intervention.",
+      "record_sha256": "8b0042b3f97fe88adb6ccfb9a427212f391841a5bb636b75181499e94c6a4168",
+      "role": "quarantine",
+      "safety": "Stay inside ADC input ratings.",
+      "source_family_id": "ADI-ADC-SETTLING",
+      "source_ids": [
+        "ADI-ADC-SETTLING"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "source resistance -> sample capacitor -> ADC code"
+    },
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "reference_gain_error",
+      "correctness_review": null,
+      "domain": "analog_sensor_chain",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "AS02",
+      "historical_overlap_candidates": [
+        "reference_noise"
+      ],
+      "independence_review": null,
+      "intervention": "Measure input and reference independently while sampling.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "reference shift scales codes rather than creating acquisition memory",
+      "prediction": "Code follows input/reference ratio; longer acquisition alone does not fix reference drift.",
+      "record_sha256": "9b14f64a763fe3eb5ad931469e2e570a968e7e5cdad8b11a4fcfee3d940e1baf",
+      "role": "quarantine",
+      "safety": "Use high-impedance reference measurement.",
+      "source_family_id": "ADI-ADC-SETTLING",
+      "source_ids": [
+        "ADI-ADC-SETTLING"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "stable input + changing reference -> ratio conversion"
+    },
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "inductive_decay_path",
+      "correctness_review": null,
+      "domain": "actuator_power_stage",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "AP01",
+      "historical_overlap_candidates": [
+        "hbridge_recirculation"
+      ],
+      "independence_review": null,
+      "intervention": "Record coil current and differential voltage during turn-off.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "clamp voltage changes current decay after turn-off",
+      "prediction": "Higher opposing clamp voltage shortens decay under the stated inductance model; a slow decay alone does not prove a stuck driver.",
+      "record_sha256": "41eda855fabb52a88d919eb7334c190712143dd5d9cb64a73541a4f26c1de940",
+      "role": "quarantine",
+      "safety": "Rated differential probes; never remove the clamp on energized hardware.",
+      "source_family_id": "TI-SLVAE59A",
+      "source_ids": [
+        "TI-SLVAE59A"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "coil -> freewheel path -> stored energy dissipation"
+    },
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "bridge_cross_conduction",
+      "correctness_review": null,
+      "domain": "actuator_power_stage",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "AP02",
+      "historical_overlap_candidates": [
+        "hbridge_crossconduction_signature"
+      ],
+      "independence_review": null,
+      "intervention": "Compare both gate-source voltages, supply current and load current at switching edges.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "overlapping conduction bypasses the inductive load",
+      "prediction": "Supply spikes with gate overlap and little load-current change favor shoot-through; matching load-current growth favors load demand.",
+      "record_sha256": "9a35a6a7add433211c89d98a7eab290bbd90d31f13b6044e985fb63735173960",
+      "role": "quarantine",
+      "safety": "Current-limited simulation or protected bench only.",
+      "source_family_id": "TI-SLVAE59A",
+      "source_ids": [
+        "TI-SLVAE59A"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "upper and lower switch overlap -> supply current"
+    },
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "window_watchdog_early_service",
+      "correctness_review": null,
+      "domain": "digital_timing_reset",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "DT01",
+      "historical_overlap_candidates": [
+        "watchdog_reset"
+      ],
+      "independence_review": null,
+      "intervention": "Timestamp service edges and reset against the configured window.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "an early service can violate a window despite frequent activity",
+      "prediction": "Edges before the allowed window explain reset; valid-window edges require other reset sources to be checked.",
+      "record_sha256": "c67ca499ad8b32d6a4ca04b78303af06bce16df9910dddce98bedd348926786f",
+      "role": "quarantine",
+      "safety": "Simulation only for deliberately invalid service.",
+      "source_family_id": "TI-SSZTAF7",
+      "source_ids": [
+        "TI-SSZTAF7"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "service edge -> window comparator -> reset"
+    },
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "open_drain_reset_rise",
+      "correctness_review": null,
+      "domain": "digital_timing_reset",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "DT02",
+      "historical_overlap_candidates": [
+        "logic_thresholds"
+      ],
+      "independence_review": null,
+      "intervention": "Observe analog reset voltage at MCU and sink release timing.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "slow RC rise delays digital release without a new reset assertion",
+      "prediction": "Exponential rise crossing the threshold late favors RC loading; an actively clamped low signal does not.",
+      "record_sha256": "220f2fa88bb8f4ca197098b329ec0adefd8f77c9b53bb366920c3c7b2cdd4fbc",
+      "role": "quarantine",
+      "safety": "Probe capacitance must be included in the model.",
+      "source_family_id": "TI-SSZTAF7",
+      "source_ids": [
+        "TI-SSZTAF7"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "reset sink released -> pullup and capacitance -> logic threshold"
+    },
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "termination_reflection",
+      "correctness_review": null,
+      "domain": "vehicle_network",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "VN01",
+      "historical_overlap_candidates": [
+        "can_termination"
+      ],
+      "independence_review": null,
+      "intervention": "Measure far-end differential waveform and power-off termination with documented topology.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "edge reflections corrupt sampling",
+      "prediction": "A delayed reflection changes with termination; normal DC resistance alone does not exclude stubs.",
+      "record_sha256": "ea0de58c1d75725272965286303efd1c1be4ac1467eaea095ca83b68ed5095bb",
+      "role": "quarantine",
+      "safety": "Resistance measurement only with bus de-energized.",
+      "source_family_id": "TI-SLLA270",
+      "source_ids": [
+        "TI-SLLA270"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "transmission line -> impedance discontinuity -> reflected edge"
+    },
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "receiver_common_mode",
+      "correctness_review": null,
+      "domain": "vehicle_network",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "VN02",
+      "historical_overlap_candidates": [
+        "emi_common_mode"
+      ],
+      "independence_review": null,
+      "intervention": "Measure each bus conductor relative to receiver ground and differential signal.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "valid differential amplitude can coexist with invalid common-mode voltage",
+      "prediction": "Decode failure tracking common-mode excursion favors ground/reference trouble; poor differential edges suggest another mechanism.",
+      "record_sha256": "9970f024b2a7ac1b68360fd7a3af4b8067319ea8506f811bc40831487706032f",
+      "role": "quarantine",
+      "safety": "Use isolated or suitable differential instrumentation.",
+      "source_family_id": "TI-SLLA270",
+      "source_ids": [
+        "TI-SLLA270"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "ground offset + differential signal -> receiver input range"
+    },
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "surface_leakage_divider",
+      "correctness_review": null,
+      "domain": "pcb_fault_localization",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "PF01",
+      "historical_overlap_candidates": [
+        "contamination_surface_leakage_humidity"
+      ],
+      "independence_review": null,
+      "intervention": "Compare bias under controlled humidity and after approved cleaning with reference voltage monitored.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "parallel leakage biases the signal",
+      "prediction": "Bias changes with leakage path conductance; reference drift moves multiple channels together.",
+      "record_sha256": "8725edc84812e61f481796505b8b78ca2914ce4b45c78e67d91f27a1a376c1bf",
+      "role": "quarantine",
+      "safety": "Unpowered cleaning; dry before powering; no condensation.",
+      "source_family_id": "ADI-HUMIDITY",
+      "source_ids": [
+        "ADI-HUMIDITY"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "high impedance signal -> contamination resistance -> rail"
+    },
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "parallel_injection_ambiguity",
+      "correctness_review": null,
+      "domain": "pcb_fault_localization",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "PF02",
+      "historical_overlap_candidates": [
+        "current_injection_parallel_paths"
+      ],
+      "independence_review": null,
+      "intervention": "In a current-limited unpowered model, isolate branches and compare current separately.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "lowest resistance path can mask a second short",
+      "prediction": "Removing one branch leaves current if another fault remains; hotspot alone does not identify all faults.",
+      "record_sha256": "b7d40e86484cd3bc63ab158695ae6aaf464ad547ceca18414faf5f083ff601a0",
+      "role": "quarantine",
+      "safety": "No live-rail injection; cap voltage below every connected device limit.",
+      "source_family_id": "ADI-HUMIDITY",
+      "source_ids": [
+        "ADI-HUMIDITY"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "injection node -> two parallel fault branches"
+    },
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "joint_expansion_open",
+      "correctness_review": null,
+      "domain": "intermittent_environmental",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "IE01",
+      "historical_overlap_candidates": [
+        "intermittent_via_temperature"
+      ],
+      "independence_review": null,
+      "intervention": "Repeat localized controlled temperature stimulus while recording continuity and signal.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "joint opening is distinct from semiconductor gain drift",
+      "prediction": "A continuity discontinuity synchronized with failure supports the joint model; smooth signal drift without interruption does not.",
+      "record_sha256": "d96c36deb8b98424693b0f3e85dd147d94f0f618a9fae821f55e563f4b523cea",
+      "role": "quarantine",
+      "safety": "Keep within assembly limits; no thermal shock or condensation.",
+      "source_family_id": "NASA-19930058665",
+      "source_ids": [
+        "NASA-19930058665"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "thermal expansion -> intermittent joint resistance -> signal dropout"
+    },
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "thermal_protection_feedback",
+      "correctness_review": null,
+      "domain": "intermittent_environmental",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "IE02",
+      "historical_overlap_candidates": [
+        "thermal_resistance"
+      ],
+      "independence_review": null,
+      "intervention": "Vary load at fixed ambient and log current, temperature proxy and fault flag.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "self-heating protection produces relaxation cycles",
+      "prediction": "Lower load delays or removes shutdown cycles; continuity opening without a protection flag suggests another path.",
+      "record_sha256": "2c52c07d87ec160249bd6488ae5f5746b0b6cfd460432eba33dade7d0224f794",
+      "role": "quarantine",
+      "safety": "Use specified power limits and protected load.",
+      "source_family_id": "NASA-19930058665",
+      "source_ids": [
+        "NASA-19930058665"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "dissipation -> junction temperature -> shutdown -> cooling"
+    },
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "off_state_backfeed",
+      "correctness_review": null,
+      "domain": "ecu_system_isolation",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "ES01",
+      "historical_overlap_candidates": [
+        "open_load_detection"
+      ],
+      "independence_review": null,
+      "intervention": "Use the documented switchable diagnostic pull-up and isolated harness test.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "off-state voltage is ambiguous between diagnostic bias and external feed",
+      "prediction": "Voltage persisting after diagnostic bias removal favors external feed; bias-dependent voltage can indicate open load.",
+      "record_sha256": "7a41ba372a7f1156dd8502d606b682e6242ae180c5162da57d693f980816f8cd",
+      "role": "quarantine",
+      "safety": "Do not short output to ground; follow component diagnostic limits.",
+      "source_family_id": "TI-SSZTDD0",
+      "source_ids": [
+        "TI-SSZTDD0"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "external supply -> harness -> output sense"
+    },
+    {
+      "author": "Codex",
+      "base_pretraining_exposure": "UNKNOWN",
+      "case_payload": null,
+      "causal_cluster_id": "shared_sensor_supply_collapse",
+      "correctness_review": null,
+      "domain": "ecu_system_isolation",
+      "empirical_confirmation": false,
+      "exposure": {
+        "p57_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p58_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "p59_step008": "UNKNOWN_FAMILY_EXPOSURE",
+        "v3": "UNKNOWN_FAMILY_EXPOSURE",
+        "v4_r3": "UNKNOWN_FAMILY_EXPOSURE"
+      },
+      "family_id": "ES02",
+      "historical_overlap_candidates": [
+        "comparative_channel_diagnosis"
+      ],
+      "independence_review": null,
+      "intervention": "Disconnect branches while de-energized; restart current-limited and measure excitation.",
+      "kind": "authored_first_principles_hypothesis",
+      "mechanism": "one external branch can collapse a shared excitation rail",
+      "prediction": "Recovery after removing one branch localizes that branch, not necessarily its sensor; persistent collapse includes ECU or other branches.",
+      "record_sha256": "687b3acc7b02cbfcfcd9080ff97b633546f799efc81aef5367386e9f17b61479",
+      "role": "quarantine",
+      "safety": "Preserve ECU pin limits and avoid hot unplugging.",
+      "source_family_id": "TI-SSZTDD0",
+      "source_ids": [
+        "TI-SSZTDD0"
+      ],
+      "source_support_scope": "Source supports domain background; complete scenario and counterfactuals are author inferences, not vendor-validated cases.",
+      "topology": "ECU excitation -> multiple harness branches -> sensor signals"
+    }
+  ],
+  "schema_version": 1,
+  "status": "QUARANTINED_ACQUISITION_SEEDS"
+}

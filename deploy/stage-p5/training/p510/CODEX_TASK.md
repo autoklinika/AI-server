@@ -117,3 +117,16 @@ work: finalize only the blocked snapshot, run software/integrity checks, verify 
 and unchanged MES count, then commit and push this branch. No new audit from scratch,
 protected-content access, tournament or training is authorized. Regeneration of the
 existing public audit and metadata inventory is requested for reproducibility.
+
+## Resumed scope (2026-10-02; supersedes finalization-only scope above)
+
+The user authorizes a technically defensible provenance foundation and, only after
+all evidence gates pass, the common five-adapter tournament and one consolidated run.
+Worktree is `/home/harrypotter/agent-worktrees/stage-p510`, branch remains
+`stage-p5.10/eval-foundation-v1`; main must remain clean and untouched. Public primary
+sources and explicit first-principles/simulation cases are permitted, but automated
+checks cannot substitute for missing independent review. If independence requirements
+cannot be met without external review, complete safe preparatory work, document the
+remaining blocker and stop without training. Inconclusive parent selection also does
+not authorize training. Existing thresholds, regression protection, no-merge rule,
+sealed-final lock and GPU MES fail-closed requirements remain binding.

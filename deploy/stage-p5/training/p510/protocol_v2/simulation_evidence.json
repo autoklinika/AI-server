@@ -1,0 +1,218 @@
+{
+  "acceptance_authorized": false,
+  "code_sha256": "f24b7244156faef7c6912e04d7e2a7283b5d73bee54a46a50f835ce6648e62b3",
+  "families": [
+    {
+      "domain": "power_integrity",
+      "eligible_for_parent_selection": false,
+      "equation": "Vrail = Vs - Iload*Rcontact",
+      "family_id": "PI01",
+      "inputs": {
+        "I_high_A": 4.0,
+        "I_low_A": 1.0,
+        "Rcontact_ohm": 0.25,
+        "Vs_V": 12.0
+      },
+      "invariant": "higher load increases contact drop; bypass removes the drop",
+      "mathematical_ground_truth_verified": true,
+      "metamorphic_pass": true,
+      "model_kind": "ohms_law_series_drop",
+      "observables": {
+        "Vrail_bypass_V": 12.0,
+        "Vrail_high_V": 11.0,
+        "Vrail_low_V": 11.75
+      },
+      "oracle_pass": true,
+      "p5_exposure_excluded": false,
+      "real_world_representativeness_certified": false,
+      "status": "SIMULATION_VERIFIED_QUARANTINE"
+    },
+    {
+      "domain": "analog_sensor_chain",
+      "eligible_for_parent_selection": false,
+      "equation": "Vcap(t)=Vin+(Vprev-Vin)*exp(-t/(Rs*Csample))",
+      "family_id": "AS01",
+      "inputs": {
+        "Csample_F": 2e-11,
+        "Rs_ohm": 10000.0,
+        "Vin_V": 2.0,
+        "Vprev_V": 4.5,
+        "t_long_s": 1e-06,
+        "t_short_s": 1e-07
+      },
+      "invariant": "settling error decays monotonically with acquisition time",
+      "mathematical_ground_truth_verified": true,
+      "metamorphic_pass": true,
+      "model_kind": "first_order_sar_settling",
+      "observables": {
+        "error_long_V": 0.016844867498,
+        "error_short_V": 1.516326649282,
+        "tau_s": 2e-07
+      },
+      "oracle_pass": true,
+      "p5_exposure_excluded": false,
+      "real_world_representativeness_certified": false,
+      "status": "SIMULATION_VERIFIED_QUARANTINE"
+    },
+    {
+      "domain": "actuator_power_stage",
+      "eligible_for_parent_selection": false,
+      "equation": "t_zero = L*I0/Vclamp for constant opposing clamp",
+      "family_id": "AP01",
+      "inputs": {
+        "I0_A": 2.0,
+        "L_H": 0.02,
+        "Vclamp_high_V": 36.0,
+        "Vclamp_low_V": 12.0
+      },
+      "invariant": "larger opposing clamp voltage shortens current-decay time",
+      "mathematical_ground_truth_verified": true,
+      "metamorphic_pass": true,
+      "model_kind": "inductor_constant_clamp_decay",
+      "observables": {
+        "t_high_clamp_s": 0.001111111111,
+        "t_low_clamp_s": 0.003333333333
+      },
+      "oracle_pass": true,
+      "p5_exposure_excluded": false,
+      "real_world_representativeness_certified": false,
+      "status": "SIMULATION_VERIFIED_QUARANTINE"
+    },
+    {
+      "domain": "digital_timing_reset",
+      "eligible_for_parent_selection": false,
+      "equation": "service valid iff tmin <= t_service <= tmax",
+      "family_id": "DT01",
+      "inputs": {
+        "early_s": 0.2,
+        "late_s": 1.1,
+        "tmax_s": 0.9,
+        "tmin_s": 0.4,
+        "valid_s": 0.6
+      },
+      "invariant": "frequent activity can still fault when service occurs before the legal window",
+      "mathematical_ground_truth_verified": true,
+      "metamorphic_pass": true,
+      "model_kind": "window_watchdog_state_machine",
+      "observables": {
+        "early": "EARLY_FAULT",
+        "late": "LATE_FAULT",
+        "valid": "VALID"
+      },
+      "oracle_pass": true,
+      "p5_exposure_excluded": false,
+      "real_world_representativeness_certified": false,
+      "status": "SIMULATION_VERIFIED_QUARANTINE"
+    },
+    {
+      "domain": "vehicle_network",
+      "eligible_for_parent_selection": false,
+      "equation": "Gamma=(Zload-Z0)/(Zload+Z0)",
+      "family_id": "VN01",
+      "inputs": {
+        "Z0_ohm": 120.0,
+        "Zmatched_ohm": 120.0,
+        "Zopen_proxy_ohm": 1000000000000000.0
+      },
+      "invariant": "matched termination minimizes first-order reflection magnitude",
+      "mathematical_ground_truth_verified": true,
+      "metamorphic_pass": true,
+      "model_kind": "transmission_line_reflection_coefficient",
+      "observables": {
+        "gamma_matched": 0.0,
+        "gamma_open": 1.0
+      },
+      "oracle_pass": true,
+      "p5_exposure_excluded": false,
+      "real_world_representativeness_certified": false,
+      "status": "SIMULATION_VERIFIED_QUARANTINE"
+    },
+    {
+      "domain": "pcb_fault_localization",
+      "eligible_for_parent_selection": false,
+      "equation": "Vout=Vin*(Rbottom||Rleak)/(Rtop+(Rbottom||Rleak))",
+      "family_id": "PF01",
+      "inputs": {
+        "Rbottom_ohm": 100000.0,
+        "Rleak_ohm": 200000.0,
+        "Rtop_ohm": 100000.0,
+        "Vin_V": 5.0
+      },
+      "invariant": "finite leakage to ground depresses the high-impedance divider node",
+      "mathematical_ground_truth_verified": true,
+      "metamorphic_pass": true,
+      "model_kind": "resistive_surface_leakage_divider",
+      "observables": {
+        "Vout_dry_V": 2.5,
+        "Vout_leaky_V": 2.0
+      },
+      "oracle_pass": true,
+      "p5_exposure_excluded": false,
+      "real_world_representativeness_certified": false,
+      "status": "SIMULATION_VERIFIED_QUARANTINE"
+    },
+    {
+      "domain": "intermittent_environmental",
+      "eligible_for_parent_selection": false,
+      "equation": "joint OPEN iff |DeltaAlpha*(T-Tref)| > strain_threshold",
+      "family_id": "IE01",
+      "inputs": {
+        "DeltaAlpha_per_K": 2.5e-05,
+        "Thot_C": 90.0,
+        "Tref_C": 20.0,
+        "threshold": 0.001
+      },
+      "invariant": "thermal excursion crosses a mechanical-open threshold and cooldown restores the state in this reversible PoC",
+      "mathematical_ground_truth_verified": true,
+      "metamorphic_pass": true,
+      "model_kind": "thermal_expansion_threshold_state",
+      "observables": {
+        "state_cold": "CLOSED",
+        "state_hot": "OPEN",
+        "strain_cold": 0.0,
+        "strain_hot": 0.00175
+      },
+      "oracle_pass": true,
+      "p5_exposure_excluded": false,
+      "real_world_representativeness_certified": false,
+      "status": "SIMULATION_VERIFIED_QUARANTINE"
+    },
+    {
+      "domain": "ecu_system_isolation",
+      "eligible_for_parent_selection": false,
+      "equation": "Vnode=(Vdiag/Rdiag+Vext/Rext)/(1/Rdiag+1/Rext+1/Rload)",
+      "family_id": "ES01",
+      "inputs": {
+        "Rdiag_ohm": 10000.0,
+        "Rext_ohm": 1000.0,
+        "Rload_ohm": 20000.0,
+        "Vdiag_V": 5.0,
+        "Vext_V": 12.0
+      },
+      "invariant": "external feed keeps the off-state node elevated after diagnostic bias is removed",
+      "mathematical_ground_truth_verified": true,
+      "metamorphic_pass": true,
+      "model_kind": "off_state_backfeed_kcl",
+      "observables": {
+        "Vnode_both_V": 10.869565217391,
+        "Vnode_no_diag_V": 10.434782608696,
+        "Vnode_no_ext_V": 0.434782608696
+      },
+      "oracle_pass": true,
+      "p5_exposure_excluded": false,
+      "real_world_representativeness_certified": false,
+      "status": "SIMULATION_VERIFIED_QUARANTINE"
+    }
+  ],
+  "family_count": 8,
+  "limitations": [
+    "Mathematical oracle validity does not prove P5 non-exposure.",
+    "Simplified equations/state machines do not certify real-world ECU representativeness.",
+    "One deterministic model per domain is a proof-of-concept, not the required 240/240/400 evaluation pools."
+  ],
+  "schema_version": 1,
+  "sealed_final_authorized": false,
+  "snapshot_sha256": "ad0ff108430055243f6d3f19b909349a2080ab9aeaa8037b4bfa1ade65b64de2",
+  "status": "SIMULATION_VERIFIED_QUARANTINE",
+  "training_authorized": false
+}

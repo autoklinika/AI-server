@@ -8,6 +8,7 @@ The manifest is an integrity binding, not a signature or an independence certifi
 import hashlib
 import json
 from pathlib import Path
+from protocol_v2 import validate_protocol as protocol_v2
 
 PREFIX = 'deploy/stage-p5/training/p510/'
 ARTIFACTS = {
@@ -23,11 +24,23 @@ ARTIFACTS = {
     'task': PREFIX + 'CODEX_TASK.md',
     'report': PREFIX + 'CODEX_REPORT.md',
 }
+ARTIFACTS.update({
+    'protocol_v2_' + name.removesuffix('.json'): PREFIX + 'protocol_v2/' + name
+    for name in protocol_v2.FILES
+})
+ARTIFACTS.update({
+    'protocol_v2_validator': PREFIX + 'protocol_v2/validate_protocol.py',
+    'protocol_v2_tests': PREFIX + 'test_protocol_v2.py',
+    'protocol_v2_notes': PREFIX + 'protocol_v2/README.md',
+    'protocol_v2_simulation_code': PREFIX + 'protocol_v2/simulation_evidence.py',
+    'protocol_v2_scorer_v5_1_snapshot': PREFIX + 'protocol_v2/scorer_v5_1_snapshot.py',
+    'manifest_builder': PREFIX + 'freeze_snapshot.py',
+})
 STATUS = 'BLOCKED_INDEPENDENT_EVIDENCE'
-BLOCKER = ('No provenance-backed independent evaluation exists: no frozen source/exposure '
-           'ledger and independent causal-scenario review establish an unused case pool '
-           'excluded from candidate training and prior evaluation. Independent scorer '
-           'calibration and a validated prefinal gate are also missing.')
+BLOCKER = ('Eight-domain executable ground truth PoC passes, but zero scenarios are certified for evaluation. '
+           'Independent causal/correctness/exposure review, full 240/240/400 pools, '
+           'independent Polish scorer calibration, custodian exclusion and a frozen '
+           'execution contract remain missing. Automated tests cannot authorize a run.')
 CANDIDATES = {'v3', 'v4_r3', 'p57_step008', 'p58_step008', 'p59_step008'}
 
 
@@ -80,7 +93,13 @@ def validate(root):
     if (sealed.get('content_opened_by_this_task') is not False
             or sealed.get('independence_certified') is not False):
         raise ValueError('sealed final disposition changed')
-    return {'status': STATUS, 'artifact_bindings_valid': True,
+    evidence = protocol_v2.inspect({name: json.loads(payloads['protocol_v2_' + name.removesuffix('.json')])
+                                    for name in protocol_v2.FILES})
+    ledger = json.loads(payloads['protocol_v2_exposure_ledger'])
+    for field, name in [('audit_sha256', 'audit'), ('inventory_sha256', 'inventory')]:
+        if ledger.get(field) != hashlib.sha256(payloads[name]).hexdigest():
+            raise ValueError('exposure ledger historical snapshot mismatch')
+    return {'status': STATUS, 'evidence': evidence, 'artifact_bindings_valid': True,
             'artifact_count': len(ARTIFACTS), 'candidate_status': 'NOT_RUN',
             'parent': None, 'acceptance_authorized': False, 'blocker': BLOCKER,
             'protected_content_opened': False}

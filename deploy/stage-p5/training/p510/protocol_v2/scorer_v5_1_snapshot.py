@@ -11,14 +11,12 @@ import hashlib
 import json
 import math
 import re
-import unicodedata
 from pathlib import Path
 
 FIELDS = ('diagnostic_model', 'discriminating_measurement', 'predicted_result')
 DIMENSIONS = ('diagnostic_model_pass', 'measurement_pass', 'prediction_pass',
               'no_guessing_pass', 'abstain_ok')
-SCORER = 'case-rubric-v5.2-scope-fail-closed'
-SCOPE_CONTRACT = 'pl-en-scope-v1-full-field-allowlist'
+SCORER = 'case-rubric-v5.1-experimental'
 
 
 def digest(path):
@@ -63,9 +61,6 @@ def validate_rule(rule):
         raise ValueError('rubric requires all_of and none_of')
     if not isinstance(rule['all_of'], list) or not isinstance(rule['none_of'], list):
         raise ValueError('invalid rubric lists')
-    approved = rule.get('scope_approved_full_text', [])
-    if not isinstance(approved, list) or any(not isinstance(x, str) or not x.strip() for x in approved):
-        raise ValueError('scope approval must contain exact full-field strings')
     for group in rule['all_of']:
         if not isinstance(group, list) or not group:
             raise ValueError('empty proposition')
@@ -77,36 +72,12 @@ def validate_rule(rule):
             raise ValueError('pattern matches empty text')
 
 
-def canonical_text(text):
-    return ' '.join(unicodedata.normalize('NFC', text).casefold().split())
-
-
-# Conservative escalation, not a parser or general solution to natural-language scope.
-# A legitimate negative proposition needs a frozen exact full-field allowlist entry.
-SCOPE_MARKERS = re.compile(
-    r"\b(?:nie\w*|not|no|never|without|brak\w*|bez|żad\w*|false|untrue|"
-    r"incorrect|wrong|except|unless|cannot|can't|isn't|doesn't|don't|won't|"
-    r"rzekomo|cytat|quote|allegedly|gdyby|załóżmy|hypothetically|assuming)\b"
-    r"|[\"“”„«»`]|\b(?:someone (?:claims|says)|ktoś twierdzi|if .{0,100} were)\b", re.I)
-
-
-def scope_ambiguous(text, rule):
-    normalized = canonical_text(text)
-    # Hidden formatting can split negation tokens. Never silently discard it.
-    if any(unicodedata.category(c) == 'Cf' for c in text):
-        return True
-    if not SCOPE_MARKERS.search(normalized):
-        return False
-    return normalized not in {canonical_text(x) for x in rule.get('scope_approved_full_text', [])}
-
-
-def match_rule(text, rule, check_scope=True):
+def match_rule(text, rule):
     validate_rule(rule)
-    normalized = canonical_text(text)
-    contradicted = any(re.search(p, normalized, re.I) for p in rule['none_of'])
-    matched = all(any(re.search(p, normalized, re.I) for p in group) for group in rule['all_of'])
-    ambiguous = check_scope and scope_ambiguous(text, rule)
-    return matched and not contradicted and not ambiguous, contradicted
+    text = ' '.join(text.lower().split())
+    contradicted = any(re.search(p, text, re.I) for p in rule['none_of'])
+    matched = all(any(re.search(p, text, re.I) for p in group) for group in rule['all_of'])
+    return matched and not contradicted, contradicted
 
 
 def score_case(case, result):
@@ -120,19 +91,16 @@ def score_case(case, result):
              and all(isinstance(parsed.get(f), str) and parsed[f].strip() for f in FIELDS))
     row = {k: case[k] for k in ('case_id', 'scenario_id', 'category')}
     row.update(raw_parse_ok=result.get('raw_parse_ok') is True, final_parse_ok=valid,
-               must_abstain=case['must_abstain'], review_required=False, scope_review_fields=[])
+               must_abstain=case['must_abstain'], review_required=False)
     row.update({key: False for key in DIMENSIONS})
     if not valid:
         return row
     for field, dim in zip(FIELDS, DIMENSIONS):
         passed, contradicted = match_rule(parsed[field], rubric[field])
         row[dim] = passed
-        if scope_ambiguous(parsed[field], rubric[field]):
-            row['scope_review_fields'].append(field)
-        row['review_required'] |= (not passed and not contradicted) or bool(row['scope_review_fields'])
-    # Scope is checked for every field above. A concatenated field must never widen its allowlist.
-    passed, contradicted = match_rule(' '.join(parsed[f] for f in FIELDS), rubric['no_guessing'], check_scope=False)
-    row['no_guessing_pass'] = passed and not row['scope_review_fields'] and (not case['must_abstain'] or parsed['abstain'])
+        row['review_required'] |= not passed and not contradicted
+    passed, contradicted = match_rule(' '.join(parsed[f] for f in FIELDS), rubric['no_guessing'])
+    row['no_guessing_pass'] = passed and (not case['must_abstain'] or parsed['abstain'])
     row['review_required'] |= not passed and not contradicted
     row['abstain_ok'] = parsed['abstain'] == case['must_abstain']
     return row
@@ -167,7 +135,7 @@ def score(cases, results):
     categories = {c: aggregate([r for r in details if r['category'] == c])
                   for c in sorted({r['category'] for r in details})}
     return {'status': 'SCORED_REVIEW_REQUIRED' if any(r['review_required'] for r in details) else 'SCORED',
-            'scorer': SCORER, 'scope_contract': SCOPE_CONTRACT, 'acceptance_authorized': False,
+            'scorer': SCORER, 'acceptance_authorized': False,
             'metrics': metrics, 'metric_intervals_95': cis,
             'category_metrics': {c: v[0] for c, v in categories.items()},
             'category_intervals_95': {c: v[1] for c, v in categories.items()}, 'details': details}

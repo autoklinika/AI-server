@@ -1,0 +1,365 @@
+{
+  "audit_sha256": "e0c2d7f30010d47b0088eb58e1c921a5a560f70eeb5c0ac11a6d3a19f21a8540",
+  "candidate_bindings": {
+    "p57_step008": {
+      "adapter_config.json": {
+        "bytes": 1276,
+        "sha256": "fa024e9062ec2afbda9e899504473a2ab24f6df8321b80ea85a590a537fd5bd9"
+      },
+      "adapter_model.safetensors": {
+        "bytes": 233605480,
+        "sha256": "633da7f3e577bda75a03678bdee12a958547ef7a40228220c1900f2b27d6ab4b"
+      }
+    },
+    "p58_step008": {
+      "adapter_config.json": {
+        "bytes": 1276,
+        "sha256": "36da287ab0bc88a0f7792c7f4de0073ee007bb4c856fe9234b4ca6caa564251c"
+      },
+      "adapter_model.safetensors": {
+        "bytes": 233605480,
+        "sha256": "81e2c9cc82f62bf26d22f8488ad4ad27225cf47d529cf8840943a5283043600e"
+      }
+    },
+    "p59_step008": {
+      "adapter_config.json": {
+        "bytes": 1276,
+        "sha256": "ffe0b5bc16c50fb3b855c24f2849353a2e2a9c0ad5a6c35ba31c389f3b402c3c"
+      },
+      "adapter_model.safetensors": {
+        "bytes": 233605480,
+        "sha256": "54f5fc70f627ce2849ae6d924d82b2c8e66a4c99afbffd8eb6fa848185df42c1"
+      }
+    },
+    "v3": {
+      "adapter_config.json": {
+        "bytes": 1276,
+        "sha256": "2a6f16e026bdc0f7d46de659abdf8178decc8e5c1ca3438e172cbca7af71cc9f"
+      },
+      "adapter_model.safetensors": {
+        "bytes": 233605480,
+        "sha256": "2fbcbd394318576d2a50924ad2e3f7b452306566243ede24dd524c6d1b549183"
+      }
+    },
+    "v4_r3": {
+      "adapter_config.json": {
+        "bytes": 1276,
+        "sha256": "f6fa95c22aa3e3ca48f1d38491675f31baba8b566c4c9b4d0e33caebda1f4ee0"
+      },
+      "adapter_model.safetensors": {
+        "bytes": 233605480,
+        "sha256": "3416c6fb7d1a44b48960f2d85a60b4f7f90cab03604698f292cd17679b8f732a"
+      }
+    }
+  },
+  "custodian_attestation": null,
+  "events": [
+    {
+      "action": "Authored 16 public acquisition seeds after inspecting historical audit metadata",
+      "actor": "Codex",
+      "candidate_outputs_generated": false,
+      "date": "2026-10-02",
+      "independence_certified": false,
+      "role": "quarantine"
+    },
+    {
+      "action": "Added deterministic eight-domain simulation PoC with mathematical oracles; kept all families quarantined",
+      "actor": "OpenAI assistant",
+      "candidate_outputs_generated": false,
+      "date": "2026-10-02",
+      "independence_certified": false,
+      "role": "quarantine"
+    }
+  ],
+  "inventory_sha256": "8531b134e557a772542bc2982599f75bfa2ccdd9e12c709c25053cd5771af4b1",
+  "protected_material": [
+    {
+      "content_opened": false,
+      "exclusion_attestation": null,
+      "path": "benchmarks/automotive_v1/datasets/golden.v1.jsonl"
+    },
+    {
+      "content_opened": false,
+      "exclusion_attestation": null,
+      "path": "deploy/stage-p5/training/p57/p57_final_v1.jsonl"
+    },
+    {
+      "content_opened": false,
+      "exclusion_attestation": null,
+      "path": "deploy/stage-p5/training/p58/p58_final_v1.jsonl"
+    },
+    {
+      "content_opened": false,
+      "exclusion_attestation": null,
+      "path": "deploy/stage-p5/training/p58/p58_p57final_regression.jsonl"
+    }
+  ],
+  "public_material": [
+    {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "benchmarks/electronics_v3_quality_v1/cases.v1.jsonl",
+      "role": "exposed_evaluation_only",
+      "sha256": "8ba6b0a767c4649949a399e38e276287cc3058d89e89fca86d44b3ddb1858fa5"
+    },
+    {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics/electronics_foundation_holdout_v1.jsonl",
+      "role": "exposed_evaluation_only",
+      "sha256": "385cb2b78755784d1ca086e0c37fbca8247c7af1f9b86d64ed8a132eabcc3e58"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics/electronics_foundation_train_v1.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "7c11610a9e2c6a6ce373038164cb3427c89c16bb64a07122218cc40df525a7ac"
+    },
+    {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_holdout.jsonl",
+      "role": "exposed_evaluation_only",
+      "sha256": "f3eaaef82fe4f6203591518e74b3d031cbbafa51dd2c1ab41524dc5031978fd5"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_replay_train.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "f3fbe5d921cb27c57845d8cdbd4155666f638b2211a62081f8133db3a1204e69"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics_v2/electronics_foundation_v2_train.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "bbead16839dccbecf8fb4b4f0373d80c88bc9cb98540a1dd40b7ec448dfe061a"
+    },
+    {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_holdout.jsonl",
+      "role": "exposed_evaluation_only",
+      "sha256": "53c42d955bc956ded5911ad25650029293eda02c34f7f82aedcb4979e7dd52ca"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_replay_train.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "6934bf23be9e8ffad34dfa56cdc04d545243ccaf4a2a69681da1e4c0ae4408a3"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics_v3/electronics_foundation_v3_train.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "c7c618e66e23b141fb9bcfff8c898f6761f065986688519148c86c341344f02d"
+    },
+    {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_holdout.jsonl",
+      "role": "exposed_evaluation_only",
+      "sha256": "df1b39532dd32ad7ebcde750eb625c68c4d2b551d84997c37d6718be14e712cd"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_replay_train.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "67d462975082e9b45a3a63eb73294f020b2d3329d51b8035b15ef4f6a956f8d9"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics_v4/discriminating_measurement_v4_train.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "1e46bba6195030b2f688817d6606f83f314e2fec05ddc0d53d7ce802538d5cc0"
+    },
+    {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_holdout.jsonl",
+      "role": "exposed_evaluation_only",
+      "sha256": "002a2bf220e89bd84979eaec66c73181c9c4ed957ca16a905d675264e5d7606f"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_replay_train.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "17bce069ec1bdc267ac02a8c9160307984ff3e4307eca76827715023b19a9e99"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics_v4_1/contract_aligned_v41_train.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "0bcbd7d1edb2fb38cb56779cbb77c54ce97ff1db8aaa369f0ee22e00fd93dfea"
+    },
+    {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_holdout.jsonl",
+      "role": "exposed_evaluation_only",
+      "sha256": "ee3cb7743f4813c0a0f0f1a2fb55396b05aeccca28f2d68c65e192db24e0368d"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_replay_train.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "f7026e0eb35c49ec5cb4f8f5169bf6a247a9aa2147107ac95ea47640fd893c15"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/electronics_v4_2/targeted_v42_train.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "ef6a1e9ce039b92fc03bd3be20061183583293f6401addfe3c43dda9be6278da"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/fixtures/automotive_curriculum_seed_v1.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "367920c9e9e4a2318aac8a722c48b708de193cd62a5718a993ac8252e9d52659"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/fixtures/automotive_curriculum_v2.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "b9f3b85afd10d0bcbc286b95c1f2f8b4135f095ca8911b2f8780235c8e6190cc"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/fixtures/microtrain_feasibility_v1.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "dba7c6f1c11080847b4b5b89082c01d0e31beaea46d4a5c19f56161615562e5d"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/p57/p57_balanced_train.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "f8ba03cddf116f15bda39c503be006a38911b6e270d76646406b8d79fcba2216"
+    },
+    {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/p57/p57_dev_v1.jsonl",
+      "role": "exposed_evaluation_only",
+      "sha256": "feee8aebc9db6e66a60efe027787d989728ce0b8eaaff874860884d9203c9bd5"
+    },
+    {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/p57/p57_mini_dev_v1.jsonl",
+      "role": "exposed_evaluation_only",
+      "sha256": "1e437d58c58f838826b1ed56817c36a8aea3e93fdd181412ec296850eb9d6991"
+    },
+    {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/p57/p57_regression_slice_v1.jsonl",
+      "role": "exposed_evaluation_only",
+      "sha256": "d2f34d7caf370a6ec429df58fabd479f48ffcfc03f33396312a321b0f8e179c0"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/p58/p58_curriculum_train.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "6967d2c7660f32693f374cc5a4b5a573832fe7f1b17e0960d3cdbcdfe4bce216"
+    },
+    {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/p58/p58_dev_v1.jsonl",
+      "role": "exposed_evaluation_only",
+      "sha256": "d3bb154b10ae43609585753273e45067bc53b5b0cbd31a2012d62a6d3dd663d9"
+    },
+    {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/p58/p58_mini_dev_v1.jsonl",
+      "role": "exposed_evaluation_only",
+      "sha256": "3eb4a12f2f8643278b195ef248a475dc96c658f82083739fb612439355deca74"
+    },
+    {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/p59/p59_thermal_dev_v1.jsonl",
+      "role": "exposed_evaluation_only",
+      "sha256": "ca941010f9ea218259c867d3d283690c590417c521808e92f0a0957126010669"
+    },
+    {
+      "allowed_roles": [
+        "historical_diagnostic_evidence"
+      ],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/p59/p59_thermal_mini_dev_v1.jsonl",
+      "role": "exposed_evaluation_only",
+      "sha256": "f02ce4ae866f8e4abe739de7bbd149ad97f6c32ff15a72438f4036c1bc424c1f"
+    },
+    {
+      "allowed_roles": [],
+      "family_mapping": "PENDING_EXTERNAL_REVIEW",
+      "path": "deploy/stage-p5/training/p59/p59_thermal_train.jsonl",
+      "role": "train_candidate_requires_review",
+      "sha256": "a1c7ed5c6c7e8c145d2323d1b84926b9f9fa3a6209110d9561f0ccd8dbbb01e2"
+    }
+  ],
+  "schema_version": 1,
+  "scope": "P5 adaptation and previous evaluation; no base-pretraining exclusion claim",
+  "simulation_evidence": {
+    "candidate_output_exposure": "NO_CANDIDATE_OUTPUTS_GENERATED_FOR_SIMULATION_POC",
+    "eligible_roles": [],
+    "family_ids": [
+      "PI01",
+      "AS01",
+      "AP01",
+      "DT01",
+      "VN01",
+      "PF01",
+      "IE01",
+      "ES01"
+    ],
+    "mathematical_ground_truth_verified": true,
+    "p5_exposure_excluded": false,
+    "real_world_representativeness_certified": false,
+    "status": "SIMULATION_VERIFIED_QUARANTINE"
+  },
+  "status": "INCOMPLETE_NO_EXCLUSION_CERTIFICATE"
+}

@@ -214,6 +214,12 @@ class PreflightTests(unittest.TestCase):
         payloads['inventory'] = json.dumps({'status': 'INVENTORIED_NO_COMMON_NEW_EVAL',
             'parent': None, 'candidates': {k: {'tournament_status': 'NOT_RUN'} for k in preflight.CANDIDATES},
             'sealed_final': {'content_opened_by_this_task': False, 'independence_certified': False}}).encode()
+        for name in preflight.protocol_v2.FILES:
+            payloads['protocol_v2_' + name.removesuffix('.json')] = (Path(__file__).parent / 'protocol_v2' / name).read_bytes()
+        ledger = json.loads(payloads['protocol_v2_exposure_ledger'])
+        ledger['audit_sha256'] = hashlib.sha256(payloads['audit']).hexdigest()
+        ledger['inventory_sha256'] = hashlib.sha256(payloads['inventory']).hexdigest()
+        payloads['protocol_v2_exposure_ledger'] = json.dumps(ledger).encode()
         self.manifest = {'schema_version': 1, 'status': preflight.STATUS, 'parent': None,
             'acceptance_authorized': False, 'independent_eval': None, 'candidate_status': 'NOT_RUN',
             'artifacts': {}}
