@@ -1,0 +1,76 @@
+{
+  "contamination": "PASS",
+  "non_wvc_elements": 0,
+  "schema_current": "PASS",
+  "leakage": "PASS",
+  "manifest_sha256": "c9b203646e3271667097ef681b50af24ec7f6b1d36a5855b6cb18571d742ba21",
+  "splits": {
+    "train": {
+      "path": "train.jsonl",
+      "sha256": "faf07520b6dbcc47f1c32cc2c80827e78e1ff435ae1bee8305c9903af8fb866a",
+      "count": 160,
+      "tasks": {
+        "CURRENT": 104,
+        "FUTURE": 56
+      },
+      "classes": {
+        "CURRENT:False": 39,
+        "FUTURE:False": 21,
+        "CURRENT:True": 65,
+        "FUTURE:True": 35
+      },
+      "families": [
+        "stable",
+        "falling",
+        "pm_rise",
+        "voc_rise",
+        "nox_rise",
+        "mixed",
+        "zones",
+        "climate"
+      ]
+    },
+    "holdout": {
+      "path": "holdout.jsonl",
+      "sha256": "691dffde85333a059faea43ecb7945a2cbfa76f1897b7829793a1cedc9ce101a",
+      "count": 40,
+      "tasks": {
+        "CURRENT": 26,
+        "FUTURE": 14
+      },
+      "classes": {
+        "CURRENT:True": 14,
+        "FUTURE:True": 6,
+        "CURRENT:False": 12,
+        "FUTURE:False": 8
+      },
+      "families": [
+        "delayed_rise",
+        "early_drop_plateau",
+        "voc_acceleration",
+        "climate_cycle"
+      ]
+    },
+    "challenge": {
+      "path": "challenge.jsonl",
+      "sha256": "f904c138001b2278e83acd719e487721bc6cb7e31086f095111493193541513b",
+      "count": 40,
+      "tasks": {
+        "CURRENT": 26,
+        "FUTURE": 14
+      },
+      "classes": {
+        "CURRENT:True": 19,
+        "FUTURE:True": 11,
+        "CURRENT:False": 7,
+        "FUTURE:False": 3
+      },
+      "families": [
+        "pm_drop_nox_late_rise",
+        "zone_opposition",
+        "transient_recovery",
+        "reversed_slope"
+      ]
+    }
+  }
+}

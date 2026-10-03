@@ -1,0 +1,97 @@
+{
+  "adapter": "wvc-advisory-v1",
+  "base_model": "Qwen/Qwen3.8-27B",
+  "parent_adapter": null,
+  "sources": [
+    {
+      "path": "src/ai_bridge/domains/wvc/profiles/analysis_v12.py",
+      "sha256": "96849c0024ddddd695f0287e78efb307719c389e35e62360ec52aa08ddca0283"
+    },
+    {
+      "path": "src/ai_bridge/domains/wvc/profiles/analysis_v12_1.py",
+      "sha256": "d456e63950bd195bab74f9cfbbed2ba284115fe98dde9d36b8cc64d1f66cb126"
+    },
+    {
+      "path": "src/ai_bridge/domains/wvc/profiles/analysis_v12_2.py",
+      "sha256": "95fac10a94c684dcf8ab1f06780b111c14b979b62c84472bd1de74b3de2a35db"
+    },
+    {
+      "path": "tests/test_analysis_v12_1.py",
+      "sha256": "183b90e79f9f6c414afb38bc27853f1b21b7809888bae2d606301a4349371ffa"
+    },
+    {
+      "path": "tests/test_analysis_v12_2.py",
+      "sha256": "6771cf975820ee979d6d4959fdede255e68bf2f8a04d06a17fe2d1437c9f3028"
+    }
+  ],
+  "generator_sha256": "fbc9f67989d092bc54d2534708dcf56d032ba1fed494728181111fc94bbfb4e3",
+  "files": {
+    "train": {
+      "path": "train.jsonl",
+      "sha256": "faf07520b6dbcc47f1c32cc2c80827e78e1ff435ae1bee8305c9903af8fb866a",
+      "count": 160,
+      "tasks": {
+        "CURRENT": 104,
+        "FUTURE": 56
+      },
+      "classes": {
+        "CURRENT:False": 39,
+        "FUTURE:False": 21,
+        "CURRENT:True": 65,
+        "FUTURE:True": 35
+      },
+      "families": [
+        "stable",
+        "falling",
+        "pm_rise",
+        "voc_rise",
+        "nox_rise",
+        "mixed",
+        "zones",
+        "climate"
+      ]
+    },
+    "holdout": {
+      "path": "holdout.jsonl",
+      "sha256": "691dffde85333a059faea43ecb7945a2cbfa76f1897b7829793a1cedc9ce101a",
+      "count": 40,
+      "tasks": {
+        "CURRENT": 26,
+        "FUTURE": 14
+      },
+      "classes": {
+        "CURRENT:True": 14,
+        "FUTURE:True": 6,
+        "CURRENT:False": 12,
+        "FUTURE:False": 8
+      },
+      "families": [
+        "delayed_rise",
+        "early_drop_plateau",
+        "voc_acceleration",
+        "climate_cycle"
+      ]
+    },
+    "challenge": {
+      "path": "challenge.jsonl",
+      "sha256": "f904c138001b2278e83acd719e487721bc6cb7e31086f095111493193541513b",
+      "count": 40,
+      "tasks": {
+        "CURRENT": 26,
+        "FUTURE": 14
+      },
+      "classes": {
+        "CURRENT:True": 19,
+        "FUTURE:True": 11,
+        "CURRENT:False": 7,
+        "FUTURE:False": 3
+      },
+      "families": [
+        "pm_drop_nox_late_rise",
+        "zone_opposition",
+        "transient_recovery",
+        "reversed_slope"
+      ]
+    }
+  }
+}
