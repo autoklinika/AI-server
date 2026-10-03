@@ -18,6 +18,7 @@ from .provenance import validate_ers_provenance
 from .router_adapters import (
     Gliner2RouterAdapter,
     MajorityKnowledgeRouterAdapter,
+    OllamaSystemOneRouterAdapter,
     RulesV1RouterAdapter,
 )
 from .run_manifest import build_run_plan, git_is_clean, git_revision
@@ -78,9 +79,12 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--limit", type=int, default=10)
     run.add_argument(
         "--router-implementation",
-        choices=["majority-knowledge-v1", "rules-v1", "gliner2"],
+        choices=[
+            "majority-knowledge-v1", "rules-v1", "gliner2", "ollama-systemone"
+        ],
     )
     run.add_argument("--router-checkpoint")
+    run.add_argument("--router-url", default="http://127.0.0.1:11434")
     run.add_argument("--router-revision")
     run.add_argument("--router-threshold", type=float, default=0.5)
     run.add_argument("--allow-dirty", action="store_true")
@@ -223,6 +227,17 @@ def main() -> None:
                         revision=args.router_revision,
                         threshold=args.router_threshold,
                         head_mode=args.router_head_mode,
+                    )
+                    subject.metadata["runtime"] = router_adapter.runtime_metadata()
+                elif args.router_implementation == "ollama-systemone":
+                    if not args.router_checkpoint:
+                        raise SystemExit(
+                            "System One run requires --router-checkpoint model name"
+                        )
+                    router_adapter = OllamaSystemOneRouterAdapter(
+                        args.router_checkpoint,
+                        base_url=args.router_url,
+                        tool_threshold=args.router_threshold,
                     )
                     subject.metadata["runtime"] = router_adapter.runtime_metadata()
                 else:
