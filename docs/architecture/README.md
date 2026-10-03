@@ -124,3 +124,24 @@ Stage L0 jest etapem dokumentacyjnym i nie zmienia aktywnego runtime Stage J.
 Przed L1 production schema PostgreSQL `18/main` musi zostać przeniesiony z dysku
 systemowego na `/srv/ai-data/platform/postgresql/18/main`.
 Szczegóły: `adr/ADR-008_STAGE_L_POSTGRESQL_DATA_DISK_2026-09-24_PL.md`.
+
+
+---
+
+## Addendum 2026-10-03 — trening wielodomenowy i routing adapterów
+
+### ADR-009 — Shared Technical Reasoning + Domain Adapters
+
+Dalszy rozwój Qwen3.8 rozdziela wspólne rozumowanie techniczne od specjalizacji
+domenowej. Automotive/ERS i WVC mają korzystać ze wspólnego fundamentu reasoning,
+ale posiadać osobne linie adapterów domenowych.
+
+Obowiązuje również zasada, że skrypty nie są quality gate dla semantycznej jakości
+odpowiedzi. Zbierają telemetrykę i pełne odpowiedzi, a finalny review jest
+wykonywany ręcznie na poziomie sensu technicznego i realnej użyteczności.
+
+Routing adaptera ma respektować kolejność:
+`App Context > Explicit User Override > Intent Router > Safe Fallback`.
+
+Szczegóły:
+`adr/ADR-009_SHARED_TECHNICAL_REASONING_DOMAIN_ADAPTERS_2026-10-03_PL.md`.
