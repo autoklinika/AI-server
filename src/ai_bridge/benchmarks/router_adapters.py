@@ -6,9 +6,11 @@ subjects for the decision-model benchmark.
 from __future__ import annotations
 
 import hashlib
+import json
 import platform
 import re
 import time
+import urllib.request
 from pathlib import Path
 
 from .contracts import GoldenCase
@@ -101,6 +103,141 @@ TOOL_LABELS = {
     "vision.analyze": "Analyze an image or PCB visually.",
     "agent.ers": "Hand the repair case to the ECU Repair Service agent.",
 }
+
+SYSTEM_ONE_TOOL_KEYS = {
+    "knowledge.search": "tool_knowledge_search",
+    "graphify.query": "tool_graphify_query",
+    "telemetry.read": "tool_telemetry_read",
+    "vision.analyze": "tool_vision_analyze",
+    "agent.ers": "tool_agent_ers",
+}
+
+
+class OllamaSystemOneRouterAdapter:
+    """Ollama 0.35+ System One decision-model router benchmark adapter."""
+
+    adapter_id = "ollama-systemone-v1"
+
+    def __init__(
+        self,
+        model: str,
+        *,
+        base_url: str = "http://127.0.0.1:11434",
+        tool_threshold: float = 0.5,
+        timeout_seconds: float = 120.0,
+        requester=None,
+    ) -> None:
+        if not model:
+            raise ValueError("System One model is required")
+        if not 0.0 <= tool_threshold <= 1.0:
+            raise ValueError("tool_threshold must be between 0 and 1")
+        self.model = model
+        self.base_url = base_url.rstrip("/")
+        self.tool_threshold = tool_threshold
+        self.timeout_seconds = timeout_seconds
+        self._requester = requester or self._request
+
+    def _json(self, path: str) -> dict:
+        request = urllib.request.Request(self.base_url + path)
+        with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+            return json.load(response)
+
+    def _request(self, payload: dict) -> dict:
+        request = urllib.request.Request(
+            self.base_url + "/v1/systemone",
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+            return json.load(response)
+
+    def runtime_metadata(self) -> dict:
+        version = self._json("/api/version")
+        tags = self._json("/api/tags").get("models", [])
+        def matches(item: dict) -> bool:
+            names = {str(item.get("name", "")), str(item.get("model", ""))}
+            return (
+                self.model in names
+                or (
+                    ":" not in self.model
+                    and any(name.split(":", 1)[0] == self.model for name in names)
+                )
+            )
+
+        model = next((item for item in tags if matches(item)), None)
+        if model is None:
+            raise ValueError(f"System One model not installed: {self.model}")
+        return {
+            "ollama_api_version": str(version.get("version", "")),
+            "model": self.model,
+            "model_digest": str(model.get("digest", "")),
+            "model_size_bytes": str(model.get("size", "")),
+            "system_one_endpoint": "/v1/systemone",
+        }
+
+    @staticmethod
+    def _tool_enabled(answer: dict, threshold: float) -> bool:
+        value = answer.get("noul")
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return float(value) >= threshold
+        raise ValueError(f"invalid System One noul answer: {value!r}")
+
+    def decide(self, case: GoldenCase) -> RouterDecision:
+        questions = {
+            "route": {
+                "type": "choice",
+                "instructions": (
+                    "Choose exactly one primary AI Platform route for this user request."
+                ),
+                "criteria": ROUTE_LABELS,
+            }
+        }
+        for tool, key in SYSTEM_ONE_TOOL_KEYS.items():
+            questions[key] = {
+                "type": "noul",
+                "instructions": (
+                    f"Does this request require the {tool} tool? "
+                    "Answer true only when the tool is necessary to fulfill the request."
+                ),
+                "criteria": {
+                    "true": TOOL_LABELS[tool],
+                    "false": f"Do not invoke {tool}.",
+                },
+            }
+
+        started = time.perf_counter()
+        result = self._requester({
+            "model": self.model,
+            "state": case.question,
+            "questions": questions,
+            "keep_alive": "30m",
+        })
+        latency_ms = (time.perf_counter() - started) * 1000.0
+        answers = result.get("answers")
+        if not isinstance(answers, dict):
+            raise ValueError("System One response missing answers")
+        route_answer = answers.get("route")
+        if not isinstance(route_answer, dict):
+            raise ValueError("System One response missing route")
+        route = route_answer.get("choice")
+        if route not in ROUTE_LABELS:
+            raise ValueError(f"invalid System One route output: {route!r}")
+
+        tools = []
+        for tool, key in SYSTEM_ONE_TOOL_KEYS.items():
+            answer = answers.get(key)
+            if not isinstance(answer, dict):
+                raise ValueError(f"System One response missing tool answer: {key}")
+            if self._tool_enabled(answer, self.tool_threshold):
+                tools.append(tool)
+
+        return RouterDecision(
+            route=route,
+            selected_tools=tools,
+            latency_ms=latency_ms,
+        )
 
 
 class Gliner2RouterAdapter:

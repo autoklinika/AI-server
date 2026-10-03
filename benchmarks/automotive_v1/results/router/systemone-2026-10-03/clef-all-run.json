@@ -1,0 +1,2118 @@
+{
+  "schema_version": 1,
+  "run_id": "run_d4449da631314eaa8df3",
+  "suite_id": "decision-models",
+  "benchmark_class": "router",
+  "track": "routing_zero_shot",
+  "subject": {
+    "subject_id": "clef-systemone-ollama-0.35.1",
+    "kind": "router-checkpoint",
+    "adapter": "router-adapter-v1",
+    "metadata": {
+      "router_implementation": "ollama-systemone",
+      "checkpoint": "clef",
+      "revision": null,
+      "threshold": 0.5,
+      "head_mode": "joint",
+      "runtime": {
+        "ollama_api_version": "0.35.1",
+        "model": "clef",
+        "model_digest": "2bb11a61d1fb5d7a51f136ad9f569f970727377cf7b96037a06285d81fa25b73",
+        "model_size_bytes": "17987253552",
+        "system_one_endpoint": "/v1/systemone"
+      }
+    }
+  },
+  "mode": "live",
+  "dataset_sha256": "1f829de1eacdd8e19905e28f2d086161f94fd93c691bee586d6171976d0f8edf",
+  "source_revisions": {
+    "ai_server_commit": "22b90980925d237a2944bc17ae1fc726d3e982f0"
+  },
+  "case_count": 51,
+  "cases": [
+    {
+      "case_id": "ERS-GOLD-0001",
+      "request_id": "bench_31314eaa8df3_ers_gold_0001",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5804.303302997141,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7791923200,
+          "vram_used_bytes": 24812007424
+        },
+        "peak": {
+          "ram_used_bytes": 7802134528,
+          "vram_used_bytes": 24812023808
+        },
+        "final": {
+          "ram_used_bytes": 7796707328,
+          "vram_used_bytes": 24812023808
+        },
+        "peak_delta_ram_bytes": 10211328,
+        "peak_delta_vram_bytes": 16384,
+        "sample_count": 115,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0002",
+      "request_id": "bench_31314eaa8df3_ers_gold_0002",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5525.30593299889,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7796707328,
+          "vram_used_bytes": 24812023808
+        },
+        "peak": {
+          "ram_used_bytes": 7812632576,
+          "vram_used_bytes": 24812023808
+        },
+        "final": {
+          "ram_used_bytes": 7812632576,
+          "vram_used_bytes": 24812023808
+        },
+        "peak_delta_ram_bytes": 15925248,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 110,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0005",
+      "request_id": "bench_31314eaa8df3_ers_gold_0005",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "reasoning",
+      "selected_tools": [],
+      "latency_ms": 5542.791351996129,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7812632576,
+          "vram_used_bytes": 24812023808
+        },
+        "peak": {
+          "ram_used_bytes": 7812632576,
+          "vram_used_bytes": 24812023808
+        },
+        "final": {
+          "ram_used_bytes": 7797506048,
+          "vram_used_bytes": 24812023808
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 110,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0010",
+      "request_id": "bench_31314eaa8df3_ers_gold_0010",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5866.37754298863,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7797506048,
+          "vram_used_bytes": 24812023808
+        },
+        "peak": {
+          "ram_used_bytes": 7811973120,
+          "vram_used_bytes": 24812023808
+        },
+        "final": {
+          "ram_used_bytes": 7811973120,
+          "vram_used_bytes": 24812023808
+        },
+        "peak_delta_ram_bytes": 14467072,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 117,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0011",
+      "request_id": "bench_31314eaa8df3_ers_gold_0011",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "telemetry",
+      "selected_tools": [],
+      "latency_ms": 5575.46726000146,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7811973120,
+          "vram_used_bytes": 24812023808
+        },
+        "peak": {
+          "ram_used_bytes": 7811973120,
+          "vram_used_bytes": 24812023808
+        },
+        "final": {
+          "ram_used_bytes": 7802953728,
+          "vram_used_bytes": 24812023808
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 111,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0012",
+      "request_id": "bench_31314eaa8df3_ers_gold_0012",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5581.639245006954,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7802953728,
+          "vram_used_bytes": 24812023808
+        },
+        "peak": {
+          "ram_used_bytes": 7806283776,
+          "vram_used_bytes": 24812023808
+        },
+        "final": {
+          "ram_used_bytes": 7800479744,
+          "vram_used_bytes": 24812023808
+        },
+        "peak_delta_ram_bytes": 3330048,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 111,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0013",
+      "request_id": "bench_31314eaa8df3_ers_gold_0013",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "graphify",
+      "selected_tools": [
+        "graphify.query"
+      ],
+      "latency_ms": 5843.150278000394,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7800479744,
+          "vram_used_bytes": 24812023808
+        },
+        "peak": {
+          "ram_used_bytes": 7800479744,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7693225984,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 20480,
+        "sample_count": 116,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0014",
+      "request_id": "bench_31314eaa8df3_ers_gold_0014",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "vision",
+      "selected_tools": [
+        "vision.analyze"
+      ],
+      "latency_ms": 5715.330753009766,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7693225984,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7715418112,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7715418112,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 22192128,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 114,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0015",
+      "request_id": "bench_31314eaa8df3_ers_gold_0015",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5425.28207100986,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7715418112,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7732224000,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7696007168,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 16805888,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 108,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0016",
+      "request_id": "bench_31314eaa8df3_ers_gold_0016",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5627.508731005946,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7696007168,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7715033088,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7684878336,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 19025920,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 112,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0017",
+      "request_id": "bench_31314eaa8df3_ers_gold_0017",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5857.5952899991535,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7684878336,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7712624640,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7712366592,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 27746304,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 117,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0018",
+      "request_id": "bench_31314eaa8df3_ers_gold_0018",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5774.8765209980775,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7712366592,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7728136192,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7699906560,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 15769600,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 115,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0019",
+      "request_id": "bench_31314eaa8df3_ers_gold_0019",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5441.379037001752,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7699906560,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7720878080,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7720878080,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 20971520,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 108,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0020",
+      "request_id": "bench_31314eaa8df3_ers_gold_0020",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5432.340487008332,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7720878080,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7720878080,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7715356672,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 108,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0021",
+      "request_id": "bench_31314eaa8df3_ers_gold_0021",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5821.370507997926,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7715356672,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7736131584,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7736131584,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 20774912,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 116,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0023",
+      "request_id": "bench_31314eaa8df3_ers_gold_0023",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5650.05484399444,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7736131584,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7744294912,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7711866880,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 8163328,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 113,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0024",
+      "request_id": "bench_31314eaa8df3_ers_gold_0024",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5662.318859001971,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7711866880,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7730294784,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7721279488,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 18427904,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 113,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0025",
+      "request_id": "bench_31314eaa8df3_ers_gold_0025",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5863.581229001284,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7721279488,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7739465728,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7739465728,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 18186240,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 117,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0028",
+      "request_id": "bench_31314eaa8df3_ers_gold_0028",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5435.73801999446,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7738347520,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7750455296,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7750455296,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 12107776,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 108,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0029",
+      "request_id": "bench_31314eaa8df3_ers_gold_0029",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5606.4222260029055,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7750455296,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7750455296,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7713226752,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 112,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0033",
+      "request_id": "bench_31314eaa8df3_ers_gold_0033",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5480.208324996056,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7713226752,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7737315328,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7737315328,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 24088576,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 109,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0036",
+      "request_id": "bench_31314eaa8df3_ers_gold_0036",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5598.306750995107,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7737315328,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7747481600,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7745765376,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 10166272,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 111,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0039",
+      "request_id": "bench_31314eaa8df3_ers_gold_0039",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5489.600551998592,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7745765376,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7745765376,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7744655360,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 109,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0041",
+      "request_id": "bench_31314eaa8df3_ers_gold_0041",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5580.469692009501,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7744655360,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7750483968,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7750483968,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 5828608,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 111,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0042",
+      "request_id": "bench_31314eaa8df3_ers_gold_0042",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5646.183197008213,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7750483968,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7750483968,
+          "vram_used_bytes": 24812044288
+        },
+        "final": {
+          "ram_used_bytes": 7745929216,
+          "vram_used_bytes": 24812044288
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 112,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0043",
+      "request_id": "bench_31314eaa8df3_ers_gold_0043",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5857.202194994898,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7745929216,
+          "vram_used_bytes": 24812044288
+        },
+        "peak": {
+          "ram_used_bytes": 7752671232,
+          "vram_used_bytes": 24812105728
+        },
+        "final": {
+          "ram_used_bytes": 7723708416,
+          "vram_used_bytes": 24812105728
+        },
+        "peak_delta_ram_bytes": 6742016,
+        "peak_delta_vram_bytes": 61440,
+        "sample_count": 117,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0046",
+      "request_id": "bench_31314eaa8df3_ers_gold_0046",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5562.343835001229,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7723708416,
+          "vram_used_bytes": 24812105728
+        },
+        "peak": {
+          "ram_used_bytes": 7741149184,
+          "vram_used_bytes": 24812105728
+        },
+        "final": {
+          "ram_used_bytes": 7741149184,
+          "vram_used_bytes": 24812105728
+        },
+        "peak_delta_ram_bytes": 17440768,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 111,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0048",
+      "request_id": "bench_31314eaa8df3_ers_gold_0048",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5953.890664997743,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7741149184,
+          "vram_used_bytes": 24812105728
+        },
+        "peak": {
+          "ram_used_bytes": 7741149184,
+          "vram_used_bytes": 24812105728
+        },
+        "final": {
+          "ram_used_bytes": 7702884352,
+          "vram_used_bytes": 24812105728
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 118,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0049",
+      "request_id": "bench_31314eaa8df3_ers_gold_0049",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "telemetry",
+      "selected_tools": [
+        "telemetry.read"
+      ],
+      "latency_ms": 5632.9880919947755,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7702884352,
+          "vram_used_bytes": 24812105728
+        },
+        "peak": {
+          "ram_used_bytes": 7717842944,
+          "vram_used_bytes": 24812105728
+        },
+        "final": {
+          "ram_used_bytes": 7717842944,
+          "vram_used_bytes": 24812105728
+        },
+        "peak_delta_ram_bytes": 14958592,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 112,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0050",
+      "request_id": "bench_31314eaa8df3_ers_gold_0050",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "reasoning",
+      "selected_tools": [],
+      "latency_ms": 5903.915456001414,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7717842944,
+          "vram_used_bytes": 24812105728
+        },
+        "peak": {
+          "ram_used_bytes": 7733891072,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7703478272,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 16048128,
+        "peak_delta_vram_bytes": 311296,
+        "sample_count": 118,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0051",
+      "request_id": "bench_31314eaa8df3_ers_gold_0051",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5458.628722000867,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7703478272,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7723110400,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7723110400,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 19632128,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 109,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0052",
+      "request_id": "bench_31314eaa8df3_ers_gold_0052",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "graphify",
+      "selected_tools": [
+        "graphify.query"
+      ],
+      "latency_ms": 5761.313535011141,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7723110400,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7723110400,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7723036672,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 115,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0053",
+      "request_id": "bench_31314eaa8df3_ers_gold_0053",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "vision",
+      "selected_tools": [
+        "vision.analyze"
+      ],
+      "latency_ms": 5611.29262499162,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7723036672,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7723036672,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7719739392,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 112,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0054",
+      "request_id": "bench_31314eaa8df3_ers_gold_0054",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "tool",
+      "selected_tools": [
+        "agent.ers"
+      ],
+      "latency_ms": 5637.915790997795,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7719739392,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7723102208,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7723102208,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 3362816,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 112,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0055",
+      "request_id": "bench_31314eaa8df3_ers_gold_0055",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "vision",
+      "selected_tools": [
+        "knowledge.search",
+        "vision.analyze"
+      ],
+      "latency_ms": 5650.958767990232,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7723102208,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7723102208,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7719337984,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 112,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0056",
+      "request_id": "bench_31314eaa8df3_ers_gold_0056",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5593.37031400355,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7719337984,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7720370176,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7720370176,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 1032192,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 111,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0057",
+      "request_id": "bench_31314eaa8df3_ers_gold_0057",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5626.471761002904,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7720370176,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7720370176,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7718920192,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 112,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0058",
+      "request_id": "bench_31314eaa8df3_ers_gold_0058",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "reasoning",
+      "selected_tools": [],
+      "latency_ms": 5626.578701005201,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7718547456,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7718547456,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7518519296,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 112,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0059",
+      "request_id": "bench_31314eaa8df3_ers_gold_0059",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5632.69032399694,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7518519296,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7521361920,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7521361920,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 2842624,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 112,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0061",
+      "request_id": "bench_31314eaa8df3_ers_gold_0061",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5837.917960001505,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7521361920,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7521804288,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7493177344,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 442368,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 116,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0062",
+      "request_id": "bench_31314eaa8df3_ers_gold_0062",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "telemetry",
+      "selected_tools": [
+        "telemetry.read"
+      ],
+      "latency_ms": 5526.1003479972715,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7493177344,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7531864064,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7531864064,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 38686720,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 110,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0063",
+      "request_id": "bench_31314eaa8df3_ers_gold_0063",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "graphify",
+      "selected_tools": [
+        "graphify.query"
+      ],
+      "latency_ms": 5431.527278997237,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7531864064,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7531864064,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7527346176,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 108,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0064",
+      "request_id": "bench_31314eaa8df3_ers_gold_0064",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5594.945606993861,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7527346176,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7527346176,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7524368384,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 111,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0065",
+      "request_id": "bench_31314eaa8df3_ers_gold_0065",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5569.816128001548,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7524368384,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7574994944,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7525150720,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 50626560,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 111,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0066",
+      "request_id": "bench_31314eaa8df3_ers_gold_0066",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5587.031861010473,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7525150720,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7525150720,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7522172928,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 111,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0067",
+      "request_id": "bench_31314eaa8df3_ers_gold_0067",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5473.687966004945,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7522172928,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7522172928,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7512170496,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 109,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0068",
+      "request_id": "bench_31314eaa8df3_ers_gold_0068",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5443.540993001079,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7512170496,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7513939968,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7513939968,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 1769472,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 108,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0069",
+      "request_id": "bench_31314eaa8df3_ers_gold_0069",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5476.001055998495,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7513939968,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7514075136,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7514075136,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 135168,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 109,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0070",
+      "request_id": "bench_31314eaa8df3_ers_gold_0070",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5447.653183990042,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7514075136,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7514075136,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7513202688,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 108,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0071",
+      "request_id": "bench_31314eaa8df3_ers_gold_0071",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5419.608848009375,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7513202688,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7513202688,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7512223744,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 108,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    },
+    {
+      "case_id": "ERS-GOLD-0072",
+      "request_id": "bench_31314eaa8df3_ers_gold_0072",
+      "endpoint": "router-adapter-v1",
+      "status": "completed",
+      "evaluation_state": "automatic",
+      "answer": null,
+      "cited_source_ids": [],
+      "citation_count": null,
+      "insufficient_context": null,
+      "hits": [],
+      "route": "knowledge_rag",
+      "selected_tools": [
+        "knowledge.search"
+      ],
+      "latency_ms": 5748.840369007667,
+      "peak_ram_bytes": null,
+      "queue_wait_ms": null,
+      "usage": {},
+      "throughput_tps": null,
+      "resource_usage": {
+        "scope": "system",
+        "baseline": {
+          "ram_used_bytes": 7512223744,
+          "vram_used_bytes": 24812417024
+        },
+        "peak": {
+          "ram_used_bytes": 7512223744,
+          "vram_used_bytes": 24812417024
+        },
+        "final": {
+          "ram_used_bytes": 7511121920,
+          "vram_used_bytes": 24812417024
+        },
+        "peak_delta_ram_bytes": 0,
+        "peak_delta_vram_bytes": 0,
+        "sample_count": 114,
+        "interval_ms": 50.0
+      },
+      "error_code": null
+    }
+  ]
+}

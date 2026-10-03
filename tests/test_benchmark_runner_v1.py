@@ -5,6 +5,7 @@ import httpx
 
 from ai_bridge.benchmarks.contracts import GoldenCase
 from ai_bridge.benchmarks.platform_client import PlatformBenchmarkClient
+from ai_bridge.benchmarks.router_adapters import OllamaSystemOneRouterAdapter
 from ai_bridge.benchmarks.runner import (
     BenchmarkRunArtifact,
     BenchmarkSubject,
@@ -362,6 +363,42 @@ def test_router_adapter_is_separate_from_large_llm(tmp_path):
     assert artifact.cases[0].evaluation_state == "automatic"
     assert artifact.cases[0].route == "reasoning"
     assert artifact.cases[0].latency_ms == 2.5
+
+
+def test_systemone_router_maps_route_and_independent_tools():
+    seen = {}
+
+    def requester(payload):
+        seen.update(payload)
+        return {
+            "answers": {
+                "route": {"type": "choice", "choice": "vision"},
+                "tool_knowledge_search": {"type": "noul", "noul": 0.91},
+                "tool_graphify_query": {"type": "noul", "noul": 0.07},
+                "tool_telemetry_read": {"type": "noul", "noul": 0.12},
+                "tool_vision_analyze": {"type": "noul", "noul": 0.97},
+                "tool_agent_ers": {"type": "noul", "noul": 0.03},
+            }
+        }
+
+    adapter = OllamaSystemOneRouterAdapter(
+        "clef",
+        tool_threshold=0.5,
+        requester=requester,
+    )
+    decision = adapter.decide(GoldenCase.model_validate(_case(target="router")))
+
+    assert decision.route == "vision"
+    assert decision.selected_tools == ["knowledge.search", "vision.analyze"]
+    assert seen["model"] == "clef"
+    assert set(seen["questions"]) == {
+        "route",
+        "tool_knowledge_search",
+        "tool_graphify_query",
+        "tool_telemetry_read",
+        "tool_vision_analyze",
+        "tool_agent_ers",
+    }
 
 
 def test_missing_fixed_evidence_aborts_before_platform_call(tmp_path):

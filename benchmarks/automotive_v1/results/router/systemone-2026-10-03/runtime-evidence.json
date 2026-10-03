@@ -1,0 +1,24 @@
+{
+  "ollama_version": "0.35.1",
+  "clef_model": "clef:latest",
+  "clef_digest": "2bb11a61d1fb5d7a51f136ad9f569f970727377cf7b96037a06285d81fa25b73",
+  "clef_model_size_bytes": 17987253552,
+  "clef_resident_size_observed": "23 GB",
+  "clef_runtime_context_observed": 16384,
+  "gliner_checkpoint": "fastino/GLiNER2.5-Decide",
+  "gliner_revision": "5a7adf72a23b4d311abae6ce050d7f0012bb3416",
+  "gliner2_version": "2.0.0",
+  "torch_version": "2.14.0+cpu",
+  "gliner2_base_sha256": "791814c58c3674f0b546c67d90ab5013bf645e5eda29d25e9fd17fa100aaa061",
+  "dataset_sha256": "1f829de1eacdd8e19905e28f2d086161f94fd93c691bee586d6171976d0f8edf",
+  "suite_sha256": "8d48588ed14dac462fe5ffbd63617f2b707c670ae9602a9ae9159bf902b0b652",
+  "benchmark_code_commit": "22b90980925d237a2944bc17ae1fc726d3e982f0",
+  "gpu_error_counts_after": {
+    "MES failed": 14,
+    "GPU reset": 10,
+    "ring timeout": 0,
+    "GPUVM fault": 0,
+    "device wedged": 2
+  },
+  "p511_restore_cold_seconds": 12.014
+}
