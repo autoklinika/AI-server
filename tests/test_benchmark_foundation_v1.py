@@ -46,6 +46,7 @@ def test_suite_manifests_keep_three_benchmark_classes_separate():
     }
     router = next(item for item in manifests if item.benchmark_class == "router")
     assert router.candidate_models == [
+        "clef (27B, Ollama System One)",
         "fastino/GLiNER2.5-Decide (340M)",
         "fastino/GLiNER2.5-multi-Decide (287M)",
         "fastino/gliner2.5-small-v1 (74M)",

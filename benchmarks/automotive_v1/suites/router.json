@@ -2,13 +2,13 @@
   "schema_version": 1,
   "suite_id": "decision-models",
   "benchmark_class": "router",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "status": "foundation",
-  "objective": "Measure low-cost routing and policy decisions before large-model execution.",
+  "objective": "Measure routing and policy decisions before large-model execution across lightweight and native decision-model candidates.",
   "dataset": "../datasets/golden.v1.jsonl",
   "metrics": ["route_accuracy", "macro_f1", "knowledge_recall", "graphify_recall", "vision_recall", "tool_selection_accuracy", "handoff_accuracy", "false_positive_rate", "cpu_latency_ms", "peak_ram_bytes"],
   "dimensions": ["intent_routing", "knowledge_rag_selection", "graphify_graphrag_selection", "telemetry_vs_reasoning", "tool_selection", "agent_handoff", "vision_need_detection", "multilingual_pl_en"],
   "tracks": ["routing_zero_shot", "routing_calibrated", "routing_finetuned"],
-  "candidate_models": ["fastino/GLiNER2.5-Decide (340M)", "fastino/GLiNER2.5-multi-Decide (287M)", "fastino/gliner2.5-small-v1 (74M)"],
-  "notes": ["Router training and evaluation remain independent from the large LLM.", "CPU-first latency and memory are first-class metrics."]
+  "candidate_models": ["clef (27B, Ollama System One)", "fastino/GLiNER2.5-Decide (340M)", "fastino/GLiNER2.5-multi-Decide (287M)", "fastino/gliner2.5-small-v1 (74M)"],
+  "notes": ["Router training and evaluation remain independent from the production large LLM.", "CPU-first latency and memory remain first-class metrics for lightweight candidates.", "Native decision-model candidates must also report GPU residency and model-switch cost."]
 }

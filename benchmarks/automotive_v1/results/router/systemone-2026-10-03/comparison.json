@@ -1,0 +1,1573 @@
+{
+  "schema_version": 1,
+  "dataset_sha256": "1f829de1eacdd8e19905e28f2d086161f94fd93c691bee586d6171976d0f8edf",
+  "subjects": {
+    "clef": {
+      "overall": {
+        "schema_version": 1,
+        "benchmark_class": "router",
+        "case_count": 51,
+        "metrics": {
+          "false_positive_rate": 0.0,
+          "route_accuracy": 0.9411764705882353,
+          "tool_selection_accuracy": 0.8823529411764706,
+          "tool_selection_recall": 0.9117647058823529,
+          "macro_f1": 0.8770042194092827
+        },
+        "resources": {
+          "latency_ms": {
+            "mean": 5625.761458627975,
+            "max": 5953.890664997743
+          },
+          "peak_ram_bytes": {
+            "mean": 8978592.62745098,
+            "max": 50626560
+          },
+          "peak_vram_bytes": {
+            "mean": 8031.3725490196075,
+            "max": 311296
+          }
+        },
+        "case_scores": [
+          {
+            "case_id": "ERS-GOLD-0001",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0002",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0005",
+            "metrics": {
+              "route_accuracy": 0.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0010",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0011",
+            "metrics": {
+              "route_accuracy": 0.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0012",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0013",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.5,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0014",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0015",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0016",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0017",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0018",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0019",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0020",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0021",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0023",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0024",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0025",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0028",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0029",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0033",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0036",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0039",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0041",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0042",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0043",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0046",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0048",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0049",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0050",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0051",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0052",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.5,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0053",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0054",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0055",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0056",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0057",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0058",
+            "metrics": {
+              "route_accuracy": 0.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0059",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0061",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0062",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0063",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.5,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0064",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0065",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0066",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0067",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0068",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0069",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0070",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0071",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0072",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          }
+        ]
+      },
+      "splits": {
+        "dev": {
+          "n": 23,
+          "route_accuracy": 0.9130434782608695,
+          "macro_f1": 0.7222222222222222,
+          "tool_selection_accuracy": 0.8695652173913043,
+          "tool_selection_recall": 0.8913043478260869,
+          "false_positive_rate": 0.0,
+          "latency_ms_mean": 5633.60236160857,
+          "latency_ms_max": 5953.890664997743
+        },
+        "holdout": {
+          "n": 15,
+          "route_accuracy": 1.0,
+          "macro_f1": 1.0,
+          "tool_selection_accuracy": 0.9333333333333333,
+          "tool_selection_recall": 0.9666666666666667,
+          "false_positive_rate": 0.0,
+          "latency_ms_mean": 5601.607497002503,
+          "latency_ms_max": 5903.915456001414
+        },
+        "challenge": {
+          "n": 13,
+          "route_accuracy": 0.9230769230769231,
+          "macro_f1": 0.7894736842105263,
+          "tool_selection_accuracy": 0.8461538461538461,
+          "tool_selection_recall": 0.8846153846153846,
+          "false_positive_rate": 0.0,
+          "latency_ms_mean": 5639.759047537854,
+          "latency_ms_max": 5857.202194994898
+        }
+      },
+      "route_recall": {
+        "graphify": {
+          "n": 3,
+          "recall": 1.0
+        },
+        "knowledge_rag": {
+          "n": 41,
+          "recall": 0.926829268292683
+        },
+        "reasoning": {
+          "n": 1,
+          "recall": 1.0
+        },
+        "telemetry": {
+          "n": 2,
+          "recall": 1.0
+        },
+        "tool": {
+          "n": 1,
+          "recall": 1.0
+        },
+        "vision": {
+          "n": 3,
+          "recall": 1.0
+        }
+      },
+      "route_errors": [
+        {
+          "case_id": "ERS-GOLD-0005",
+          "split": "dev",
+          "expected": "knowledge_rag",
+          "actual": "reasoning",
+          "question": "CAN communication is still working. Does that rule out a physical-layer short on a TJA1043 network?"
+        },
+        {
+          "case_id": "ERS-GOLD-0011",
+          "split": "dev",
+          "expected": "knowledge_rag",
+          "actual": "telemetry",
+          "question": "0 281 007 439"
+        },
+        {
+          "case_id": "ERS-GOLD-0058",
+          "split": "challenge",
+          "expected": "knowledge_rag",
+          "actual": "reasoning",
+          "question": "Communication still works. Can I conclude the TJA1043 physical layer is healthy?"
+        }
+      ],
+      "tool_mismatches": [
+        {
+          "case_id": "ERS-GOLD-0005",
+          "split": "dev",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [],
+          "question": "CAN communication is still working. Does that rule out a physical-layer short on a TJA1043 network?"
+        },
+        {
+          "case_id": "ERS-GOLD-0011",
+          "split": "dev",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [],
+          "question": "0 281 007 439"
+        },
+        {
+          "case_id": "ERS-GOLD-0013",
+          "split": "dev",
+          "expected": [
+            "graphify.query",
+            "knowledge.search"
+          ],
+          "actual": [
+            "graphify.query"
+          ],
+          "question": "Pokaż graf zależności PMIC → szyny 5 V → MCU/reset → transceiver CAN i wskaż, które awarie upstream mogą wyłączyć kilka bloków naraz."
+        },
+        {
+          "case_id": "ERS-GOLD-0052",
+          "split": "holdout",
+          "expected": [
+            "graphify.query",
+            "knowledge.search"
+          ],
+          "actual": [
+            "graphify.query"
+          ],
+          "question": "Pokaż graf zależności: ochrona wejścia → pre-regulator → 5 V → reset/watchdog → MCU → CAN i znajdź wspólne upstream failure points."
+        },
+        {
+          "case_id": "ERS-GOLD-0058",
+          "split": "challenge",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [],
+          "question": "Communication still works. Can I conclude the TJA1043 physical layer is healthy?"
+        },
+        {
+          "case_id": "ERS-GOLD-0063",
+          "split": "challenge",
+          "expected": [
+            "graphify.query",
+            "knowledge.search"
+          ],
+          "actual": [
+            "graphify.query"
+          ],
+          "question": "Build a dependency graph from battery input protection through MCU reset and CAN, then identify shared upstream failure points."
+        }
+      ],
+      "run_peak_ram_bytes_field_max": 0
+    },
+    "gliner340": {
+      "overall": {
+        "schema_version": 1,
+        "benchmark_class": "router",
+        "case_count": 51,
+        "metrics": {
+          "false_positive_rate": 0.49019607843137253,
+          "route_accuracy": 0.803921568627451,
+          "tool_selection_accuracy": 0.45098039215686275,
+          "tool_selection_recall": 0.5,
+          "macro_f1": 0.7227155727155727
+        },
+        "resources": {
+          "latency_ms": {
+            "mean": 564.1907889418208,
+            "max": 687.2246480052127
+          },
+          "peak_ram_bytes": {
+            "mean": 24087130.352941178,
+            "max": 61067264
+          },
+          "peak_vram_bytes": {
+            "mean": 0,
+            "max": 0
+          }
+        },
+        "case_scores": [
+          {
+            "case_id": "ERS-GOLD-0001",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0002",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0005",
+            "metrics": {
+              "route_accuracy": 0.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0010",
+            "metrics": {
+              "route_accuracy": 0.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0011",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0012",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0013",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.5,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0014",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0015",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0016",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0017",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0018",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0019",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0020",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0021",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0023",
+            "metrics": {
+              "route_accuracy": 0.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0024",
+            "metrics": {
+              "route_accuracy": 0.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0025",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0028",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0029",
+            "metrics": {
+              "route_accuracy": 0.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0033",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0036",
+            "metrics": {
+              "route_accuracy": 0.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0039",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0041",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0042",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0043",
+            "metrics": {
+              "route_accuracy": 0.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0046",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0048",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0049",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0050",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0051",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0052",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.5,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0053",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0054",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0055",
+            "metrics": {
+              "route_accuracy": 0.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0056",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0057",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0058",
+            "metrics": {
+              "route_accuracy": 0.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0059",
+            "metrics": {
+              "route_accuracy": 0.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0061",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0062",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0063",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.5,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0064",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0065",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0066",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0067",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0068",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0069",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0070",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 0.0,
+              "tool_selection_accuracy": 0.0,
+              "false_positive_rate": 1.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0071",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          },
+          {
+            "case_id": "ERS-GOLD-0072",
+            "metrics": {
+              "route_accuracy": 1.0,
+              "tool_selection_recall": 1.0,
+              "tool_selection_accuracy": 1.0,
+              "false_positive_rate": 0.0
+            }
+          }
+        ]
+      },
+      "splits": {
+        "dev": {
+          "n": 23,
+          "route_accuracy": 0.8260869565217391,
+          "macro_f1": 0.6698039215686274,
+          "tool_selection_accuracy": 0.391304347826087,
+          "tool_selection_recall": 0.41304347826086957,
+          "false_positive_rate": 0.5652173913043478,
+          "latency_ms_mean": 567.3817940019628,
+          "latency_ms_max": 685.3038120025303
+        },
+        "holdout": {
+          "n": 15,
+          "route_accuracy": 0.8,
+          "macro_f1": 0.7047619047619047,
+          "tool_selection_accuracy": 0.5333333333333333,
+          "tool_selection_recall": 0.6333333333333333,
+          "false_positive_rate": 0.4,
+          "latency_ms_mean": 554.7680577981131,
+          "latency_ms_max": 687.2246480052127
+        },
+        "challenge": {
+          "n": 13,
+          "route_accuracy": 0.7692307692307693,
+          "macro_f1": 0.47368421052631576,
+          "tool_selection_accuracy": 0.46153846153846156,
+          "tool_selection_recall": 0.5,
+          "false_positive_rate": 0.46153846153846156,
+          "latency_ms_mean": 569.4175466935401,
+          "latency_ms_max": 625.7518540078308
+        }
+      },
+      "route_recall": {
+        "graphify": {
+          "n": 3,
+          "recall": 1.0
+        },
+        "knowledge_rag": {
+          "n": 41,
+          "recall": 0.7804878048780488
+        },
+        "reasoning": {
+          "n": 1,
+          "recall": 1.0
+        },
+        "telemetry": {
+          "n": 2,
+          "recall": 1.0
+        },
+        "tool": {
+          "n": 1,
+          "recall": 1.0
+        },
+        "vision": {
+          "n": 3,
+          "recall": 0.6666666666666666
+        }
+      },
+      "route_errors": [
+        {
+          "case_id": "ERS-GOLD-0005",
+          "split": "dev",
+          "expected": "knowledge_rag",
+          "actual": "reasoning",
+          "question": "CAN communication is still working. Does that rule out a physical-layer short on a TJA1043 network?"
+        },
+        {
+          "case_id": "ERS-GOLD-0010",
+          "split": "dev",
+          "expected": "knowledge_rag",
+          "actual": "reasoning",
+          "question": "Mam tylko DTC i brak pomiarów. Czy mogę uznać, że kod jednoznacznie wskazuje uszkodzony element i od razu zalecić wymianę?"
+        },
+        {
+          "case_id": "ERS-GOLD-0023",
+          "split": "dev",
+          "expected": "knowledge_rag",
+          "actual": "vision",
+          "question": "Jaki jest rozmiar i zakres normalnego Flash MPC555 używanego w CASE-0002?"
+        },
+        {
+          "case_id": "ERS-GOLD-0024",
+          "split": "holdout",
+          "expected": "knowledge_rag",
+          "actual": "vision",
+          "question": "Czy dump normalnego Flash 0x70000 MPC555 automatycznie zawiera Shadow Information?"
+        },
+        {
+          "case_id": "ERS-GOLD-0029",
+          "split": "holdout",
+          "expected": "knowledge_rag",
+          "actual": "telemetry",
+          "question": "Co wykazał read-back po programowaniu MPC w CASE-0002 i skąd pozostał donorowy SN?"
+        },
+        {
+          "case_id": "ERS-GOLD-0036",
+          "split": "dev",
+          "expected": "knowledge_rag",
+          "actual": "telemetry",
+          "question": "W jakich stanach TLE8108EM obserwuje SCB, SCG i open load?"
+        },
+        {
+          "case_id": "ERS-GOLD-0043",
+          "split": "challenge",
+          "expected": "knowledge_rag",
+          "actual": "telemetry",
+          "question": "ECU ma poprawne napięcia, ale nie aktywuje wyjść i komunikacja jest ograniczona. Jaki stan nadzoru TLE8888 może dawać taki objaw?"
+        },
+        {
+          "case_id": "ERS-GOLD-0055",
+          "split": "challenge",
+          "expected": "vision",
+          "actual": "knowledge_rag",
+          "question": "Na zdjęciu odczytaj oznaczenie układu, a potem sprawdź w Knowledge jego funkcje i typowe fault modes."
+        },
+        {
+          "case_id": "ERS-GOLD-0058",
+          "split": "challenge",
+          "expected": "knowledge_rag",
+          "actual": "reasoning",
+          "question": "Communication still works. Can I conclude the TJA1043 physical layer is healthy?"
+        },
+        {
+          "case_id": "ERS-GOLD-0059",
+          "split": "holdout",
+          "expected": "knowledge_rag",
+          "actual": "vision",
+          "question": "Does a 0x70000 MPC555 normal flash dump automatically include Shadow Information?"
+        }
+      ],
+      "tool_mismatches": [
+        {
+          "case_id": "ERS-GOLD-0001",
+          "split": "dev",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "vision.analyze"
+          ],
+          "question": "Co było potwierdzoną przyczyną SPN 107 FMI 3 w CASE-0001 i jaki element był związany z obwodem?"
+        },
+        {
+          "case_id": "ERS-GOLD-0002",
+          "split": "dev",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "agent.ers"
+          ],
+          "question": "Jakie potwierdzone dane przemawiały za zgodnością donor ECU w CASE-0002 przed testem w pojeździe?"
+        },
+        {
+          "case_id": "ERS-GOLD-0005",
+          "split": "dev",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "agent.ers"
+          ],
+          "question": "CAN communication is still working. Does that rule out a physical-layer short on a TJA1043 network?"
+        },
+        {
+          "case_id": "ERS-GOLD-0010",
+          "split": "dev",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "agent.ers"
+          ],
+          "question": "Mam tylko DTC i brak pomiarów. Czy mogę uznać, że kod jednoznacznie wskazuje uszkodzony element i od razu zalecić wymianę?"
+        },
+        {
+          "case_id": "ERS-GOLD-0011",
+          "split": "dev",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "agent.ers"
+          ],
+          "question": "0 281 007 439"
+        },
+        {
+          "case_id": "ERS-GOLD-0012",
+          "split": "dev",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "vision.analyze"
+          ],
+          "question": "MPC555LF8MZP40 revision M"
+        },
+        {
+          "case_id": "ERS-GOLD-0013",
+          "split": "dev",
+          "expected": [
+            "graphify.query",
+            "knowledge.search"
+          ],
+          "actual": [
+            "graphify.query"
+          ],
+          "question": "Pokaż graf zależności PMIC → szyny 5 V → MCU/reset → transceiver CAN i wskaż, które awarie upstream mogą wyłączyć kilka bloków naraz."
+        },
+        {
+          "case_id": "ERS-GOLD-0016",
+          "split": "holdout",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "vision.analyze"
+          ],
+          "question": "Gdzie w J1939 C81 znajduje się air filter differential pressure i jaka jest skala?"
+        },
+        {
+          "case_id": "ERS-GOLD-0019",
+          "split": "dev",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "graphify.query"
+          ],
+          "question": "Podaj funkcje czterech pinów standardowego złącza diagnostycznego X6 Hatz C81."
+        },
+        {
+          "case_id": "ERS-GOLD-0023",
+          "split": "dev",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "vision.analyze"
+          ],
+          "question": "Jaki jest rozmiar i zakres normalnego Flash MPC555 używanego w CASE-0002?"
+        },
+        {
+          "case_id": "ERS-GOLD-0024",
+          "split": "holdout",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "vision.analyze"
+          ],
+          "question": "Czy dump normalnego Flash 0x70000 MPC555 automatycznie zawiera Shadow Information?"
+        },
+        {
+          "case_id": "ERS-GOLD-0025",
+          "split": "dev",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "vision.analyze"
+          ],
+          "question": "Co oznacza oznaczenie MPC555LF8MZP40 w kontekście rewizji krzemu użytej w CASE-0002?"
+        },
+        {
+          "case_id": "ERS-GOLD-0028",
+          "split": "dev",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "agent.ers"
+          ],
+          "question": "Dlaczego w CASE-0002 nie patchowano ręcznie tylko kilku pól EEPROM 25C256?"
+        },
+        {
+          "case_id": "ERS-GOLD-0029",
+          "split": "holdout",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "telemetry.read"
+          ],
+          "question": "Co wykazał read-back po programowaniu MPC w CASE-0002 i skąd pozostał donorowy SN?"
+        },
+        {
+          "case_id": "ERS-GOLD-0036",
+          "split": "dev",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "telemetry.read"
+          ],
+          "question": "W jakich stanach TLE8108EM obserwuje SCB, SCG i open load?"
+        },
+        {
+          "case_id": "ERS-GOLD-0041",
+          "split": "dev",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "agent.ers"
+          ],
+          "question": "Jakie zwarcia pojedynczej linii CAN potrafi wykrywać TJA1043 w opisanych warunkach?"
+        },
+        {
+          "case_id": "ERS-GOLD-0042",
+          "split": "dev",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "vision.analyze"
+          ],
+          "question": "Jakie główne bloki funkcjonalne integruje TLE8888 w referencyjnej architekturze engine ECU?"
+        },
+        {
+          "case_id": "ERS-GOLD-0043",
+          "split": "challenge",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "telemetry.read"
+          ],
+          "question": "ECU ma poprawne napięcia, ale nie aktywuje wyjść i komunikacja jest ograniczona. Jaki stan nadzoru TLE8888 może dawać taki objaw?"
+        },
+        {
+          "case_id": "ERS-GOLD-0046",
+          "split": "challenge",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "agent.ers"
+          ],
+          "question": "Czy output OFF w smart switchu Renesas automatycznie oznacza uszkodzony MOSFET?"
+        },
+        {
+          "case_id": "ERS-GOLD-0050",
+          "split": "holdout",
+          "expected": [],
+          "actual": [
+            "agent.ers"
+          ],
+          "question": "Na wejściu ECU mam 24,6 V, za ochroną 24,4 V, 5 V rail pulsuje 5,0→3,1 V i RESET spada low. Który blok sprawdzać najpierw i dlaczego?"
+        },
+        {
+          "case_id": "ERS-GOLD-0052",
+          "split": "holdout",
+          "expected": [
+            "graphify.query",
+            "knowledge.search"
+          ],
+          "actual": [
+            "graphify.query"
+          ],
+          "question": "Pokaż graf zależności: ochrona wejścia → pre-regulator → 5 V → reset/watchdog → MCU → CAN i znajdź wspólne upstream failure points."
+        },
+        {
+          "case_id": "ERS-GOLD-0056",
+          "split": "challenge",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "agent.ers"
+          ],
+          "question": "A na której z nich jest złącze X6?"
+        },
+        {
+          "case_id": "ERS-GOLD-0058",
+          "split": "challenge",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "agent.ers"
+          ],
+          "question": "Communication still works. Can I conclude the TJA1043 physical layer is healthy?"
+        },
+        {
+          "case_id": "ERS-GOLD-0059",
+          "split": "holdout",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "vision.analyze"
+          ],
+          "question": "Does a 0x70000 MPC555 normal flash dump automatically include Shadow Information?"
+        },
+        {
+          "case_id": "ERS-GOLD-0061",
+          "split": "challenge",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "agent.ers"
+          ],
+          "question": "Bosch 0281007439 / 0 281 007 439 — znajdź dokładny komponent i powiązany case."
+        },
+        {
+          "case_id": "ERS-GOLD-0063",
+          "split": "challenge",
+          "expected": [
+            "graphify.query",
+            "knowledge.search"
+          ],
+          "actual": [
+            "graphify.query"
+          ],
+          "question": "Build a dependency graph from battery input protection through MCU reset and CAN, then identify shared upstream failure points."
+        },
+        {
+          "case_id": "ERS-GOLD-0064",
+          "split": "challenge",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "agent.ers"
+          ],
+          "question": "Mam tylko DTC / I only have the DTC, no measurements. Czy można od razu wskazać część do wymiany?"
+        },
+        {
+          "case_id": "ERS-GOLD-0070",
+          "split": "holdout",
+          "expected": [
+            "knowledge.search"
+          ],
+          "actual": [
+            "vision.analyze"
+          ],
+          "question": "Jak AN930 rozróżnia PDU1 i PDU2 na podstawie pola PF?"
+        }
+      ],
+      "run_peak_ram_bytes_field_max": 4511338496
+    }
+  }
+}
