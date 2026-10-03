@@ -26,6 +26,18 @@ Heuristic score: P5.11 = 52/124 (41.9%); P5.12 = 55/124 (44.4%).
 Unsupported-component flags: P5.11 = 1; P5.12 = 0.
 The heuristic improvement is too small to justify promotion and requires manual review.
 
+## Evaluator audit
+
+The anchor scorer is not valid as a standalone promotion metric. Scoring the user prompts themselves, with no diagnostic answer, produces **29/124 = 23.4%**. In `P512-SMOKE-06`, the prompt alone scores **6/11**, exactly the score obtained by P5.11 when it effectively echoes the task instead of answering it.
+
+Root causes:
+- substring anchors can be satisfied by copied prompt text;
+- anchor presence does not validate semantic direction, causal order, negation, or whether a proposed test actually discriminates the stated hypotheses;
+- `high_information_next_measurement` is derived only from two anchor hits;
+- duplicated answer blocks are not penalized.
+
+Therefore the 41.9%/44.4% figures are telemetry only. Manual semantic review is authoritative for this gate, and the evaluator must be corrected before it is reused as a promotion signal.
+
 ## Manual review blockers
 
 - SMOKE-01: P5.12 asks for input/output measurements on an unidentified IC; that premise still depends on knowing function/pins.
