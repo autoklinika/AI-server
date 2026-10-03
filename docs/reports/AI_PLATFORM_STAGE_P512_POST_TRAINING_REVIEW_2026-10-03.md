@@ -48,6 +48,18 @@ Therefore the 41.9%/44.4% figures are telemetry only. Manual semantic review is 
 - SMOKE-11: misses the key common-mode/input-range boundary despite the good-channel comparison.
 - SMOKE-12: semantically better than its heuristic score; simultaneous rail/MCU-supply/enable timing is useful, so the anchor scorer under-rates it.
 
+## Independent shadow audit
+
+A second audit used six newly authored paraphrased diagnostic cases, run deterministically on both P5.11 and P5.12. Raw prompts and responses are preserved in `docs/reports/evidence/stage-p512-shadow-audit-2026-10-03.json`.
+
+Findings:
+- P5.12 is materially better on the driver-vs-path voltage-drop case, non-invasive oscillator probing, and relay coil-vs-contact discrimination.
+- CAN long-stub discrimination is comparable and technically useful on both models.
+- The current-sense case still misses the key input common-mode/range check and good-channel boundary, so the important SMOKE-11 weakness generalizes outside the official fixture.
+- Generation repetition regresses sharply: exact repeated non-trivial lines occur in **4/6 P5.12** shadow responses versus **1/6 P5.11**. P5.12 repeats substantial blocks in SHADOW-01, -02, -04 and -05.
+
+This independent sample confirms that P5.12 contains real diagnostic gains, but also confirms a generation-quality regression and incomplete transfer of the intended physical-boundary reasoning.
+
 ## Decision
 
 P5.12 training integrity and runtime engineering are accepted, but diagnostic quality is not.

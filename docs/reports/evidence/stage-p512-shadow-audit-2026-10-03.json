@@ -1,0 +1,88 @@
+{
+  "stage": "P5.12",
+  "purpose": "independent shadow audit after official smoke",
+  "generated_at_local": "2026-10-03T09:25:00+02:00",
+  "system": "Diagnozuj po polsku. Oddziel obserwacje od hipotez. Wybierz jeden test rozdzielający i warunkowe kroki; nie zgaduj części, pinów ani progów.",
+  "options": {
+    "temperature": 0,
+    "seed": 20261003,
+    "num_ctx": 4096,
+    "num_predict": 512,
+    "think": false,
+    "keep_alive": "0s"
+  },
+  "results": [
+    {
+      "model": "qwen3.8:27b-p4-64k-gpu-p511",
+      "id": "SHADOW-01",
+      "prompt": "Wyjście 24 V sterownika zasila zawór. Przy 0,5 A na złączu jest 23,8 V, przy 3 A tylko 8 V. Nie wiemy, czy spada samo wyjście drivera, czy ścieżka między driverem i złączem. Jaki jeden pomiar najlepiej to rozdzieli i jak zinterpretować oba wyniki?",
+      "response": "Dobry pomiar: napięcie na wyjściu drivera i na złączu jednocześnie pod obciążeniem.\nDobry pomiar: spadek na ścieżce lub złączu przy znamionowym prądzie.\nDobry pomiar: prąd i napięcie na wyjściu drivera podczas wzrostu obciążenia.\nDobry pomiar: napięcie na wyjściu drivera i na złączu jednocześnie pod obciążeniem.\nDobry pomiar: spadek na ścieżce lub złączu przy znamionowym prądzie.\nDobry pomiar: prąd i napięcie na wyjściu drivera podczas wzrostu obciążenia.\nDobry pomiar: napięcie na wyjściu drivera i na złączu jednocześnie pod obciążeniem.\nDobry pomiar: spadek na ścieżce lub złączu przy znamionowym prądzie.\nDobry pomiar: prąd i napięcie na wyjściu drivera podczas wzrostu obciążenia."
+    },
+    {
+      "model": "qwen3.8:27b-p4-64k-gpu-p511",
+      "id": "SHADOW-02",
+      "prompt": "Płyta przestaje działać po rozgrzaniu okolicy rezonatora. Zwykła sonda oscyloskopowa zatrzymuje oscylacje także na sprawnej płycie. Jak sprawdzić, czy problem naprawdę dotyczy generatora, bez fałszowania pomiaru? Podaj jeden test i dwie interpretacje.",
+      "response": "Obserwacje: Płyta przestaje działać po rozgrzaniu okolicy rezonatora. Zwykła sonda oscyloskopowa zatrzymuje oscylacje także na sprawnej płycie.\nHipotezy: Zmiana rezonansu z temperaturą, obciążenie pomiarowe sondy, problem z zasilaniem lub sprzężeniem.\nTest rozdzielający: Mierz rezonans przez niską impedancję (sonda 1:1 lub transformator pomiarowy) i porównaj z pomiarem sondą 10:1.\nInterpretacje: Zmiana tylko przy dużej pojemności pomiarowej wskazuje obciążenie pomiarowe; zmiana przy obu metodach jest bardziej wiarygodna.\nWarunkowe następstwo: Dopiero po wykluczeniu metody pomiarowej oceniaj komponenty rezonansowe."
+    },
+    {
+      "model": "qwen3.8:27b-p4-64k-gpu-p511",
+      "id": "SHADOW-03",
+      "prompt": "Pomiar napięcia bezpośrednio na boczniku jest prawidłowy w obu kierunkach prądu, ale wyjście wzmacniacza pomiarowego nasyca się tylko przy prądzie ujemnym. Drugi identyczny kanał działa. Jaki pomiar wykonasz jako pierwszy i co rozdziela jego wynik?",
+      "response": "Obserwacje: Pomiar napięcia bezpośrednio na boczniku jest prawidłowy w obu kierunkach prądu, ale wyjście wzmacniacza pomiarowego nasyca się tylko przy prądzie ujemnym. Drugi identyczny kanał działa.\nHipotezy: Problem w torze wzmacniacza pomiarowego, zasilaniu lub wejściu ADC; niekoniecznie w boczniku.\nNajmniejszy test rozdzielający: Porównać sygnał przed i po wzmacniaczu pomiarowym oraz napięcia zasilania tego toru.\nJeśli test potwierdzi hipotezę: Naprawić tor pomiarowy i ponownie zweryfikować oba kierunki prądu.\nJeśli test nie potwierdzi hipotezy: Wrócić do obserwacji i wybrać inny element rozdzielający.\nZasada: Nie wybierać części na podstawie jednego podobnego objawu."
+    },
+    {
+      "model": "qwen3.8:27b-p4-64k-gpu-p511",
+      "id": "SHADOW-04",
+      "prompt": "Linia ENABLE przetwornicy i jej szyna 5 V znikają niemal jednocześnie. Multimetr nie pokazuje kolejności. Jak jednym pomiarem ustalić, czy sterowanie wyłącza zasilanie, czy zanik zasilania powoduje utratę ENABLE? Podaj obie gałęzie.",
+      "response": "OBSERWACJE: Linia ENABLE przetwornicy i jej szyna 5 V znikają niemal jednocześnie. Multimetr nie pokazuje kolejności.\nHIPOTEZY: Sterowanie wyłącza zasilanie, zanik zasilania powoduje utratę ENABLE, albo oba zdarzenia są skutkiem wspólnego zdarzenia.\nTEST ROZDZIELAJĄCY: Oscyloskopem zarejestrować równocześnie ENABLE, wyjście regulatora i sygnał sterujący z odpowiednim triggerem.\nJEŚLI TAK: Kolejność krawędzi wskazuje kierunek przyczyny.\nJEŚLI NIE: Porównać zasilanie i sterowanie w warstwie analogowej oraz cyfrowej.\nNIE ROBIĆ: Nie zgadywać, który z dwóch równoczesnych zaników jest przyczyną."
+    },
+    {
+      "model": "qwen3.8:27b-p4-64k-gpu-p511",
+      "id": "SHADOW-05",
+      "prompt": "Przekaźnik ma poprawną ciągłość po wyłączeniu zasilania, ale pod obciążeniem po kilku minutach odbiornik gaśnie. Napięcie cewki w chwili awarii nie było mierzone. Jaki jeden test wykonasz podczas usterki i jak rozdzielisz styk od sterowania cewką?",
+      "response": "Obserwacje: Przekaźnik ma poprawną ciągłość po wyłączeniu zasilania, ale pod obciążeniem po kilku minutach odbiornik gaśnie. Napięcie cewki w chwili awarii nie było mierzone.\nHipotezy: Przekaźnik ma poprawną ciągłość po wyłączeniu zasilania, ale pod obciążeniem po kilku minutach odbiornik gaśnie. Napięcie cewki w chwili awarii nie było mierzone.\nNajmniejszy test rozdzielający: Zmierz napięcie cewki i sygnał sterujący w chwili awarii oraz porównaj z momentem poprawnego załączenia.\nJeśli test potwierdzi: Przekazanie sygnału lub zasilania cewki jest zgodne z wymaganiami, a styki nie przełączają.\nJeśli test nie potwierdzi: Przekazanie sygnału lub zasilania cewki jest zgodne z wymaganiami, a styki nie przełączają.\nWarunki bezpieczeństwa: Nie podłączaj zasilania do styków, które mogą być zwarcie lub przeciążone bez ograniczenia prądu."
+    },
+    {
+      "model": "qwen3.8:27b-p4-64k-gpu-p511",
+      "id": "SHADOW-06",
+      "prompt": "CAN działa poprawnie bez odnogi, ale po dołączeniu długiej odnogi pojawiają się błędy mimo prawidłowej rezystancji statycznej. Jak jednym pomiarem rozdzielisz odbicia/topologię od problemu nadajnika? Podaj obie interpretacje.",
+      "response": "Obserwacje: CAN działa poprawnie bez odnogi, ale po dołączeniu długiej odnogi pojawiają się błęedy mimo prawidłowej rezystancji statycznej.\nHipotezy: odbicia/topologia, problem nadajnika, problem odbiornika.\nTest rozdzielający: Oscyloskopem porównać kształt i timing sygnału na obu końcach odnogi oraz na nadajniku.\nJeśli sygnał jest poprawny na nadajniku, ale zniekształcony na końcu odnogi: kierunek topologia/odbicia.\nJeśli sygnał jest już nieprawidłowy na nadajniku: kierunek nadajnik lub jego zasilanie."
+    },
+    {
+      "model": "qwen3.8:27b-p4-64k-gpu-p512-dev",
+      "id": "SHADOW-01",
+      "prompt": "Wyjście 24 V sterownika zasila zawór. Przy 0,5 A na złączu jest 23,8 V, przy 3 A tylko 8 V. Nie wiemy, czy spada samo wyjście drivera, czy ścieżka między driverem i złączem. Jaki jeden pomiar najlepiej to rozdzieli i jak zinterpretować oba wyniki?",
+      "response": "OBSERWACJA: Wyjście 24 V sterownika zasila zawór.\nFAKTY: Przy 0,5 A na złączu jest 23,8 V, przy 3 A tylko 8 V. Nie wiemy, czy spada samo wyjście drivera, czy ścieżka między driverem i złączem.\nHIPOTEZY: Spadek na wyjściu drivera.\nHIPOTEZY: Spadek na ścieżce między driverem i złączem.\nTEST: Mierz jednocześnie napięcie na wyjściu drivera i na złączu przy tym samym prądzie.\nJEŚLI: Różnica między punktami rośnie z prądem: Wniosek: Spadek jest na ścieżce między nimi.\nJEŚLI: Obie wartości spadają razem: Wniosek: Problem jest bliżej źródła.\nNIE PIERWSZE: Nie zgaduj części, pinów ani progów.\nKONTROLOWANY KROK: Zmierz oba punkty przy tym samym stanie obciążenia.\nPOWRÓT: Porównaj oba punkty przy tym samym stanie obciążenia.\nOBSERWACJA: Wyjście 24 V sterownika zasila zawór.\nFAKTY: Przy 0,5 A na złączu jest 23,8 V, przy 3 A tylko 8 V. Nie wiemy, czy spada samo wyjście drivera, czy ścieżka między driverem i złączem.\nHIPOTEZY: Spadek na wyjściu drivera.\nHIPOTEZY: Spadek na ścieżce między driverem i złączem.\nTEST: Mierz jednocześnie napięcie na wyjściu drivera i na złączu przy tym samym prądzie.\nJEŚLI: Różnica między punktami rośnie z prądem: Wniosek: Spadek jest na ścieżce między nimi.\nJEŚLI: Obie wartości spadają razem: Wniosek: Problem jest bliżej źródła.\nNIE PIERWSZE: Nie zgaduj części, pinów ani progów.\nKONTROLOWANY KROK: Zmierz oba punkty przy tym samym stanie obciążenia.\nPOWRÓT:"
+    },
+    {
+      "model": "qwen3.8:27b-p4-64k-gpu-p512-dev",
+      "id": "SHADOW-02",
+      "prompt": "Płyta przestaje działać po rozgrzaniu okolicy rezonatora. Zwykła sonda oscyloskopowa zatrzymuje oscylacje także na sprawnej płycie. Jak sprawdzić, czy problem naprawdę dotyczy generatora, bez fałszowania pomiaru? Podaj jeden test i dwie interpretacje.",
+      "response": "OBSERWACJA: Płyta przestaje działać po rozgrzaniu okolicy rezonatora. Zwykła sonda oscyloskopowa zatrzymuje oscylacje także na sprawnej płycie.\nHIPOTEZA: Generator może być przeciążony przez obciążenie pomiarowe.\nHIPOTEZA: Rezonator może mieć temperaturową zmianę impedancji.\nTEST: Porównaj zachowanie bez sondy i z sondą o minimalnym obciążeniu, np. sondą pasywną o niskiej pojemności lub sondą aktywną.\nJeśli problem znika bez sondy: wynik wspiera przeciążenie przez obciążenie pomiarowe.\nJeśli problem pozostaje bez sondy: wynik osłabia przeciążenie przez obciążenie pomiarowe.\nNIE wnioskuj o konkretnym elemencie bez pomiaru rozdzielającego.\nWNIOSKOWANIE: Najpierw odróżnij brak pobudzenia od braku odpowiedzi na pobudzenie.\nTEST: Porównaj zachowanie bez sondy i z sondą o minimalnym obciążeniu, np. sondą pasywną o niskiej pojemności lub sondą aktywną.\nJeśli problem znika bez sondy: wynik wspiera przeciążenie przez obciążenie pomiarowe.\nJeśli problem pozostaje bez sondy: wynik osłabia przeciążenie przez obciążenie pomiarowe.\nNIE zgaduj części; test musi dzielić hipotezy.\nWNIOSKOWANIE: Najpierw odróżnij brak pobudzenia od braku odpowiedzi na pobudzenie."
+    },
+    {
+      "model": "qwen3.8:27b-p4-64k-gpu-p512-dev",
+      "id": "SHADOW-03",
+      "prompt": "Pomiar napięcia bezpośrednio na boczniku jest prawidłowy w obu kierunkach prądu, ale wyjście wzmacniacza pomiarowego nasyca się tylko przy prądzie ujemnym. Drugi identyczny kanał działa. Jaki pomiar wykonasz jako pierwszy i co rozdziela jego wynik?",
+      "response": "OBSERWACJA: Pomiar napięcia bezpośrednio na boczniku jest prawidłowy w obu kierunkach prądu, ale wyjście wzmacniacza pomiarowego nasyca się tylko przy prądzie ujemnym. Drugi identyczny kanał działa.\nHIPOTEZA: Problem może leżeć w torze wzmacniacza pomiarowego, jego zasilaniu lub obciążeniu, a nie w samym boczniku.\nTEST: Porównaj napięcie na wejściu wzmacniacza i jego wyjściu podczas ujemnego prądu, a następnie sprawdź zasilanie i obciążenie toru.\nJEŚLI TEST DOPASOWUJE: Wynik wskazuje lokalizację usterki i ogranicza dalszą diagnostykę.\nJEŚLI TEST NIE DOPASOWUJE: Wniosek jest słabszy i trzeba sprawdzić inną część toru.\nNIE WNIOSKUJ: Nie wolno na tej podstawie wskazać konkretnego elementu, pinu ani progu."
+    },
+    {
+      "model": "qwen3.8:27b-p4-64k-gpu-p512-dev",
+      "id": "SHADOW-04",
+      "prompt": "Linia ENABLE przetwornicy i jej szyna 5 V znikają niemal jednocześnie. Multimetr nie pokazuje kolejności. Jak jednym pomiarem ustalić, czy sterowanie wyłącza zasilanie, czy zanik zasilania powoduje utratę ENABLE? Podaj obie gałęzie.",
+      "response": "OBSERWACJA: Linia ENABLE przetwornicy i jej szyna 5 V znikają niemal jednocześnie. Multimetr nie pokazuje kolejności.\nHIPOTEZY: Sterowanie może wyłączać zasilanie; zanik zasilania może powodować utratę ENABLE.\nTEST ROZDZIELAJĄCY: Zarejestruj oba sygnały na jednym oscyloskopie z wspólnym triggerem i porównaj, który zanik pojawia się pierwszy.\nJEŚLI WYNIK POZYTYWNY: Pierwszy zanik wskazuje stronę przyczynową, a druga gałąź wymaga osobnego potwierdzenia.\nJEŚLI WYNIK UJEMNY: Brak wyraźnej kolejności wymaga dalszego podziału na źródło sterowania i źródło zasilania.\nNIE WNIOSKUJ: Nie zgaduj części, pinów ani progów na podstawie jednego pomiaru.\nOBSERWACJA: Linia ENABLE przetwornicy i jej szyna 5 V znikają niemal jednocześnie. Multimetr nie pokazuje kolejności.\nHIPOTEZY: Sterowanie może wyłączać zasilanie; zanik zasilania może powodować utratę ENABLE.\nTEST ROZDZIELAJĄCY: Zarejestruj oba sygnały na jednym oscyloskopie z wspólnym triggerem i porównaj, który zanik pojawia się pierwszy.\nJEŚLI WYNIK POZYTYWNY: Pierwszy zanik wskazuje stronę przyczynową, a druga gałąź wymaga osobnego potwierdzenia.\nJEŚLI WYNIK UJEMNY: Brak wyraźnej kolejności wymaga dalszego podziału na źródło sterowania i źródło zasilania.\nNIE WNIOSKUJ: Nie zgaduj części, pinów ani progów na podstawie jednego pomiaru."
+    },
+    {
+      "model": "qwen3.8:27b-p4-64k-gpu-p512-dev",
+      "id": "SHADOW-05",
+      "prompt": "Przekaźnik ma poprawną ciągłość po wyłączeniu zasilania, ale pod obciążeniem po kilku minutach odbiornik gaśnie. Napięcie cewki w chwili awarii nie było mierzone. Jaki jeden test wykonasz podczas usterki i jak rozdzielisz styk od sterowania cewką?",
+      "response": "OBSERWACJA: Przekaźnik ma poprawną ciągłość po wyłączeniu zasilania, ale pod obciążeniem po kilku minutach odbiornik gaśnie. Napięcie cewki w chwili awarii nie było mierzone.\nHIPOTEZA: Styk może się otwierać pod obciążeniem.\nHIPOTEZA: Cewka może tracić zasilanie lub sterowanie w momencie awarii.\nTEST: Zarejestruj równocześnie napięcie cewki i napięcie styku podczas powtarzalnego obciążenia.\nJeśli cewka ma zasilanie, a styk otwiera się: kierunek to styki lub obciążenie.\nJeśli styk pozostaje zamknięty, a cewka traci zasilanie: kierunek to sterowanie lub zasilanie cewki.\nNIE wnioskuj o konkretnym elemencie bez pomiaru.\nNIE podawaj wartości granicznych, których nie znamy.\nNIE podawaj numeru części bez identyfikacji.\nNIE podawaj pinoutu bez źródła.\nDIAGNOZA: Niekompletny zapis zjawiska.\nTEST: Zarejestruj równocześnie napięcie cewki i napięcie styku podczas powtarzalnego obciążenia.\nDZIAŁANIE: Zarejestruj równocześnie napięcie cewki i napięcie styku podczas powtarzalnego obciążenia.\nNIE wnioskuj o konkretnym elemencie bez pomiaru.\nNIE podawaj wartości granicznych, których nie znamy.\nNIE podawaj numeru części bez identyfikacji.\nNIE podawaj pinoutu bez źródła."
+    },
+    {
+      "model": "qwen3.8:27b-p4-64k-gpu-p512-dev",
+      "id": "SHADOW-06",
+      "prompt": "CAN działa poprawnie bez odnogi, ale po dołączeniu długiej odnogi pojawiają się błędy mimo prawidłowej rezystancji statycznej. Jak jednym pomiarem rozdzielisz odbicia/topologię od problemu nadajnika? Podaj obie interpretacje.",
+      "response": "OBSERWACJA: CAN działa poprawnie bez odnogi, ale po dołączeniu długiej odnogi pojawiają się błędy mimo prawidłowej rezystancji statycznej.\nHIPOTEZA: Topologia/odbicia lub nadajnik.\nTEST: Zarejestruj oscyloskopem zbocze na obu końcach odnogi i porównaj z nadajnikiem.\nJEŚLI: Zbocze na końcu odnogi odbija lub ma inną amplitudę niż u źródła: Podejrzenie topologii/odbicia.\nJEŚLI: Nadajnik nie generuje poprawnego zbocza mimo prawidłowego zasilania: Podejrzenie nadajnika.\nNIE: Nie wolno na tej podstawie ogłaszyć poprawności całej magistrali.\nPOMIAR: Oscyloskop na obu końcach odnogi.\nBEZPIECZEŃSTWO: Nie zwiększaj amplitudy bez potwierdzenia tolerancji elementów.\nNASTĘPNIE: Dopiero po wyniku wybierz kolejną gałąź diagnostyczną."
+    }
+  ]
+}
