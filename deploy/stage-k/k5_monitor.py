@@ -102,11 +102,15 @@ def check() -> dict[str, object]:
     STATUS_ROOT.mkdir(parents=True, exist_ok=True)
     issues: list[str] = []
 
+    # Reading a child path first intentionally triggers x-systemd.automount.
+    # Without this, findmnt -T may expose only the autofs layer after the
+    # CIFS idle timeout and produce a false source/type mismatch.
+    marker = load_json(MARKER)
+
     mounted, mount_detail = mount_state()
     if not mounted:
         issues.append(mount_detail)
 
-    marker = load_json(MARKER) if mounted else None
     if marker is None:
         issues.append("Stage K NAS marker missing/invalid")
     elif (
