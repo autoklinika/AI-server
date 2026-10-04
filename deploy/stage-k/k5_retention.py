@@ -113,8 +113,22 @@ def prune_k3(root: Path, tier: str, keep: int) -> list[str]:
     return expired
 
 
-def prune_restore_evidence(keep_weekly: int) -> list[str]:
-    root = Path("/srv/ai-data/backups/stage-k/restore-validation")
+def prune_adapters(root: Path, tier: str, keep: int) -> list[str]:
+    manifests = root / "Adapters" / "manifests"
+    ids = complete_ids(manifests, tier)
+    expired = ids[keep:]
+    for backup_id in expired:
+        manifest_dir = manifests / tier / backup_id
+        snapshot = root / "Adapters" / "snapshots" / tier / backup_id
+        require(snapshot.is_dir(), f"paired adapter snapshot missing: {snapshot}")
+        require((manifest_dir / "COMPLETE").read_text().strip() == backup_id,
+                f"adapter COMPLETE mismatch: {backup_id}")
+        remove_checked(manifest_dir, backup_id)
+        remove_checked(snapshot, backup_id)
+    return expired
+
+
+def _prune_restore_evidence_root(root: Path, keep_weekly: int) -> list[str]:
     if not root.is_dir():
         return []
     candidates: list[Path] = []
@@ -133,6 +147,17 @@ def prune_restore_evidence(keep_weekly: int) -> list[str]:
     return [item.name for item in expired]
 
 
+def prune_restore_evidence(keep_weekly: int) -> list[str]:
+    roots = (
+        Path("/srv/ai-data/backups/stage-k/restore-validation"),
+        Path("/srv/ai-data/backups/stage-k/adapter-restore-validation"),
+    )
+    removed: list[str] = []
+    for root in roots:
+        removed.extend(_prune_restore_evidence_root(root, keep_weekly))
+    return removed
+
+
 def apply(root: Path, tier: str, keep: int, evidence_keep: int) -> dict[str, object]:
     require(root.name == "AI_Platform", "target root must be AI_Platform")
     require(tier in {"daily", "weekly"}, "retention only applies to automatic tiers")
@@ -142,6 +167,7 @@ def apply(root: Path, tier: str, keep: int, evidence_keep: int) -> dict[str, obj
         "keep": keep,
         "removed_k2": prune_k2(root, tier, keep),
         "removed_k3": prune_k3(root, tier, keep),
+        "removed_adapters": prune_adapters(root, tier, keep),
         "removed_restore_evidence": (
             prune_restore_evidence(evidence_keep) if tier == "weekly" else []
         ),
