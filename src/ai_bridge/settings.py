@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # layer in front of it and must therefore use this direct upstream URL.
     ollama_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen3.8:27b-p4-64k-gpu-p511"
+    # WVC is domain-isolated: only the ventilation path may use this model.
+    # The Gateway also enforces this value server-side for /clients/ventilation.
+    ventilation_model: str = "qwen3.8:27b-p4-64k-gpu-wvc-v1"
     ollama_analysis_timeout_seconds: float = Field(default=300.0, gt=0.0)
     # Physical Ollama models allowed only through the benchmark-only Platform API path.
     # Normal clients remain pinned to the logical reasoning-main contract.

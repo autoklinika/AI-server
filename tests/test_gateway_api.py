@@ -80,9 +80,12 @@ def test_gateway_sends_higher_priority_waiter_first() -> None:
 def test_ventilation_namespace_defaults_to_priority_10_and_native_ollama_path() -> None:
     async def run() -> None:
         seen_paths: list[str] = []
+        seen_models: list[str] = []
 
         async def handler(request: httpx.Request) -> httpx.Response:
             seen_paths.append(request.url.path)
+            if request.url.path == "/api/chat":
+                seen_models.append(json.loads(request.content)["model"])
             return httpx.Response(200, json={"ok": True})
 
         app = create_gateway_app(
@@ -97,12 +100,41 @@ def test_ventilation_namespace_defaults_to_priority_10_and_native_ollama_path() 
                 tags = await client.get("/clients/ventilation/api/tags")
                 response = await client.post(
                     "/clients/ventilation/api/chat",
-                    json={"stream": False},
+                    json={"stream": False, "model": "qwen3.8:27b-p4-64k-gpu-p511"},
                 )
                 assert tags.status_code == 200
                 assert response.status_code == 200
                 assert response.headers["x-ai-gateway-priority"] == "10"
                 assert seen_paths == ["/api/tags", "/api/chat"]
+                assert seen_models == ["qwen3.8:27b-p4-64k-gpu-wvc-v1"]
+
+    asyncio.run(run())
+
+
+
+def test_generic_chat_does_not_receive_wvc_model() -> None:
+    async def run() -> None:
+        seen_models: list[str] = []
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            seen_models.append(json.loads(request.content)["model"])
+            return httpx.Response(200, json={"ok": True})
+
+        app = create_gateway_app(
+            _settings(),
+            upstream_transport=httpx.MockTransport(handler),
+        )
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://gateway",
+            ) as client:
+                response = await client.post(
+                    "/api/chat",
+                    json={"stream": False, "model": "qwen3.8:27b-p4-64k-gpu-p511"},
+                )
+                assert response.status_code == 200
+                assert seen_models == ["qwen3.8:27b-p4-64k-gpu-p511"]
 
     asyncio.run(run())
 

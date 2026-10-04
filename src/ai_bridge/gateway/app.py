@@ -86,6 +86,18 @@ def _consume_priority_class(body: bytes, default: int) -> tuple[bytes, int, Prio
     return json.dumps(payload).encode("utf-8"), priority, semantic
 
 
+def _force_model(body: bytes, model: str) -> bytes:
+    """Force a domain-owned physical model without trusting the client body."""
+    try:
+        payload = json.loads(body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return body
+    if not isinstance(payload, dict):
+        return body
+    payload["model"] = model
+    return json.dumps(payload).encode("utf-8")
+
+
 def _requests_stream(body: bytes) -> bool:
     try:
         payload = json.loads(body)
@@ -316,6 +328,8 @@ def create_gateway_app(
     ) -> Response:
         body = await request.body()
         body, class_priority, semantic = _consume_priority_class(body, default_priority)
+        if default_source == "ventilation":
+            body = _force_model(body, resolved.ventilation_model)
         priority = _parse_priority(request, class_priority)
         source = _parse_source(request, default_source)
         workload = http_workload(registry, upstream_path, ventilation=default_source == "ventilation")
