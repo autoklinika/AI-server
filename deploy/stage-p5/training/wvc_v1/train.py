@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import hashlib
 import json
 import math
@@ -44,6 +45,23 @@ def load_rows(path: Path) -> list[dict]:
     if len(rows) != EXPECTED_RECORDS:
         raise RuntimeError(f"expected {EXPECTED_RECORDS} training rows, got {len(rows)}")
     return rows
+
+
+def assert_finite_gradients(model, where: str) -> None:
+    for name, param in model.named_parameters():
+        if param.requires_grad and param.grad is not None and not bool(torch.isfinite(param.grad).all().item()):
+            raise RuntimeError(f"non-finite gradient after {where}: {name}")
+
+
+def assert_finite_optimizer_state(model, optimizer, where: str) -> None:
+    for name, param in model.named_parameters():
+        if param.requires_grad and not bool(torch.isfinite(param).all().item()):
+            raise RuntimeError(f"non-finite trainable parameter after {where}: {name}")
+    for state in optimizer.state.values():
+        for key, value in state.items():
+            if torch.is_tensor(value) and not bool(torch.isfinite(value).all().item()):
+                raise RuntimeError(f"non-finite optimizer state after {where}: {key}")
+
 
 def tokenize_example(tok, row: dict, max_length: int):
     prompt = [{"role": "system", "content": row["system"]}, {"role": "user", "content": row["user"]}]
@@ -187,7 +205,12 @@ def main() -> int:
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     if trainable <= 0:
         raise RuntimeError("no trainable LoRA parameters")
-    optimizer = torch.optim.AdamW((p for p in model.parameters() if p.requires_grad), lr=args.lr)
+    optimizer = torch.optim.AdamW(
+        (p for p in model.parameters() if p.requires_grad),
+        lr=args.lr,
+        foreach=False,
+        fused=False,
+    )
 
     model.train()
     torch.cuda.synchronize()
@@ -219,6 +242,10 @@ def main() -> int:
             raw_loss = float(loss.detach().cpu())
             (loss / group_size).backward()
             torch.cuda.synchronize()
+            assert_finite_gradients(
+                model,
+                f"microstep {cursor + 1} record={row.get('record_id')}",
+            )
             micro_dt = time.perf_counter() - micro_t0
             group_losses.append(raw_loss)
             group_tokens += ex["tokens"]
@@ -248,6 +275,13 @@ def main() -> int:
             raise RuntimeError(f"non-finite grad norm at optimizer step {opt_index}: {grad_norm}")
         optimizer.step()
         torch.cuda.synchronize()
+        assert_finite_optimizer_state(model, optimizer, f"optimizer step {opt_index}")
+        optimizer.zero_grad(set_to_none=True)
+        reserved_before_cleanup = torch.cuda.memory_reserved()
+        gc.collect()
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+        reserved_after_cleanup = torch.cuda.memory_reserved()
         group_dt = time.perf_counter() - group_t0
         metric = {
             "optimizer_step": opt_index,
@@ -261,7 +295,9 @@ def main() -> int:
             "target_tokens": group_targets,
             "seconds": group_dt,
             "vram_allocated": torch.cuda.memory_allocated(),
-            "vram_reserved": torch.cuda.memory_reserved(),
+            "vram_reserved": reserved_after_cleanup,
+            "vram_reserved_before_cleanup": reserved_before_cleanup,
+            "vram_reserved_after_cleanup": reserved_after_cleanup,
         }
         optimizer_metrics.append(metric)
         print("WVC_OPTIMIZER_STEP=" + json.dumps(metric, sort_keys=True), flush=True)
@@ -303,6 +339,11 @@ def main() -> int:
             "lr": args.lr,
             "lora_r": args.lora_r,
             "fresh_optimizer": True,
+            "adamw_foreach": False,
+            "adamw_fused": False,
+            "microstep_gradient_finite_check": True,
+            "optimizer_state_finite_check": True,
+            "optimizer_boundary_cache_cleanup": True,
             "gradient_checkpointing": True,
             "base_dtype": "bfloat16",
             "HSA_USE_SVM": os.environ.get("HSA_USE_SVM"),

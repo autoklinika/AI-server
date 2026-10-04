@@ -67,3 +67,15 @@ def test_split_families_do_not_overlap() -> None:
     assert families["train"].isdisjoint(families["holdout"])
     assert families["train"].isdisjoint(families["challenge"])
     assert families["holdout"].isdisjoint(families["challenge"])
+
+
+def test_training_has_rocm_numerical_stability_guards() -> None:
+    source = (HERE / "train.py").read_text()
+    assert "foreach=False" in source
+    assert "fused=False" in source
+    assert "assert_finite_gradients(" in source
+    assert "assert_finite_optimizer_state(model, optimizer" in source
+    assert "optimizer.zero_grad(set_to_none=True)" in source
+    assert "torch.cuda.empty_cache()" in source
+    assert "vram_reserved_before_cleanup" in source
+    assert "vram_reserved_after_cleanup" in source
