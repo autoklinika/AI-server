@@ -14,7 +14,7 @@ from ai_bridge.providers.registry import (
     NodeDescriptor, local_descriptor_registry,
 )
 from ai_bridge.settings import Settings
-from test_gateway_priority_classes import PATHS, api_client, make_app
+from test_gateway_priority_classes import PATHS, WVC_MODEL, api_client, make_app
 
 
 @pytest.fixture
@@ -187,7 +187,12 @@ async def test_http_assignment_matches_registry_and_preserves_payload(path, stre
     body = json.dumps({"model": "unchanged-model", "messages": [{"content": secret}], "stream": stream}).encode()
 
     async def handler(request):
-        assert request.content == body
+        if path == "/clients/ventilation/api/chat":
+            expected = json.loads(body)
+            expected["model"] = WVC_MODEL
+            assert json.loads(request.content) == expected
+        else:
+            assert request.content == body
         state = (await app.state.scheduler.snapshot())["active"][0]["job"]
         assert state["state"] == "running"
         descriptor = app.state.descriptor_registry.validate_assignment(

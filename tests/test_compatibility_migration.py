@@ -17,6 +17,7 @@ from ai_bridge.gateway.app import create_gateway_app
 from ai_bridge.settings import Settings
 
 ROOT = Path(__file__).resolve().parents[1]
+WVC_MODEL = "qwen3.8:27b-p4-64k-gpu-wvc-v1"
 
 
 def load_tool(name, relative):
@@ -75,7 +76,13 @@ def test_legacy_endpoints_preserve_wire_contract_and_v2_jobs(
                 assert response.headers["x-ai-request-id"].startswith("req_")
                 if path == legacy:
                     assert response.headers["x-ai-gateway-priority"] == str(priority)
-            assert all(request.url.path == canonical and request.content == raw for request in seen)
+            if legacy == "/clients/ventilation/api/chat":
+                assert len(seen) == 2
+                assert seen[0].url.path == canonical
+                assert json.loads(seen[0].content) == {**payload, "model": WVC_MODEL}
+                assert seen[1].url.path == canonical and seen[1].content == raw
+            else:
+                assert all(request.url.path == canonical and request.content == raw for request in seen)
             snapshot = (await client.get("/status")).json()
             job = snapshot["recent_jobs"][0]
             assert (job["domain"], job["capability"]) == (domain, capability)
@@ -137,7 +144,7 @@ def test_wvc_entrypoint_keeps_recovery_explicit(monkeypatch, use_gateway, base, 
     assert captured[0]["base_url"] == expected
     assert captured[0]["request_priority"] == (17 if use_gateway else None)
     assert captured[0]["request_source"] == ("ventilation" if use_gateway else None)
-    assert captured[0]["default_model"] == settings.ollama_model
+    assert captured[0]["default_model"] == settings.ventilation_model
 
 
 async def run_sync(function, **kwargs):
