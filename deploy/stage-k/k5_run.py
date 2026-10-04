@@ -133,6 +133,23 @@ def run(tier: str) -> dict[str, object]:
                  "--target-root", str(TARGET_ROOT), "--tier", tier],
                 timeout=3600,
             )
+
+            phase = "adapter_backup"
+            adapters = run_json(
+                phase,
+                [sys.executable, str(STAGE_K / "k4_adapters.py"), "backup",
+                 "--target-root", str(TARGET_ROOT), "--tier", tier],
+                timeout=3600,
+            )
+
+            phase = "verify_adapters"
+            adapter_verify = run_json(
+                phase,
+                [sys.executable, str(STAGE_K / "k4_adapters.py"), "verify",
+                 str(adapters["adapter_manifest"])],
+                timeout=900,
+            )
+
             phase = "verify_knowledge"
             knowledge_verify = run_json(
                 phase,
@@ -198,6 +215,14 @@ def run(tier: str) -> dict[str, object]:
                     timeout=1800,
                 )
 
+                phase = "restore_adapters"
+                restore["adapters"] = run_json(
+                    phase,
+                    [sys.executable, str(STAGE_K / "k4_adapters.py"),
+                     "restore-validate", str(adapters["adapter_manifest"])],
+                    timeout=1800,
+                )
+
             phase = "retention"
             keep = 30 if tier == "daily" else 12
             retention = run_json(
@@ -218,6 +243,8 @@ def run(tier: str) -> dict[str, object]:
                 "stage_k_code_git_sha": git_head(),
                 "knowledge_backup_id": latest_id(str(k2["knowledge_set"])),
                 "domain_backup_id": str(k3["backup_id"]),
+                "adapter_backup_id": str(adapters["backup_id"]),
+                "adapter_verify": adapter_verify,
                 "knowledge_verify": knowledge_verify,
                 "wvc_verify": wvc_verify,
                 "ers_case_store_verify": ers_case_store_verify,

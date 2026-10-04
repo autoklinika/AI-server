@@ -102,9 +102,29 @@ K3 data/config = PASS. K3 encrypted secrets backup = PASS. Rzeczywisty external-
 
 Automatyczny backup jest rozdzielony na dwa poziomy:
 - `daily`: poniedziałek–sobota o 02:30; backup + pełna weryfikacja integralności;
-- `weekly`: niedziela o 02:30; backup + pełna weryfikacja + izolowany restore Knowledge oraz ERS/Hermes/Platform config.
+- `weekly`: niedziela o 02:30; backup + pełna weryfikacja + izolowany restore Knowledge, ERS/Hermes/Platform config oraz aktywnych adapterów LLM.
 
-Retencja: 30 daily + 12 weekly. Zestawy `manual` i encrypted secrets nie są usuwane automatycznie. Canonical object pool pozostaje append-only; automatyczny GC jest celowo wyłączony, żeby retencja nie mogła usunąć obiektu potrzebnego do recovery.
+### Backup aktywnych adapterów LLM
+
+`k4_adapters.py` zabezpiecza wyłącznie adaptery faktycznie dopuszczone do runtime.
+Markerem wdrożenia jest `runtime-adapters/<name>/current.gguf`; taki adapter musi mieć
+sparowany `adapters/<name>/current`. Brak pary kończy backup fail-closed. Dzięki temu
+checkpointy treningowe, odrzucone eksperymenty i adaptery bez aktywnego runtime nie
+trafiają automatycznie do DR.
+
+Dla każdego aktywnego adaptera backup obejmuje:
+- finalny source LoRA (`adapter_model.safetensors`, config i pliki metadanych z finalnego katalogu);
+- dokładnie GGUF wskazywany przez `current.gguf`;
+- metadata runtime/Modelfile;
+- SHA-256, rozmiary, manifest plików oraz wskazanie wybranego immutable source/runtime.
+
+Katalogi `checkpoint-*` nie są kopiowane. Snapshoty trafiają do
+`AI_Platform/Adapters/snapshots/<tier>/<backup_id>/`, a manifesty do
+`AI_Platform/Adapters/manifests/<tier>/<backup_id>/`. Daily wykonuje backup + verify;
+weekly dodatkowo odtwarza source LoRA i GGUF do izolowanego evidence directory bez
+modyfikowania produkcji.
+
+Retencja: 30 daily + 12 weekly również dla adapterów. Zestawy `manual` i encrypted secrets nie są usuwane automatycznie. Canonical object pool pozostaje append-only; automatyczny GC jest celowo wyłączony, żeby retencja nie mogła usunąć obiektu potrzebnego do recovery.
 
 `k5_run.py` zapisuje stan do `/srv/ai-data/platform/backup-status/stage-k/{daily,weekly}.json`. `k5_monitor.py` działa co godzinę, kontroluje mount/marker GlobalNAS, świeżość backupu, świeżość weekly restore i wolne miejsce. Telegram alarm jest wysyłany tylko przy zmianie stanu na FAIL oraz jednokrotnie po recovery.
 

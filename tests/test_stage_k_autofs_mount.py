@@ -1,7 +1,9 @@
 from pathlib import Path
 import importlib.util
 import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,6 +52,33 @@ class StageKAutofsTests(unittest.TestCase):
                 "systemd-1 autofs\n//other/share cifs\n"
             )
         )
+
+    def test_monitor_reads_marker_before_mount_probe(self):
+        marker_loaded = False
+
+        def fake_load_json(path):
+            nonlocal marker_loaded
+            if path == monitor.MARKER:
+                marker_loaded = True
+                return {
+                    "purpose": "ai-platform-stage-k",
+                    "nas": "GlobalNAS",
+                    "share": "AI_Platform",
+                }
+            return None
+
+        def fake_mount_state():
+            self.assertTrue(marker_loaded)
+            raise RuntimeError("mount-order-observed")
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            with (
+                patch.object(monitor, "STATUS_ROOT", Path(tempdir)),
+                patch.object(monitor, "load_json", side_effect=fake_load_json),
+                patch.object(monitor, "mount_state", side_effect=fake_mount_state),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "mount-order-observed"):
+                    monitor.check()
 
 
 if __name__ == "__main__":
