@@ -280,6 +280,12 @@ def test_k5_weekly_passes_matching_ers_manifest_to_restore(tmp_path, monkeypatch
                 "hermes_manifest": "/backup/k3/hermes/id",
                 "platform_manifest": "/backup/k3/platform/id",
             }
+        if label == "adapter_backup":
+            return {
+                "status": "PASS",
+                "backup_id": "adapter-id",
+                "adapter_manifest": "/backup/adapters/adapter-id",
+            }
         return {"status": "PASS"}
 
     monkeypatch.setattr(k5_run, "run_json", fake_run_json)
