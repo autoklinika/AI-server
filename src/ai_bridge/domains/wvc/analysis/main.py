@@ -84,7 +84,7 @@ def main() -> int:
         )
         llm = OllamaAdapter.from_endpoint(
             base_url=inference_url,
-            default_model=settings.ollama_model,
+            default_model=settings.ventilation_model,
             timeout_seconds=settings.ollama_analysis_timeout_seconds,
             request_source="ventilation" if use_gateway else None,
             request_priority=(
@@ -95,7 +95,7 @@ def main() -> int:
         service = VentilationAnalysisServiceV122(
             repository=repository,
             llm=llm,
-            model=settings.ollama_model,
+            model=settings.ventilation_model,
             # Thinking mode is versioned together with the active analysis profile
             # so idempotent results remain reproducible.
             think=ANALYSIS_THINK,

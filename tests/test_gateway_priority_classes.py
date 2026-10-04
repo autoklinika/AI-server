@@ -24,6 +24,7 @@ PATHS = [
     "/clients/ventilation/api/chat", "/clients/hermes/v1/chat/completions",
     "/clients/hermes/v1/embeddings",
 ]
+WVC_MODEL = "qwen3.8:27b-p4-64k-gpu-wvc-v1"
 
 
 @pytest.fixture
@@ -70,7 +71,10 @@ async def test_all_scheduled_routes_consume_class_metadata(path, stream):
             response = await client.post(path, json={"priority_class": name, "stream": stream})
             assert response.status_code == 200
             assert response.headers["X-AI-Gateway-Priority"] == str(number)
-            assert seen[-1] == {"stream": stream}
+            expected = {"stream": stream}
+            if path == "/clients/ventilation/api/chat":
+                expected["model"] = WVC_MODEL
+            assert seen[-1] == expected
         assert (await client.get("/status")).json()["active_count"] == 0
 
 
@@ -124,7 +128,12 @@ async def test_legacy_defaults_and_body_bytes_are_preserved():
             body = b'{ "messages": [], "stream": false }'
             response = await client.post(path, content=body)
             assert response.headers["X-AI-Gateway-Priority"] == str(expected)
-            assert seen[-1] == body
+            if path == "/clients/ventilation/api/chat":
+                assert json.loads(seen[-1]) == {
+                    "messages": [], "stream": False, "model": WVC_MODEL,
+                }
+            else:
+                assert seen[-1] == body
         lease = (await client.post("/resource/leases", json={})).json()
         assert lease["priority"] == 55
         await client.delete(f"/resource/leases/{lease['lease_id']}")
