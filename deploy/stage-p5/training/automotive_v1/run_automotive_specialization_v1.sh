@@ -67,18 +67,35 @@ MEM_BEFORE="$(mem_available_kib)"
 OLLAMA_BEFORE="$(ollama ps 2>/dev/null || true)"
 KFD_OWNERS="$(lsof -t /dev/kfd 2>/dev/null | sort -u | tr '\n' ' ' || true)"
 KFD_BLOCKERS="$KFD_OWNERS"
+QUIESCED_COMFYUI_PIDS=""
 if [ "$ALLOW_QUIESCED_COMFYUI" = "1" ] && [ -n "${KFD_OWNERS// }" ]; then
   KFD_BLOCKERS=""
   for pid in $KFD_OWNERS; do
     state="$(awk '/^State:/ {print $2}' "/proc/$pid/status" 2>/dev/null || true)"
     owner_uid="$(stat -c '%u' "/proc/$pid" 2>/dev/null || true)"
     cgroup="$(cat "/proc/$pid/cgroup" 2>/dev/null || true)"
-    if [ "$owner_uid" = "$(id -u)" ] && { [ "$state" = "T" ] || [ "$state" = "t" ]; } && printf '%s\n' "$cgroup" | grep -qx '0::/system.slice/comfyui.service'; then
+    if [ "$owner_uid" = "$(id -u)" ] && [ "$state" = "T" ] && printf '%s\n' "$cgroup" | grep -qx '0::/system.slice/comfyui.service'; then
+      QUIESCED_COMFYUI_PIDS="$QUIESCED_COMFYUI_PIDS $pid"
       continue
     fi
     KFD_BLOCKERS="$KFD_BLOCKERS $pid"
   done
 fi
+
+resume_quiesced_comfyui() {
+  local pid state owner_uid cgroup
+  for pid in $QUIESCED_COMFYUI_PIDS; do
+    [ -d "/proc/$pid" ] || continue
+    state="$(awk '/^State:/ {print $2}' "/proc/$pid/status" 2>/dev/null || true)"
+    owner_uid="$(stat -c '%u' "/proc/$pid" 2>/dev/null || true)"
+    cgroup="$(cat "/proc/$pid/cgroup" 2>/dev/null || true)"
+    if [ "$owner_uid" = "$(id -u)" ] && [ "$state" = "T" ] && printf '%s\n' "$cgroup" | grep -qx '0::/system.slice/comfyui.service'; then
+      kill -CONT "$pid" 2>/dev/null || true
+    fi
+  done
+}
+trap resume_quiesced_comfyui EXIT
+
 GPU_BASELINE="$(count_gpu_errors)"
 snapshot_gpu_errors >"$EVIDENCE/kernel_gpu_errors_before.txt"
 {
@@ -143,7 +160,7 @@ cleanup_monitor() {
   kill "$MON_PID" >/dev/null 2>&1 || true
   wait "$MON_PID" >/dev/null 2>&1 || true
 }
-trap cleanup_monitor EXIT INT TERM
+trap 'cleanup_monitor; resume_quiesced_comfyui' EXIT INT TERM
 
 UIDN="$(id -u)"
 GIDN="$(id -g)"
@@ -159,7 +176,7 @@ TRAIN_RC=${PIPESTATUS[0]}
 set -e
 
 cleanup_monitor
-trap - EXIT INT TERM
+trap resume_quiesced_comfyui EXIT INT TERM
 
 GPU_FINAL="$(count_gpu_errors)"
 snapshot_gpu_errors >"$EVIDENCE/kernel_gpu_errors_after.txt"
@@ -230,7 +247,7 @@ for ((i=0; i<RELEASE_TIMEOUT; i++)); do
       state="$(awk '/^State:/ {print $2}' "/proc/$pid/status" 2>/dev/null || true)"
       owner_uid="$(stat -c '%u' "/proc/$pid" 2>/dev/null || true)"
       cgroup="$(cat "/proc/$pid/cgroup" 2>/dev/null || true)"
-      if [ "$owner_uid" = "$(id -u)" ] && { [ "$state" = "T" ] || [ "$state" = "t" ]; } && printf '%s\n' "$cgroup" | grep -qx '0::/system.slice/comfyui.service'; then
+      if [ "$owner_uid" = "$(id -u)" ] && [ "$state" = "T" ] && printf '%s\n' "$cgroup" | grep -qx '0::/system.slice/comfyui.service'; then
         continue
       fi
       blockers="$blockers $pid"

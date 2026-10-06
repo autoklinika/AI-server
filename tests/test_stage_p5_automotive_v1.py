@@ -71,3 +71,11 @@ def test_manifests_keep_quality_boundary_open():
     assert a["quality_acceptance"] == "PENDING_FUTURE_INDEPENDENT_EVALUATION"
     assert r["quality_acceptance"] == "PENDING_FUTURE_INDEPENDENT_EVALUATION"
     assert r["parent_adapter"].endswith("/electronics-foundation-v3/current")
+
+
+def test_quiesced_comfyui_is_resumed_on_training_exit():
+    text = (AUTO / "run_automotive_specialization_v1.sh").read_text()
+    assert 'QUIESCED_COMFYUI_PIDS=""' in text
+    assert 'resume_quiesced_comfyui()' in text
+    assert 'kill -CONT "$pid"' in text
+    assert "trap resume_quiesced_comfyui EXIT" in text

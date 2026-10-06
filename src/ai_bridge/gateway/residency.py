@@ -15,11 +15,13 @@ class ResidencyError(RuntimeError):
 
 class GPUResidency:
     def __init__(self, ollama: httpx.AsyncClient, comfy: httpx.AsyncClient,
-                 marker: Path, *, timeout: float = 90, poll: float = .25, idle_reserve_bytes: int = 0, require_comfy_extension: bool = True):
+                 marker: Path, *, timeout: float = 90, poll: float = .25, idle_reserve_bytes: int = 0,
+                 require_comfy_extension: bool = True, resume_comfy=None):
         self.ollama, self.comfy = ollama, comfy
         self.marker, self.timeout, self.poll = marker, timeout, poll
         self.idle_reserve_bytes = idle_reserve_bytes
         self.require_comfy_extension = require_comfy_extension
+        self.resume_comfy = resume_comfy
         self.state = "blocked" if marker.exists() else "llm"
         self.cleanup_evidence = None
 
@@ -61,6 +63,8 @@ class GPUResidency:
         if self.state != "llm":
             raise ResidencyError("GPU residency requires recovery")
         try:
+            if self.resume_comfy is not None:
+                await self.resume_comfy()
             self._dirty()
             self.state = "draining_ollama"
             async with asyncio.timeout(self.timeout):
@@ -87,6 +91,8 @@ class GPUResidency:
         if self.state != "media":
             raise ResidencyError("GPU residency requires recovery")
         try:
+            if self.resume_comfy is not None:
+                await self.resume_comfy()
             self.state = "freeing_comfy"
             # Leave a read-only settling window between idempotent wakeups.
             # Re-posting on every poll can re-arm flags while the worker is

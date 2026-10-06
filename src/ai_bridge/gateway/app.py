@@ -23,6 +23,7 @@ from .resource_leases import (
     ResourceLeaseRegistry,
 )
 from .residency import GPUResidency, ResidencyError
+from .comfy_process import resume_stopped_managed_comfy
 from .scheduler import PriorityScheduler, SchedulerQueueFull, SchedulerTicket
 
 
@@ -190,7 +191,8 @@ def create_gateway_app(
         ) as comfy:
             residency = GPUResidency(client, comfy, resolved.gateway_gpu_marker,
                                      timeout=resolved.gateway_gpu_transition_timeout,
-                                     idle_reserve_bytes=resolved.gateway_comfy_idle_reserve_bytes)
+                                     idle_reserve_bytes=resolved.gateway_comfy_idle_reserve_bytes,
+                                     resume_comfy=(resume_stopped_managed_comfy if residency_transport is None else None))
             resource_leases.residency = residency
             scheduler.admission_blocked = residency.state == "blocked"
             from ai_bridge.platform.provider import GatewayLLMAdapter
