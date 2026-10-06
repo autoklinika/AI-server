@@ -379,3 +379,54 @@ async def test_diagnostic_zero_ceiling_explains_clean_models_but_timeout(tmp_pat
     assert gpu.cleanup_evidence['idle_reserve_bytes'] == 0
     assert gpu.cleanup_evidence['residency']['cleanup_pending'] is False
     assert gpu.state == 'blocked'
+
+
+@pytest.mark.anyio
+async def test_managed_comfy_resume_guard_runs_before_enter_and_leave(tmp_path):
+    providers = Providers()
+    calls = []
+
+    async def resume():
+        calls.append("resume")
+        return len(calls) == 1
+
+    client = httpx.AsyncClient(
+        base_url="http://test",
+        transport=httpx.MockTransport(providers.handle),
+    )
+    gpu = GPUResidency(
+        client,
+        client,
+        tmp_path / "marker",
+        timeout=.05,
+        poll=.001,
+        resume_comfy=resume,
+    )
+    await gpu.enter_media()
+    await gpu.leave_media()
+    assert calls == ["resume", "resume"]
+    assert gpu.state == "llm" and not gpu.marker.exists()
+
+
+@pytest.mark.anyio
+async def test_resume_guard_failure_keeps_transition_fail_closed(tmp_path):
+    providers = Providers()
+
+    async def resume():
+        raise RuntimeError("cannot safely resume")
+
+    client = httpx.AsyncClient(
+        base_url="http://test",
+        transport=httpx.MockTransport(providers.handle),
+    )
+    gpu = GPUResidency(
+        client,
+        client,
+        tmp_path / "marker",
+        timeout=.05,
+        poll=.001,
+        resume_comfy=resume,
+    )
+    with pytest.raises(RuntimeError, match="cannot safely resume"):
+        await gpu.enter_media()
+    assert gpu.state == "blocked"
