@@ -67,3 +67,12 @@ CLI kończy działanie z exit=2 przy niepoprawnym datasecie, duplikatach, leakag
 Nie ma automatycznej promocji modelu. Benchmark V1 zatwierdza jedynie poprawność harnessu offline; wybór produkcyjnego modelu wymaga rzeczywistych wyników B1–B3, odrębnego raportu jakości i decyzji właściciela platformy.
 
 **Wymaganie V1.1:** polecenie `score` wymaga również `--calibration-predictions`: sprawdza jego hash i niezależnie przelicza próg. Bez tego dowód kalibracji nie jest kompletny.
+
+## Status DATA-01 i WinCLIP (2026-10-13)
+
+- Zestaw VisA PCB1–PCB4 pobrano na NVMe; SHA256 tar potwierdzono z hashem referencyjnym.
+- `fetch_visa.py` umożliwia wznawianie pobierania z kontrolą segmentów i oficjalnego SHA-256.
+- `prepare_visa.py` tworzy cztery zamrożone manifesty cross-family z prawdziwych obrazów i masek. Dla importu wymagane `Pillow==12.1.1`, poza głównym scorerem.
+- Smoke i pilotaż WinCLIP CPU działają we własnym venv; szczegóły i wyniki **nieprodukcyjne** w `PILOT_WINCLIP_2026-10-13.md`.
+- Dane, predykcje i wyniki liczbowe pozostają tylko na NVMe, nie w publicznym GH.
+- Uwaga: `specimen_id` w VisA jest proxy obrazu, nie potwierdzonym fizycznym PCB.

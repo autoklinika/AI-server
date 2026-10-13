@@ -22,3 +22,7 @@ Status: **weryfikacja publicznych źródeł**, nie prawna gwarancja i nie zgoda 
 
 DATA-01: wersjonowany manifest obrazu + harmonogram kontrolowanego importu i atrybucji.
 MODEL-01: wybór checkpointów i sprawdzenie sprzętowego backendu (CPU/GPU; nie zakładać CUDA).
+
+## Rozbieżność w opisach licencji VisA
+
+Oficjalny plik `amazon-science/spot-diff/LICENSE-DATASET` zawiera pełną treść **Creative Commons Attribution 4.0 International (CC BY 4.0)**. W aktualnej dokumentacji modułu Visa w Anomalib pojawia się sprzeczna wzmianka **CC BY-NC-SA 4.0**. Zapisujemy konflikt jako punkt weryfikacji prawnej przed komercyjnym wykorzystaniem modeli szkolonych na VisA; benchmark badawczy pozostaje izolowany. Sama licencja kodu Anomalib (Apache-2.0) nie rozstrzyga licencji wag OpenCLIP ani obrazów.

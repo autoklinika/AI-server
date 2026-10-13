@@ -1,24 +1,27 @@
-# Vision PCB — gotowość do pierwszego przebiegu modeli (2026-10-13)
+# Vision PCB — MODEL-01 / warunki inferencji (2026-10-13)
 
-Odczyty na harrypotter-AI-Series (read-only).
+## Rozstrzygnięcia zweryfikowane na hoście
 
-| Obszar | Status |
+| Element | Status |
 |---|---|
-| Scorer offline | 12/12 testów PASS, syntetyczny manifest 14 próbek PASS |
-| Modele MiniCPM, Qwen3-VL, WinCLIP, PatchCore, YOLO | Żaden kandydat nie został zainstalowany na hosta w wykrytych runtime |
-| Biblioteki Python | Brak torch, anomalib, ultralytics, transformers w Pythonie systemowym |
-| Sprzęt | Radeon 890M/880M PCI 1002:150e; /dev/dri/renderD128; Vulkan 1.4 |
-| Pamięć widoczna w systemie | 30 GiB RAM (nie zakładać dostępnych 96 GB UMA) |
-| NVMe | /srv/ai-data, około 3.4 TB wolnego |
-| Produkcja | ai-gateway i ollama aktywne |
-| VisA | HTTP 200, Range 206 dla 1 MiB; pełnego archiwum nie pobrano |
+| VisA archiwum, hash oficjalny | PASS |
+| 4 manifesty cross-family, check-files | PASS |
+| CPU WinCLIP w izolowanej venv Python3.11 | PASS |
+| PyTorch 2.10.0+cpu / torchvision 0.25.0+cpu | PASS |
+| Anomalib 2.7.0 / OpenCLIP 2.24.0 | PASS |
+| Checkpoint ViT-B-16-plus-240 laion400m_e31 | pobrany, SHA256 zweryfikowany, kopia na NVMe |
+| WinCLIP smoke 2 obrazy | PASS |
+| WinCLIP B1 pilot 48 inferencji i kalibracja/scoring | PASS, eksperymentalny |
+| Docelowy pełny B1 dla 7 kandydatów | NIEZREALIZOWANY |
+| Licencja wag/produkcja komercyjna | audyt otwarty |
+| Dostępne GPU | AMD Radeon 890M przez Vulkan; PyTorch GPU bez weryfikacji |
+| Pozostałe modele VLM, PatchCore, YOLO | NIEZAINSTALOWANE |
 
-## Warunki pierwszej realnej ewaluacji
-- Dane na NVMe, licencja i manifest obrazów z SHA-256.
-- Środowisko Python w izolacji; test backendu AMD przed instalacją pakietów GPU.
-- Resource Manager musi dopuścić obciążenie. Nie uruchamiać ciężkich procesów przez produkcyjny Ollama.
-- Raporty powinny zapisywać wersję checkpointu, seed, preprocessing, policy kafelkowania, warunki sprzętowe i runtime.
-- W B1 sprawdzamy nieadaptowane modele (PatchCore poza zero-shot), potem B2 i B3.
-- Nie wprowadzać żadnych zmian w dotychczasowym modelu bazowym Qwen3.8 i adapterach WVC/automotive.
+Produkcja AI Platform pozostaje na Qwen3.8 z dotychczasowymi adapterami. Żadne usługi nie zostały zatrzymane ani przełączone. Nie wprowadzono zmian GPU.
 
-**Nie ma wyników jakości z realnych obrazów PCB.**
+## Następne kroki
+
+1. Zaprojektować stabilny adapter predykcji WinCLIP dla pełnego zbioru i politykę kafelkowania zdjęć wysokiej rozdzielczości (aktualnie CLIP 240×240).
+2. Sprawdzić dostępność niezależnego backendu AMD i Resource Manager AI Platform, zanim uruchomimy masowe inferencje.
+3. Następnie przygotować PatchCore i MiniCPM-V, z rozdzieleniem kosztu pamięci i metryk.
+4. Zrealizować pełne B1/B2/B3 oraz ręczny przegląd pominiętych defektów.
