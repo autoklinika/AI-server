@@ -1,11 +1,53 @@
 {
-  "schema_version": 1,
-  "status": "source catalogue only; no data bundled or downloaded",
-  "license_policy": "Explicit license and allowed use must be verified for each source/version before download or training.",
+  "schema_version": 2,
+  "status": "public sources audited 2026-10-13; no training data downloaded",
   "datasets": [
-    {"id":"visa-pcb1-4", "url":"https://github.com/wxs56837/visa_dataset", "role":"anomaly detection, normal/defect, masks", "license_verified":false},
-    {"id":"pcb-said", "url":"https://openaccess.thecvf.com/content/ICCV2025W/VISION%2725/html/Mineo_PCB-SAID_A_Low-Cost_Camera-Based_Dataset_for_Few-Shot_SMD_Assembly_Inspection_ICCVW_2025_paper.html", "role":"assembled SMD defects", "license_verified":false},
-    {"id":"pcb-ind", "url":"https://www.nature.com/articles/s41597-026-07684-4", "role":"industrial PCB defect localization", "license_verified":false},
-    {"id":"deeppcb", "url":"https://github.com/tangsanli5201/DeepPCB", "role":"paired bare-board defect detection, NOT reference-free test baseline", "license_verified":false}
+    {
+      "id": "visa-pcb1-4",
+      "name": "Visual Anomaly (VisA), PCB1–PCB4",
+      "source": "https://github.com/amazon-science/spot-diff",
+      "download_url": "https://amazon-visual-anomaly.s3.us-west-2.amazonaws.com/VisA_20220922.tar",
+      "license": "CC-BY-4.0",
+      "license_verified": true,
+      "license_source": "https://github.com/amazon-science/spot-diff/blob/main/LICENSE-DATASET",
+      "access": "public archive",
+      "role": "anomaly detection with masks and four PCB families",
+      "decision": "allowed_with_attribution",
+      "notes": "Official archive ~1.93 GB; no specimen-level identity guaranteed by dataset, check grouping; B3 leave-one-family-out"
+    },
+    {
+      "id": "pcb-ind",
+      "name": "Industrial PCB Surface Defect Dataset",
+      "source": "https://www.nature.com/articles/s41597-026-07684-4",
+      "project": "https://github.com/gnmtdt/PCB-IND",
+      "license": "CC-BY-4.0",
+      "license_verified": true,
+      "access": "Zenodo archive, see source publication",
+      "role": "supervised object detection; YOLO/COCO/VOC",
+      "decision": "allowed_with_attribution",
+      "notes": "Published splits may need leakage audit; bare PCB images not a proxy for assembled automotive ECU"
+    },
+    {
+      "id": "deeppcb",
+      "name": "DeepPCB",
+      "source": "https://github.com/tangsanli5201/DeepPCB",
+      "license": "MIT repository license; dataset README states research only",
+      "license_verified": false,
+      "access": "public",
+      "role": "paired bare-board images, reference-image test not permitted in reference-free track",
+      "decision": "research_only_hold",
+      "notes": "Do not assume MIT covers dataset commercial use; permission required for production training"
+    },
+    {
+      "id": "pcb-said",
+      "name": "PCB-SAID",
+      "source": "https://openaccess.thecvf.com/content/ICCV2025W/VISION%2725/html/Mineo_PCB-SAID_A_Low-Cost_Camera-Based_Dataset_for_Few-Shot_SMD_Assembly_Inspection_ICCVW_2025_paper.html",
+      "license": "not established",
+      "license_verified": false,
+      "access": "upon request to authors",
+      "role": "assembled SMD anomaly annotations",
+      "decision": "blocked_pending_access_and_terms",
+      "notes": "Publication: 175 images, 66 classes; do not download unofficial mirrors without provenance"
+    }
   ]
 }
