@@ -95,6 +95,40 @@ def snapshot_gpu_clients(*, proc_root: Path = Path("/proc"),
     return tuple(sorted(found))
 
 
+def inspect_worker_executable(pid: int, birth: int, *, worker_uid: int) -> dict | None:
+    """Single cross-UID /proc/exe attestation. No generic file/path API.
+
+    The caller gives PID + birth as a freshness assertion, never an expected
+    path to open. Root reads ONLY kernel /proc/<pid>/exe and returns its
+    executable identity for a process owned by the fixed ai-vision UID.
+    """
+    if (type(pid) is not int or type(birth) is not int or pid<=1 or birth<=0
+            or type(worker_uid) is not int or worker_uid<=0):
+        return None
+    proc=Path(f"/proc/{pid}")
+    try:
+        if proc.stat().st_uid!=worker_uid:
+            return None
+        before=pid_birth(proc/"stat")
+        if before!=birth:
+            return None
+        raw=os.readlink(proc/"exe")
+        if not raw.startswith("/") or raw.endswith(" (deleted)") or len(raw)>4096:
+            return None
+        executable=Path(raw).resolve(strict=True)
+        info=(proc/"exe").stat()
+        if not stat.S_ISREG(info.st_mode):
+            return None
+        disk=executable.stat()
+        if (disk.st_dev,disk.st_ino)!=(info.st_dev,info.st_ino):
+            return None
+        if proc.stat().st_uid!=worker_uid or pid_birth(proc/"stat")!=birth:
+            return None
+        return {"pid":pid,"birth":birth,"uid":worker_uid,"exe":str(executable)}
+    except (OSError,ValueError,RuntimeError):
+        return None
+
+
 def allowed_uids() -> frozenset[int]:
     result=set()
     for account in PEER_ACCOUNTS:
@@ -104,22 +138,42 @@ def allowed_uids() -> frozenset[int]:
     return frozenset(result)
 
 
-def dispatch(payload: bytes, *, peer_uid: int, trusted_uids: frozenset[int]) -> bytes:
+def dispatch(payload: bytes, *, peer_uid: int, trusted_uids: frozenset[int],
+             controller_uid: int | None = None, worker_uid: int | None = None) -> bytes:
     if peer_uid not in trusted_uids:
         result={"schema_version":1,"status":"denied"}
     else:
         try:
             request=json.loads(payload)
-        except (ValueError,UnicodeError):
+        except (ValueError,UnicodeError,TypeError):
             request=None
-        if request!={"op":"snapshot","version":1}:
-            result={"schema_version":1,"status":"invalid_request"}
-        else:
+        if request=={"op":"snapshot","version":1}:
             clients=snapshot_gpu_clients()
             result=({"schema_version":1,"status":"ok",
                      "gpu_clients":[{"pid":pid,"birth":birth} for pid,birth in clients]}
                     if clients is not None else
                     {"schema_version":1,"status":"evidence_unavailable"})
+        elif (type(request) is dict and set(request)=={"op","version","pid","birth"}
+              and request.get("op")=="inspect_worker" and request.get("version")==1
+              and type(request.get("pid")) is int and type(request.get("birth")) is int):
+            # Unlike GPU inventory, privileged cross-UID executable evidence is
+            # for the CONTROL account only, never for ai-vision or arbitrary UIDs.
+            if controller_uid is None:
+                try:controller_uid=pwd.getpwnam("ai-gateway-rm").pw_uid
+                except KeyError:controller_uid=-1
+            if worker_uid is None:
+                try:worker_uid=pwd.getpwnam("ai-vision").pw_uid
+                except KeyError:worker_uid=-1
+            if peer_uid!=controller_uid:
+                result={"schema_version":1,"status":"denied"}
+            else:
+                identity=inspect_worker_executable(request["pid"],request["birth"],
+                                                  worker_uid=worker_uid)
+                result=({"schema_version":1,"status":"ok","worker":identity}
+                        if identity is not None else
+                        {"schema_version":1,"status":"evidence_unavailable"})
+        else:
+            result={"schema_version":1,"status":"invalid_request"}
     encoded=(json.dumps(result,sort_keys=True,separators=(",",":"))+"\n").encode("ascii")
     if len(encoded)>MAX_REPLY:
         return b'{"schema_version":1,"status":"evidence_unavailable"}\n'

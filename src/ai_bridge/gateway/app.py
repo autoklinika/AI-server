@@ -27,7 +27,7 @@ from .resource_leases import (
 )
 from .residency import GPUResidency, ResidencyError
 from .vision_attestation import attest_worker
-from .vision_gpu_observer_client import snapshot_observer
+from .vision_gpu_observer_client import snapshot_observer, inspect_worker_observer
 from .vision_residency_evidence import gpu_device_openers, worker_cgroup_path
 from .comfy_process import resume_stopped_managed_comfy
 from .scheduler import PriorityScheduler, SchedulerQueueFull, SchedulerTicket
@@ -181,6 +181,10 @@ def create_gateway_app(
     if (resolved.gateway_vision_external_enabled and resolved.gateway_vision_strict_gpu_clients
             and resolved.gateway_vision_gpu_observer_socket is None):
         raise ValueError("Strict Vision GPU requires a trusted GPU observer socket")
+    if (resolved.gateway_vision_external_enabled and resolved.gateway_vision_strict_gpu_clients
+            and resolved.gateway_vision_gpu_observer_socket is not None
+            and resolved.gateway_vision_worker_uid is None):
+        raise ValueError("Cross-UID Vision requires a pinned worker UID")
     if resolved.gateway_vision_external_enabled and not resolved.gateway_vision_allowed_scripts:
         raise ValueError("Vision GPU requires a pinned script allowlist")
     if resolved.gateway_vision_external_enabled and (
@@ -216,6 +220,12 @@ def create_gateway_app(
             checkpoint_allowlist=resolved.gateway_vision_allowed_checkpoints,
             gate_sha256=resolved.gateway_vision_worker_gate_sha256,
             gate_path=resolved.gateway_vision_worker_gate_path,
+            executable_probe=(partial(inspect_worker_observer,
+                socket_path=resolved.gateway_vision_gpu_observer_socket,
+                worker_uid=resolved.gateway_vision_worker_uid)
+                if resolved.gateway_vision_gpu_observer_socket is not None
+                   and resolved.gateway_vision_worker_uid is not None
+                else None),
         ) if resolved.gateway_vision_external_enabled else None,
     )
 

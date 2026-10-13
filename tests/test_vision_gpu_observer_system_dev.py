@@ -71,3 +71,63 @@ def test_socket_client_rejects_wrong_server_uid():
             # Connection was rejected locally; close server to finish bounded test.
             server.close()
             t.join(timeout=2)
+
+def test_worker_executable_probe_only_allows_controller_and_exact_worker():
+    import json
+    import sys
+    from ai_bridge.gateway.vision_residency_evidence import worker_birth_ticks
+    pid=os.getpid()
+    uid=os.getuid()
+    birth=worker_birth_ticks(pid)
+    assert birth is not None and birth>0
+    observed=observer.inspect_worker_executable(pid,birth,worker_uid=uid)
+    assert observed is not None
+    assert Path(observed["exe"]).samefile(sys.executable)
+    assert observer.inspect_worker_executable(pid,birth+1,worker_uid=uid) is None
+    assert observer.inspect_worker_executable(pid,birth,worker_uid=uid+1) is None
+    payload=json.dumps({"op":"inspect_worker","version":1,"pid":pid,"birth":birth}).encode()
+    accepted=json.loads(observer.dispatch(payload,peer_uid=uid,
+        trusted_uids=frozenset((uid,uid+1)),controller_uid=uid,worker_uid=uid))
+    assert accepted["status"]=="ok"
+    rejected=json.loads(observer.dispatch(payload,peer_uid=uid+1,
+        trusted_uids=frozenset((uid,uid+1)),controller_uid=uid,worker_uid=uid))
+    assert rejected["status"]=="denied"
+    for invalid in (
+        {"op":"inspect_worker","version":1,"pid":pid,"birth":birth,"extra":1},
+        {"op":"inspect_worker","version":1,"pid":True,"birth":birth},
+        {"op":"inspect_worker","version":1,"pid":pid,"birth":birth,"uid":uid},
+    ):
+        response=json.loads(observer.dispatch(json.dumps(invalid).encode(),
+            peer_uid=uid,trusted_uids=frozenset((uid,)),controller_uid=uid,worker_uid=uid))
+        assert response["status"]=="invalid_request"
+
+
+def test_worker_executable_client_validates_root_peer_and_identity():
+    import json
+    from ai_bridge.gateway.vision_gpu_observer_client import inspect_worker_observer
+    from ai_bridge.gateway.vision_residency_evidence import worker_birth_ticks
+    pid=os.getpid()
+    uid=os.getuid()
+    birth=worker_birth_ticks(pid)
+    with tempfile.TemporaryDirectory() as root:
+        sock=Path(root)/"worker-probe.sock"
+        with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as listener:
+            listener.bind(str(sock))
+            listener.listen(1)
+            def serve_once():
+                peer,_=listener.accept()
+                with peer:
+                    request=json.loads(peer.recv(512))
+                    assert request=={"op":"inspect_worker","version":1,"pid":pid,"birth":birth}
+                    worker=observer.inspect_worker_executable(pid,birth,worker_uid=uid)
+                    peer.sendall((json.dumps({"schema_version":1,"status":"ok",
+                                             "worker":worker})+"\n").encode())
+            thread=threading.Thread(target=serve_once,daemon=True)
+            thread.start()
+            exe=inspect_worker_observer(socket_path=sock,pid=pid,birth=birth,
+                                        worker_uid=uid,expected_uid=uid)
+            assert exe is not None and exe.samefile("/proc/self/exe")
+            thread.join(timeout=2)
+            assert not thread.is_alive()
+        assert inspect_worker_observer(socket_path=sock,pid=pid,birth=birth,
+                                       worker_uid=uid,expected_uid=uid+1) is None

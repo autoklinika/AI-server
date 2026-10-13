@@ -22,7 +22,7 @@ def _digest(path: Path) -> str | None:
 
 def attest_worker(pid: int, script_allowlist: dict[str,str],
                   checkpoint_allowlist: dict[str,str], gate_sha256: str,
-                  gate_path: Path | None = None) -> bool:
+                  gate_path: Path | None = None, executable_probe=None) -> bool:
     """Confirm trusted gate + explicitly pinned program/checkpoint SHA-256."""
     if type(pid) is not int or pid <= 1 or not script_allowlist:
         return False
@@ -41,7 +41,16 @@ def attest_worker(pid: int, script_allowlist: dict[str,str],
             return False
         script=Path(args[args.index("--script")+1]).resolve(strict=True)
         exe=Path(args[args.index("--python")+1]).resolve(strict=True)
-        process_exe=Path(f"/proc/{pid}/exe").resolve(strict=True)
+        if executable_probe is None:
+            process_exe=Path(f"/proc/{pid}/exe").resolve(strict=True)
+        else:
+            # PID birth is observed by the unprivileged Gateway and verified
+            # independently by the narrowly privileged root observer.
+            from ai_bridge.gateway.vision_residency_evidence import worker_birth_ticks
+            birth=worker_birth_ticks(pid)
+            if birth is None or birth<=0:return False
+            process_exe=executable_probe(pid=pid,birth=birth)
+            if process_exe is None:return False
         if process_exe!=exe:
             return False
         if script_allowlist.get(str(script))!=_digest(script):
