@@ -17,6 +17,8 @@ from ai_bridge.settings import Settings
 from test_gateway_priority_classes import api_client
 from test_gpu_residency import Providers
 
+TEST_VISION_TOKEN="test-vision-auth-token-not-for-production-2026"
+
 
 @pytest.fixture
 def anyio_backend():
@@ -61,11 +63,15 @@ async def test_vision_lease_reuses_shared_scheduler_and_cleanup(tmp_path):
     state={"worker_birth":999,"vram":1024}
     app=create_gateway_app(
         Settings(_env_file=None, gateway_vision_external_enabled=True,
+                 gateway_vision_executor_token=TEST_VISION_TOKEN,
+                 gateway_vision_allowed_scripts={"/dummy/script.py":"a"*64},
                  gateway_gpu_marker=tmp_path/"vision-marker"),
         upstream_transport=httpx.MockTransport(providers.handle),
         residency_transport=httpx.MockTransport(providers.handle),
     )
     async with api_client(app) as client:
+        client.headers["x-ai-vision-executor-token"]=TEST_VISION_TOKEN
+        app.state.resource_leases.vision_attestation=lambda pid: True  # mock PID only
         residency=app.state.resource_leases.residency
         residency.vision_process_probe=lambda pid: state["worker_birth"] if pid==222 else None
         residency.vision_memory_probe=lambda:state["vram"]
@@ -116,7 +122,7 @@ async def test_vision_cleanup_failure_blocks_shared_gpu(tmp_path,failure):
                      vision_cgroup_members=lambda path:({222} if state["birth"] else set()),
                      timeout=.06,poll=.001)
     scheduler=PriorityScheduler(max_concurrency=1,registry=registry)
-    leases=ResourceLeaseRegistry(scheduler,residency=gpu,vision_enabled=True)
+    leases=ResourceLeaseRegistry(scheduler,residency=gpu,vision_enabled=True,vision_attestation=lambda pid:True)
     lease=await leases.create(priority=200,source="vision",metadata=None)
     # metadata default reserves legacy providers, so use explicit descriptor plan.
     await leases.release(lease["lease_id"])
@@ -146,7 +152,7 @@ async def test_vision_cleanup_failure_blocks_shared_gpu(tmp_path,failure):
 async def test_vision_rejects_missing_worker_pid_before_transition(tmp_path):
     registry=local_descriptor_registry(enable_vision=True)
     scheduler=PriorityScheduler(registry=registry)
-    leases=ResourceLeaseRegistry(scheduler,vision_enabled=True)
+    leases=ResourceLeaseRegistry(scheduler,vision_enabled=True,vision_attestation=lambda pid:True)
     from ai_bridge.gateway.jobs import JobMetadata
     lease=await leases.create(priority=200,source="vision",metadata=JobMetadata(
         workload=external_workload(registry,"vision-benchmark")))

@@ -17,7 +17,8 @@ import threading
 import time
 
 from .vision_rm_executor import VisionExecutionError, call
-from ai_bridge.gateway.vision_residency_evidence import scoped_processes, worker_cgroup_path
+from ai_bridge.gateway.vision_residency_evidence import (
+    scoped_processes,scope_members_or_terminal,worker_cgroup_path)
 
 
 class ScopedVisionExecutor:
@@ -138,7 +139,7 @@ class ScopedVisionExecutor:
                             raise VisionExecutionError("Vision GPU worker heartbeat/timeout failure")
                         time.sleep(.2)
                     code=handle.wait()
-                    members=scoped_processes(scope_path)
+                    members=scope_members_or_terminal(scope_path)
                     if members is None or members:
                         raise VisionExecutionError("scope still populated after worker exit")
                     cleanup=call(self.base,"DELETE",f"/resource/leases/{lease_id}/uses/{use_id}")
@@ -154,7 +155,7 @@ class ScopedVisionExecutor:
                 stop.set()
                 # A worker may exit while a detached child remains in its
                 # cgroup. Never rely solely on the systemd-run parent PID.
-                members=scoped_processes(scope_path)
+                members=scope_members_or_terminal(scope_path)
                 if handle is not None and (handle.poll() is None or members is None or members):
                     self._scope_call(env,"stop",unit+".scope")
                     if handle.poll() is None:
@@ -166,7 +167,7 @@ class ScopedVisionExecutor:
                 # or surviving descendants fail closed: do not release GPU.
                 clear_deadline=time.monotonic()+5
                 while True:
-                    members=scoped_processes(scope_path)
+                    members=scope_members_or_terminal(scope_path)
                     if members is not None and not members:
                         break
                     if time.monotonic()>=clear_deadline:

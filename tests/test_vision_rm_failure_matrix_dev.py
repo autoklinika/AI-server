@@ -38,7 +38,7 @@ def fixture_rm(tmp_path):
         timeout=.5,poll=.001,
     )
     scheduler=PriorityScheduler(max_concurrency=4,registry=reg)
-    leases=ResourceLeaseRegistry(scheduler,ttl_seconds=.01,residency=gpu,vision_enabled=True)
+    leases=ResourceLeaseRegistry(scheduler,ttl_seconds=.01,residency=gpu,vision_enabled=True,vision_attestation=lambda pid:True)
     return providers,state,client,gpu,scheduler,leases,reg
 
 async def admit(leases,reg):
@@ -171,10 +171,14 @@ async def test_recovery_marker_stops_fresh_gateway_after_worker_cleanup_failed(t
         assert gpu.marker.exists()
         app=create_gateway_app(Settings(
             _env_file=None,gateway_vision_external_enabled=True,
+            gateway_vision_executor_token="test-vision-auth-token-not-for-production-2026",
+            gateway_vision_allowed_scripts={"/dummy/script.py":"a"*64},
             gateway_gpu_marker=gpu.marker),
             upstream_transport=httpx.MockTransport(providers.handle),
             residency_transport=httpx.MockTransport(providers.handle))
         async with api_client(app) as fresh:
+            app.state.resource_leases.vision_attestation=lambda pid:True
+            fresh.headers["x-ai-vision-executor-token"]="test-vision-auth-token-not-for-production-2026"
             health=(await fresh.get('/health')).json()
             assert health['status']=='degraded'
             lease2=(await fresh.post('/resource/leases',json={'workload':'vision-benchmark'})).json()

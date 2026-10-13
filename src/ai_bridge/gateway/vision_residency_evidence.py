@@ -71,8 +71,44 @@ def scoped_processes(scope_path: str) -> set[int] | None:
     path = Path("/sys/fs/cgroup") / scope_path.lstrip("/") / "cgroup.procs"
     try:
         return {int(pid) for pid in path.read_text(encoding="ascii").split()}
-    except FileNotFoundError:
-        # Scope may disappear after all processes have exited.
+    except (FileNotFoundError, OSError, ValueError):
+        return None  # Missing scope alone is never proof of successful exit.
+
+
+def scope_members_or_terminal(scope_path: str) -> set[int] | None:
+    """Require BOTH absent cgroup and terminal systemd state before release.
+
+    Unknown/unreadable systemd status is not evidence of cleanup.
+    """
+    import os
+    import subprocess
+    from pathlib import PurePosixPath
+    members=scoped_processes(scope_path)
+    if members is not None:
+        return members
+    if not isinstance(scope_path,str):
+        return None
+    unit=PurePosixPath(scope_path).name
+    if not __import__('re').fullmatch(r"vision-bench-[0-9a-f]{12}\.scope",unit):
+        return None
+    uid=os.getuid()
+    expected=f"/user.slice/user-{uid}.slice/user@{uid}.service/app.slice/{unit}"
+    if scope_path!=expected:
+        return None
+    env={**os.environ,"XDG_RUNTIME_DIR":f"/run/user/{uid}",
+         "DBUS_SESSION_BUS_ADDRESS":f"unix:path=/run/user/{uid}/bus"}
+    try:
+        proc=subprocess.run(["systemctl","--user","show",unit,
+                             "-p","ActiveState","-p","ControlGroup"],
+                             env=env,text=True,capture_output=True,timeout=3,check=False)
+        if proc.returncode!=0:
+            return None
+        fields=dict(item.split("=",1) for item in proc.stdout.splitlines() if "=" in item)
+        if fields.get("ActiveState")!="inactive":
+            return None
+        # A stale/surviving ControlGroup is suspicious; must be empty after stop.
+        if fields.get("ControlGroup") not in ("",None):
+            return None
         return set()
-    except (OSError, ValueError):
+    except (OSError, ValueError, subprocess.TimeoutExpired):
         return None

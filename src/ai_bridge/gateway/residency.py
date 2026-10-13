@@ -4,11 +4,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import secrets
 from pathlib import Path
 
 import httpx
 
-from .vision_residency_evidence import gpu_vram_used_bytes, worker_birth_ticks, worker_cgroup_path, scoped_processes
+from .vision_residency_evidence import gpu_vram_used_bytes, worker_birth_ticks, worker_cgroup_path, scope_members_or_terminal
 
 
 class ResidencyError(RuntimeError):
@@ -20,7 +21,7 @@ class GPUResidency:
                  marker: Path, *, timeout: float = 90, poll: float = .25, idle_reserve_bytes: int = 0,
                  require_comfy_extension: bool = True, resume_comfy=None,
                  vision_process_probe=worker_birth_ticks, vision_memory_probe=gpu_vram_used_bytes,
-                 vision_scope_probe=worker_cgroup_path, vision_cgroup_members=scoped_processes,
+                 vision_scope_probe=worker_cgroup_path, vision_cgroup_members=scope_members_or_terminal,
                  vision_memory_tolerance_bytes: int = 64 * 1024 * 1024):
         self.ollama, self.comfy = ollama, comfy
         self.marker, self.timeout, self.poll = marker, timeout, poll
@@ -43,11 +44,23 @@ class GPUResidency:
                 "cleanup_evidence": self.cleanup_evidence}
 
     def _dirty(self):
+        """Crash-durable blocked marker: atomic replacement + parent fsync."""
         self.marker.parent.mkdir(parents=True, exist_ok=True)
-        with self.marker.open("w") as stream:
-            stream.write("GPU ownership uncertain; verify workers stopped and both providers free before recovery.\n")
-            stream.flush()
-            os.fsync(stream.fileno())
+        pending=self.marker.with_name(self.marker.name + "." + secrets.token_hex(8) + ".pending")
+        try:
+            fd=os.open(pending, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd,"w",encoding="utf-8") as stream:
+                stream.write("GPU ownership uncertain; verify workers stopped and providers free before recovery.\n")
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(pending,self.marker)
+            directory=os.open(self.marker.parent,os.O_RDONLY | getattr(os,"O_DIRECTORY",0))
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+        finally:
+            pending.unlink(missing_ok=True)
 
     def fail_closed(self) -> None:
         """Persist uncertainty before any previously admitted GPU slot could reopen.

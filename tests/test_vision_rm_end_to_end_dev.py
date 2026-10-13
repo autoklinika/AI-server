@@ -29,14 +29,17 @@ def _available_port() -> int:
         return sock.getsockname()[1]
 
 
-def test_scoped_dev_runner_through_actual_gateway_endpoints():
+def test_scoped_dev_runner_through_actual_gateway_endpoints(monkeypatch):
     if not shutil.which("systemd-run") or not Path(f"/run/user/{os.getuid()}/bus").is_socket():
         pytest.skip("systemd user-manager scope not available on this runner")
 
     with tempfile.TemporaryDirectory() as temp:
         root=Path(temp)
         providers=Providers()
+        monkeypatch.setenv("VISION_RM_EXECUTOR_TOKEN", "test-vision-auth-token-not-for-production-2026")
         settings=Settings(_env_file=None,
+                          gateway_vision_executor_token="test-vision-auth-token-not-for-production-2026",
+            gateway_vision_allowed_scripts={"/dummy/script.py":"a"*64},
                           gateway_gpu_marker=root/"shared-gpu-blocked",
                           gateway_vision_external_enabled=True,
                           gateway_max_concurrency=4)
@@ -60,17 +63,18 @@ def test_scoped_dev_runner_through_actual_gateway_endpoints():
             # not physical GPU/DRM telemetry. Hosted CI has no Radeon DRM.
             # GPU memory ownership itself has separate unit and host tests.
             app.state.resource_leases.residency.vision_memory_probe = lambda: 1024
+            app.state.resource_leases.vision_attestation=lambda pid:True  # mock script
             script=root/"tiny_worker.py"
             marker=root/"dummy-model-output.json"
             script.write_text(
-                "import json,sys\nfrom pathlib import Path\n"
-                "Path(sys.argv[1]).write_text(json.dumps({'started_after_admission':True}))\n"
+                "import json,sys,os\nfrom pathlib import Path\n"
+                "Path(sys.argv[1]).write_text(json.dumps({'started_after_admission':True, 'model_had_token':bool(os.getenv('VISION_RM_EXECUTOR_TOKEN'))}))\n"
             )
             report=ScopedVisionExecutor(base=f"http://127.0.0.1:{port}").execute(
                 python=Path(os.sys.executable),script=script,args=[str(marker)],
                 log=root/"dev-e2e.log",max_seconds=20)
             assert report["status"]=="completed"
-            assert json.loads(marker.read_text())=={"started_after_admission":True}
+            assert json.loads(marker.read_text())=={"started_after_admission":True,"model_had_token":False}
             assert not (root/"shared-gpu-blocked").exists()
             with httpx.Client(base_url=f"http://127.0.0.1:{port}",trust_env=False) as api:
                 status=api.get("/status").json()

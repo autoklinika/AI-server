@@ -17,7 +17,9 @@ from urllib.request import Request, urlopen
 def _verify(base: str, lease: str, use: str) -> None:
     if not base.startswith("http://127.0.0.1:") and not base.startswith("http://localhost:"):
         raise ValueError("Gateway must be loopback")
-    req = Request(f"{base}/resource/leases/{lease}/uses/{use}", method="GET")
+    credential=os.environ.get("VISION_RM_EXECUTOR_TOKEN")
+    headers={"X-AI-Vision-Executor-Token":credential} if credential else {}
+    req = Request(f"{base}/resource/leases/{lease}/uses/{use}", method="GET",headers=headers)
     with urlopen(req, timeout=5) as res:
         data = json.load(res)
     if data != {"provider": "vision-local", "capability": "image-analysis"}:
@@ -57,6 +59,9 @@ def main() -> None:
         raise ValueError("missing Vision authorization")
     _verify(p.gateway, authorization["lease_id"], authorization["use_id"])
     args = p.args[1:] if p.args[:1] == ["--"] else p.args
+    # The bearer is used ONLY by the authorization gate. Never hand a
+    # Resource Manager control credential to a model script via execv().
+    os.environ.pop("VISION_RM_EXECUTOR_TOKEN", None)
     # execv replaces the parked process; PID and process birth time are stable.
     os.execv(p.python, [p.python, p.script, *args])
 

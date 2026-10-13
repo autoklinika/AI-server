@@ -6,6 +6,7 @@ dedicated systemd user cgroup via vision_rm_scoped_executor.py.
 from __future__ import annotations
 
 import json
+import os
 from urllib.request import Request, urlopen
 
 
@@ -19,7 +20,11 @@ def call(base: str, method: str, path: str, payload: dict | None = None) -> dict
     if not path.startswith("/"):
         raise ValueError("Gateway API path must be absolute")
     raw = json.dumps(payload).encode() if payload is not None else None
+    headers={"Content-Type":"application/json"} if raw else {}
+    credential=os.environ.get("VISION_RM_EXECUTOR_TOKEN")
+    if credential:
+        headers["X-AI-Vision-Executor-Token"]=credential
     req = Request(base.rstrip("/") + path, method=method, data=raw,
-                  headers={"Content-Type":"application/json"} if raw else {})
+                  headers=headers)
     with urlopen(req, timeout=6) as response:
         return json.load(response)

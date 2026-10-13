@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     gateway_gpu_transition_timeout: float = Field(default=90.0, gt=0.0)
     # DEV-only opt-in: adds Vision to existing RM descriptor registry; default OFF.
     gateway_vision_external_enabled: bool = False
+    # Required on opt-in deployments; provision via a restricted systemd credential.
+    gateway_vision_executor_token: SecretStr | None = None
+    # Fixed script/checkpoint provenance. Host-protected SHA256 manifest supplied by operator.
+    gateway_vision_allowed_scripts: dict[str, str] = Field(default_factory=dict)
+    gateway_vision_allowed_checkpoints: dict[str, str] = Field(default_factory=dict)
     gateway_gpu_marker: Path = Field(default_factory=lambda: Path.home() / ".local/state/ai-platform/gpu-residency.blocked")
     gateway_max_concurrency: int = Field(default=1, ge=1, le=16)
     gateway_max_queue_size: int = Field(default=128, ge=1, le=10_000)

@@ -26,11 +26,12 @@ class _Lease:
     external_workload: WorkloadBinding | None = None
 
 class ResourceLeaseRegistry:
-    def __init__(self,scheduler:PriorityScheduler,*,ttl_seconds:float=45.0, residency=None, vision_enabled:bool=False)->None:
+    def __init__(self,scheduler:PriorityScheduler,*,ttl_seconds:float=45.0, residency=None, vision_enabled:bool=False, vision_attestation=None)->None:
         if ttl_seconds<=0: raise ValueError("ttl_seconds must be > 0")
         self.residency = residency
         self.scheduler=scheduler; self.ttl_seconds=float(ttl_seconds)
         self.vision_enabled=bool(vision_enabled)
+        self.vision_attestation=vision_attestation
         self._lock=asyncio.Lock(); self._leases={}
 
     async def create(self,*,priority:int,source:str,metadata:JobMetadata|None=None)->dict[str,object]:
@@ -112,7 +113,9 @@ class ResourceLeaseRegistry:
                     scope = self.residency.vision_scope_probe(worker_pid)
                     members = self.residency.vision_cgroup_members(scope_path)
                     if (birth is None or birth <= 0 or scope != scope_path
-                            or members is None or worker_pid not in members):
+                            or members is None or worker_pid not in members
+                            or self.vision_attestation is None
+                            or not self.vision_attestation(worker_pid)):
                         raise ResourceLeaseNotAllowed("Vision worker/scope is unavailable")
             elif workload.provider != "comfyui-local" or worker_pid is not None or scope_path is not None:
                 raise ResourceLeaseNotAllowed("invalid external execution provider")

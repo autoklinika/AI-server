@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 import json
+import hmac
+from functools import partial
 import logging
 
 import httpx
@@ -23,6 +25,7 @@ from .resource_leases import (
     ResourceLeaseRegistry,
 )
 from .residency import GPUResidency, ResidencyError
+from .vision_attestation import attest_worker
 from .comfy_process import resume_stopped_managed_comfy
 from .scheduler import PriorityScheduler, SchedulerQueueFull, SchedulerTicket
 
@@ -154,6 +157,12 @@ def create_gateway_app(
     knowledge_runtime_factory=None,
 ) -> FastAPI:
     resolved = settings or get_settings()
+    vision_token = (resolved.gateway_vision_executor_token.get_secret_value()
+                    if resolved.gateway_vision_executor_token is not None else None)
+    if resolved.gateway_vision_external_enabled and (not vision_token or len(vision_token) < 32):
+        raise ValueError("Vision GPU requires an explicit >=32-character executor credential")
+    if resolved.gateway_vision_external_enabled and not resolved.gateway_vision_allowed_scripts:
+        raise ValueError("Vision GPU requires a pinned script allowlist")
     registry = resolved.gateway_registry or local_descriptor_registry(
         resolved.node_id, enable_vision=resolved.gateway_vision_external_enabled
     )
@@ -175,6 +184,11 @@ def create_gateway_app(
         scheduler,
         ttl_seconds=resolved.gateway_external_lease_ttl_seconds,
         vision_enabled=resolved.gateway_vision_external_enabled,
+        vision_attestation=partial(
+            attest_worker,
+            script_allowlist=resolved.gateway_vision_allowed_scripts,
+            checkpoint_allowlist=resolved.gateway_vision_allowed_checkpoints,
+        ) if resolved.gateway_vision_external_enabled else None,
     )
 
     @asynccontextmanager
@@ -476,6 +490,14 @@ def create_gateway_app(
         snapshot["registry"] = registry.snapshot()
         return snapshot
 
+    # Localized lease authentication deliberately avoids a global ASGI
+    # middleware: legacy WVC/chat stream scheduling must remain unchanged.
+    def require_vision_lease_auth(request: Request) -> None:
+        if resolved.gateway_vision_external_enabled:
+            supplied=request.headers.get("x-ai-vision-executor-token","")
+            if not hmac.compare_digest(supplied,vision_token):
+                raise HTTPException(status_code=403,detail="executor_not_authorized")
+
     # External Resource Manager API. It is intentionally served by the existing
     # localhost-only AI Gateway and contains no prompt or response content.
     @app.exception_handler(ResidencyError)
@@ -486,6 +508,7 @@ def create_gateway_app(
 
     @app.post("/resource/leases")
     async def create_resource_lease(request: Request) -> Response:
+        require_vision_lease_auth(request)
         try:
             body = await request.json()
         except Exception as exc:
@@ -523,6 +546,7 @@ def create_gateway_app(
 
     @app.post("/resource/leases/{lease_id}/uses")
     async def begin_external_use(lease_id: str, request: Request) -> Response:
+        require_vision_lease_auth(request)
         try:
             body = await request.json()
             if not isinstance(body, dict):
@@ -555,35 +579,40 @@ def create_gateway_app(
         return JSONResponse(status_code=201, content={"use_id": use_id})
 
     @app.get("/resource/leases/{lease_id}/uses/{use_id}")
-    async def verify_external_use(lease_id: str, use_id: str):
+    async def verify_external_use(lease_id: str, use_id: str, request: Request):
+        require_vision_lease_auth(request)
         workload = await resource_leases.verify_external_use(lease_id, use_id)
         if workload is None:
             raise HTTPException(status_code=409, detail="external GPU ownership unavailable")
         return {"provider": workload.provider, "capability": workload.capability}
 
     @app.delete("/resource/leases/{lease_id}/uses/{use_id}")
-    async def end_external_use(lease_id: str, use_id: str) -> dict[str, bool]:
+    async def end_external_use(lease_id: str, use_id: str, request: Request) -> dict[str, bool]:
+        require_vision_lease_auth(request)
         try:
             return {"released": await resource_leases.end_external_use(lease_id, use_id)}
         except ResourceLeaseNotActive:
             raise HTTPException(status_code=409, detail="GPU transition in progress")
 
     @app.get("/resource/leases/{lease_id}")
-    async def resource_lease_status(lease_id: str) -> dict[str, object]:
+    async def resource_lease_status(lease_id: str, request: Request) -> dict[str, object]:
+        require_vision_lease_auth(request)
         try:
             return await resource_leases.describe(lease_id)
         except ResourceLeaseNotFound as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.post("/resource/leases/{lease_id}/heartbeat")
-    async def resource_lease_heartbeat(lease_id: str) -> dict[str, object]:
+    async def resource_lease_heartbeat(lease_id: str, request: Request) -> dict[str, object]:
+        require_vision_lease_auth(request)
         try:
             return await resource_leases.heartbeat(lease_id)
         except ResourceLeaseNotFound as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.delete("/resource/leases/{lease_id}")
-    async def release_resource_lease(lease_id: str) -> dict[str, bool]:
+    async def release_resource_lease(lease_id: str, request: Request) -> dict[str, bool]:
+        require_vision_lease_auth(request)
         return {"released": await resource_leases.release(lease_id)}
 
     @app.get("/api/tags")
