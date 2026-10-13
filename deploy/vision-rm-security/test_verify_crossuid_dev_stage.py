@@ -16,10 +16,16 @@ spec.loader.exec_module(v)
 
 
 class StageAttestationTests(unittest.TestCase):
-    def test_live_complete_stage_is_verified_read_only(self):
-        with contextlib.redirect_stdout(io.StringIO()) as capture:
-            v.verify()
-        self.assertIn("DEV_STAGING_INTEGRITY=PASS", capture.getvalue())
+    def test_live_stage_fails_closed_on_hash_drift_or_passes_when_matching(self):
+        source = v.SRC / "benchmarks/vision_rm_executor.py"
+        staged = v.DEST / "src/ai_bridge/benchmarks/vision_rm_executor.py"
+        if v.sha256(source) != v.sha256(staged):
+            with self.assertRaisesRegex(v.StageError, "STAGE_SOURCE_TREE_HASH_MISMATCH"):
+                v.verify()
+        else:
+            with contextlib.redirect_stdout(io.StringIO()) as capture:
+                v.verify()
+            self.assertIn("DEV_STAGING_INTEGRITY=PASS", capture.getvalue())
 
     def test_static_is_not_mistaken_for_autostart(self):
         state = v.systemd_properties("ai-vision-rm-dev-gateway")
@@ -33,7 +39,8 @@ class StageAttestationTests(unittest.TestCase):
             if service == "ai-vision-rm-broker":
                 props["UnitFileState"] = "enabled"
             return props
-        with patch.object(v, "systemd_properties", side_effect=unexpected):
+        with patch.object(v, "systemd_properties", side_effect=unexpected), patch.object(
+                v, "SRC", v.DEST / "src/ai_bridge"):
             with self.assertRaisesRegex(v.StageError, "DEV_UNIT_UNEXPECTED_STATE"):
                 v.verify()
 
@@ -44,7 +51,8 @@ class StageAttestationTests(unittest.TestCase):
             if service == "ai-vision-rm-runner":
                 props["ActiveState"] = "active"
             return props
-        with patch.object(v, "systemd_properties", side_effect=unexpected):
+        with patch.object(v, "systemd_properties", side_effect=unexpected), patch.object(
+                v, "SRC", v.DEST / "src/ai_bridge"):
             with self.assertRaisesRegex(v.StageError, "DEV_UNIT_UNEXPECTEDLY_ACTIVE"):
                 v.verify()
 

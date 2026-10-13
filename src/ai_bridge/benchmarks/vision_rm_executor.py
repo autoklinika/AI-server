@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 
@@ -15,9 +16,19 @@ class VisionExecutionError(RuntimeError):
 
 
 def call(base: str, method: str, path: str, payload: dict | None = None) -> dict:
-    if not (base.startswith("http://127.0.0.1:") or base.startswith("http://localhost:")):
+    # A string prefix is not a loopback guarantee: 127.0.0.1:port@host
+    # would send the controller bearer outside the machine.
+    parsed=urlsplit(base)
+    try:
+        port=parsed.port
+    except ValueError as exc:
+        raise ValueError("Gateway must be private loopback") from exc
+    if (parsed.scheme!="http" or parsed.hostname not in ("127.0.0.1","localhost")
+            or port is None or parsed.username is not None
+            or parsed.password is not None or parsed.path not in ("","/")
+            or parsed.query or parsed.fragment):
         raise ValueError("Gateway must be private loopback")
-    if not path.startswith("/"):
+    if not path.startswith("/") or path.startswith("//"):
         raise ValueError("Gateway API path must be absolute")
     raw = json.dumps(payload).encode() if payload is not None else None
     headers={"Content-Type":"application/json"} if raw else {}
@@ -27,12 +38,13 @@ def call(base: str, method: str, path: str, payload: dict | None = None) -> dict
         raise VisionExecutionError("ambiguous RM control credential")
     if token_path:
         from pathlib import Path
-        path=Path(token_path)
-        info=path.stat()
-        if (not path.is_absolute() or not path.is_file() or info.st_uid!=0
+        credential_file=Path(token_path)
+        info=credential_file.stat()
+        if (not credential_file.is_absolute() or not credential_file.is_file()
+                or credential_file.is_symlink() or info.st_uid!=0
                 or info.st_mode & 0o027):
             raise VisionExecutionError("untrusted protected RM control credential")
-        credential=path.read_text(encoding="utf-8").strip()
+        credential=credential_file.read_text(encoding="utf-8").strip()
     if credential:
         headers["X-AI-Vision-Executor-Token"]=credential
     req = Request(base.rstrip("/") + path, method=method, data=raw,

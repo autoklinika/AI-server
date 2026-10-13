@@ -63,3 +63,25 @@ Poprawka gałęzi PR #163:
 Wyniki weryfikacji bez praw administratora: `DEV_STAGING_VERIFICATION=PASS`, `DEV_STAGING_INTEGRITY=PASS`, `DEV_STAGING_AUTOSTART=ABSENT`; jednostki DEV pozostawały zatrzymane. Weryfikacja nie oznacza zaliczenia CPU-only E2E.
 
 **Nadal NO-GO dla produkcji.** Do wykonania pozostaje rzeczywisty `accept-crossuid-dev-cpu.sh --apply` jako root. W sesji Remote MCP `sudo -n true` zwraca `interactive authentication is required`; nie uruchamiano usług DEV bez autoryzacji, nie obchodzono polityki systemu. Po autoryzacji należy uruchomić CPU-only E2E, zebrać logi, sprawdzić zwolnienie lease i brak zmian produkcji przed jakimkolwiek testem GPU lub decyzją o merge.
+
+## Pierwszy realny CPU-only E2E — FAIL i poprawka (2026-10-13, 21:07 CEST)
+
+Operator uruchomił `accept-crossuid-dev-cpu.sh --apply`. Potwierdzone rzeczywistym stdout i `journalctl`:
+
+- `PRODUCTION_RM_IDLE=PASS`
+- `ISOLATED_DEV_GATEWAY_READY=PASS`
+- `ISOLATED_BROKER_SOCKET_READY=PASS`
+- `ai-vision-rm-runner.service` FAILED, `ai-vision-rm-broker.service` exited code 1.
+- W brokerze `vision_rm_executor.call()`: `TypeError: can only concatenate str (not "PosixPath") to str`.
+- Root cause: zmienna `path` reprezentująca endpoint `/resource/leases` została nadpisana przez `Path(token_path)` po przejściu na oddzielne konto z poświadczeniem w pliku. Mockowe testy z tokenem środowiskowym nie obejmowały tego przebiegu.
+- Runner otrzymał zerwane IPC i zgłosił `broker reply invalid` jako efekt wtórny; nie było inferencji GPU.
+
+Po awarii: systemd DEV gateway/broker inactive, runner failed (systemd bookkeeping), produkcyjne ai-gateway/ollama/observer active, port 11435 listening, 11575 absent; produkcyjny /status: residency llm, `recovery_required=false`, leases=0, active=0, queued=0.
+
+**Poprawki DEV:**
+1. `vision_rm_executor.py`: oddzielenie `credential_file` od ścieżki HTTP; kontrola symlinków i wzmocniona walidacja rzeczywistego loopback URL, aby `127.0.0.1:port@outside` nie przekazał bearer poza host.
+2. `tests/test_vision_rm_executor_protected_file_dev.py`: testy stdlib (bez zależności production), POST/GET/DELETE po file-based token, błędny bearer, niedozwolone uprawnienia, symlink i złośliwe URL. PASS 5/5.
+3. `test_verify_crossuid_dev_stage.py`: przypadek istniejącego root-owned stagingu, którego SHA różni się po poprawce, pozostaje oczekiwanym fail-closed; testy PASS 7/7.
+4. `refresh-crossuid-executor-dev.sh --apply-and-test`: **oddzielny krok administracyjny**. Wymaga dokładnego starego i nowego SHA, weryfikuje cały istniejący root-owned staging z dokładnie jedną dozwoloną różnicą, brak działających usług/workerów i markerów awarii; atomowo aktualizuje wyłącznie `vision_rm_executor.py`, czyści status failed *wyłącznie* usługi DEV runnera, ponownie wykonuje pełne attestation i następnie uruchamia CPU-only E2E. Nie dotyka `/opt/ai-platform/current`, produkcyjnego Gatewaya, Ollamy ani observera.
+
+**Bramka nadal NO-GO do czasu powtórzenia realnego E2E**, niezależnych dowodów bezpieczeństwa i dopiero potem fizycznego testu WinCLIP ROCm na rozdzielonych kontach. Żaden test CPU-only nie dowodzi własności GPU w rzeczywistym obciążeniu.
