@@ -28,7 +28,7 @@ from .resource_leases import (
 from .residency import GPUResidency, ResidencyError
 from .vision_attestation import attest_worker
 from .vision_gpu_observer_client import snapshot_observer
-from .vision_residency_evidence import gpu_device_openers
+from .vision_residency_evidence import gpu_device_openers, worker_cgroup_path
 from .comfy_process import resume_stopped_managed_comfy
 from .scheduler import PriorityScheduler, SchedulerQueueFull, SchedulerTicket
 
@@ -215,6 +215,7 @@ def create_gateway_app(
             script_allowlist=resolved.gateway_vision_allowed_scripts,
             checkpoint_allowlist=resolved.gateway_vision_allowed_checkpoints,
             gate_sha256=resolved.gateway_vision_worker_gate_sha256,
+            gate_path=resolved.gateway_vision_worker_gate_path,
         ) if resolved.gateway_vision_external_enabled else None,
     )
 
@@ -244,6 +245,10 @@ def create_gateway_app(
                                          socket_path=resolved.gateway_vision_gpu_observer_socket)
                                          if resolved.gateway_vision_gpu_observer_socket is not None
                                          else gpu_device_openers),
+                                     vision_scope_probe=(partial(worker_cgroup_path,
+                                         expected_uid=resolved.gateway_vision_worker_uid)
+                                         if resolved.gateway_vision_worker_uid is not None
+                                         else worker_cgroup_path),
                                      resume_comfy=(resume_stopped_managed_comfy if residency_transport is None else None))
             resource_leases.residency = residency
             scheduler.admission_blocked = residency.state == "blocked"
@@ -609,12 +614,20 @@ def create_gateway_app(
             return JSONResponse(status_code=404, content={"error": "resource_lease_not_found"})
         except (ResourceLeaseNotActive, ResourceLeaseNotAllowed):
             return JSONResponse(status_code=409, content={"error": "resource_lease_not_available"})
-        return JSONResponse(status_code=201, content={"use_id": use_id})
+        result={"use_id": use_id}
+        if workload.provider == "vision-local":
+            result["worker_token"] = await resource_leases.vision_token_for_use(lease_id,use_id)
+        return JSONResponse(status_code=201, content=result)
 
     @app.get("/resource/leases/{lease_id}/uses/{use_id}")
     async def verify_external_use(lease_id: str, use_id: str, request: Request):
-        require_vision_lease_auth(request)
-        workload = await resource_leases.verify_external_use(lease_id, use_id)
+        # Read-only, single-use-scoped Vision capability; worker has no RM
+        # credential and may NEVER create/heartbeat/delete leases.
+        scoped_token=request.headers.get("x-ai-vision-use-token")
+        if scoped_token is None:
+            require_vision_lease_auth(request)
+        workload = await resource_leases.verify_external_use(
+            lease_id, use_id, worker_token=scoped_token)
         if workload is None:
             raise HTTPException(status_code=409, detail="external GPU ownership unavailable")
         return {"provider": workload.provider, "capability": workload.capability}

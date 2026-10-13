@@ -61,7 +61,7 @@ class FakeGateway(BaseHTTPRequestHandler):
             os.kill(pid,0)
             s["worker_pid"]=pid
             s["use"]=True
-            return self.reply(201,{"use_id":"USE"})
+            return self.reply(201,{"use_id":"USE","worker_token":"test-scope-limited-worker-use-token"})
         if self.path=="/resource/leases/DEV/heartbeat":
             assert s["lease"]
             return self.reply(200,{"state":"active"})

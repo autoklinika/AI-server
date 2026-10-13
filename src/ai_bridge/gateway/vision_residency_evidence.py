@@ -35,14 +35,14 @@ def gpu_vram_used_bytes() -> int | None:
     except (OSError, ValueError):
         return None
 
-def worker_cgroup_path(pid: int) -> str | None:
+def worker_cgroup_path(pid: int, *, expected_uid: int | None = None) -> str | None:
     """Return exact, trusted user-manager Vision scope for the worker PID."""
     import os
     import re
     try:
         uid = Path(f"/proc/{pid}").stat().st_uid
-        if uid != os.getuid():
-            return None  # No authorizing a GPU worker owned by another user.
+        if uid != (expected_uid if expected_uid is not None else os.getuid()):
+            return None  # Only the configured model worker UID is admissible.
         raw = Path(f"/proc/{pid}/cgroup").read_text(encoding="ascii")
         lines = [line[3:].strip() for line in raw.splitlines() if line.startswith("0::")]
         if len(lines) != 1:

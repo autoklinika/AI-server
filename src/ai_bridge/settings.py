@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     gateway_vision_executor_token: SecretStr | None = None
     # Fixed script/checkpoint provenance. Host-protected SHA256 manifest supplied by operator.
     gateway_vision_worker_gate_sha256: str | None = None
+    gateway_vision_worker_gate_path: Path | None = None
+    # Must be ai-vision UID when controller and model identities are separate.
+    gateway_vision_worker_uid: int | None = Field(default=None, ge=1)
     gateway_vision_allowed_scripts: dict[str, str] = Field(default_factory=dict)
     gateway_vision_allowed_checkpoints: dict[str, str] = Field(default_factory=dict)
     # Required by default for Vision. DEV-only opt-out must be explicit.

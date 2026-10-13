@@ -1,5 +1,5 @@
 from __future__ import annotations
-import asyncio, secrets
+import asyncio, secrets, hmac
 from dataclasses import asdict, dataclass, replace
 from time import monotonic
 from .admission import WorkloadBinding, external_workload
@@ -22,6 +22,7 @@ class _Lease:
     in_use:int=0
     release_when_idle:bool=False
     external_use_id: str | None = None
+    vision_worker_token: str | None = None
     ended_use_id: str | None = None
     external_workload: WorkloadBinding | None = None
 
@@ -122,6 +123,7 @@ class ResourceLeaseRegistry:
             # Pin before I/O, including cancellation/disconnect. Failure must
             # retain ownership even when the worker releases or stops heartbeats.
             rec.external_use_id = secrets.token_urlsafe(24)
+            rec.vision_worker_token = (secrets.token_urlsafe(32) if workload.provider == "vision-local" else None)
             rec.external_workload = workload
             rec.in_use = 1
         try:
@@ -144,10 +146,21 @@ class ResourceLeaseRegistry:
             rec.last_heartbeat = monotonic()
         return rec.external_use_id
 
-    async def verify_external_use(self, lease_id: str, use_id: str):
+    async def vision_token_for_use(self,lease_id: str,use_id: str) -> str:
+        """Return restricted *read-only* capability only to the authenticated RM controller."""
+        async with self._lock:
+            rec=self._leases.get(lease_id)
+            if (rec is None or rec.external_use_id!=use_id or rec.in_use or
+                    rec.vision_worker_token is None or self.scheduler.admission_blocked):
+                raise ResourceLeaseNotActive("Vision use is not active")
+            return rec.vision_worker_token
+
+    async def verify_external_use(self, lease_id: str, use_id: str, *, worker_token: str | None = None):
         async with self._lock:
             rec = self._leases.get(lease_id)
             if (rec is None or rec.external_use_id != use_id or rec.in_use
+                    or (worker_token is not None and (rec.vision_worker_token is None or
+                        not hmac.compare_digest(rec.vision_worker_token,worker_token)))
                     or self.scheduler.admission_blocked
                     or (self.residency and self.residency.state !=
                         ("vision" if rec.external_workload and rec.external_workload.provider == "vision-local" else "media"))):
@@ -182,6 +195,7 @@ class ResourceLeaseRegistry:
             rec.last_heartbeat = monotonic()
             rec.ended_use_id = use_id
             rec.external_use_id = None
+            rec.vision_worker_token = None
             rec.external_workload = None
             if rec.release_when_idle:
                 await self.scheduler.release_job(rec.job_id)

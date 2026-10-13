@@ -22,6 +22,17 @@ def call(base: str, method: str, path: str, payload: dict | None = None) -> dict
     raw = json.dumps(payload).encode() if payload is not None else None
     headers={"Content-Type":"application/json"} if raw else {}
     credential=os.environ.get("VISION_RM_EXECUTOR_TOKEN")
+    token_path=os.environ.get("VISION_RM_EXECUTOR_TOKEN_FILE")
+    if credential and token_path:
+        raise VisionExecutionError("ambiguous RM control credential")
+    if token_path:
+        from pathlib import Path
+        path=Path(token_path)
+        info=path.stat()
+        if (not path.is_absolute() or not path.is_file() or info.st_uid!=0
+                or info.st_mode & 0o027):
+            raise VisionExecutionError("untrusted protected RM control credential")
+        credential=path.read_text(encoding="utf-8").strip()
     if credential:
         headers["X-AI-Vision-Executor-Token"]=credential
     req = Request(base.rstrip("/") + path, method=method, data=raw,

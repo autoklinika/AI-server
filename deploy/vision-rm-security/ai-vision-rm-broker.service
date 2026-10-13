@@ -1,0 +1,39 @@
+[Unit]
+Description=AI Platform Vision RM broker - controller UID only, NO GPU model
+After=network-online.target ai-vision-gpu-observer.service
+Wants=network-online.target ai-vision-gpu-observer.service
+ConditionPathExists=/etc/ai-platform/vision-rm/executor.token
+
+[Service]
+Type=simple
+User=ai-gateway-rm
+Group=ai-vision-rm
+SupplementaryGroups=ai-vision-rm-control
+WorkingDirectory=/var/lib/ai-gateway-rm
+Environment=PYTHONPATH=/opt/ai-platform/vision-rm-candidate/src
+Environment=VISION_RM_EXECUTOR_TOKEN_FILE=/etc/ai-platform/vision-rm/executor.token
+Environment=VISION_RM_GATEWAY_URL=http://127.0.0.1:11575
+ExecStart=/opt/ai-platform/current/services/ai-gateway/.venv/bin/python -m ai_bridge.benchmarks.vision_rm_broker
+RuntimeDirectory=ai-vision-rm-broker
+RuntimeDirectoryMode=0750
+UMask=0007
+Restart=on-failure
+RestartSec=4
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+DevicePolicy=closed
+ReadWritePaths=/run/ai-vision-rm-broker /var/lib/ai-gateway-rm
+
+[Install]
+WantedBy=multi-user.target

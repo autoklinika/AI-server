@@ -21,7 +21,8 @@ def _digest(path: Path) -> str | None:
 
 
 def attest_worker(pid: int, script_allowlist: dict[str,str],
-                  checkpoint_allowlist: dict[str,str], gate_sha256: str) -> bool:
+                  checkpoint_allowlist: dict[str,str], gate_sha256: str,
+                  gate_path: Path | None = None) -> bool:
     """Confirm trusted gate + explicitly pinned program/checkpoint SHA-256."""
     if type(pid) is not int or pid <= 1 or not script_allowlist:
         return False
@@ -30,7 +31,8 @@ def attest_worker(pid: int, script_allowlist: dict[str,str],
         args=[b.decode("utf-8") for b in raw.rstrip(b"\x00").split(b"\x00")]
         if len(args)<10 or len(args)>100:
             return False
-        gate=Path(__file__).resolve().parents[1]/"benchmarks"/"vision_worker_gate.py"
+        gate=(gate_path if gate_path is not None else
+              Path(__file__).resolve().parents[1]/"benchmarks"/"vision_worker_gate.py")
         if Path(args[1]).resolve(strict=True)!=gate:
             return False
         if _digest(gate) != gate_sha256:

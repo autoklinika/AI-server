@@ -1,0 +1,39 @@
+[Unit]
+Description=AI Platform Vision model-only runner - no RM control credential
+After=ai-vision-rm-broker.service
+Requires=ai-vision-rm-broker.service
+
+[Service]
+Type=oneshot
+User=ai-vision
+Group=ai-vision-rm
+SupplementaryGroups=render video
+WorkingDirectory=/var/lib/ai-vision
+Environment=HOME=/var/lib/ai-vision
+Environment=VISION_RM_GATEWAY_URL=http://127.0.0.1:11575
+Environment=XDG_RUNTIME_DIR=/run/user/%U
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/%U/bus
+ExecStart=/usr/bin/python3 -I /usr/local/libexec/ai-platform/vision-rm-runner.py
+TimeoutStartSec=240
+TimeoutStopSec=25
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectControlGroups=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX
+DevicePolicy=closed
+ReadWritePaths=/srv/ai-data/evaluation/vision-rm-service /var/lib/ai-vision
+
+# NOT enabled at boot. Use explicit operator-controlled start after DEV gateway
+# preflight and production queue fencing.
+
+[Install]
+WantedBy=multi-user.target

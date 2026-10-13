@@ -14,11 +14,12 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 
-def _verify(base: str, lease: str, use: str) -> None:
+def _verify(base: str, lease: str, use: str, *, worker_token: str | None = None) -> None:
     if not base.startswith("http://127.0.0.1:") and not base.startswith("http://localhost:"):
         raise ValueError("Gateway must be loopback")
     credential=os.environ.get("VISION_RM_EXECUTOR_TOKEN")
-    headers={"X-AI-Vision-Executor-Token":credential} if credential else {}
+    headers=({"X-AI-Vision-Use-Token":worker_token} if worker_token is not None else
+             {"X-AI-Vision-Executor-Token":credential} if credential else {})
     req = Request(f"{base}/resource/leases/{lease}/uses/{use}", method="GET",headers=headers)
     with urlopen(req, timeout=5) as res:
         data = json.load(res)
@@ -55,9 +56,11 @@ def main() -> None:
         with os.fdopen(p.gate_fd, "r", encoding="utf-8", closefd=True) as pipe:
             raw = pipe.readline(4096)
     authorization = json.loads(raw)
-    if set(authorization) != {"lease_id", "use_id"}:
+    if set(authorization) not in ({"lease_id", "use_id"},
+                                  {"lease_id", "use_id", "worker_token"}):
         raise ValueError("missing Vision authorization")
-    _verify(p.gateway, authorization["lease_id"], authorization["use_id"])
+    _verify(p.gateway, authorization["lease_id"], authorization["use_id"],
+            worker_token=authorization.get("worker_token"))
     args = p.args[1:] if p.args[:1] == ["--"] else p.args
     # The bearer is used ONLY by the authorization gate. Never hand a
     # Resource Manager control credential to a model script via execv().
