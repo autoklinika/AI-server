@@ -49,6 +49,15 @@ class GPUResidency:
             stream.flush()
             os.fsync(stream.fileno())
 
+    def fail_closed(self) -> None:
+        """Persist uncertainty before any previously admitted GPU slot could reopen.
+
+        Used if an exception interrupts a resource transition after ownership
+        was pinned, including an early exception before enter_vision wrote it.
+        """
+        self.state = "blocked"
+        self._dirty()
+
     async def _json(self, client, path):
         response = await client.get(path)
         response.raise_for_status()

@@ -152,17 +152,26 @@ class ScopedVisionExecutor:
                             "elapsed_seconds":round(time.monotonic()-started,3)}
             finally:
                 stop.set()
-                if handle is not None and handle.poll() is None:
-                    self._scope_call(env,"stop",unit+".scope")
-                    try:handle.wait(timeout=4)
-                    except subprocess.TimeoutExpired:
-                        self._scope_call(env,"kill","--signal=SIGKILL",unit+".scope")
-                        handle.wait(timeout=5)
-                # A fully empty cgroup is required before asking the Gateway to release.
+                # A worker may exit while a detached child remains in its
+                # cgroup. Never rely solely on the systemd-run parent PID.
                 members=scoped_processes(scope_path)
-                if members is None or members:
-                    # Fail closed. Do not attempt to release a possibly live GPU.
-                    raise VisionExecutionError("uncertain cgroup state after termination")
+                if handle is not None and (handle.poll() is None or members is None or members):
+                    self._scope_call(env,"stop",unit+".scope")
+                    if handle.poll() is None:
+                        try:handle.wait(timeout=4)
+                        except subprocess.TimeoutExpired:
+                            self._scope_call(env,"kill","--signal=SIGKILL",unit+".scope")
+                            handle.wait(timeout=5)
+                # Wait briefly for systemd's cgroup release. Absent evidence
+                # or surviving descendants fail closed: do not release GPU.
+                clear_deadline=time.monotonic()+5
+                while True:
+                    members=scoped_processes(scope_path)
+                    if members is not None and not members:
+                        break
+                    if time.monotonic()>=clear_deadline:
+                        raise VisionExecutionError("uncertain cgroup state after termination")
+                    time.sleep(.05)
                 if lease_id and use_id:
                     try:
                         call(self.base,"DELETE",f"/resource/leases/{lease_id}/uses/{use_id}")

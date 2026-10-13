@@ -104,6 +104,16 @@ class ResourceLeaseRegistry:
                         or type(worker_pid) is not int or worker_pid <= 1
                         or not isinstance(scope_path,str) or not scope_path):
                     raise ResourceLeaseNotAllowed("Vision external execution is unavailable")
+                if self.residency:
+                    # Read-only identity preflight BEFORE pinning GPU ownership.
+                    # A worker which never existed must be rejected as a normal
+                    # invalid request; it has not accessed any accelerator.
+                    birth = self.residency.vision_process_probe(worker_pid)
+                    scope = self.residency.vision_scope_probe(worker_pid)
+                    members = self.residency.vision_cgroup_members(scope_path)
+                    if (birth is None or birth <= 0 or scope != scope_path
+                            or members is None or worker_pid not in members):
+                        raise ResourceLeaseNotAllowed("Vision worker/scope is unavailable")
             elif workload.provider != "comfyui-local" or worker_pid is not None or scope_path is not None:
                 raise ResourceLeaseNotAllowed("invalid external execution provider")
             # Pin before I/O, including cancellation/disconnect. Failure must
@@ -119,6 +129,11 @@ class ResourceLeaseRegistry:
                     await self.residency.enter_media()
         except BaseException:
             self.scheduler.admission_blocked = True
+            if self.residency:
+                # An admitted/partially transitioned GPU use cannot be
+                # classified as clean from an exception. Persist marker even
+                # if an identity race failed before enter_vision's _dirty().
+                self.residency.fail_closed()
             raise
         finally:
             # No await: identity remains pinned throughout the transition.
