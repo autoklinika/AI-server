@@ -23,3 +23,11 @@ Po zakończeniu testu PID 73669 nie istniał; produkcyjny Resource Manager był 
 - Produkcyjna flaga Vision pozostaje OFF. Żadnych zmian modelu Qwen/adapterów/main.
 
 **Gate: code-level worker-exe probe PASS; privileged installed observer verification NOT YET RUN; production NO-GO.**
+
+## Incydent podczas pierwszej aktualizacji obserwatora (17:53 CEST)
+
+Administrator uruchomił aktualizację. Preflight produkcyjnego GPU PASS. Systemd rozpoczął usługę, ale skrypt natychmiast testował gniazdo AF_UNIX i wykrył `observer socket missing`. Oprogramowanie wycofało zmianę i uruchomiło ponownie poprzedni obserwator. Zdalnie potwierdzono po incydencie: observer, ai-gateway i ollama **active**; marker GPU clean, 0 leases, main clean, poprzedni kod nadal zainstalowany.
+
+Ważne: sam komunikat `observer socket missing` nie dowodzi niezgodności nowego handlera. Typ systemd `simple` zgłasza active przed `socket.bind()` w procesie Python. Poprawka w `upgrade-observer-worker-exe.sh`: po restarcie **maksymalnie 10 s** na realną gotowość AF_UNIX; test połączenia od root oczekuje poprawnie zdekodowanego statusu **denied**, ponieważ root nie należy do klientów autoryzowanych. Tylko potem wykonywany jest faktyczny test atestacji ai-gateway-rm → ai-vision. Po rollback skrypt również sprawdza gotowość starej usługi, zamiast opierać się wyłącznie na `systemctl active`.
+
+Aktualizacja nie została powtórzona automatycznie: wymaga jawnego ponownego polecenia administratora. Wynik rzeczywistego testu E2E pozostaje nieustalony do czasu tej próby. Targeted testy izolacji nowej ścieżki: **14/14 PASS**.

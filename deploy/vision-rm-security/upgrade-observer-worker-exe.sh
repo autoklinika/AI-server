@@ -42,8 +42,39 @@ install -o root -g root -m 0755 "$SOURCE" "$NEXT"
 mv -f -- "$NEXT" "$DEST"
 echo "OBSERVER_CODE_UPDATED=YES"
 echo "OBSERVER_RESTART_ONLY=BEGIN"
+# Type=simple means systemctl reports active before Python binds its socket.
+# Probe actual AF_UNIX accept readiness; don't confuse start with ready.
+wait_observer_ready() {
+  /usr/bin/python3 -I - <<'PYREADY'
+import json,socket,time,sys
+path='/run/ai-vision-gpu-observer/observer.sock'
+deadline=time.monotonic()+10
+while time.monotonic()<deadline:
+    try:
+        with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as connection:
+            connection.settimeout(.8)
+            connection.connect(path)
+            connection.sendall(b'{"op":"snapshot","version":1}\n')
+            received=b''
+            while b'\n' not in received and len(received)<4096:
+                part=connection.recv(512)
+                if not part:break
+                received+=part
+        reply=json.loads(received)
+        # root is intentionally NOT an authorized client: denial is expected,
+        # proving both accepting and processing a valid request.
+        if reply.get('schema_version')==1 and reply.get('status')=='denied':
+            print('OBSERVER_SOCKET_READY=PASS')
+            sys.exit(0)
+    except (OSError,ValueError,KeyError,TimeoutError):
+        pass
+    time.sleep(.1)
+print('OBSERVER_SOCKET_READY=TIMEOUT',file=sys.stderr)
+sys.exit(1)
+PYREADY
+}
 if systemctl restart "$UNIT" && systemctl is-active --quiet "$UNIT" &&
-   /usr/bin/python3 -I "$TEST"; then
+   wait_observer_ready && /usr/bin/python3 -I "$TEST"; then
   echo "OBSERVER_REAL_CROSS_UID_VERIFICATION=PASS"
   echo "PRODUCTION_GATEWAY=UNCHANGED"
   exit 0
@@ -51,5 +82,10 @@ fi
 echo "OBSERVER_VERIFICATION=FAIL_RESTORING_PREVIOUS_BINARY" >&2
 install -o root -g root -m 0755 "$BACKUP" "$DEST"
 systemctl restart "$UNIT" || true
+if wait_observer_ready; then
+  echo "OBSERVER_ROLLBACK_READY=PASS"
+else
+  echo "OBSERVER_ROLLBACK_READY=FAIL_OPERATOR_REVIEW_REQUIRED" >&2
+fi
 echo "OBSERVER_ROLLBACK_DONE=YES"
 exit 5
