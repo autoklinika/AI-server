@@ -45,7 +45,7 @@ def run(args):
             "ground_truth_sha256":source_hash,
             "split":args.split,"expected_count":len(selected),
             "sample_ids_sha256":hashlib.sha256(encode(sorted(expected))).hexdigest(),
-            "device":"cpu","cpu_threads":args.threads,
+            "device":args.device,"cpu_threads":args.threads,
             "preprocessing_mode":args.mode,
             "class_prompt":PROMPT,
             "tile_size":args.tile_size if args.mode=="tiled" else None,
@@ -64,7 +64,10 @@ def run(args):
         if done==total:
             print("B1_ALREADY_COMPLETE="+str(j.finalize()),flush=True)
             return
-        model=WinClipModel(class_name=PROMPT,apply_transform=True).eval()
+        if args.device == "cuda":
+            if not torch.version.hip or not torch.cuda.is_available():
+                raise RuntimeError("ROCm GPU unavailable: fail closed")
+        model=WinClipModel(class_name=PROMPT,apply_transform=(args.device=="cpu")).eval().to(args.device)
         new=0
         base=args.image_root.resolve(strict=True)
         # Interleave anomaly and normal samples to produce informative checkpoints.
@@ -96,12 +99,15 @@ def run(args):
                 with torch.inference_mode():
                     for index, img in enumerate(images):
                         t=pil_to_tensor(img).float()/255
-                        pred=model(t.unsqueeze(0))
+                        batch=(model.transform(t).unsqueeze(0).to("cuda") if args.device=="cuda"
+                               else t.unsqueeze(0))
+                        pred=model(batch)
+                        if args.device=="cuda":torch.cuda.synchronize()
                         sc=float(pred.pred_score.squeeze().item())
                         if not 0<=sc<=1:raise ValueError("invalid model score")
                         scores.append(sc)
                         if index==0 and args.save_maps:
-                            data=pred.anomaly_map.float()
+                            data=pred.anomaly_map.float().cpu()
                             if data.ndim==3:data=data.unsqueeze(1)
                             full_map=F.interpolate(data,size=(256,256),mode="bilinear",align_corners=False)[0,0].cpu().numpy().astype("float32")
             score=aggregate_max(scores[0],scores[1:]) if args.mode=="tiled" else scores[0]
@@ -135,6 +141,8 @@ def run(args):
         print(f"B1_EXIT completed={complete} done={now}/{total} new={new} elapsed={round(time.monotonic()-started,1)}s",flush=True)
     finally:
         j.close()
+        if args.device=="cuda":
+            torch.cuda.empty_cache()
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
@@ -144,6 +152,7 @@ def main():
     p.add_argument("--out",type=Path,required=True)
     p.add_argument("--split",choices=["calibration","holdout","challenge"],required=True)
     p.add_argument("--mode",choices=["global","tiled"],default="global")
+    p.add_argument("--device",choices=["cpu","cuda"],default="cpu")
     p.add_argument("--save-maps",action="store_true")
     p.add_argument("--tile-size",type=int,default=640)
     p.add_argument("--overlap",type=float,default=.25)

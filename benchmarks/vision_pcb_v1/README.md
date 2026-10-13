@@ -84,3 +84,7 @@ WinCLIP CPU and MiniCPM-V 4.7 1B CPU passed real-image smoke tests. MiniCPM is n
 ## Full B1: wznawialny scorer i pixel maps (2026-10-13)
 
 Uruchomiono eksperymentalny przebieg wszystkich trzech splitów pełnego fold0 (3312 obrazów); dziennik B1 zapisuje osobno SHA oryginału, image score i mapę 256x256, pozwalając wznowić zadanie bez ponownej inferencji zapisanych obrazów. Nie ukończono pełnego folda, dlatego wynik jest wciąż wstępny. Szczegóły: `B1_FULL_CPU_RUNBOOK_2026-10-13.md` oraz `B1_CHECKPOINT_240_AND_ERROR_REVIEW_2026-10-13.md`. `pixel_eval_256.py` obsługuje pixel AUROC/AP i **przybliżony** AU-PRO256, ale pełny raport wymaga wszystkich obrazów. Zadania są CPU-only z limitem obciążenia, ponieważ RM nie ma jeszcze natywnego profilu zewnętrznych zadań CPU.
+
+## GPU hardware validation (2026-10-13)
+
+Radeon 890M gfx1150, **official ROCm 7.14.1 / PyTorch 2.12.0**, isolated on NVMe, passed matrix/conv smoke; WinCLIP GPU returned scores matching CPU over 50 images (max delta 1.17e-6) with ~3.33x median warm inference speedup. Started a **separate** GPU B1 fold0 journal (24 images per calibration/holdout/challenge) without mixing CPU records. Full GPU B1 is still open. Short manual maintenance leases are NOT a formal provider-specific Vision GPU admission route; no unattended extended GPU workload before an approved Resource Manager integration. Full evidence and security constraints in `GPU_ROCM714_WINCLIP_2026-10-13.md`.

@@ -46,7 +46,10 @@
       "train_track": "zero-shot frozen baseline",
       "runtime_verified": true,
       "runtime_evidence": "cpu-smoke-and-48-image-pilot; tile paired N=12; not production B1",
-      "checkpoint_sha256": "8fb26589b9a8bab2e7a683d280e48df89b8e742f3a82132707282620b36facba"
+      "checkpoint_sha256": "8fb26589b9a8bab2e7a683d280e48df89b8e742f3a82132707282620b36facba",
+      "runtime_gpu_verified": true,
+      "runtime_gpu": "ROCm 7.14.1 gfx1150, torch 2.12.0+rocm7.14.1, torchvision 0.27.0+rocm7.14.1",
+      "gpu_validation": "50 image equivalence, 3x24 image resumable GPU B1 smoke; no full B1 quality ranking"
     }
   ]
 }
