@@ -85,3 +85,22 @@ Po awarii: systemd DEV gateway/broker inactive, runner failed (systemd bookkeepi
 4. `refresh-crossuid-executor-dev.sh --apply-and-test`: **oddzielny krok administracyjny**. Wymaga dokładnego starego i nowego SHA, weryfikuje cały istniejący root-owned staging z dokładnie jedną dozwoloną różnicą, brak działających usług/workerów i markerów awarii; atomowo aktualizuje wyłącznie `vision_rm_executor.py`, czyści status failed *wyłącznie* usługi DEV runnera, ponownie wykonuje pełne attestation i następnie uruchamia CPU-only E2E. Nie dotyka `/opt/ai-platform/current`, produkcyjnego Gatewaya, Ollamy ani observera.
 
 **Bramka nadal NO-GO do czasu powtórzenia realnego E2E**, niezależnych dowodów bezpieczeństwa i dopiero potem fizycznego testu WinCLIP ROCm na rozdzielonych kontach. Żaden test CPU-only nie dowodzi własności GPU w rzeczywistym obciążeniu.
+
+## Drugi CPU-only E2E — dowody incydentu 21:17:18 CEST
+
+Druga próba uruchomiona przez operatora po przypiętej aktualizacji `vision_rm_executor.py`:
+
+- pełne attestation stagingu przed i po aktualizacji: **PASS**;
+- `PRODUCTION_RM_IDLE=PASS`, DEV Gateway READY PASS, broker socket READY PASS;
+- runner zakończył się `RuntimeError: Vision RM cleanup not verified; retain blocked lease` z linii 173 `vision_rm_runner.py`;
+- broker i DEV Gateway zatrzymały się prawidłowo; runner pozostał w systemd failed;
+- produkcja: Gateway, Ollama, GPU observer aktywne; produkcyjne leases=0, GPU residency=llm, recovery_required=false;
+- brak podstaw do uznania realnego CPU-only E2E za PASS.
+
+**Bardzo ważne:** `finally` w runnerze zgłasza nowy błąd, kiedy `finish` nie zwróci `{"status":"released"}`. Ten błąd **może zasłaniać wcześniejszy wyjątek** w tym samym runnerze, w tym problem wykonania workera lub begin. Sam traceback nie dowodzi, że worker ukończył test.
+
+**Niezależna niezgodność cross-UID w dowodzie zakończenia cgroup:** `scope_members_or_terminal()` w `vision_residency_evidence.py` stosuje `os.getuid()`, czyli UID kontrolera 993, do skonstruowania ścieżki terminalnego scope. W testowanym wariancie cgroup workera to `/user.slice/user-994.slice/user@994.service/app.slice/vision-bench-*.scope`. Kiedy kernelowe `cgroup.procs` jest już niedostępne, funkcja nie może zaakceptować dowodu systemd dla innego UID i zwraca None. Dowiedziono 3/3 testami bez zmian produkcji. To prawidłowe **fail-closed**, ale brakujący mechanizm cross-UID terminal attestation blokuje pozytywne potwierdzenie cleanupu; nie wolno zamieniać None na pusty cgroup ani ufać samemu workerowi.
+
+**Następny krok — tylko diagnostyka, bez retry:** `sudo python3 deploy/vision-rm-security/inspect-crossuid-dev-failure.py`. Skrypt czyta wyłącznie metadane poświadczenia workera i markera, schemat CPU result oraz allowlistowane fragmenty `worker.log`; nigdy nie wypisuje `authorized.json` ani sekretu kontrolnego. Uzyskać z niego szczególnie: czy istnieje DEV block marker, czy worker utworzył wynik, czy brakuje autoryzacji, czy wystąpił błąd HTTP/worker. Następnie zaprojektować dokładny, odczytowy dowód terminalnego stanu systemd user scope przez zaufany komponent uprzywilejowany. Nie osłabiać fail-closed i nie resetować markera bez audytu.
+
+**NO-GO** pozostaje; nie ma zgody na realny ROCm GPU, merge lub produkcyjny cutover.

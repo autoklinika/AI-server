@@ -23,9 +23,16 @@ class StageAttestationTests(unittest.TestCase):
             with self.assertRaisesRegex(v.StageError, "STAGE_SOURCE_TREE_HASH_MISMATCH"):
                 v.verify()
         else:
-            with contextlib.redirect_stdout(io.StringIO()) as capture:
-                v.verify()
-            self.assertIn("DEV_STAGING_INTEGRITY=PASS", capture.getvalue())
+            # A failed prior E2E is intentionally still a staging gate failure:
+            # never reset systemd failure state merely to make a unit test pass.
+            runner = v.systemd_properties("ai-vision-rm-runner")
+            if runner["ActiveState"] != "inactive":
+                with self.assertRaisesRegex(v.StageError, "DEV_UNIT_UNEXPECTEDLY_ACTIVE"):
+                    v.verify()
+            else:
+                with contextlib.redirect_stdout(io.StringIO()) as capture:
+                    v.verify()
+                self.assertIn("DEV_STAGING_INTEGRITY=PASS", capture.getvalue())
 
     def test_static_is_not_mistaken_for_autostart(self):
         state = v.systemd_properties("ai-vision-rm-dev-gateway")
