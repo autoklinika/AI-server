@@ -1,0 +1,36 @@
+[Unit]
+Description=AI Platform Vision read-only GPU client observer (isolated)
+After=local-fs.target
+ConditionPathExists=/dev/kfd
+
+[Service]
+Type=simple
+User=root
+Group=ai-vision-rm
+ExecStart=/usr/bin/python3 -I /usr/local/libexec/ai-platform/vision-gpu-observer.py
+RuntimeDirectory=ai-vision-gpu-observer
+RuntimeDirectoryMode=0750
+UMask=0007
+Restart=on-failure
+RestartSec=4
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+PrivateTmp=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
+AmbientCapabilities=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
+DevicePolicy=closed
+ReadWritePaths=/run/ai-vision-gpu-observer
+
+[Install]
+WantedBy=multi-user.target

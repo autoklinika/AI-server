@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     gateway_vision_allowed_checkpoints: dict[str, str] = Field(default_factory=dict)
     # Required by default for Vision. DEV-only opt-out must be explicit.
     gateway_vision_strict_gpu_clients: bool = True
+    # Root-owned read-only observer AF_UNIX socket; no observer => fail closed.
+    gateway_vision_gpu_observer_socket: Path | None = None
+    # systemd LoadCredential path; never put bearer value in Environment=.
+    gateway_vision_executor_token_file: Path | None = None
     gateway_gpu_marker: Path = Field(default_factory=lambda: Path.home() / ".local/state/ai-platform/gpu-residency.blocked")
     gateway_max_concurrency: int = Field(default=1, ge=1, le=16)
     gateway_max_queue_size: int = Field(default=128, ge=1, le=10_000)

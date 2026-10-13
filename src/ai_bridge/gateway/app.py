@@ -4,6 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 import json
 import hmac
+from pathlib import Path
 from functools import partial
 import logging
 
@@ -26,6 +27,8 @@ from .resource_leases import (
 )
 from .residency import GPUResidency, ResidencyError
 from .vision_attestation import attest_worker
+from .vision_gpu_observer_client import snapshot_observer
+from .vision_residency_evidence import gpu_device_openers
 from .comfy_process import resume_stopped_managed_comfy
 from .scheduler import PriorityScheduler, SchedulerQueueFull, SchedulerTicket
 
@@ -159,8 +162,25 @@ def create_gateway_app(
     resolved = settings or get_settings()
     vision_token = (resolved.gateway_vision_executor_token.get_secret_value()
                     if resolved.gateway_vision_executor_token is not None else None)
+    if resolved.gateway_vision_external_enabled and resolved.gateway_vision_executor_token_file:
+        if vision_token is not None:
+            raise ValueError("Vision credential file and inline secret cannot both be set")
+        path = resolved.gateway_vision_executor_token_file
+        if not path.is_absolute():
+            raise ValueError("Vision credential file must use an absolute path")
+        try:
+            stat = path.stat()
+            # Provisioned root-owned regular file: not world-readable/writable.
+            if not path.is_file() or stat.st_uid!=0 or stat.st_mode & 0o007:
+                raise ValueError("Vision credential file permissions invalid")
+            vision_token=path.read_text(encoding="utf-8").strip()
+        except OSError as exc:
+            raise ValueError("Vision executor credential unavailable") from exc
     if resolved.gateway_vision_external_enabled and (not vision_token or len(vision_token) < 32):
         raise ValueError("Vision GPU requires an explicit >=32-character executor credential")
+    if (resolved.gateway_vision_external_enabled and resolved.gateway_vision_strict_gpu_clients
+            and resolved.gateway_vision_gpu_observer_socket is None):
+        raise ValueError("Strict Vision GPU requires a trusted GPU observer socket")
     if resolved.gateway_vision_external_enabled and not resolved.gateway_vision_allowed_scripts:
         raise ValueError("Vision GPU requires a pinned script allowlist")
     if resolved.gateway_vision_external_enabled and (
@@ -220,6 +240,10 @@ def create_gateway_app(
                                      idle_reserve_bytes=resolved.gateway_comfy_idle_reserve_bytes,
                                      vision_strict_gpu_clients=(resolved.gateway_vision_external_enabled
                                          and resolved.gateway_vision_strict_gpu_clients),
+                                     vision_clients_probe=(partial(snapshot_observer,
+                                         socket_path=resolved.gateway_vision_gpu_observer_socket)
+                                         if resolved.gateway_vision_gpu_observer_socket is not None
+                                         else gpu_device_openers),
                                      resume_comfy=(resume_stopped_managed_comfy if residency_transport is None else None))
             resource_leases.residency = residency
             scheduler.admission_blocked = residency.state == "blocked"
