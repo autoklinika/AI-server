@@ -172,7 +172,9 @@ async def test_recovery_marker_stops_fresh_gateway_after_worker_cleanup_failed(t
         app=create_gateway_app(Settings(
             _env_file=None,gateway_vision_external_enabled=True,
             gateway_vision_executor_token="test-vision-auth-token-not-for-production-2026",
+            gateway_vision_worker_gate_sha256="a"*64,
             gateway_vision_allowed_scripts={"/dummy/script.py":"a"*64},
+            gateway_vision_strict_gpu_clients=False,
             gateway_gpu_marker=gpu.marker),
             upstream_transport=httpx.MockTransport(providers.handle),
             residency_transport=httpx.MockTransport(providers.handle))

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import httpx
 
-from .vision_residency_evidence import gpu_vram_used_bytes, worker_birth_ticks, worker_cgroup_path, scope_members_or_terminal
+from .vision_residency_evidence import gpu_vram_used_bytes, worker_birth_ticks, worker_cgroup_path, scope_members_or_terminal, gpu_device_openers
 
 
 class ResidencyError(RuntimeError):
@@ -22,7 +22,8 @@ class GPUResidency:
                  require_comfy_extension: bool = True, resume_comfy=None,
                  vision_process_probe=worker_birth_ticks, vision_memory_probe=gpu_vram_used_bytes,
                  vision_scope_probe=worker_cgroup_path, vision_cgroup_members=scope_members_or_terminal,
-                 vision_memory_tolerance_bytes: int = 64 * 1024 * 1024):
+                 vision_memory_tolerance_bytes: int = 64 * 1024 * 1024,
+                 vision_clients_probe=gpu_device_openers, vision_strict_gpu_clients: bool = False):
         self.ollama, self.comfy = ollama, comfy
         self.marker, self.timeout, self.poll = marker, timeout, poll
         self.idle_reserve_bytes = idle_reserve_bytes
@@ -32,6 +33,9 @@ class GPUResidency:
         self.cleanup_evidence = None
         self.vision_process_probe = vision_process_probe
         self.vision_memory_probe = vision_memory_probe
+        self.vision_clients_probe = vision_clients_probe
+        self.vision_strict_gpu_clients = bool(vision_strict_gpu_clients)
+        self._vision_baseline_clients = None
         self.vision_scope_probe = vision_scope_probe
         self.vision_cgroup_members = vision_cgroup_members
         self._vision_scope_path: str | None = None
@@ -172,6 +176,11 @@ class GPUResidency:
                 if baseline is None or baseline < 0:
                     raise ResidencyError("Vision GPU memory baseline unavailable")
                 self._vision_baseline_bytes = baseline
+                if self.vision_strict_gpu_clients:
+                    gpu_clients = self.vision_clients_probe()
+                    if gpu_clients is None:
+                        raise ResidencyError("cross-UID GPU client evidence unavailable")
+                    self._vision_baseline_clients = gpu_clients
             self.state = "vision"
         except BaseException:
             self.state = "blocked"
@@ -205,6 +214,12 @@ class GPUResidency:
                 used = self.vision_memory_probe()
                 if used is None or used < 0 or used > self._vision_baseline_bytes + self.vision_memory_tolerance_bytes:
                     raise ResidencyError("Vision GPU memory not returned to baseline")
+                if self.vision_strict_gpu_clients:
+                    gpu_clients = self.vision_clients_probe()
+                    if gpu_clients is None or self._vision_baseline_clients is None:
+                        raise ResidencyError("GPU client inventory unavailable at cleanup")
+                    if gpu_clients - self._vision_baseline_clients:
+                        raise ResidencyError("new GPU device client after Vision cleanup")
                 self.cleanup_evidence = {"vision_worker_exited": True,
                                          "gpu_memory_baseline_bytes": self._vision_baseline_bytes,
                                          "gpu_memory_final_bytes": used,
@@ -213,6 +228,7 @@ class GPUResidency:
             self._vision_worker = None
             self._vision_scope_path = None
             self._vision_baseline_bytes = None
+            self._vision_baseline_clients = None
             self.state = "llm"
         except BaseException:
             self.state = "blocked"

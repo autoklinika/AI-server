@@ -36,11 +36,12 @@ def test_only_pinned_script_is_admitted():
                 if time.monotonic()>=deadline:raise AssertionError("worker not ready")
                 time.sleep(.01)
             allow={str(script.resolve()):sha(script)}
-            assert attest_worker(child.pid,allow,{})
-            assert not attest_worker(child.pid,{}, {})
-            assert not attest_worker(child.pid,{str(script.resolve()):"f"*64},{})
+            assert attest_worker(child.pid,allow,{},sha(gate))
+            assert not attest_worker(child.pid,allow,{},"0"*64)
+            assert not attest_worker(child.pid,{}, {},sha(gate))
+            assert not attest_worker(child.pid,{str(script.resolve()):"f"*64},{},sha(gate))
             script.write_text("print('tampered')\n")
-            assert not attest_worker(child.pid,allow,{})
+            assert not attest_worker(child.pid,allow,{},sha(gate))
         finally:
             if read_fd>=0:os.close(read_fd)
             os.close(write_fd)

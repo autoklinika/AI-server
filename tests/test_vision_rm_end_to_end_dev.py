@@ -39,7 +39,9 @@ def test_scoped_dev_runner_through_actual_gateway_endpoints(monkeypatch):
         monkeypatch.setenv("VISION_RM_EXECUTOR_TOKEN", "test-vision-auth-token-not-for-production-2026")
         settings=Settings(_env_file=None,
                           gateway_vision_executor_token="test-vision-auth-token-not-for-production-2026",
+            gateway_vision_worker_gate_sha256="a"*64,
             gateway_vision_allowed_scripts={"/dummy/script.py":"a"*64},
+            gateway_vision_strict_gpu_clients=False,
                           gateway_gpu_marker=root/"shared-gpu-blocked",
                           gateway_vision_external_enabled=True,
                           gateway_max_concurrency=4)

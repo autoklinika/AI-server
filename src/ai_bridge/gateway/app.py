@@ -163,6 +163,12 @@ def create_gateway_app(
         raise ValueError("Vision GPU requires an explicit >=32-character executor credential")
     if resolved.gateway_vision_external_enabled and not resolved.gateway_vision_allowed_scripts:
         raise ValueError("Vision GPU requires a pinned script allowlist")
+    if resolved.gateway_vision_external_enabled and (
+        not resolved.gateway_vision_worker_gate_sha256
+        or len(resolved.gateway_vision_worker_gate_sha256)!=64
+        or any(ch not in "0123456789abcdef" for ch in resolved.gateway_vision_worker_gate_sha256.lower())
+    ):
+        raise ValueError("Vision GPU requires a pinned worker-gate SHA256")
     registry = resolved.gateway_registry or local_descriptor_registry(
         resolved.node_id, enable_vision=resolved.gateway_vision_external_enabled
     )
@@ -188,6 +194,7 @@ def create_gateway_app(
             attest_worker,
             script_allowlist=resolved.gateway_vision_allowed_scripts,
             checkpoint_allowlist=resolved.gateway_vision_allowed_checkpoints,
+            gate_sha256=resolved.gateway_vision_worker_gate_sha256,
         ) if resolved.gateway_vision_external_enabled else None,
     )
 
@@ -211,6 +218,8 @@ def create_gateway_app(
             residency = GPUResidency(client, comfy, resolved.gateway_gpu_marker,
                                      timeout=resolved.gateway_gpu_transition_timeout,
                                      idle_reserve_bytes=resolved.gateway_comfy_idle_reserve_bytes,
+                                     vision_strict_gpu_clients=(resolved.gateway_vision_external_enabled
+                                         and resolved.gateway_vision_strict_gpu_clients),
                                      resume_comfy=(resume_stopped_managed_comfy if residency_transport is None else None))
             resource_leases.residency = residency
             scheduler.admission_blocked = residency.state == "blocked"

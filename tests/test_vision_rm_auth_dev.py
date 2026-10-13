@@ -18,7 +18,9 @@ def test_opt_in_without_credential_denied_at_startup(tmp_path):
     with pytest.raises(ValueError):
         create_gateway_app(Settings(_env_file=None,gateway_vision_external_enabled=True,
                                    gateway_vision_executor_token="short",
-                                   gateway_vision_allowed_scripts={"/dummy/script.py":"a"*64},
+                                   gateway_vision_worker_gate_sha256="a"*64,
+            gateway_vision_allowed_scripts={"/dummy/script.py":"a"*64},
+            gateway_vision_strict_gpu_clients=False,
                                    gateway_gpu_marker=tmp_path/"dev"))
 
 @pytest.mark.anyio
@@ -26,7 +28,9 @@ async def test_unauthenticated_client_denied_every_lease_route(tmp_path):
     providers=Providers(); providers.models=[]
     app=create_gateway_app(Settings(_env_file=None,gateway_vision_external_enabled=True,
             gateway_vision_executor_token=TOKEN,
-            gateway_vision_allowed_scripts={"/dummy/script.py":"a"*64},gateway_gpu_marker=tmp_path/"marker"),
+            gateway_vision_worker_gate_sha256="a"*64,
+            gateway_vision_allowed_scripts={"/dummy/script.py":"a"*64},
+            gateway_vision_strict_gpu_clients=False,gateway_gpu_marker=tmp_path/"marker"),
             upstream_transport=httpx.MockTransport(providers.handle),
             residency_transport=httpx.MockTransport(providers.handle))
     async with api_client(app) as client:

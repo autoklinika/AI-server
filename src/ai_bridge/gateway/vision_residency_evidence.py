@@ -112,3 +112,58 @@ def scope_members_or_terminal(scope_path: str) -> set[int] | None:
         return set()
     except (OSError, ValueError, subprocess.TimeoutExpired):
         return None
+
+
+def gpu_device_openers() -> frozenset[tuple[int,int]] | None:
+    """Inventory of live kernel GPU FD holders across all UIDs.
+
+    This probe needs authority to inspect /proc/*/fd for ALL local users.
+    Do not substitute empty results for EPERM: that would misreport GPU
+    cleanup when Ollama/ComfyUI are owned by different service accounts.
+    """
+    import os
+    from stat import S_ISCHR
+    gpu_devices=[]
+    for path in (Path("/dev/kfd"),*Path("/dev/dri").glob("renderD*")):
+        try:
+            entry=path.stat()
+            if not S_ISCHR(entry.st_mode):
+                return None
+            gpu_devices.append(entry.st_rdev)
+        except OSError:
+            return None
+    if not gpu_devices:
+        return None
+    device_ids=frozenset(gpu_devices)
+    opened=set()
+    try:
+        processes=[path for path in Path("/proc").iterdir() if path.name.isdecimal()]
+    except OSError:
+        return None
+    for proc in processes:
+        pid=int(proc.name)
+        try:
+            fds=list((proc/"fd").iterdir())
+        except FileNotFoundError:
+            continue  # PID exited between enumeration steps.
+        except (OSError,PermissionError):
+            return None  # Missing cross-UID FD visibility: fail closed.
+        holds_gpu=False
+        for fd in fds:
+            try:
+                stat=fd.stat()
+                if S_ISCHR(stat.st_mode) and stat.st_rdev in device_ids:
+                    holds_gpu=True
+                    break
+            except FileNotFoundError:
+                continue  # FD closed during sample.
+            except (OSError,PermissionError):
+                return None
+        if holds_gpu:
+            birth=worker_birth_ticks(pid)
+            if birth is None:  # PID exited; no live identity to record.
+                continue
+            if birth<=0:
+                return None
+            opened.add((pid,birth))
+    return frozenset(opened)

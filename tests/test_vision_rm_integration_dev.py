@@ -64,7 +64,9 @@ async def test_vision_lease_reuses_shared_scheduler_and_cleanup(tmp_path):
     app=create_gateway_app(
         Settings(_env_file=None, gateway_vision_external_enabled=True,
                  gateway_vision_executor_token=TEST_VISION_TOKEN,
-                 gateway_vision_allowed_scripts={"/dummy/script.py":"a"*64},
+                 gateway_vision_worker_gate_sha256="a"*64,
+            gateway_vision_allowed_scripts={"/dummy/script.py":"a"*64},
+            gateway_vision_strict_gpu_clients=False,
                  gateway_gpu_marker=tmp_path/"vision-marker"),
         upstream_transport=httpx.MockTransport(providers.handle),
         residency_transport=httpx.MockTransport(providers.handle),
