@@ -21,7 +21,7 @@ Data: 2026-10-13. Scope: DEV, **produkcja poza zakresem**.
    - ai-vision-rm-broker.service — UID ai-gateway-rm, odczyt chronionego sekretu i root GPU observer;
    - ai-vision-rm-runner.service — UID ai-vision, brak sekretu kontrolera, root-owned CPU-only worker.
 
-   **Wszystkie trzy jednostki pozostają zatrzymane i niewłączone w autostarcie.** Instalator odmawia nadpisania wcześniej istniejących plików lub wyników.
+   **Wszystkie trzy jednostki pozostają zatrzymane i niewłączone w autostarcie.** Instalator nie nadpisuje wcześniej istniejących plików: jeśli staging istnieje, wymaga pełnej zgodności plików, hashy, własności root, praw katalogów, jednostek i braku autostartu. Niekompletne lub zmodyfikowane stagingi są blokowane bez kasowania danych. Weryfikacja read-only, bez sudo: `bash deploy/vision-rm-security/stage-crossuid-dev.sh --verify`.
 
 2. Test CPU-only:
    `sudo bash deploy/vision-rm-security/accept-crossuid-dev-cpu.sh --apply`
@@ -41,3 +41,25 @@ Data: 2026-10-13. Scope: DEV, **produkcja poza zakresem**.
 Oczekiwane: `CROSS_UID_DEV_STAGING=PASS`, a po teście `CROSS_UID_CONTROLLER_MODEL_CPU_E2E=PASS` i `PRODUCTION_GATEWAY=UNCHANGED`.
 
 Jeśli test nie przejdzie, zachować logi z `journalctl -u ai-vision-rm-*` i nie robić automatycznej promocji. CPU-only potwierdza systemd IPC, nie fizyczny ROCm; przed zmianą produkcyjną pozostają rzeczywiste GPU pod odseparowanymi UID, odtworzenie awarii, niezależny audyt i jawna zgoda na merge.
+
+## Diagnostyka i korekta stagingu — 2026-10-13, 18:59 CEST
+
+Rzeczywista inspekcja serwera przez Remote Desktop Commander, przed poprawką:
+
+| Jednostka | UnitFileState | is-enabled (stdout / RC) | ActiveState | Autostart |
+|---|---|---|---|---|
+| ai-vision-rm-dev-gateway | static | static / 0 | inactive | brak |
+| ai-vision-rm-broker | disabled | disabled / 1 | inactive | brak |
+| ai-vision-rm-runner | disabled | disabled / 1 | inactive | brak |
+
+Przyczyna komunikatu `DEV_UNIT_UNEXPECTEDLY_ENABLED=ai-vision-rm-dev-gateway` jest potwierdzona: `systemctl is-enabled --quiet` zwraca **0 również dla jednostki static**. Nie było autostartu; wszystkie jednostki były nieaktywne. Staging był już fizycznie zainstalowany, w całości root-owned. Nic nie usunięto ani nie przeinstalowano.
+
+Poprawka gałęzi PR #163:
+- `stage-crossuid-dev.sh --verify` — read-only, uruchamialny bez `sudo`.
+- `--stage` — przy istniejącym stagingu waliduje go i kończy bez nadpisania; niekompletne lub rozbieżne dane oznacza **BLOCKED**.
+- `verify-crossuid-dev-stage.py` — porównanie całego drzewa źródeł i staged, SHA-256 zawartości, wykrywanie dodatkowych/brakujących plików, root ownership, uprawnienia plików i katalogów nadrzędnych, brak symlinków autostartu, jawne UnitFileState i nieaktywność jednostek.
+- `test_verify_crossuid_dev_stage.py` — przypadki dodatnie i negatywne (static, enabled, active, symlink autostartu, zmienione dane, niewłaściwy właściciel).
+
+Wyniki weryfikacji bez praw administratora: `DEV_STAGING_VERIFICATION=PASS`, `DEV_STAGING_INTEGRITY=PASS`, `DEV_STAGING_AUTOSTART=ABSENT`; jednostki DEV pozostawały zatrzymane. Weryfikacja nie oznacza zaliczenia CPU-only E2E.
+
+**Nadal NO-GO dla produkcji.** Do wykonania pozostaje rzeczywisty `accept-crossuid-dev-cpu.sh --apply` jako root. W sesji Remote MCP `sudo -n true` zwraca `interactive authentication is required`; nie uruchamiano usług DEV bez autoryzacji, nie obchodzono polityki systemu. Po autoryzacji należy uruchomić CPU-only E2E, zebrać logi, sprawdzić zwolnienie lease i brak zmian produkcji przed jakimkolwiek testem GPU lub decyzją o merge.

@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # Install ROOT-OWNED source and disabled DEV-only units. No services STARTED.
+# --verify is read-only and intentionally does not require sudo.
 set -euo pipefail
-if [[ "${1:-}" != "--stage" || $# -ne 1 ]]; then
-  echo "Usage: sudo bash stage-crossuid-dev.sh --stage";exit 2
+if (( $# != 1 )) || [[ "$1" != "--stage" && "$1" != "--verify" ]]; then
+  echo "Usage: sudo bash stage-crossuid-dev.sh --stage | bash stage-crossuid-dev.sh --verify"; exit 2
 fi
-if (( EUID != 0 )); then echo "Administrator approval required" >&2;exit 3;fi
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+if [[ "$1" == "--verify" ]]; then
+  exec python3 "$HERE/verify-crossuid-dev-stage.py"
+fi
+if (( EUID != 0 )); then echo "Administrator approval required" >&2; exit 3; fi
 REPO="$(cd -- "$HERE/../.." && pwd)"
 SRC="$REPO/src/ai_bridge"
 DEST=/opt/ai-platform/vision-rm-candidate
@@ -13,19 +17,34 @@ BIN=/usr/local/libexec/ai-platform
 MANIFEST=/usr/local/share/ai-platform/vision-rm/job.json
 for name in ai-vision ai-gateway-rm; do getent passwd "$name" >/dev/null;done
 for name in ai-gateway ollama ai-vision-gpu-observer; do systemctl is-active --quiet "$name"; done
-if [[ -e "$DEST" || -L "$DEST" ]]; then
-  echo "DEV_CANDIDATE_ALREADY_EXISTS=YES; do not overwrite" >&2;exit 4
-fi
+# An interrupted previous installation is not a reason to overwrite root files.
+# Attest an existing full stage byte-for-byte; reject partial or divergent state.
+stage_paths=(
+  "$DEST"
+  "$BIN/vision-worker-gate.py"
+  "$BIN/vision-rm-runner.py"
+  "$BIN/vision-rm-dev-cpu-worker.py"
+  "$MANIFEST"
+)
 for service in ai-vision-rm-dev-gateway ai-vision-rm-broker ai-vision-rm-runner; do
-  if [[ -e "/etc/systemd/system/${service}.service" ]]; then
-    echo "DEV_UNIT_ALREADY_EXISTS=$service" >&2;exit 5
-  fi
+  stage_paths+=("/etc/systemd/system/${service}.service")
 done
-for path in "$BIN/vision-worker-gate.py" "$BIN/vision-rm-runner.py" "$BIN/vision-rm-dev-cpu-worker.py" "$MANIFEST"; do
+stage_present=0
+for path in "${stage_paths[@]}"; do
   if [[ -e "$path" || -L "$path" ]]; then
-    echo "DEV_INSTALL_PATH_ALREADY_EXISTS=$path" >&2;exit 6
+    (( stage_present += 1 ))
   fi
 done
+if (( stage_present != 0 )); then
+  if python3 "$HERE/verify-crossuid-dev-stage.py"; then
+    echo "DEV_STAGING_EXISTING=VERIFIED_NO_CHANGES"
+    echo "CROSS_UID_DEV_STAGING=PASS"
+    echo "PRODUCTION_GATEWAY=UNCHANGED"
+    exit 0
+  fi
+  echo "DEV_STAGING_INCOMPLETE_OR_DIVERGENT=BLOCKED; no overwrite attempted" >&2
+  exit 4
+fi
 test -f "$HERE/vision_rm_runner.py"
 test -f "$HERE/vision_rm_dev_cpu_worker.py"
 test -f "$HERE/vision_rm_dev_cpu_job.json"
@@ -70,12 +89,10 @@ for unit in ai-vision-rm-dev-gateway ai-vision-rm-broker ai-vision-rm-runner; do
   install -o root -g root -m 0644 "$HERE/${unit}.service" "/etc/systemd/system/${unit}.service"
 done
 systemctl daemon-reload
-for unit in ai-vision-rm-dev-gateway ai-vision-rm-broker ai-vision-rm-runner; do
-  systemctl is-enabled --quiet "$unit" && {
-     echo "DEV_UNIT_UNEXPECTEDLY_ENABLED=$unit" >&2;exit 7; } || true
-  systemctl is-active --quiet "$unit" && {
-     echo "DEV_UNIT_UNEXPECTEDLY_ACTIVE=$unit" >&2;exit 8; } || true
-done
+# 'systemctl is-enabled --quiet' exits 0 for STATIC units as well as enabled.
+# Explicit UnitFileState, service inactivity, symlinks and hashes are attested.
+python3 "$HERE/verify-crossuid-dev-stage.py"
+echo "DEV_STAGING_EXISTING=NEWLY_INSTALLED"
 echo "CROSS_UID_DEV_STAGING=PASS"
 echo "DEV_SERVICE_UNITS=INSTALLED_BUT_STOPPED"
 echo "DEV_CPU_JOB=ROOT_OWNED_PINNED"
