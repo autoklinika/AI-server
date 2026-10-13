@@ -76,3 +76,7 @@ Nie ma automatycznej promocji modelu. Benchmark V1 zatwierdza jedynie poprawnoś
 - Smoke i pilotaż WinCLIP CPU działają we własnym venv; szczegóły i wyniki **nieprodukcyjne** w `PILOT_WINCLIP_2026-10-13.md`.
 - Dane, predykcje i wyniki liczbowe pozostają tylko na NVMe, nie w publicznym GH.
 - Uwaga: `specimen_id` w VisA jest proxy obrazu, nie potwierdzonym fizycznym PCB.
+
+## MODEL-01 CPU smoke + tile pilot (2026-10-13)
+
+WinCLIP CPU and MiniCPM-V 4.7 1B CPU passed real-image smoke tests. MiniCPM is not yet calibrated or defect-type validated. A paired high-resolution WinCLIP tile pilot has completed, with different outcomes and separate thresholds for the two preprocessing modes; details in `MODEL_01_CPU_AND_TILING_2026-10-13.md` and `B1_WINCLIP_TILING_PILOT_2026-10-13.md`. No full benchmark or model promotion.
