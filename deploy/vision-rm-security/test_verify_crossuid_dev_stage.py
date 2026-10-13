@@ -17,9 +17,15 @@ spec.loader.exec_module(v)
 
 class StageAttestationTests(unittest.TestCase):
     def test_live_stage_fails_closed_on_hash_drift_or_passes_when_matching(self):
-        source = v.SRC / "benchmarks/vision_rm_executor.py"
-        staged = v.DEST / "src/ai_bridge/benchmarks/vision_rm_executor.py"
-        if v.sha256(source) != v.sha256(staged):
+        # Any edited DEV source differs from the deliberately immutable
+        # root-owned staging until an authorized, hash-pinned refresh.
+        staged_root = v.DEST / "src/ai_bridge"
+        source_files, _ = v.listing(v.SRC, source=True)
+        changed = [
+            rel for rel in source_files
+            if v.sha256(v.SRC / rel) != v.sha256(staged_root / rel)
+        ]
+        if changed:
             with self.assertRaisesRegex(v.StageError, "STAGE_SOURCE_TREE_HASH_MISMATCH"):
                 v.verify()
         else:

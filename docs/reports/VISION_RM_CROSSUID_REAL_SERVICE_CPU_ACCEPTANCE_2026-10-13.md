@@ -104,3 +104,17 @@ Druga próba uruchomiona przez operatora po przypiętej aktualizacji `vision_rm_
 **Następny krok — tylko diagnostyka, bez retry:** `sudo python3 deploy/vision-rm-security/inspect-crossuid-dev-failure.py`. Skrypt czyta wyłącznie metadane poświadczenia workera i markera, schemat CPU result oraz allowlistowane fragmenty `worker.log`; nigdy nie wypisuje `authorized.json` ani sekretu kontrolnego. Uzyskać z niego szczególnie: czy istnieje DEV block marker, czy worker utworzył wynik, czy brakuje autoryzacji, czy wystąpił błąd HTTP/worker. Następnie zaprojektować dokładny, odczytowy dowód terminalnego stanu systemd user scope przez zaufany komponent uprzywilejowany. Nie osłabiać fail-closed i nie resetować markera bez audytu.
 
 **NO-GO** pozostaje; nie ma zgody na realny ROCm GPU, merge lub produkcyjny cutover.
+
+## Po administracyjnej diagnostyce drugiej próby — dowody 21:17, dalsza blokada
+
+Wynik narzędzia `inspect-crossuid-dev-failure.py` (odczyt po teście, bez nowych usług):
+`DEV_CPU_RESULT_PRESENT=True`, poprawny schemat i `status=cpu_only`,
+`worker_uid=994`, `rm_control_credential_absent=True`,
+`gpu_imports=False`, `VISION_CROSS_UID_CPU_WORKER=PASS`.
+`DEV_BLOCK_MARKER_PRESENT=False`, broker socket absent, DEV gateway/broker inactive/success, runner failed, produkcja active.
+Zatem **wykonanie workera CPU-only z separacją sekretu jest zaliczone**; **broker finish / wiarygodny release nadal NIEZALICZONE**.
+
+Dodatkowy niezależny audyt: `systemctl --user show` dla nieistniejącego scope zwraca rc=0, `LoadState=not-found, ActiveState=inactive, SubState=dead, ControlGroup=""`.
+Poprawiono wyłącznie gałąź DEV, aby dowód terminalny wymagał także `LoadState=loaded`, `SubState=dead`, pełnego pustego `ControlGroup`; sama pustka w cgroup również nie wystarcza już do release. Jeżeli nie ma wiarygodnego dowodu, wynik pozostaje `None` (fail-closed), nawet jeśli skutkiem jest zatrzymanie całego E2E.
+
+Szczegółowy model zagrożeń i proponowany sposób uzyskania prawdziwego cross-UID dowodu zakończenia systemd opisano w `VISION_RM_CROSSUID_TERMINAL_SECURITY_GATE_2026-10-13.md`. **Nie wdrożono jeszcze mechanizmu terminal attestation ani nie restartowano obserwatora**. Przed następnym E2E wymagana jest decyzja projektowa i osobny audyt rozwiązania.

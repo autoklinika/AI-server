@@ -76,16 +76,19 @@ def scoped_processes(scope_path: str) -> set[int] | None:
 
 
 def scope_members_or_terminal(scope_path: str) -> set[int] | None:
-    """Require BOTH absent cgroup and terminal systemd state before release.
+    """Require empty-or-absent cgroup AND attested terminal systemd state.
 
-    Unknown/unreadable systemd status is not evidence of cleanup.
+    Unknown/unreadable systemd status or a collected unit is not proof.
     """
     import os
     import subprocess
     from pathlib import PurePosixPath
     members=scoped_processes(scope_path)
-    if members is not None:
-        return members
+    if members:
+        return members  # A nonempty cgroup definitively blocks cleanup.
+    # An empty cgroup (or a vanished cgroup) is not sufficient proof that the
+    # transient systemd scope terminated. Require independently attested
+    # terminal state in BOTH cases before returning an empty set.
     if not isinstance(scope_path,str):
         return None
     unit=PurePosixPath(scope_path).name
@@ -99,15 +102,19 @@ def scope_members_or_terminal(scope_path: str) -> set[int] | None:
          "DBUS_SESSION_BUS_ADDRESS":f"unix:path=/run/user/{uid}/bus"}
     try:
         proc=subprocess.run(["systemctl","--user","show",unit,
-                             "-p","ActiveState","-p","ControlGroup"],
+                             "-p","LoadState","-p","ActiveState",
+                             "-p","SubState","-p","ControlGroup"],
                              env=env,text=True,capture_output=True,timeout=3,check=False)
         if proc.returncode!=0:
             return None
         fields=dict(item.split("=",1) for item in proc.stdout.splitlines() if "=" in item)
-        if fields.get("ActiveState")!="inactive":
-            return None
-        # A stale/surviving ControlGroup is suspicious; must be empty after stop.
-        if fields.get("ControlGroup") not in ("",None):
+        # A nonexistent scope exits 0 and reports not-found + inactive +
+        # empty ControlGroup. That is NOT terminal proof.
+        # A garbage-collected scope is therefore unknown, not clean.
+        if (fields.get("LoadState")!="loaded"
+                or fields.get("ActiveState")!="inactive"
+                or fields.get("SubState")!="dead"
+                or fields.get("ControlGroup")!=""):
             return None
         return set()
     except (OSError, ValueError, subprocess.TimeoutExpired):
