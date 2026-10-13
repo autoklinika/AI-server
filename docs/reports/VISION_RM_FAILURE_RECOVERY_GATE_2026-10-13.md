@@ -59,3 +59,12 @@ Cleanup executora wcześniej zatrzymywał scope tylko, gdy proces nadrzędny `sy
 - Feature flag `AI_BRIDGE_GATEWAY_VISION_EXTERNAL_ENABLED` pozostaje OFF na produkcji. Main, Qwen3.8 i adaptery nietknięte.
 
 **Gate: DEV mock fault/recovery PASS; physical GPU fault/recovery destructive gate NOT RUN; production promotion NOT AUTHORIZED.**
+
+## Ponowny fizyczny test GPU po poprawkach
+
+Po implementacji zabezpieczeń wykonano drugą kontrolowaną inferencję **rzeczywistego** WinCLIP/ROCm 7.14.1 przez nowy DEV Resource Manager i systemd cgroup scope. Cztery obrazy PCB3: **PASS**, czas całego testu **16,3 s**, wykonawca `vision-bench-741ee91ea90a.scope`, a pełny cykl cgroup/admission/VRAM cleanup/lease release zakończył się prawidłowo.
+
+- Po próbie: PROD Gateway `gpu_residency=llm`, `recovery_required=false`, 0 leases i 0 aktywnych zadań. Ollama 0 modeli rezydentnych; usługi nadal aktywne.
+- DEV port 11575 zatrzymany, DEV recovery marker nie istnieje. Brak świeżych GPU fault/reset/timeout w przeglądanym logu jądra.
+- Artefakty testu: `/srv/ai-data/evaluation/vision-rm-dev-gate/postfault-physical-result.log`, `winclip-postfault-real-rm-4img.json`, `winclip-postfault-scope.log`. W GH wyłącznie podsumowanie; bez publikacji obrazów/wag.
+- Pozostaje ograniczenie: **nie wykonywano destrukcyjnego SIGKILL w trakcie aktywnych kerneli GPU**. Test SIGKILL i timeout prawdziwego cgroup wykorzystywał symulowany accelerator, ponieważ wspólnego sprzętu produkcyjnego nie wolno celowo narażać na driver hang.
