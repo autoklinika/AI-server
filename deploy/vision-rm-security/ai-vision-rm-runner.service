@@ -19,7 +19,7 @@ TimeoutStopSec=25
 UMask=0077
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectHome=true
+ProtectHome=read-only
 ProtectSystem=strict
 ProtectControlGroups=true
 ProtectKernelTunables=true
@@ -28,10 +28,14 @@ ProtectKernelLogs=true
 RestrictSUIDSGID=true
 LockPersonality=true
 SystemCallArchitectures=native
-RestrictAddressFamilies=AF_UNIX
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 DevicePolicy=closed
 ReadWritePaths=/srv/ai-data/evaluation/vision-rm-service /var/lib/ai-vision
 
+# ProtectHome=read-only retains access to the dedicated /run/user/994/bus;
+# ProtectHome=true hides that socket and breaks systemd-run --user scopes.
+# Gate process must use loopback TCP ONLY to verify a single scoped worker use.
+# Never give it a controller bearer, even with localhost-only Gateway.
 # NOT enabled at boot. Use explicit operator-controlled start after DEV gateway
 # preflight and production queue fencing.
 

@@ -1,0 +1,6 @@
+{
+  "python": "/usr/bin/python3",
+  "script": "/usr/local/libexec/ai-platform/vision-rm-dev-cpu-worker.py",
+  "args": [],
+  "max_seconds": 25
+}

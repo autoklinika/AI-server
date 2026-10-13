@@ -1,0 +1,32 @@
+[Unit]
+Description=Vision DEV Resource Manager CPU-only mock providers - never production Gateway
+After=network-online.target ai-vision-gpu-observer.service
+Wants=network-online.target ai-vision-gpu-observer.service
+ConditionPathExists=/etc/ai-platform/vision-rm/executor.token
+
+[Service]
+Type=simple
+User=ai-gateway-rm
+Group=ai-vision-rm-control
+SupplementaryGroups=ai-vision-rm
+WorkingDirectory=/var/lib/ai-gateway-rm
+Environment=PYTHONPATH=/opt/ai-platform/vision-rm-candidate/src
+ExecStart=/opt/ai-platform/current/services/ai-gateway/.venv/bin/python -m ai_bridge.benchmarks.vision_rm_dev_gateway
+Restart=no
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+DevicePolicy=closed
+ReadWritePaths=/var/lib/ai-gateway-rm
+
+# Intentionally no Install stanza. This is a manually started DEV-only unit.

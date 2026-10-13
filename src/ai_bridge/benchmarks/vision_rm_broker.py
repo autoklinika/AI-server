@@ -40,7 +40,10 @@ def trusted_runner_pid(pid: int, *, uid: int, runner_path: Path, sha256_hex: str
         if groups != [f"0::/system.slice/{RUNNER_UNIT}"]:
             return False
         argv=[a.decode("utf-8") for a in (proc/"cmdline").read_bytes().rstrip(b"\x00").split(b"\x00")]
-        if len(argv)<2 or Path(argv[1]).resolve(strict=True)!=runner_path:
+        # Pin the exact root-owned service ExecStart command line. Python -I
+        # occurs BEFORE the script and must never be mistaken for a path.
+        if (len(argv)!=3 or argv[1]!="-I" or
+                Path(argv[2]).resolve(strict=True)!=runner_path):
             return False
         actual=runner_path.stat()
         if actual.st_uid!=0 or actual.st_mode & 0o022 or not stat.S_ISREG(actual.st_mode):
