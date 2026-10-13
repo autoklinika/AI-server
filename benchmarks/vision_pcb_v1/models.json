@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "scope": "Vision PCB – bez wzorca referencyjnego konkretnego egzemplarza",
+  "candidates": [
+    {"id":"minicpm-v4.7-35b-a3b", "role":"vlm", "train_track":"zero-shot / adapter only after independent evaluation", "runtime_verified":false},
+    {"id":"minicpm-v4.7-1b", "role":"vlm", "train_track":"zero-shot / optional fine-tune", "runtime_verified":false},
+    {"id":"minicpm-v4.6", "role":"vlm", "train_track":"zero-shot / optional fine-tune", "runtime_verified":false},
+    {"id":"qwen3-vl-8b", "role":"vlm", "train_track":"zero-shot / optional fine-tune", "runtime_verified":false},
+    {"id":"patchcore", "role":"anomaly", "train_track":"normal-only memory bank", "runtime_verified":false},
+    {"id":"yolo", "role":"detection", "train_track":"defect-labeled supervised detection", "runtime_verified":false},
+    {"id":"winclip", "role":"anomaly", "train_track":"zero-shot frozen baseline", "runtime_verified":false}
+  ]
+}

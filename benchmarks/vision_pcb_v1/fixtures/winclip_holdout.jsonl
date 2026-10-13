@@ -1,0 +1,4 @@
+{"sample_id": "holdout-01", "model_id": "winclip", "image_score": 0.05, "localization_mode": "boxes", "regions": []}
+{"sample_id": "holdout-02", "model_id": "winclip", "image_score": 0.1, "localization_mode": "boxes", "regions": []}
+{"sample_id": "holdout-03", "model_id": "winclip", "image_score": 0.75, "localization_mode": "boxes", "regions": [{"box": [0.1, 0.1, 0.4, 0.4], "score": 0.9}]}
+{"sample_id": "holdout-04", "model_id": "winclip", "image_score": 0.95, "localization_mode": "boxes", "regions": [{"box": [0.1, 0.1, 0.4, 0.4], "score": 0.9}]}
