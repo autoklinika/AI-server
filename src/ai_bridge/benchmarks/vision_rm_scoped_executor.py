@@ -45,6 +45,8 @@ class ScopedVisionExecutor:
 
     def execute(self, *, python: Path, script: Path, args: list[str], log: Path,
                 max_seconds: float = 110, queue_timeout_seconds: float = 120) -> dict:
+        if os.environ.get("VISION_RM_EXECUTOR_TOKEN_FILE"):
+            raise VisionExecutionError("legacy same-UID Vision runner forbidden with protected RM controller token")
         if max_seconds < 10 or queue_timeout_seconds < 1:
             raise ValueError("invalid timeouts")
         env = self._systemd_env()
@@ -125,7 +127,8 @@ class ScopedVisionExecutor:
                         "provider":"vision-local","capability":"image-analysis",
                         "worker_pid":worker_pid,"scope_path":scope_path})
                     use_id=use["use_id"]
-                    payload=json.dumps({"lease_id":lease_id,"use_id":use_id})+"\n"
+                    payload=json.dumps({"lease_id":lease_id,"use_id":use_id,
+                                        "worker_token":use["worker_token"]})+"\n"
                     pending=tmp_root/"authorization.tmp"
                     with pending.open("x",encoding="utf-8") as fp:
                         fp.write(payload)

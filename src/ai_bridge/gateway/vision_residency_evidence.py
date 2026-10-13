@@ -35,14 +35,14 @@ def gpu_vram_used_bytes() -> int | None:
     except (OSError, ValueError):
         return None
 
-def worker_cgroup_path(pid: int) -> str | None:
+def worker_cgroup_path(pid: int, *, expected_uid: int | None = None) -> str | None:
     """Return exact, trusted user-manager Vision scope for the worker PID."""
     import os
     import re
     try:
         uid = Path(f"/proc/{pid}").stat().st_uid
-        if uid != os.getuid():
-            return None  # No authorizing a GPU worker owned by another user.
+        if uid != (expected_uid if expected_uid is not None else os.getuid()):
+            return None  # Only the configured model worker UID is admissible.
         raw = Path(f"/proc/{pid}/cgroup").read_text(encoding="ascii")
         lines = [line[3:].strip() for line in raw.splitlines() if line.startswith("0::")]
         if len(lines) != 1:
@@ -68,50 +68,57 @@ def scoped_processes(scope_path: str) -> set[int] | None:
     scope = PurePosixPath(scope_path)
     if ".." in scope.parts or not re.fullmatch(r"vision-bench-[0-9a-f]{12}\.scope", scope.name):
         return None
-    path = Path("/sys/fs/cgroup") / scope_path.lstrip("/") / "cgroup.procs"
+    import os
+    root = Path("/sys/fs/cgroup") / scope_path.lstrip("/")
+    members = set()
+    count = 0
+    def unreadable(error):
+        raise error
     try:
-        return {int(pid) for pid in path.read_text(encoding="ascii").split()}
-    except (FileNotFoundError, OSError, ValueError):
-        return None  # Missing scope alone is never proof of successful exit.
+        # Diagnostic/admission snapshot only. No atomicity or containment claim.
+        for directory, children, _ in os.walk(root, followlinks=False, onerror=unreadable):
+            count += 1
+            if count > 1024:
+                return None
+            current = Path(directory)
+            if current.is_symlink() or any((current / child).is_symlink() for child in children):
+                return None
+            with (current / "cgroup.procs").open(encoding="ascii") as stream:
+                raw = stream.read(65537)
+            if len(raw) > 65536:
+                return None
+            pids = raw.split()
+            if any(not pid.isdecimal() or int(pid) <= 1 for pid in pids):
+                return None
+            members.update(map(int, pids))
+            if len(members) > 32768:
+                return None
+        return members if count else None
+    except (OSError, ValueError):
+        return None
+
+
+def scope_containment_available(scope_path: str) -> bool:
+    """No current user scope provides a root-enforced execution boundary.
+
+    Admission must stop before provider/GPU I/O. This is deliberately not an
+    environment flag: a future implementation needs reviewed kernel/manager
+    evidence bound to a parked worker, not a caller-supplied boolean.
+    """
+    return False
 
 
 def scope_members_or_terminal(scope_path: str) -> set[int] | None:
-    """Require BOTH absent cgroup and terminal systemd state before release.
+    """Return live members for admission/denial, NEVER terminal proof.
 
-    Unknown/unreadable systemd status is not evidence of cleanup.
+    A user-manager scope has no enforced descendant boundary. Even a loaded,
+    inactive, dead unit may be a reused instance or have escaped descendants.
+    A late systemctl query cannot establish admission-to-exit continuity.
+    Until a root-enforced boundary and trusted lifecycle collector exist,
+    empty/absent observations must retain ownership (including same-UID use).
     """
-    import os
-    import subprocess
-    from pathlib import PurePosixPath
-    members=scoped_processes(scope_path)
-    if members is not None:
-        return members
-    if not isinstance(scope_path,str):
-        return None
-    unit=PurePosixPath(scope_path).name
-    if not __import__('re').fullmatch(r"vision-bench-[0-9a-f]{12}\.scope",unit):
-        return None
-    uid=os.getuid()
-    expected=f"/user.slice/user-{uid}.slice/user@{uid}.service/app.slice/{unit}"
-    if scope_path!=expected:
-        return None
-    env={**os.environ,"XDG_RUNTIME_DIR":f"/run/user/{uid}",
-         "DBUS_SESSION_BUS_ADDRESS":f"unix:path=/run/user/{uid}/bus"}
-    try:
-        proc=subprocess.run(["systemctl","--user","show",unit,
-                             "-p","ActiveState","-p","ControlGroup"],
-                             env=env,text=True,capture_output=True,timeout=3,check=False)
-        if proc.returncode!=0:
-            return None
-        fields=dict(item.split("=",1) for item in proc.stdout.splitlines() if "=" in item)
-        if fields.get("ActiveState")!="inactive":
-            return None
-        # A stale/surviving ControlGroup is suspicious; must be empty after stop.
-        if fields.get("ControlGroup") not in ("",None):
-            return None
-        return set()
-    except (OSError, ValueError, subprocess.TimeoutExpired):
-        return None
+    members = scoped_processes(scope_path)
+    return members if members else None
 
 
 def gpu_device_openers() -> frozenset[tuple[int,int]] | None:

@@ -1,0 +1,132 @@
+"""DEV security regression: terminal user scope must not be guessed cross-UID.
+
+Demonstrates that the current cross-UID cleanup remains fail-closed if its
+kernel cgroup disappears before systemd status can be attested. This is
+not yet a positive acceptance test of terminal-state evidence.
+"""
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+import unittest
+from unittest.mock import patch
+
+MOD = Path(__file__).resolve().parents[1] / "src/ai_bridge/gateway/vision_residency_evidence.py"
+spec = importlib.util.spec_from_file_location("vision_residency_evidence_crossuid", MOD)
+assert spec and spec.loader
+evidence = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(evidence)
+
+
+class CrossUidTerminalTests(unittest.TestCase):
+    def test_missing_worker_scope_under_another_uid_must_not_claim_empty(self):
+        scope = ("/user.slice/user-994.slice/user@994.service/app.slice/"
+                 "vision-bench-c68e5f31bac6.scope")
+        with patch.object(evidence, "scoped_processes", return_value=None), patch(
+                "os.getuid", return_value=993), patch(
+                "subprocess.run") as process:
+            self.assertIsNone(evidence.scope_members_or_terminal(scope))
+            process.assert_not_called()
+
+    def test_missing_scope_with_matching_uid_but_unavailable_systemd_denied(self):
+        scope = ("/user.slice/user-994.slice/user@994.service/app.slice/"
+                 "vision-bench-c68e5f31bac6.scope")
+        with patch.object(evidence, "scoped_processes", return_value=None), patch(
+                "os.getuid", return_value=994), patch(
+                "subprocess.run") as process:
+            process.return_value.returncode = 1
+            process.return_value.stdout = ""
+            self.assertIsNone(evidence.scope_members_or_terminal(scope))
+
+    def test_nonexistent_scope_is_not_terminal_proof_even_with_rc_zero(self):
+        scope = ("/user.slice/user-994.slice/user@994.service/app.slice/"
+                 "vision-bench-c68e5f31bac6.scope")
+        with patch.object(evidence, "scoped_processes", return_value=None), patch(
+                "os.getuid", return_value=994), patch("subprocess.run") as process:
+            process.return_value.returncode = 0
+            process.return_value.stdout = (
+                "LoadState=not-found\nActiveState=inactive\n"
+                "SubState=dead\nControlGroup=\n"
+            )
+            self.assertIsNone(evidence.scope_members_or_terminal(scope))
+            process.assert_not_called()
+
+    def test_loaded_dead_scope_without_lifecycle_never_proves_terminal(self):
+        scope = ("/user.slice/user-994.slice/user@994.service/app.slice/"
+                 "vision-bench-c68e5f31bac6.scope")
+        with patch.object(evidence, "scoped_processes", return_value=None), patch(
+                "os.getuid", return_value=994), patch("subprocess.run") as process:
+            process.return_value.returncode = 0
+            process.return_value.stdout = (
+                "LoadState=loaded\nActiveState=inactive\nSubState=dead\nControlGroup=\n"
+            )
+            self.assertIsNone(evidence.scope_members_or_terminal(scope))
+            for altered in ("LoadState=not-found", "ActiveState=active",
+                            "SubState=running", "ControlGroup=/stale", "ControlGroup"):
+                original = process.return_value.stdout
+                if altered == "ControlGroup":
+                    process.return_value.stdout = original.replace("ControlGroup=\n", "")
+                else:
+                    key = altered.split("=", 1)[0]
+                    process.return_value.stdout = original.replace(
+                        next(line for line in original.splitlines() if line.startswith(key+"=")),
+                        altered)
+                with self.subTest(change=altered):
+                    self.assertIsNone(evidence.scope_members_or_terminal(scope))
+                process.return_value.stdout = original
+
+    def test_empty_cgroup_does_not_override_active_systemd_scope(self):
+        scope = ("/user.slice/user-994.slice/user@994.service/app.slice/"
+                 "vision-bench-c68e5f31bac6.scope")
+        with patch.object(evidence, "scoped_processes", return_value=set()), patch(
+                "os.getuid", return_value=994), patch("subprocess.run") as process:
+            process.return_value.returncode = 0
+            process.return_value.stdout = (
+                "LoadState=loaded\nActiveState=active\n"
+                "SubState=running\nControlGroup=/user.slice/...\n"
+            )
+            self.assertIsNone(evidence.scope_members_or_terminal(scope))
+            process.assert_not_called()
+
+    def test_empty_cgroup_and_loaded_dead_scope_is_still_unknown(self):
+        scope = ("/user.slice/user-994.slice/user@994.service/app.slice/"
+                 "vision-bench-c68e5f31bac6.scope")
+        with patch.object(evidence, "scoped_processes", return_value=set()), patch(
+                "os.getuid", return_value=994), patch("subprocess.run") as process:
+            process.return_value.returncode = 0
+            process.return_value.stdout = (
+                "LoadState=loaded\nActiveState=inactive\n"
+                "SubState=dead\nControlGroup=\n"
+            )
+            self.assertIsNone(evidence.scope_members_or_terminal(scope))
+
+    def test_malformed_duplicate_fields_and_bus_timeout_fail_closed(self):
+        import subprocess
+        scope = "/user.slice/user-994.slice/user@994.service/app.slice/vision-bench-c68e5f31bac6.scope"
+        good = "LoadState=loaded\nActiveState=inactive\nSubState=dead\nControlGroup=\n"
+        with patch.object(evidence, "scoped_processes", return_value=set()), patch(
+                "os.getuid", return_value=994), patch("subprocess.run") as process:
+            process.return_value.returncode=0
+            for raw in (good+"LoadState=loaded\n", good+"garbage\n", good+"Other=x\n",
+                        good.replace("loaded", "not-found")):
+                process.return_value.stdout=raw
+                self.assertIsNone(evidence.scope_members_or_terminal(scope))
+            process.side_effect=subprocess.TimeoutExpired("mock",3)
+            self.assertIsNone(evidence.scope_members_or_terminal(scope))
+
+    def test_lingering_descendant_blocks_even_if_manager_claims_terminal(self):
+        scope = "/user.slice/user-994.slice/user@994.service/app.slice/vision-bench-c68e5f31bac6.scope"
+        with patch.object(evidence, "scoped_processes", return_value={9001}), patch(
+                "subprocess.run") as process:
+            self.assertEqual(evidence.scope_members_or_terminal(scope), {9001})
+            process.assert_not_called()
+
+    def test_present_scope_with_process_must_not_claim_empty(self):
+        scope = ("/user.slice/user-994.slice/user@994.service/app.slice/"
+                 "vision-bench-c68e5f31bac6.scope")
+        with patch.object(evidence, "scoped_processes", return_value={1274}):
+            self.assertEqual(evidence.scope_members_or_terminal(scope), {1274})
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

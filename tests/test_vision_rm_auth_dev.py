@@ -65,3 +65,22 @@ async def test_flag_off_keeps_legacy_lease_contract(tmp_path):
         r=await client.post("/resource/leases",json={"workload":"external"})
         assert r.status_code==201
         assert (await client.delete("/resource/leases/"+r.json()["lease_id"])).status_code==200
+
+
+def test_strict_cross_uid_requires_explicit_model_uid(tmp_path):
+    # Even with a socket path, do not infer ai-vision UID from Gateway's UID.
+    import pytest
+    from ai_bridge.gateway.app import create_gateway_app
+    from ai_bridge.settings import Settings
+    settings=Settings(_env_file=None,gateway_vision_external_enabled=True,
+        gateway_vision_executor_token=TOKEN,
+        gateway_vision_allowed_scripts={"/dummy/script.py":"a"*64},
+        gateway_vision_worker_gate_sha256="a"*64,
+        gateway_gpu_marker=tmp_path/"marker",
+        gateway_vision_strict_gpu_clients=True,
+        gateway_vision_gpu_observer_socket=tmp_path/"gpu-observer.sock")
+    with pytest.raises(ValueError,match="pinned worker UID"):
+        create_gateway_app(settings)
+    approved=settings.model_copy(update={"gateway_vision_worker_uid":994})
+    app=create_gateway_app(approved)
+    assert app is not None
