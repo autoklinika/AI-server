@@ -49,3 +49,11 @@ To **projekt rozwiązania do niezależnego security review**, nie wdrożona funk
 - [ ] Jawna decyzja właściciela projektu o ewentualnym merge/cutover.
 
 **Nie uruchamiać kolejnego E2E w obecnym stanie. Nie resetować markera ani nie zwalniać lease na podstawie `not-found`, samego `worker.log` lub niepotwierdzonego stanu scope.**
+
+## Niezależny audyt źródeł i diagnostyka DEV
+
+Dalsze ustalenia, poprawka nieznanego wyniku `begin`, rozdzielenie błędów
+use/lease, wyniki 27 testów mock oraz ograniczenia testów stagingu:
+[VISION_RM_FINISH_INDEPENDENT_AUDIT_2026-10-13.md](VISION_RM_FINISH_INDEPENDENT_AUDIT_2026-10-13.md).
+Propozycja uwzględnia także containment potomków i tożsamość instancji systemd;
+nie jest wdrożonym rozszerzeniem observera. NO-GO pozostaje.

@@ -107,7 +107,14 @@ def scope_members_or_terminal(scope_path: str) -> set[int] | None:
                              env=env,text=True,capture_output=True,timeout=3,check=False)
         if proc.returncode!=0:
             return None
-        fields=dict(item.split("=",1) for item in proc.stdout.splitlines() if "=" in item)
+        fields={}
+        for item in proc.stdout.splitlines():
+            if "=" not in item:
+                return None
+            key,value=item.split("=",1)
+            if key in fields or key not in {"LoadState","ActiveState","SubState","ControlGroup"}:
+                return None
+            fields[key]=value
         # A nonexistent scope exits 0 and reports not-found + inactive +
         # empty ControlGroup. That is NOT terminal proof.
         # A garbage-collected scope is therefore unknown, not clean.

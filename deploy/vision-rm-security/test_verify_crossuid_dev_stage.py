@@ -28,17 +28,25 @@ class StageAttestationTests(unittest.TestCase):
         if changed:
             with self.assertRaisesRegex(v.StageError, "STAGE_SOURCE_TREE_HASH_MISMATCH"):
                 v.verify()
-        else:
-            # A failed prior E2E is intentionally still a staging gate failure:
-            # never reset systemd failure state merely to make a unit test pass.
-            runner = v.systemd_properties("ai-vision-rm-runner")
-            if runner["ActiveState"] != "inactive":
-                with self.assertRaisesRegex(v.StageError, "DEV_UNIT_UNEXPECTEDLY_ACTIVE"):
-                    v.verify()
-            else:
-                with contextlib.redirect_stdout(io.StringIO()) as capture:
-                    v.verify()
-                self.assertIn("DEV_STAGING_INTEGRITY=PASS", capture.getvalue())
+            return
+        # Even with an unchanged tree, root-installed runner/manifest files may
+        # intentionally differ from edited DEV source until a pinned refresh.
+        installed = [
+            (v.HERE / "vision_rm_runner.py", v.BIN / "vision-rm-runner.py"),
+            (v.HERE / "vision_rm_dev_cpu_worker.py", v.BIN / "vision-rm-dev-cpu-worker.py"),
+        ]
+        if any(v.sha256(a) != v.sha256(b) for a, b in installed):
+            with self.assertRaisesRegex(v.StageError, "STAGE_CONTENT_MISMATCH"):
+                v.verify()
+            return
+        # Failed E2E bookkeeping is also a valid fail-closed staging refusal.
+        if v.systemd_properties("ai-vision-rm-runner")["ActiveState"] != "inactive":
+            with self.assertRaisesRegex(v.StageError, "DEV_UNIT_UNEXPECTEDLY_ACTIVE"):
+                v.verify()
+            return
+        with contextlib.redirect_stdout(io.StringIO()) as capture:
+            v.verify()
+        self.assertIn("DEV_STAGING_INTEGRITY=PASS", capture.getvalue())
 
     def test_static_is_not_mistaken_for_autostart(self):
         state = v.systemd_properties("ai-vision-rm-dev-gateway")
@@ -53,7 +61,9 @@ class StageAttestationTests(unittest.TestCase):
                 props["UnitFileState"] = "enabled"
             return props
         with patch.object(v, "systemd_properties", side_effect=unexpected), patch.object(
-                v, "SRC", v.DEST / "src/ai_bridge"):
+                v, "SRC", v.DEST / "src/ai_bridge"), patch.object(
+                v, "same_file", return_value=None):
+            # Isolate unit-state policy from intentional DEV/staged-file drift.
             with self.assertRaisesRegex(v.StageError, "DEV_UNIT_UNEXPECTED_STATE"):
                 v.verify()
 
@@ -65,7 +75,9 @@ class StageAttestationTests(unittest.TestCase):
                 props["ActiveState"] = "active"
             return props
         with patch.object(v, "systemd_properties", side_effect=unexpected), patch.object(
-                v, "SRC", v.DEST / "src/ai_bridge"):
+                v, "SRC", v.DEST / "src/ai_bridge"), patch.object(
+                v, "same_file", return_value=None):
+            # Isolate unit-state policy from intentional DEV/staged-file drift.
             with self.assertRaisesRegex(v.StageError, "DEV_UNIT_UNEXPECTEDLY_ACTIVE"):
                 v.verify()
 

@@ -72,6 +72,61 @@ def scope_members(path: str):
         return None
 
 
+def cleanup(handle, *, unit: str, env: dict, session: str | None) -> list[dict]:
+    """Best effort stopping plus independent finish; return only fixed safe codes."""
+    failures=[]
+    if handle is not None:
+        try:
+            stopped=subprocess.run(["systemctl","--user","stop",unit+".scope"],
+                                   env=env,capture_output=True,timeout=8,check=False)
+            if stopped.returncode != 0:
+                failures.append({"stage":"scope_stop", "reason":"command_failed"})
+            try:
+                handle.wait(timeout=6)
+            except subprocess.TimeoutExpired:
+                subprocess.run(["systemctl","--user","kill","--signal=SIGKILL",unit+".scope"],
+                               env=env,capture_output=True,timeout=6,check=False)
+                handle.wait(timeout=6)
+        except Exception:
+            failures.append({"stage":"scope_stop", "reason":"stop_unverified"})
+    if session is not None:
+        try:
+            reply=request({"op":"finish","session":session})
+            if reply != {"status":"released"}:
+                failure={"stage":"finish", "reason":"invalid_response"}
+                if isinstance(reply,dict):
+                    if reply.get("status") in ("denied","gateway_error"):
+                        failure["reason"]=reply["status"]
+                    elif (reply.get("status")=="cleanup_failed"
+                          and reply.get("stage") in ("use_cleanup","lease_release")
+                          and reply.get("reason") in ("admission_outcome_unknown","unauthorized",
+                              "http_error","transport_error","gateway_error","release_unverified")):
+                        failure={"stage":reply["stage"], "reason":reply["reason"]}
+                        code=reply.get("http_status")
+                        if type(code) is int and 100<=code<=599:
+                            failure["http_status"]=code
+                failures.append(failure)
+        except Exception:
+            failures.append({"stage":"finish", "reason":"ipc_error"})
+    return failures
+
+
+def finalize(handle, *, unit: str, env: dict, session: str | None,
+             primary: BaseException | None, primary_stage: str) -> None:
+    failures=cleanup(handle,unit=unit,env=env,session=session)
+    if failures or primary is not None:
+        # Caller supplies only internal stage constants. Never print the exception.
+        diagnostic={"event":"vision_runner_failure", "primary_stage":primary_stage if primary else None,
+                    "primary_reason":"execution_error" if primary else None,
+                    "cleanup":failures}
+        print(json.dumps(diagnostic,separators=(",",":")),file=sys.stderr)
+    if failures:
+        if primary is not None:
+            primary.add_note("Vision cleanup unverified; see sanitized diagnostic")
+        else:
+            raise RuntimeError("Vision RM cleanup not verified; retain blocked lease")
+
+
 def run() -> None:
     if os.geteuid()!=__import__("pwd").getpwnam("ai-vision").pw_uid:
         raise RuntimeError("only ai-vision service identity permitted")
@@ -95,6 +150,7 @@ def run() -> None:
     jobroot.chmod(0o700)
     ready,auth=jobroot/"ready.pid",jobroot/"authorized.json"
     log=jobroot/"worker.log"
+    stage="worker_start"
     try:
         with log.open("x") as out:
             handle=subprocess.Popen([
@@ -120,10 +176,12 @@ def run() -> None:
             if time.monotonic()>end or handle.poll() is not None:
                 raise RuntimeError("worker did not enter dedicated cgroup")
             time.sleep(.05)
+        stage="reservation"
         created=request({"op":"create"})
         if created.get("status")!="ok":
             raise RuntimeError("broker refused reservation")
         session=created["session"]
+        stage="queue"
         queue_limit=time.monotonic()+90
         while True:
             state=request({"op":"poll","session":session})
@@ -134,10 +192,12 @@ def run() -> None:
             if handle.poll() is not None:
                 raise RuntimeError("Vision worker exited before GPU admission")
             time.sleep(.2)
+        stage="admission"
         response=request({"op":"begin","session":session,
                           "worker_pid":pid,"scope_path":scope})
         if response.get("status")!="ok":
             raise RuntimeError("Vision admission refused by broker")
+        stage="authorization"
         token=response["authorization"]
         if set(token)!={"lease_id","use_id","worker_token"}:
             raise RuntimeError("broker returned invalid scoped authorization")
@@ -147,6 +207,7 @@ def run() -> None:
         pending.write_text(json.dumps(token)+"\n")
         pending.chmod(0o600)
         os.replace(pending,auth)
+        stage="worker_execution"
         began=time.monotonic()
         while handle.poll() is None:
             if time.monotonic()-began>doc["max_seconds"]:
@@ -155,24 +216,15 @@ def run() -> None:
         if handle.returncode!=0:
             raise RuntimeError("Vision benchmark exited nonzero")
     finally:
-        # Stop whole systemd scope even if systemd-run parent exited. This
-        # keeps a detached descendant from extending a GPU lease silently.
-        if handle is not None:
-            subprocess.run(["systemctl","--user","stop",unit+".scope"],
-                           env=env,capture_output=True,timeout=8,check=False)
-            try:handle.wait(timeout=6)
-            except subprocess.TimeoutExpired:
-                subprocess.run(["systemctl","--user","kill","--signal=SIGKILL",unit+".scope"],
-                               env=env,capture_output=True,timeout=6,check=False)
-                handle.wait(timeout=6)
-        # Controller and Gateway independently validate systemd terminal state,
-        # scope/worker exit and GPU evidence before release.
-        if session is not None:
-            cleared=request({"op":"finish","session":session})
-            if cleared!={"status":"released"}:
-                raise RuntimeError("Vision RM cleanup not verified; retain blocked lease")
+        finalize(handle,unit=unit,env=env,session=session,
+                 primary=sys.exc_info()[1],primary_stage=stage)
     print("ISOLATED_VISION_BROKER_RUNNER=PASS")
 
 
 if __name__=="__main__":
-    run()
+    try:
+        run()
+    except BaseException:
+        # Raw tracebacks can include private paths or remote exception content.
+        print('{"event":"vision_runner_failed"}',file=sys.stderr)
+        sys.exit(1)

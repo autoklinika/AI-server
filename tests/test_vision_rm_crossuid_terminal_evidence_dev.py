@@ -101,6 +101,27 @@ class CrossUidTerminalTests(unittest.TestCase):
             )
             self.assertEqual(evidence.scope_members_or_terminal(scope), set())
 
+    def test_malformed_duplicate_fields_and_bus_timeout_fail_closed(self):
+        import subprocess
+        scope = "/user.slice/user-994.slice/user@994.service/app.slice/vision-bench-c68e5f31bac6.scope"
+        good = "LoadState=loaded\nActiveState=inactive\nSubState=dead\nControlGroup=\n"
+        with patch.object(evidence, "scoped_processes", return_value=set()), patch(
+                "os.getuid", return_value=994), patch("subprocess.run") as process:
+            process.return_value.returncode=0
+            for raw in (good+"LoadState=loaded\n", good+"garbage\n", good+"Other=x\n",
+                        good.replace("loaded", "not-found")):
+                process.return_value.stdout=raw
+                self.assertIsNone(evidence.scope_members_or_terminal(scope))
+            process.side_effect=subprocess.TimeoutExpired("mock",3)
+            self.assertIsNone(evidence.scope_members_or_terminal(scope))
+
+    def test_lingering_descendant_blocks_even_if_manager_claims_terminal(self):
+        scope = "/user.slice/user-994.slice/user@994.service/app.slice/vision-bench-c68e5f31bac6.scope"
+        with patch.object(evidence, "scoped_processes", return_value={9001}), patch(
+                "subprocess.run") as process:
+            self.assertEqual(evidence.scope_members_or_terminal(scope), {9001})
+            process.assert_not_called()
+
     def test_present_scope_with_process_must_not_claim_empty(self):
         scope = ("/user.slice/user-994.slice/user@994.service/app.slice/"
                  "vision-bench-c68e5f31bac6.scope")
