@@ -17,7 +17,23 @@ systemctl is-active --quiet ai-vision-gpu-observer
 systemctl is-enabled --quiet ai-vision-gpu-observer
 test -S /run/ai-vision-gpu-observer/observer.sock
 test "$(stat -c '%U:%G:%a' /run/ai-vision-gpu-observer/observer.sock)" = "root:ai-vision-rm:660"
-test "$(stat -c '%U:%G:%a' /etc/ai-platform/vision-rm/executor.token)" = "root:ai-vision-rm:640"
+test "$(stat -c '%U:%G:%a' /etc/ai-platform/vision-rm)" = "root:ai-vision-rm-control:750"
+test "$(stat -c '%U:%G:%a' /etc/ai-platform/vision-rm/executor.token)" = "root:ai-vision-rm-control:640"
+id -nG ai-gateway-rm | tr ' ' '\n' | grep -qx ai-vision-rm-control
+if id -nG ai-vision | tr ' ' '\n' | grep -qx ai-vision-rm-control; then
+  echo "VISION_MODEL_HAS_CONTROL_GROUP=FAIL" >&2; exit 10
+fi
+# No contents printed: verify only access control, not the secret value.
+runuser -u ai-gateway-rm -- test -r /etc/ai-platform/vision-rm/executor.token
+if runuser -u ai-vision -- test -r /etc/ai-platform/vision-rm/executor.token; then
+  echo "VISION_MODEL_CAN_READ_RM_CREDENTIAL=FAIL" >&2; exit 11
+fi
+echo "VISION_MODEL_CONTROL_SECRET=DENIED"
+echo "GATEWAY_CONTROL_SECRET=READABLE"
+if runuser -u ai-vision -- test -r /var/lib/ai-gateway-rm; then
+  echo "VISION_MODEL_CAN_READ_CONTROLLER_STATE=FAIL" >&2; exit 12
+fi
+echo "VISION_MODEL_CONTROLLER_STATE=DENIED"
 test "$(stat -c '%U:%G:%a' /usr/local/libexec/ai-platform/vision-gpu-observer.py)" = "root:root:755"
 test "$(stat -c '%U:%G:%a' /etc/systemd/system/ai-vision-gpu-observer.service)" = "root:root:644"
 # The test never accesses GPU directly. It requests only a read-only snapshot.

@@ -26,6 +26,10 @@ umask 0077
 if ! getent group ai-vision-rm >/dev/null; then
   groupadd --system ai-vision-rm
 fi
+# Separate control-plane credential access from observer/socket permissions.
+if ! getent group ai-vision-rm-control >/dev/null; then
+  groupadd --system ai-vision-rm-control
+fi
 if ! getent passwd ai-vision >/dev/null; then
   useradd --system --create-home --home-dir /var/lib/ai-vision \
     --shell /usr/sbin/nologin --gid ai-vision-rm --groups render,video ai-vision
@@ -39,8 +43,13 @@ for account in ai-vision ai-gateway-rm; do
   test "$(id -gn "$account")" = ai-vision-rm
 done
 usermod -aG render,video ai-vision
+usermod -aG ai-vision-rm-control ai-gateway-rm
+if id -nG ai-vision | tr ' ' '\n' | grep -qx ai-vision-rm-control; then
+  echo "ERROR: ai-vision cannot belong to control credential group" >&2
+  exit 7
+fi
 
-install -d -o root -g ai-vision-rm -m 0750 /etc/ai-platform/vision-rm
+install -d -o root -g ai-vision-rm-control -m 0750 /etc/ai-platform/vision-rm
 TOKEN=/etc/ai-platform/vision-rm/executor.token
 if [[ -L "$TOKEN" ]]; then
   echo "ERROR: credential path is symbolic link" >&2
@@ -51,12 +60,12 @@ if [[ ! -e "$TOKEN" ]]; then
   python3 -c 'import secrets; print(secrets.token_hex(48))' > "$TOKEN"
 fi
 test -f "$TOKEN" || { echo "ERROR: credential must be regular file" >&2; exit 9; }
-chown root:ai-vision-rm "$TOKEN"
+chown root:ai-vision-rm-control "$TOKEN"
 chmod 0640 "$TOKEN"
 test "$(stat -c %a "$TOKEN")" = 640
 
 install -d -o ai-vision -g ai-vision-rm -m 0750 /var/lib/ai-vision
-install -d -o ai-gateway-rm -g ai-vision-rm -m 0750 /var/lib/ai-gateway-rm
+install -d -o ai-gateway-rm -g ai-vision-rm-control -m 0700 /var/lib/ai-gateway-rm
 install -d -o ai-vision -g ai-vision-rm -m 0750 /srv/ai-data/evaluation/vision-rm-service
 install -d -o root -g root -m 0755 /usr/local/libexec/ai-platform
 install -o root -g root -m 0755 "$SRC" /usr/local/libexec/ai-platform/vision-gpu-observer.py
