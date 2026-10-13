@@ -80,3 +80,7 @@ Nie ma automatycznej promocji modelu. Benchmark V1 zatwierdza jedynie poprawnoś
 ## MODEL-01 CPU smoke + tile pilot (2026-10-13)
 
 WinCLIP CPU and MiniCPM-V 4.7 1B CPU passed real-image smoke tests. MiniCPM is not yet calibrated or defect-type validated. A paired high-resolution WinCLIP tile pilot has completed, with different outcomes and separate thresholds for the two preprocessing modes; details in `MODEL_01_CPU_AND_TILING_2026-10-13.md` and `B1_WINCLIP_TILING_PILOT_2026-10-13.md`. No full benchmark or model promotion.
+
+## Full B1: wznawialny scorer i pixel maps (2026-10-13)
+
+Uruchomiono eksperymentalny przebieg wszystkich trzech splitów pełnego fold0 (3312 obrazów); dziennik B1 zapisuje osobno SHA oryginału, image score i mapę 256x256, pozwalając wznowić zadanie bez ponownej inferencji zapisanych obrazów. Nie ukończono pełnego folda, dlatego wynik jest wciąż wstępny. Szczegóły: `B1_FULL_CPU_RUNBOOK_2026-10-13.md` oraz `B1_CHECKPOINT_240_AND_ERROR_REVIEW_2026-10-13.md`. `pixel_eval_256.py` obsługuje pixel AUROC/AP i **przybliżony** AU-PRO256, ale pełny raport wymaga wszystkich obrazów. Zadania są CPU-only z limitem obciążenia, ponieważ RM nie ma jeszcze natywnego profilu zewnętrznych zadań CPU.
