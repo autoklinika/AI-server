@@ -194,3 +194,40 @@ def test_proc_reader_existing_process_and_invalid_pid():
     assert worker_birth_ticks(os.getpid()) > 0
     assert worker_birth_ticks(-1) is None
     assert worker_birth_ticks(True) is None
+
+@pytest.mark.anyio
+async def test_vision_drain_is_exclusive_at_max_concurrency_four():
+    from ai_bridge.gateway.jobs import JobMetadata
+    registry=local_descriptor_registry(enable_vision=True)
+    scheduler=PriorityScheduler(max_concurrency=4,registry=registry)
+    normal=await scheduler.acquire(priority=50,source='llm',metadata=JobMetadata(
+        workload=external_workload(registry,'llm')))
+    vision=await scheduler.reserve(priority=200,source='vision',metadata=JobMetadata(
+        workload=external_workload(registry,'vision-benchmark')))
+    assert (await scheduler.job_status(vision.job_id))['state']=='queued'
+    await scheduler.release(normal)
+    assert (await scheduler.job_status(vision.job_id))['state']=='active'
+    waiting=asyncio.create_task(scheduler.acquire(priority=10,source='WVC',metadata=JobMetadata(
+        workload=external_workload(registry,'llm'))))
+    await asyncio.sleep(0)
+    assert not waiting.done()
+    assert (await scheduler.snapshot())['active_count']==1
+    await scheduler.release_job(vision.job_id)
+    ticket=await asyncio.wait_for(waiting,1)
+    await scheduler.release(ticket)
+
+
+@pytest.mark.anyio
+async def test_two_vision_reservations_do_not_overlap():
+    from ai_bridge.gateway.jobs import JobMetadata
+    registry=local_descriptor_registry(enable_vision=True)
+    scheduler=PriorityScheduler(max_concurrency=4,registry=registry)
+    meta=JobMetadata(workload=external_workload(registry,'vision-benchmark'))
+    first=await scheduler.reserve(priority=200,source='vision-1',metadata=meta)
+    second=await scheduler.reserve(priority=200,source='vision-2',metadata=meta)
+    assert (await scheduler.job_status(first.job_id))['state']=='active'
+    assert (await scheduler.job_status(second.job_id))['state']=='queued'
+    await scheduler.release_job(first.job_id)
+    assert (await scheduler.job_status(second.job_id))['state']=='active'
+    await scheduler.release_job(second.job_id)
+    assert (await scheduler.snapshot())['active_count']==0

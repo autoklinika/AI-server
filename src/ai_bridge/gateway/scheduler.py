@@ -302,14 +302,15 @@ class PriorityScheduler:
     def _dispatch_locked(self) -> None:
         self._purge_cancelled_locked()
         while not self.admission_blocked and len(self._active) < self.max_concurrency and self._heap:
-            # Media-capable reservations are exclusive, including their prompt
-            # compilation phase. Preserve priority/FIFO and drain active slots
-            # before handing off; never bypass a waiting exclusive owner.
-            def media(job_id):
-                return any(w.provider == "comfyui-local" for w in self._jobs[job_id].workload)
+            # All GPU-owning external executions share ONE exclusive pool:
+            # ComfyUI and opt-in Vision must both drain all other jobs even
+            # when configured LLM concurrency > 1. Priority/FIFO unchanged.
+            def gpu_exclusive(job_id):
+                return any(w.provider in {"comfyui-local", "vision-local"}
+                           for w in self._jobs[job_id].workload)
             next_id = self._heap[0][2]
             if next_id in self._pending and self._active and (
-                media(next_id) or any(media(j) for j in self._active)
+                gpu_exclusive(next_id) or any(gpu_exclusive(j) for j in self._active)
             ):
                 break
             _priority, _sequence, job_id = heapq.heappop(self._heap)

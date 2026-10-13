@@ -4,7 +4,7 @@ Status: feature-gated DEVELOPMENT, nie dla produkcji ani automatycznego cutover.
 
 ## Architektura
 
-Jeden PriorityScheduler, ResourceLeaseRegistry, GPUResidency oraz wspólny Benchmark Runner. Brak drugiej kolejki i drugiego GPU Managera.
+Jeden PriorityScheduler, ResourceLeaseRegistry, GPUResidency oraz wspólny Benchmark Runner. Brak drugiej kolejki i drugiego GPU Managera. Scheduler traktuje **comfyui-local i vision-local jako ten sam wyłączny GPU pool** także gdy max_concurrency>1: najpierw drain wszystkich dotychczasowych jobów, potem brak dopuszczenia innych aż do zwolnienia Vision.
 
 AI_BRIDGE_GATEWAY_VISION_EXTERNAL_ENABLED domyślnie ma wartość false. Przy OFF provider registry i legacy HTTP routes pozostają bez zmian. Przy ON (tylko na odizolowanym DEV Gateway) dostępne są vision-local/image-analysis i workload vision-benchmark z istniejącym priority_class=background.
 
@@ -24,7 +24,7 @@ AI_BRIDGE_GATEWAY_VISION_EXTERNAL_ENABLED domyślnie ma wartość false. Przy OF
 - Workload vision-benchmark, admission, heartbeat i external-use w istniejących trasach Gateway.
 - GPUResidency: osobne enter_vision/leave_vision z kontrolą realnego procesu i globalnego pamięciowego baseline odczytanego **po** unload Ollamy.
 - Benchmark Runner: lokalny proces zaparkowany do chwili potwierdzenia autoryzacji, ścisłe limity i cleanup.
-- Testy: brak zmiany legacy OFF, wspólna kolejka, brak worker_pid, memory leak, worker still alive, marker persisted, autoryzacja procesu i release.
+- Testy: brak zmiany legacy OFF, wspólna kolejka, wyłączność Vision/ComfyUI względem Qwen/WVC nawet przy 4 slotach, dwa równoczesne Vision, brak worker_pid, memory leak, worker still alive, marker persisted, autoryzacja procesu i release.
 
 ## Istotne ograniczenia przed produkcją
 
