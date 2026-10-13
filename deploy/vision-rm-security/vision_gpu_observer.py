@@ -12,6 +12,8 @@ import json
 import os
 from pathlib import Path
 import pwd
+import re
+import secrets
 import socket
 import stat
 import struct
@@ -138,16 +140,76 @@ def allowed_uids() -> frozenset[int]:
     return frozenset(result)
 
 
+# SOURCE-ONLY protocol scaffolding. No positive collector or execution API.
+# Regenerated on every observer process start; no history survives restart.
+TERMINAL_EPOCH = secrets.token_hex(16)
+
+
+def strict_request(payload: bytes) -> dict | None:
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate field")
+            result[key] = value
+        return result
+    try:
+        if not payload or len(payload) > MAX_REQUEST:
+            return None
+        request = json.loads(payload, object_pairs_hook=unique)
+        if (type(request) is not dict or type(request.get("version")) is not int
+                or request["version"] != 1):
+            return None
+        return request
+    except (ValueError, UnicodeError, TypeError, RecursionError):
+        return None
+
+
+def terminal_request(request: dict, *, peer_uid: int) -> dict:
+    """Reserved, tokenless ABI: deny admission until containment is implemented.
+
+    There is deliberately no event injection, signature/boolean evidence,
+    handle allocation, or configurable backend that could manufacture success.
+    No /proc, bus, cgroup or GPU reads are needed to establish this denial.
+    UID 993 is the controller; runner and model remain UID 994. Numeric UIDs
+    must be checked against account provisioning before any future deployment.
+    """
+    if peer_uid != 993:
+        return {"schema_version": 1, "status": "denied"}
+    invalid = {"schema_version": 1, "status": "invalid_request"}
+    if request["op"] == "register_scope":
+        if set(request) != {"version", "op", "runner_pid", "runner_birth",
+                            "pid", "birth", "scope_suffix"}:
+            return invalid
+        for key in ("runner_pid", "runner_birth", "pid", "birth"):
+            value = request[key]
+            if type(value) is not int or not 1 < value < 2**63:
+                return invalid
+        suffix = request["scope_suffix"]
+        if type(suffix) is not str or re.fullmatch(r"[0-9a-f]{12}", suffix) is None:
+            return invalid
+        reason = "containment_unavailable"
+    else:
+        if set(request) != {"version", "op", "handle", "epoch"}:
+            return invalid
+        for key in ("handle", "epoch"):
+            if (type(request[key]) is not str
+                    or re.fullmatch(r"[0-9a-f]{32}", request[key]) is None):
+                return invalid
+        reason = "unregistered" if request["epoch"] == TERMINAL_EPOCH else "epoch_mismatch"
+    return {"schema_version": 1, "status": "unknown", "reason": reason,
+            "epoch": TERMINAL_EPOCH}
+
+
 def dispatch(payload: bytes, *, peer_uid: int, trusted_uids: frozenset[int],
              controller_uid: int | None = None, worker_uid: int | None = None) -> bytes:
     if peer_uid not in trusted_uids:
         result={"schema_version":1,"status":"denied"}
     else:
-        try:
-            request=json.loads(payload)
-        except (ValueError,UnicodeError,TypeError):
-            request=None
-        if request=={"op":"snapshot","version":1}:
+        request = strict_request(payload)
+        if request is not None and request.get("op") in ("register_scope", "query_terminal"):
+            result = terminal_request(request, peer_uid=peer_uid)
+        elif request=={"op":"snapshot","version":1}:
             clients=snapshot_gpu_clients()
             result=({"schema_version":1,"status":"ok",
                      "gpu_clients":[{"pid":pid,"birth":birth} for pid,birth in clients]}

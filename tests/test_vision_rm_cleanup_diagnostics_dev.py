@@ -124,6 +124,30 @@ class CleanupDiagnostics(unittest.TestCase):
         self.assertEqual(self.api.call_count,2)
         self.assertIsNone(self.broker.session)
 
+    def test_lost_create_reply_blocks_retry_without_unknown_lease_release(self):
+        self.broker.session=None
+        self.api.side_effect=TimeoutError('synthetic')
+        with self.assertRaises(TimeoutError):
+            self.broker.request({'op':'create'},peer_pid=40,peer_uid=994)
+        self.api.reset_mock()
+        self.assertEqual(self.broker.request({'op':'create'},peer_pid=40,peer_uid=994),
+                         {'status':'busy'})
+        self.assertEqual(self.finish(),{'status':'denied'})
+        self.api.assert_not_called()
+
+    def test_malformed_create_reply_blocks_retry(self):
+        for reply in ({}, {'lease_id':'lease','state':True},
+                      {'lease_id':False,'state':'active'}, []):
+            self.broker.session=None
+            self.broker.reservation_uncertain=False
+            self.api.return_value=reply
+            self.assertEqual(self.broker.request({'op':'create'},peer_pid=40,peer_uid=994),
+                             {'status':'reservation_unverified'})
+            self.api.reset_mock()
+            self.assertEqual(self.broker.request({'op':'create'},peer_pid=40,peer_uid=994),
+                             {'status':'busy'})
+            self.api.assert_not_called()
+
     def test_stop_timeout_does_not_skip_finish_or_mask_primary(self):
         primary=RuntimeError('PRIVATE PATH AND SECRET')
         output=io.StringIO()

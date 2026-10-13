@@ -9,7 +9,7 @@ from pathlib import Path
 
 import httpx
 
-from .vision_residency_evidence import gpu_vram_used_bytes, worker_birth_ticks, worker_cgroup_path, scope_members_or_terminal, gpu_device_openers
+from .vision_residency_evidence import gpu_vram_used_bytes, worker_birth_ticks, worker_cgroup_path, scope_members_or_terminal, gpu_device_openers, scope_containment_available
 
 
 class ResidencyError(RuntimeError):
@@ -135,6 +135,8 @@ class GPUResidency:
         """
         if self.state != "llm":
             raise ResidencyError("GPU residency requires recovery")
+        if not scope_containment_available(scope_path):
+            raise ResidencyError("Vision containment unavailable; architecture approval required")
         birth = self.vision_process_probe(worker_pid)
         if birth is None or birth <= 0:
             raise ResidencyError("Vision process identity unavailable")
@@ -201,8 +203,9 @@ class GPUResidency:
             async with asyncio.timeout(self.timeout):
                 if self.vision_process_probe(worker_pid) is not None:
                     raise ResidencyError("Vision worker still alive; GPU ownership cannot release")
-                # cgroup v2 scope proves no descendants or processes that left
-                # the parent's process group may still hold GPU allocations.
+                # The production probe must supply authoritative terminal evidence.
+                # A user scope snapshot cannot prove containment; its default
+                # probe intentionally never returns a positive empty result.
                 members = self.vision_cgroup_members(self._vision_scope_path)
                 if members is None or members:
                     raise ResidencyError("Vision cgroup not empty or evidence unavailable")

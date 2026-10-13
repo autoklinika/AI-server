@@ -12,6 +12,7 @@ from pathlib import Path
 import secrets
 import socket
 import stat
+import struct
 import subprocess
 import sys
 import tempfile
@@ -28,6 +29,10 @@ def request(message: dict) -> dict:
     with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as conn:
         conn.settimeout(12)
         conn.connect(str(BROKER))
+        _, peer_uid, _ = struct.unpack("3i", conn.getsockopt(
+            socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i")))
+        if peer_uid != 993:
+            raise RuntimeError("broker peer denied")
         conn.sendall(json.dumps(message,separators=(",",":")).encode("ascii"))
         payload=bytearray()
         while len(payload)<=8192 and b"\n" not in payload:

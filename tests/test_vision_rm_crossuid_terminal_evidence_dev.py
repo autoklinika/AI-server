@@ -49,10 +49,9 @@ class CrossUidTerminalTests(unittest.TestCase):
                 "SubState=dead\nControlGroup=\n"
             )
             self.assertIsNone(evidence.scope_members_or_terminal(scope))
-            args, kwargs = process.call_args
-            self.assertIn("LoadState", args[0])
+            process.assert_not_called()
 
-    def test_terminal_loaded_scope_requires_all_exact_fields(self):
+    def test_loaded_dead_scope_without_lifecycle_never_proves_terminal(self):
         scope = ("/user.slice/user-994.slice/user@994.service/app.slice/"
                  "vision-bench-c68e5f31bac6.scope")
         with patch.object(evidence, "scoped_processes", return_value=None), patch(
@@ -61,7 +60,7 @@ class CrossUidTerminalTests(unittest.TestCase):
             process.return_value.stdout = (
                 "LoadState=loaded\nActiveState=inactive\nSubState=dead\nControlGroup=\n"
             )
-            self.assertEqual(evidence.scope_members_or_terminal(scope), set())
+            self.assertIsNone(evidence.scope_members_or_terminal(scope))
             for altered in ("LoadState=not-found", "ActiveState=active",
                             "SubState=running", "ControlGroup=/stale", "ControlGroup"):
                 original = process.return_value.stdout
@@ -87,9 +86,9 @@ class CrossUidTerminalTests(unittest.TestCase):
                 "SubState=running\nControlGroup=/user.slice/...\n"
             )
             self.assertIsNone(evidence.scope_members_or_terminal(scope))
-            process.assert_called_once()
+            process.assert_not_called()
 
-    def test_empty_cgroup_and_verified_terminal_scope_is_clean(self):
+    def test_empty_cgroup_and_loaded_dead_scope_is_still_unknown(self):
         scope = ("/user.slice/user-994.slice/user@994.service/app.slice/"
                  "vision-bench-c68e5f31bac6.scope")
         with patch.object(evidence, "scoped_processes", return_value=set()), patch(
@@ -99,7 +98,7 @@ class CrossUidTerminalTests(unittest.TestCase):
                 "LoadState=loaded\nActiveState=inactive\n"
                 "SubState=dead\nControlGroup=\n"
             )
-            self.assertEqual(evidence.scope_members_or_terminal(scope), set())
+            self.assertIsNone(evidence.scope_members_or_terminal(scope))
 
     def test_malformed_duplicate_fields_and_bus_timeout_fail_closed(self):
         import subprocess

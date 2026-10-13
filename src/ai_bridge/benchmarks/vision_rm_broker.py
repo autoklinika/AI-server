@@ -76,6 +76,7 @@ class ControlBroker:
         self.api_call=api_call
         self.peer_validator=peer_validator
         self.session: Session | None = None
+        self.reservation_uncertain = False
         self._lock=threading.RLock()
 
     def _peer_allowed(self, pid: int, uid: int) -> bool:
@@ -93,16 +94,24 @@ class ControlBroker:
         with self._lock:
             op=command["op"]
             if op=="create" and set(command)=={"op"}:
-                if self.session is not None:
+                if self.session is not None or self.reservation_uncertain:
                     return {"status":"busy"}
                 birth=worker_birth_ticks(peer_pid)
                 if birth is None or birth<=0:
                     return {"status":"identity_unavailable"}
+                # A lost POST reply may have created a lease. Never retry create
+                # in this process or claim cleanup of an unidentified lease.
+                self.reservation_uncertain = True
                 lease=self.api_call(self.gateway,"POST","/resource/leases",{
                     "source":"vision-broker","workload":"vision-benchmark",
                     "priority_class":"background"})
+                if (type(lease) is not dict or type(lease.get("lease_id")) is not str
+                        or not lease["lease_id"] or lease.get("state") not in
+                        ("queued", "active")):
+                    return {"status":"reservation_unverified"}
                 sid=secrets.token_urlsafe(24)
                 self.session=Session(sid,peer_pid,birth,lease["lease_id"])
+                self.reservation_uncertain = False
                 return {"status":"ok","session":sid,"state":lease["state"]}
             sess=self.session
             if (sess is None or command.get("session")!=sess.nonce or
