@@ -154,8 +154,12 @@ def create_gateway_app(
     knowledge_runtime_factory=None,
 ) -> FastAPI:
     resolved = settings or get_settings()
-    registry = resolved.gateway_registry or local_descriptor_registry(resolved.node_id)
-    registry.validate_local_gateway(resolved.node_id)
+    registry = resolved.gateway_registry or local_descriptor_registry(
+        resolved.node_id, enable_vision=resolved.gateway_vision_external_enabled
+    )
+    registry.validate_local_gateway(
+        resolved.node_id, enable_vision=resolved.gateway_vision_external_enabled
+    )
     accelerator_registry = (
         resolved.gateway_accelerator_registry
         or local_accelerator_registry(resolved.node_id)
@@ -170,6 +174,7 @@ def create_gateway_app(
     resource_leases = ResourceLeaseRegistry(
         scheduler,
         ttl_seconds=resolved.gateway_external_lease_ttl_seconds,
+        vision_enabled=resolved.gateway_vision_external_enabled,
     )
 
     @asynccontextmanager
@@ -520,11 +525,16 @@ def create_gateway_app(
     async def begin_external_use(lease_id: str, request: Request) -> Response:
         try:
             body = await request.json()
-            if not isinstance(body, dict) or set(body) != {"provider", "capability"}:
+            if not isinstance(body, dict):
                 raise ValueError()
-            # Only the existing external media executor is supported. Embedding
-            # execution still enters through scheduled HTTP.
-            if body["provider"] != "comfyui-local":
+            allowed = (body.get("provider") == "comfyui-local"
+                       and set(body) == {"provider", "capability"})
+            vision = (resolved.gateway_vision_external_enabled
+                      and body.get("provider") == "vision-local"
+                      and set(body) == {"provider", "capability", "worker_pid"}
+                      and type(body.get("worker_pid")) is int
+                      and body["worker_pid"] > 1)
+            if not allowed and not vision:
                 raise ValueError()
             provider = registry.provider(body["provider"])
             workload = WorkloadBinding(provider.provider_id, provider.node_id, body["capability"])
@@ -532,7 +542,9 @@ def create_gateway_app(
         except (ValueError, TypeError):
             raise HTTPException(status_code=400, detail="invalid external workload")
         try:
-            use_id = await resource_leases.begin_external_use(lease_id, workload)
+            use_id = await resource_leases.begin_external_use(
+                lease_id, workload, worker_pid=body.get("worker_pid")
+            )
         except ResourceLeaseNotFound:
             return JSONResponse(status_code=404, content={"error": "resource_lease_not_found"})
         except (ResourceLeaseNotActive, ResourceLeaseNotAllowed):

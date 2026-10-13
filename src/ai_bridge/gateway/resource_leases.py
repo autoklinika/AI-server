@@ -26,10 +26,11 @@ class _Lease:
     external_workload: WorkloadBinding | None = None
 
 class ResourceLeaseRegistry:
-    def __init__(self,scheduler:PriorityScheduler,*,ttl_seconds:float=45.0, residency=None)->None:
+    def __init__(self,scheduler:PriorityScheduler,*,ttl_seconds:float=45.0, residency=None, vision_enabled:bool=False)->None:
         if ttl_seconds<=0: raise ValueError("ttl_seconds must be > 0")
         self.residency = residency
         self.scheduler=scheduler; self.ttl_seconds=float(ttl_seconds)
+        self.vision_enabled=bool(vision_enabled)
         self._lock=asyncio.Lock(); self._leases={}
 
     async def create(self,*,priority:int,source:str,metadata:JobMetadata|None=None)->dict[str,object]:
@@ -84,7 +85,7 @@ class ResourceLeaseRegistry:
             rec.last_heartbeat = monotonic()
             return ticket
 
-    async def begin_external_use(self, lease_id: str, workload: WorkloadBinding) -> str:
+    async def begin_external_use(self, lease_id: str, workload: WorkloadBinding, *, worker_pid: int | None = None) -> str:
         async with self._lock:
             rec = self._leases.get(lease_id)
             if rec is None:
@@ -98,8 +99,12 @@ class ResourceLeaseRegistry:
             status = await self.scheduler.job_status(rec.job_id)
             if asdict(workload) not in status["job"]["workload"]:
                 raise ResourceLeaseNotAllowed("workload outside resource lease")
-            if workload.provider != "comfyui-local":
-                raise ResourceLeaseNotAllowed("external execution requires ComfyUI")
+            if workload.provider == "vision-local":
+                if (not self.vision_enabled or workload.capability != "image-analysis"
+                        or type(worker_pid) is not int or worker_pid <= 1):
+                    raise ResourceLeaseNotAllowed("Vision external execution is unavailable")
+            elif workload.provider != "comfyui-local" or worker_pid is not None:
+                raise ResourceLeaseNotAllowed("invalid external execution provider")
             # Pin before I/O, including cancellation/disconnect. Failure must
             # retain ownership even when the worker releases or stops heartbeats.
             rec.external_use_id = secrets.token_urlsafe(24)
@@ -107,7 +112,10 @@ class ResourceLeaseRegistry:
             rec.in_use = 1
         try:
             if self.residency:
-                await self.residency.enter_media()
+                if workload.provider == "vision-local":
+                    await self.residency.enter_vision(worker_pid)
+                else:
+                    await self.residency.enter_media()
         except BaseException:
             self.scheduler.admission_blocked = True
             raise
@@ -122,7 +130,8 @@ class ResourceLeaseRegistry:
             rec = self._leases.get(lease_id)
             if (rec is None or rec.external_use_id != use_id or rec.in_use
                     or self.scheduler.admission_blocked
-                    or (self.residency and self.residency.state != "media")):
+                    or (self.residency and self.residency.state !=
+                        ("vision" if rec.external_workload and rec.external_workload.provider == "vision-local" else "media"))):
                 return None
             return rec.external_workload
 
@@ -138,7 +147,10 @@ class ResourceLeaseRegistry:
             rec.in_use = 1
         try:
             if self.residency:
-                await self.residency.leave_media()
+                if rec.external_workload and rec.external_workload.provider == "vision-local":
+                    await self.residency.leave_vision()
+                else:
+                    await self.residency.leave_media()
         except BaseException:
             self.scheduler.admission_blocked = True
             rec.in_use = 0
