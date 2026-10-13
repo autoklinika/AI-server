@@ -49,7 +49,7 @@ async def test_gateway_rejects_vision_without_opt_in(tmp_path):
         assert (await client.post("/resource/leases", json={"workload":"vision-benchmark"})).status_code == 400
         legacy=(await client.post("/resource/leases", json={"workload":"external"})).json()
         use=await client.post(f"/resource/leases/{legacy['lease_id']}/uses", json={
-            "provider":"vision-local","capability":"image-analysis","worker_pid":222})
+            "provider":"vision-local","capability":"image-analysis","worker_pid":222,"scope_path":"fake-scope"})
         assert use.status_code == 400
         await client.delete(f"/resource/leases/{legacy['lease_id']}")
         assert (await client.get("/status")).json()["resource_leases"]["lease_count"] == 0
@@ -69,6 +69,8 @@ async def test_vision_lease_reuses_shared_scheduler_and_cleanup(tmp_path):
         residency=app.state.resource_leases.residency
         residency.vision_process_probe=lambda pid: state["worker_birth"] if pid==222 else None
         residency.vision_memory_probe=lambda:state["vram"]
+        residency.vision_scope_probe=lambda pid:"fake-scope"
+        residency.vision_cgroup_members=lambda path:({222} if state["worker_birth"] else set())
         blockers=app.state.scheduler
         in_flight=await blockers.acquire(priority=25,source="wvc-simulation")
         lease=(await client.post("/resource/leases",json={
@@ -79,7 +81,7 @@ async def test_vision_lease_reuses_shared_scheduler_and_cleanup(tmp_path):
         lid=lease["lease_id"]
         assert (await client.get(f"/resource/leases/{lid}")).json()["state"]=="active"
         endpoint=f"/resource/leases/{lid}/uses"
-        payload={"provider":"vision-local","capability":"image-analysis","worker_pid":222}
+        payload={"provider":"vision-local","capability":"image-analysis","worker_pid":222,"scope_path":"fake-scope"}
         response=await client.post(endpoint,json=payload)
         assert response.status_code==201, response.text
         uid=response.json()["use_id"]
@@ -110,6 +112,8 @@ async def test_vision_cleanup_failure_blocks_shared_gpu(tmp_path,failure):
     gpu=GPUResidency(client,client,tmp_path/"blocked-marker",
                      vision_process_probe=lambda pid:state["birth"],
                      vision_memory_probe=lambda:state["vram"],
+                     vision_scope_probe=lambda pid:"fake-scope",
+                     vision_cgroup_members=lambda path:({222} if state["birth"] else set()),
                      timeout=.06,poll=.001)
     scheduler=PriorityScheduler(max_concurrency=1,registry=registry)
     leases=ResourceLeaseRegistry(scheduler,residency=gpu,vision_enabled=True)
@@ -119,7 +123,7 @@ async def test_vision_cleanup_failure_blocks_shared_gpu(tmp_path,failure):
     from ai_bridge.gateway.jobs import JobMetadata
     lease=await leases.create(priority=200,source="vision",metadata=JobMetadata(
         workload=external_workload(registry,"vision-benchmark")))
-    use=await leases.begin_external_use(lease["lease_id"],binding(registry,"vision-local","image-analysis"),worker_pid=222)
+    use=await leases.begin_external_use(lease["lease_id"],binding(registry,"vision-local","image-analysis"),worker_pid=222,scope_path="fake-scope")
     if failure=="worker_still_alive":
         pass
     elif failure=="gpu_memory_leak":
@@ -159,9 +163,11 @@ async def test_worker_pid_reuse_before_admission_blocks_gpu(tmp_path):
     identities = iter([12345, 23456])
     gpu = GPUResidency(client, client, tmp_path/'vision-dirty',
                        vision_process_probe=lambda pid: next(identities),
-                       vision_memory_probe=lambda: 1024, timeout=.6,poll=.001)
+                       vision_memory_probe=lambda: 1024,
+                       vision_scope_probe=lambda pid:"fake-scope",
+                       vision_cgroup_members=lambda path:{222},timeout=.6,poll=.001)
     with pytest.raises(Exception, match='identity changed'):
-        await gpu.enter_vision(222)
+        await gpu.enter_vision(222,"fake-scope")
     assert gpu.state == 'blocked' and gpu.marker.exists()
     await client.aclose()
 
@@ -178,8 +184,11 @@ async def test_vision_baseline_measured_after_ollama_unload(tmp_path):
     client = httpx.AsyncClient(base_url='http://test', transport=httpx.MockTransport(handler))
     gpu = GPUResidency(client,client,tmp_path/'marker',
                        vision_process_probe=lambda pid: states['birth'],
-                       vision_memory_probe=lambda: states['vram'], timeout=.6,poll=.001)
-    await gpu.enter_vision(222)
+                       vision_memory_probe=lambda: states['vram'],
+                       vision_scope_probe=lambda pid:"fake-scope",
+                       vision_cgroup_members=lambda path:({222} if states["birth"] else set()),
+                       timeout=.6,poll=.001)
+    await gpu.enter_vision(222,"fake-scope")
     assert gpu._vision_baseline_bytes == 50000000
     states.update(birth=None,vram=50000000)
     await gpu.leave_vision()
@@ -231,3 +240,21 @@ async def test_two_vision_reservations_do_not_overlap():
     assert (await scheduler.job_status(second.job_id))['state']=='active'
     await scheduler.release_job(second.job_id)
     assert (await scheduler.snapshot())['active_count']==0
+
+
+@pytest.mark.anyio
+async def test_orphaned_cgroup_child_blocks_cleanup(tmp_path):
+    providers = Providers()
+    state = {'birth':123,'members':{222},'vram':1000}
+    client = httpx.AsyncClient(base_url='http://test',transport=httpx.MockTransport(providers.handle))
+    gpu = GPUResidency(client,client,tmp_path/'dirty',timeout=.6,poll=.001,
+            vision_process_probe=lambda pid:state['birth'],
+            vision_memory_probe=lambda:state['vram'],
+            vision_scope_probe=lambda pid:'fake-scope',
+            vision_cgroup_members=lambda scope:state['members'])
+    await gpu.enter_vision(222,'fake-scope')
+    state.update(birth=None,members={333})  # detached descendant survived parent
+    with pytest.raises(Exception,match='cgroup not empty'):
+        await gpu.leave_vision()
+    assert gpu.state=='blocked' and gpu.marker.exists()
+    await client.aclose()

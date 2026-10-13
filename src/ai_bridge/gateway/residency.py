@@ -8,7 +8,7 @@ from pathlib import Path
 
 import httpx
 
-from .vision_residency_evidence import gpu_vram_used_bytes, worker_birth_ticks
+from .vision_residency_evidence import gpu_vram_used_bytes, worker_birth_ticks, worker_cgroup_path, scoped_processes
 
 
 class ResidencyError(RuntimeError):
@@ -20,6 +20,7 @@ class GPUResidency:
                  marker: Path, *, timeout: float = 90, poll: float = .25, idle_reserve_bytes: int = 0,
                  require_comfy_extension: bool = True, resume_comfy=None,
                  vision_process_probe=worker_birth_ticks, vision_memory_probe=gpu_vram_used_bytes,
+                 vision_scope_probe=worker_cgroup_path, vision_cgroup_members=scoped_processes,
                  vision_memory_tolerance_bytes: int = 64 * 1024 * 1024):
         self.ollama, self.comfy = ollama, comfy
         self.marker, self.timeout, self.poll = marker, timeout, poll
@@ -30,6 +31,9 @@ class GPUResidency:
         self.cleanup_evidence = None
         self.vision_process_probe = vision_process_probe
         self.vision_memory_probe = vision_memory_probe
+        self.vision_scope_probe = vision_scope_probe
+        self.vision_cgroup_members = vision_cgroup_members
+        self._vision_scope_path: str | None = None
         self.vision_memory_tolerance_bytes = vision_memory_tolerance_bytes
         self._vision_worker: tuple[int, int] | None = None
         self._vision_baseline_bytes: int | None = None
@@ -97,7 +101,7 @@ class GPUResidency:
             raise
 
 
-    async def enter_vision(self, worker_pid: int) -> None:
+    async def enter_vision(self, worker_pid: int, scope_path: str) -> None:
         """Pin the shared GPU before a declared, *parked* Vision worker may run.
 
         External executor must start the worker WAITING for an ownership token.
@@ -108,6 +112,12 @@ class GPUResidency:
         birth = self.vision_process_probe(worker_pid)
         if birth is None or birth <= 0:
             raise ResidencyError("Vision process identity unavailable")
+        if not isinstance(scope_path, str) or self.vision_scope_probe(worker_pid) != scope_path:
+            raise ResidencyError("Vision worker must be in a trusted dedicated cgroup scope")
+        members = self.vision_cgroup_members(scope_path)
+        if members is None or worker_pid not in members:
+            raise ResidencyError("Vision worker is not present in declared cgroup")
+        self._vision_scope_path = scope_path
         self._vision_worker = (worker_pid, birth)
         self._vision_baseline_bytes = None
         try:
@@ -130,8 +140,10 @@ class GPUResidency:
                     await asyncio.sleep(self.poll)
                 if not await self._comfy_models_idle():
                     raise ResidencyError("ComfyUI residency not idle before Vision")
-                if self.vision_process_probe(worker_pid) != birth:
-                    raise ResidencyError("Vision worker identity changed before admission")
+                if (self.vision_process_probe(worker_pid) != birth
+                    or self.vision_scope_probe(worker_pid) != scope_path
+                    or worker_pid not in (self.vision_cgroup_members(scope_path) or set())):
+                    raise ResidencyError("Vision scope/worker identity changed before admission")
                 # Baseline AFTER verified Ollama drain and Comfy idle, never
                 # include Ollama's old weights in the allowed cleanup ceiling.
                 baseline = self.vision_memory_probe()
@@ -149,7 +161,8 @@ class GPUResidency:
         Missing/dirty cleanup evidence permanently retains the blocked marker.
         A successful HTTP response or worker-supplied boolean is never proof.
         """
-        if self.state != "vision" or self._vision_worker is None or self._vision_baseline_bytes is None:
+        if (self.state != "vision" or self._vision_worker is None
+                or self._vision_baseline_bytes is None or self._vision_scope_path is None):
             raise ResidencyError("Vision GPU residency requires recovery")
         worker_pid, _birth = self._vision_worker
         try:
@@ -157,6 +170,11 @@ class GPUResidency:
             async with asyncio.timeout(self.timeout):
                 if self.vision_process_probe(worker_pid) is not None:
                     raise ResidencyError("Vision worker still alive; GPU ownership cannot release")
+                # cgroup v2 scope proves no descendants or processes that left
+                # the parent's process group may still hold GPU allocations.
+                members = self.vision_cgroup_members(self._vision_scope_path)
+                if members is None or members:
+                    raise ResidencyError("Vision cgroup not empty or evidence unavailable")
                 await self._idle()
                 if not await self._comfy_models_idle():
                     raise ResidencyError("ComfyUI not idle after Vision")
@@ -171,6 +189,7 @@ class GPUResidency:
                                          "gpu_memory_tolerance_bytes": self.vision_memory_tolerance_bytes}
             self.marker.unlink()
             self._vision_worker = None
+            self._vision_scope_path = None
             self._vision_baseline_bytes = None
             self.state = "llm"
         except BaseException:

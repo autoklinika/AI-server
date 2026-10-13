@@ -13,7 +13,7 @@ import threading
 import time
 import unittest
 
-from ai_bridge.benchmarks.vision_rm_executor import VisionRMExecutor
+from ai_bridge.benchmarks.vision_rm_executor import VisionExecutionError, call
 
 
 class FakeGateway(BaseHTTPRequestHandler):
@@ -54,6 +54,9 @@ class FakeGateway(BaseHTTPRequestHandler):
             assert isinstance(pid,int) and pid>1
             assert body["provider"]=="vision-local"
             assert body["capability"]=="image-analysis"
+            if "scope_path" in body:
+                from ai_bridge.gateway.vision_residency_evidence import worker_cgroup_path
+                assert body["scope_path"]==worker_cgroup_path(pid)
             assert not s["output"].exists(), "worker started before GPU authorization"
             os.kill(pid,0)
             s["worker_pid"]=pid
@@ -91,35 +94,31 @@ class FakeGateway(BaseHTTPRequestHandler):
             raise AssertionError("worker was not reaped before cleanup")
 
 
-class VisionExecutorTest(unittest.TestCase):
-    def test_worker_is_parked_until_authorization_then_reaped(self):
+class ScopedExecutorRealCgroupTest(unittest.TestCase):
+    def test_systemd_scope_worker_is_parked_and_cleans_up(self):
+        import shutil
+        from ai_bridge.benchmarks.vision_rm_scoped_executor import ScopedVisionExecutor
+        if (not shutil.which("systemd-run") or not
+                Path(f"/run/user/{os.getuid()}/bus").is_socket()):
+            self.skipTest("systemd user bus unavailable")
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)
             output=root/"marker.json"
             script=root/"worker.py"
-            script.write_text(
-                "from pathlib import Path\nimport sys,json\n"
-                "Path(sys.argv[1]).write_text(json.dumps({'worker':'ran_after_token'}))\n"
-            )
+            script.write_text("from pathlib import Path\nimport sys,json\n"+
+                              "Path(sys.argv[1]).write_text(json.dumps({'worker':'scoped'}))\n")
             server=ThreadingHTTPServer(("127.0.0.1",0),FakeGateway)
             server.state={"output":output,"lease":False,"use":False,
                           "cleaned":False,"worker_pid":None}
             thread=threading.Thread(target=server.serve_forever,daemon=True)
             thread.start()
             try:
-                result=VisionRMExecutor(base=f"http://127.0.0.1:{server.server_port}").execute(
+                result=ScopedVisionExecutor(base=f"http://127.0.0.1:{server.server_port}").execute(
                     python=Path(sys.executable),script=script,args=[str(output)],
-                    log=root/"output.log",max_seconds=10)
+                    log=root/"scoped.log",max_seconds=15)
                 self.assertEqual(result["status"],"completed")
-                self.assertEqual(json.loads(output.read_text()),{"worker":"ran_after_token"})
+                self.assertEqual(json.loads(output.read_text()),{"worker":"scoped"})
                 self.assertTrue(server.state["cleaned"])
                 self.assertFalse(server.state["lease"])
-                self.assertFalse(server.state["use"])
             finally:
-                server.shutdown()
-                server.server_close()
-                thread.join(timeout=2)
-
-
-if __name__=="__main__":
-    unittest.main()
+                server.shutdown();server.server_close();thread.join(timeout=2)

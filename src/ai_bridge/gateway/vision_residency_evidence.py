@@ -34,3 +34,45 @@ def gpu_vram_used_bytes() -> int | None:
         return amount if amount >= 0 else None
     except (OSError, ValueError):
         return None
+
+def worker_cgroup_path(pid: int) -> str | None:
+    """Return exact, trusted user-manager Vision scope for the worker PID."""
+    import os
+    import re
+    try:
+        uid = Path(f"/proc/{pid}").stat().st_uid
+        if uid != os.getuid():
+            return None  # No authorizing a GPU worker owned by another user.
+        raw = Path(f"/proc/{pid}/cgroup").read_text(encoding="ascii")
+        lines = [line[3:].strip() for line in raw.splitlines() if line.startswith("0::")]
+        if len(lines) != 1:
+            return None
+        path = lines[0]
+        prefix = f"/user.slice/user-{uid}.slice/user@{uid}.service/app.slice/"
+        if not path.startswith(prefix):
+            return None
+        scope = path[len(prefix):]
+        if not re.fullmatch(r"vision-bench-[0-9a-f]{12}\.scope", scope):
+            return None
+        return path
+    except (OSError, ValueError):
+        return None
+
+
+def scoped_processes(scope_path: str) -> set[int] | None:
+    """Kernel cgroup.procs evidence; unknown state returns None, not empty."""
+    from pathlib import PurePosixPath
+    import re
+    if not isinstance(scope_path, str) or not scope_path.startswith("/user.slice/"):
+        return None
+    scope = PurePosixPath(scope_path)
+    if ".." in scope.parts or not re.fullmatch(r"vision-bench-[0-9a-f]{12}\.scope", scope.name):
+        return None
+    path = Path("/sys/fs/cgroup") / scope_path.lstrip("/") / "cgroup.procs"
+    try:
+        return {int(pid) for pid in path.read_text(encoding="ascii").split()}
+    except FileNotFoundError:
+        # Scope may disappear after all processes have exited.
+        return set()
+    except (OSError, ValueError):
+        return None

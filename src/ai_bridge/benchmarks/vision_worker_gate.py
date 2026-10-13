@@ -9,6 +9,8 @@ import argparse
 import json
 import os
 import sys
+import time
+from pathlib import Path
 from urllib.request import Request, urlopen
 
 
@@ -24,16 +26,32 @@ def _verify(base: str, lease: str, use: str) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--gate-fd", type=int, required=True)
+    ap.add_argument("--gate-fd", type=int)
+    ap.add_argument("--ready-file", type=Path)
+    ap.add_argument("--auth-file", type=Path)
     ap.add_argument("--gateway", required=True)
     ap.add_argument("--python", required=True)
     ap.add_argument("--script", required=True)
     ap.add_argument("args", nargs=argparse.REMAINDER)
     p = ap.parse_args()
-    if p.gate_fd < 3:
-        raise ValueError("unexpected gate descriptor")
-    with os.fdopen(p.gate_fd, "r", encoding="utf-8", closefd=True) as pipe:
-        raw = pipe.readline(4096)
+    if p.ready_file is not None and p.auth_file is not None and p.gate_fd is None:
+        # Dedicated systemd user scope. No image/model/ROCm imports happen
+        # before this parked process receives an authorized use ID.
+        with p.ready_file.open("x", encoding="ascii") as ready:
+            ready.write(str(os.getpid()) + "\n")
+            ready.flush()
+            os.fsync(ready.fileno())
+        started = time.monotonic()
+        while not p.auth_file.is_file():
+            if time.monotonic() - started > 120:
+                raise RuntimeError("Vision scope authorization timed out")
+            time.sleep(0.05)
+        raw = p.auth_file.read_text(encoding="utf-8")[:4096]
+    else:
+        if p.gate_fd is None or p.gate_fd < 3 or p.ready_file is not None or p.auth_file is not None:
+            raise ValueError("exactly one authorization transport required")
+        with os.fdopen(p.gate_fd, "r", encoding="utf-8", closefd=True) as pipe:
+            raw = pipe.readline(4096)
     authorization = json.loads(raw)
     if set(authorization) != {"lease_id", "use_id"}:
         raise ValueError("missing Vision authorization")

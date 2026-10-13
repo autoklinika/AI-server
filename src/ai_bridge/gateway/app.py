@@ -531,9 +531,11 @@ def create_gateway_app(
                        and set(body) == {"provider", "capability"})
             vision = (resolved.gateway_vision_external_enabled
                       and body.get("provider") == "vision-local"
-                      and set(body) == {"provider", "capability", "worker_pid"}
+                      and set(body) == {"provider", "capability", "worker_pid", "scope_path"}
                       and type(body.get("worker_pid")) is int
-                      and body["worker_pid"] > 1)
+                      and body["worker_pid"] > 1
+                      and isinstance(body.get("scope_path"), str)
+                      and bool(body["scope_path"]))
             if not allowed and not vision:
                 raise ValueError()
             provider = registry.provider(body["provider"])
@@ -543,7 +545,8 @@ def create_gateway_app(
             raise HTTPException(status_code=400, detail="invalid external workload")
         try:
             use_id = await resource_leases.begin_external_use(
-                lease_id, workload, worker_pid=body.get("worker_pid")
+                lease_id, workload, worker_pid=body.get("worker_pid"),
+                scope_path=body.get("scope_path")
             )
         except ResourceLeaseNotFound:
             return JSONResponse(status_code=404, content={"error": "resource_lease_not_found"})

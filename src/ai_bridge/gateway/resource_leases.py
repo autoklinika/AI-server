@@ -85,7 +85,7 @@ class ResourceLeaseRegistry:
             rec.last_heartbeat = monotonic()
             return ticket
 
-    async def begin_external_use(self, lease_id: str, workload: WorkloadBinding, *, worker_pid: int | None = None) -> str:
+    async def begin_external_use(self, lease_id: str, workload: WorkloadBinding, *, worker_pid: int | None = None, scope_path: str | None = None) -> str:
         async with self._lock:
             rec = self._leases.get(lease_id)
             if rec is None:
@@ -101,9 +101,10 @@ class ResourceLeaseRegistry:
                 raise ResourceLeaseNotAllowed("workload outside resource lease")
             if workload.provider == "vision-local":
                 if (not self.vision_enabled or workload.capability != "image-analysis"
-                        or type(worker_pid) is not int or worker_pid <= 1):
+                        or type(worker_pid) is not int or worker_pid <= 1
+                        or not isinstance(scope_path,str) or not scope_path):
                     raise ResourceLeaseNotAllowed("Vision external execution is unavailable")
-            elif workload.provider != "comfyui-local" or worker_pid is not None:
+            elif workload.provider != "comfyui-local" or worker_pid is not None or scope_path is not None:
                 raise ResourceLeaseNotAllowed("invalid external execution provider")
             # Pin before I/O, including cancellation/disconnect. Failure must
             # retain ownership even when the worker releases or stops heartbeats.
@@ -113,7 +114,7 @@ class ResourceLeaseRegistry:
         try:
             if self.residency:
                 if workload.provider == "vision-local":
-                    await self.residency.enter_vision(worker_pid)
+                    await self.residency.enter_vision(worker_pid, scope_path)
                 else:
                     await self.residency.enter_media()
         except BaseException:
