@@ -56,6 +56,10 @@ def test_scoped_dev_runner_through_actual_gateway_endpoints():
                 if time.monotonic()-start>10:
                     raise TimeoutError("DEV Gateway startup")
                 time.sleep(.05)
+            # E2E proves the real user systemd scope + Gateway protocol,
+            # not physical GPU/DRM telemetry. Hosted CI has no Radeon DRM.
+            # GPU memory ownership itself has separate unit and host tests.
+            app.state.resource_leases.residency.vision_memory_probe = lambda: 1024
             script=root/"tiny_worker.py"
             marker=root/"dummy-model-output.json"
             script.write_text(
