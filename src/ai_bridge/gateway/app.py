@@ -463,6 +463,7 @@ def create_gateway_app(
     @app.get("/status")
     async def status() -> dict[str, object]:
         snapshot = await scheduler.snapshot()
+        snapshot["resource_evidence"] = resource_leases.residency.evidence_snapshot()
         snapshot["gpu_residency"] = resource_leases.residency.snapshot()
         snapshot["accelerators"] = accelerator_state_snapshot(
             accelerator_registry, resource_leases.residency.snapshot()
