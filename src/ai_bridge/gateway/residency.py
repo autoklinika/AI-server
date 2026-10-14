@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 import httpx
+from datetime import datetime, timezone
 
 
 class ResidencyError(RuntimeError):
@@ -19,6 +20,7 @@ class GPUResidency:
                  require_comfy_extension: bool = True, resume_comfy=None):
         self.ollama, self.comfy = ollama, comfy
         self.marker, self.timeout, self.poll = marker, timeout, poll
+        self._model_observations = {"ollama": None, "comfyui": None}
         self.idle_reserve_bytes = idle_reserve_bytes
         self.require_comfy_extension = require_comfy_extension
         self.resume_comfy = resume_comfy
@@ -29,6 +31,68 @@ class GPUResidency:
         return {"state": self.state, "recovery_required": self.state == "blocked",
                 "cleanup_evidence": self.cleanup_evidence}
 
+    def evidence_snapshot(self):
+        """Diagnostic facts only; never consumed by admission or release.
+
+        Runtime observations describe an earlier response, not current residency
+        or a runtime incarnation. No job, device or generation is inferred here.
+        """
+        return {
+            "schema_version": 1,
+            "JOB_TERMINAL": {
+                "status": "NOT_OBSERVED", "scope": "individual_job",
+                "job_id": None, "observed_at": None, "source": None,
+                "reason": "global_status_has_no_selected_job",
+            },
+            "MODEL_UNLOADED": {
+                runtime: {
+                    "scope": "all_models_reported_by_configured_runtime",
+                    "source": source, "runtime_generation": None,
+                    "validity": "POINT_IN_TIME_ONLY",
+                    **(observation or {
+                        "status": "NOT_OBSERVED", "observed_at": None,
+                        "models_unloaded": None, "cleanup_pending": None,
+                    }),
+                }
+                for runtime, source in (
+                    ("ollama", "ollama:/api/ps"),
+                    ("comfyui", "comfyui:/ai-platform/residency"),
+                )
+                for observation in (self._model_observations[runtime],)
+            },
+            "GPU_REUSE_SAFE": {
+                "status": "NOT_VERIFIED", "scope": "device_and_generation",
+                "device_id": None, "generation": None,
+                "observed_at": None, "source": None,
+                "reason": "complete_trusted_E_safe_not_deployed",
+            },
+        }
+
+    @staticmethod
+    def _observe_models(runtime, payload, observation):
+        # Allowlist scalar facts only: no names, URLs, tokens or raw payloads.
+        observation["observed_at"] = datetime.now(timezone.utc).isoformat()
+        if not isinstance(payload, dict):
+            return
+        if runtime == "ollama":
+            models = payload.get("models")
+            if not isinstance(models, list) or any(
+                not isinstance(model, dict) or not isinstance(model.get("name"), str)
+                or not model["name"] for model in models
+            ):
+                return
+            unloaded = not models
+        else:
+            if (type(payload.get("schema_version")) is not int
+                    or payload["schema_version"] != 1
+                    or any(type(payload.get(key)) is not int or payload[key] < 0
+                           for key in ("loaded_models", "queue_running", "queue_pending"))
+                    or type(payload.get("cleanup_pending")) is not bool):
+                return
+            unloaded = payload["loaded_models"] == 0
+            observation["cleanup_pending"] = payload["cleanup_pending"]
+        observation.update(status="OBSERVED", models_unloaded=unloaded)
+
     def _dirty(self):
         self.marker.parent.mkdir(parents=True, exist_ok=True)
         with self.marker.open("w") as stream:
@@ -37,9 +101,20 @@ class GPUResidency:
             os.fsync(stream.fileno())
 
     async def _json(self, client, path):
+        runtime = ("ollama" if client is self.ollama and path == "/api/ps" else
+                   "comfyui" if client is self.comfy and path == "/ai-platform/residency" else None)
+        if runtime is not None:
+            # Invalidate before awaiting: failures/cancellation cannot retain a
+            # previous positive observation. Concurrent older reads cannot win.
+            observation = {"status": "UNKNOWN", "observed_at": None,
+                           "models_unloaded": None, "cleanup_pending": None}
+            self._model_observations[runtime] = observation
         response = await client.get(path)
         response.raise_for_status()
-        return response.json()
+        payload = response.json()
+        if runtime is not None and self._model_observations[runtime] is observation:
+            self._observe_models(runtime, payload, observation)
+        return payload
 
     async def _idle(self):
         queue = await self._json(self.comfy, "/queue")
