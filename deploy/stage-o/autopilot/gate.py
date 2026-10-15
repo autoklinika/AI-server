@@ -624,7 +624,11 @@ def recover_active_unaccepted_candidate(cfg: dict) -> None:
         e.digest(active / "metadata/SHA256SUMS") == installed["checksums"]
     )
 
-    switch(rollback, active, cfg, baseline)
+    # Only this recovery rollback may rebind ComfyUI after a host restart.
+    # Preserve the immutable historical baseline and recheck live identity in switch().
+    e.comfy_idle()
+    recovery_baseline = {**baseline, "comfy": e.identity("comfyui.service")}
+    switch(rollback, active, cfg, recovery_baseline)
     rollback_evidence = prior_state / "rollback.json"
     if not rollback_evidence.exists():
         e.write_once(
