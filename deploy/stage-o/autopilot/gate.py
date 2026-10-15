@@ -78,6 +78,11 @@ def accepted_stage_o(path: Path, stamp: dict | None = None) -> dict:
     require(re.fullmatch(r"[0-9a-f]{40}", source_sha) is not None)
     require(path == candidate_identity(source_sha))
     evidence = e.read(STATE / source_sha / "accepted.json")
+    if ("recovery_provenance" in evidence or evidence.get("phase") == "RECOVERED_POST_REBOOT"
+            or os.path.lexists(STATE / source_sha / "recovery-attestation.json")):
+        recovery = e.load_module(
+            "stage_o_recovery_provenance", ROOT / "deploy/stage-o/recover_acceptance_apply.py")
+        recovery.verify_provenance(STATE / source_sha, evidence)
     require(evidence["status"] == "PASS")
     require(evidence["release_id"] == path.name)
     require(evidence["source_sha"] == source_sha)
