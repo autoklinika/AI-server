@@ -316,3 +316,22 @@ ani nie ma egzekwowanej izolacji ingress oraz mutacji spoza `executor.lock`.
 Zatwierdzony wyjątek `.env` nie obejmuje tych braków. Do czasu osobnej
 autoryzacji nie zapisuje się `recovery-attestation.json` ani `accepted.json`
 na produkcji; nie wykonuje się merge ani cutover.
+
+### Niezależny audyt bariery mutacji — wyniki kontroli CORE
+
+W źródłach Gateway `scheduler.admission_blocked` jest ustawiane dla
+zablokowanego stanu rezydencji / błędów lease; brak odrębnego,
+operator-controlled `maintenance admission pause`. Sam `executor.lock`
+koordynuje skrypty Stage O, ale **nie blokuje** zewnętrznych klientów,
+HTTP, lokalnych skryptów ani ComfyUI. Istniejące `Stage E e.quiesce()`
+zatrzymuje Hermes/timer i sprawdza idle, lecz jest fragmentem mutującej
+procedury cutover, nie kompletną bramką do bezpiecznego zapisu samej
+akceptacji. Nie wolno stosować awaryjnego `admission_blocked` ani stanu
+GPU `blocked` jako sztucznego maintenance fence.
+
+Najmniejszą kolejną decyzją operacyjną jest **osobno zatwierdzone okno
+serwisowe z kontrolą wszystkich kanałów ingress i utrzymaniem ich
+zamknięcia na czas atestacji**. Dopiero potem można zaprojektować
+egzekwowalne zatrzymanie/odtworzenie dokładnie znanych usług,
+pod odrębną autoryzacją, zamiast tworzenia nowego koordynatora.
+Do tego momentu: `PROD_APPLY=NO_GO`, nawet gdy read-only observation PASS.
