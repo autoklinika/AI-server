@@ -138,3 +138,68 @@ Nie wykonywano sudo, deploy, restartów, inference, push/merge/reset/clean ani
 modyfikacji produkcyjnych plików. Nadzorca: przejrzeć DEV diff, pozyskać brakujące
 dowody w osobno zatwierdzonym audycie, utrzymać NO-GO do ich oceny. Wszystkie
 późniejsze działania root/apply/release wymagają odrębnej decyzji użytkownika.
+
+## Dopisek DEV — walidator wstępny CHECK, 2026-10-15
+
+**NO-GO dla recertyfikacji/apply; gotowy wyłącznie walidator wstępny offline.**
+Na wejściowym HEAD `18c235bdffc6bd3c40e3a86862432677715f8840` sprawdzono
+kod obu skryptów audytowych z `/tmp` (bez uruchamiania) i kontrakt producenta
+artefaktów z Git source `5e104ea69d0bfa342209acdc8dc88145b34ae72e`.
+Zgłoszone 33/33, 885 plików obu usług i świeże health/Stage K pozostają danymi
+od użytkownika, nie nową niezależną walidacją produkcji. Historyczny baseline
+nie obejmuje pełnych env, efektywnych unitów/drop-inów, konfiguracji A/B,
+preload script ani pełnej tożsamości modeli/adapterów. Potrzebny jest niezależny,
+zatwierdzony **przed reboot** snapshot tych danych z wiarygodnym pochodzeniem
+(np. chronione archiwum konfiguracji/backup z udokumentowanym zatwierdzeniem,
+czasem i powiązaniem z release). Bieżąca kopia, własny digest ani dodatkowe
+pole `PASS` tego nie zastępują. Nie potwierdzono dostępności takiego źródła.
+
+Dodano jeden skrypt `deploy/stage-o/recover_acceptance_once.py`. Domyślnie
+wyłącznie drukuje JSON `CHECK / NO_GO`, kończy się kodem 2 i nie czyta produkcji.
+Nie ma implementacji ani opcji `--apply`; także deklaracje approval/lock nie
+uruchomią zapisu. Bezpośrednie uruchomienie używa shebang `python3 -I -B -S`;
+przy wskazywaniu interpretera należy zachować te flagi, ponieważ startup Pythona
+może pisać bytecode **przed** wykonaniem kodu skryptu. Brak importów gate,
+subprocess, HTTP, locków, instalacji i ścieżki zapisu accepted/attestation.
+
+Opcjonalne `--expected-source <pełny pinned SHA> --evidence-dir <katalog kopii>`
+sprawdza dokładnie osiem nazw, ścisły schemat zapisany przez historyczny gate,
+powiązania identities, kolejność/czasy smoke, zagnieżdżone wyniki CC/benchmark,
+liczniki i historyczny format klientów. Odrzuca duplikaty kluczy, NaN, symlinki
+również w rodzicach, hardlinki, FIFO, nadmiarowe pliki i pliki ponad 1 MiB;
+odczyt stosuje O_NOATIME bez fallbacku i ponownie sprawdza metadane.
+Naprawia słabość audytu `/tmp`: candidate/final nie mogą używać
+`ROLLBACK_NOT_REQUIRED`, a samo zagnieżdżone `status=PASS` nie wystarcza.
+Wynik strukturalny to najwyżej `CONSISTENT_UNAUTHENTICATED`, **nigdy odbiór**.
+
+Granice są celowe: skrypt nie uwierzytelnia oryginałów/owner/mode/immutability,
+rollback accepted, manifestu/checksum coverage/Git payload, klientów bieżących,
+current, konfiguracji, runtime, NAS ani Stage K. Każdy pozostaje jawną blokadą
+`NOT_VERIFIED`/`UNAUTHENTICATED`, nawet dla poprawnej strukturalnie kopii.
+Testy podmiany manifestu/checksumy, konfiguracji, klientów i nowego PID dowodzą
+odmowy **autoryzacji**, nie implementacji detekcji wszystkich driftów.
+Powtórny stat to diagnostyka zmian, nie pełna ochrona przed TOCTOU; bez
+transakcji nie istnieje ścieżka publikowania akceptacji. W przyszłości konieczne
+są wspólna blokada Stage O, ponowna pełna walidacja, ochrona mutable inputs,
+nowy boot ID i osobna datowana immutable recovery-attestation z digestem,
+write-once atomic/fsync oraz accepted dopiero na końcu. Historyczny finalize
+nie przeszedł; health/hash nie dowodzą E_safe. A, B, modele i LoRA zamrożone.
+
+Walidacja CPU/offline: **155 passed, 2 ostrzeżenia deprecacji**, polecenie:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/harrypotter/.cache/ai-server-agent-venv/bin/python -m pytest -o addopts='' -q -p no:cacheprovider tests/test_stage_o_recovery_check.py tests/test_stage_o_acceptance_recovery.py tests/test_stage_o_rollback_compat.py tests/test_stage_o_default_model.py tests/test_stage_e_autopilot.py
+```
+
+Nowe testy używają wyłącznie tmp_path/in-memory; argument `--apply` jest testowany
+wyłącznie jako odrzucona, nieistniejąca opcja izolowanej kopii skryptu. Sprawdzono
+brak nowych plików/bytecode oraz brak zmian metadanych/atime kopii przy CHECK.
+Pierwszy przebieg wykrył startup bytecode; poprawiono shebang i zweryfikowano
+oba wspierane sposoby uruchamiania. AST i compile w pamięci: PASS;
+`git diff --check` oraz analogiczna kontrola nowych plików: PASS.
+Dotychczasowy test recovery i standardowe gate Stage O/E pozostawiono bez zmian.
+Prywatny przegląd DEV: brak dowodu pozwalającego na GO, brak operacji produkcyjnych,
+sudo/root, GPU, commit/push/merge. Następny krok: review diffu i ustalenie, czy
+istnieje niezależne historyczne archiwum konfiguracji; jeśli nie, potrzebna jest
+osobno zaprojektowana i zatwierdzona manualna recertyfikacja, nie odtworzenie
+pozornej ciągłości historycznej.
