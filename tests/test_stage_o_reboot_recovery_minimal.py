@@ -215,3 +215,24 @@ def test_existing_switch_rejects_comfy_restart_during_quiescence(setup, monkeypa
     assert "resume" not in calls  # Preserve Stage O fail-closed policy after partial mutation.
     assert not (state / "rollback.json").exists()
     assert (state / "baseline.json").read_bytes() == original
+
+
+def test_pre_mutation_failure_restores_ingress_without_switch(setup, monkeypatch):
+    g, state, active, rollback, calls, original = setup
+    _patch_switch_runtime(monkeypatch, setup)
+    probes = [0]
+
+    def busy_on_second_check():
+        probes[0] += 1
+        if probes[0] == 2:
+            raise RuntimeError("ComfyUI became busy before mutation")
+        calls.append("idle")
+
+    monkeypatch.setattr(g.e, "comfy_idle", busy_on_second_check)
+    with pytest.raises(RuntimeError, match="before mutation"):
+        g.recover_active_unaccepted_candidate({})
+    assert "quiesce" in calls and "resume" in calls
+    assert "cutover" not in calls
+    assert g.e.CURRENT.resolve(strict=True) == active
+    assert not (state / "rollback.json").exists()
+    assert (state / "baseline.json").read_bytes() == original
