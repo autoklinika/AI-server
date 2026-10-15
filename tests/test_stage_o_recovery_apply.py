@@ -263,3 +263,50 @@ def test_cli_no_pycache(tmp_path):
                             cwd=tmp_path, capture_output=True, timeout=10)
     assert result.returncode == 2
     assert set(tmp_path.rglob('*')) == before
+
+
+@pytest.mark.parametrize('fault', ['attestation', 'verifier_rejection'])
+def test_between_writes_recheck(transaction, fault):
+    state, verifier = transaction
+    calls = []
+    def recheck(observation):
+        calls.append(1)
+        if len(calls) == 2:
+            if fault == 'attestation':
+                (state / a.ATTESTATION).write_text('{}')
+                return True
+            return False
+        return True
+    verifier.recheck = recheck
+    with pytest.raises(ValueError):
+        commit(transaction)
+    assert not (state / 'accepted.json').exists()
+
+
+def test_post_write_recheck_failure_is_not_rollback(transaction):
+    state, verifier = transaction
+    calls = []
+    def recheck(observation):
+        calls.append(1)
+        return len(calls) < 3
+    verifier.recheck = recheck
+    with pytest.raises(ValueError, match='RUNTIME_CHANGED'):
+        commit(transaction)
+    assert (state / 'accepted.json').exists()
+    with pytest.raises(ValueError, match='PARTIAL_OR_EXISTING_STATE'):
+        commit(transaction)
+
+
+@pytest.mark.parametrize('name', [a.ATTESTATION, 'accepted.json'])
+def test_file_create_failure(transaction, monkeypatch, name):
+    state, _ = transaction
+    original = a.exclusive_write
+    def fail(fd, leaf, raw):
+        if leaf == name:
+            raise PermissionError('injected create failure')
+        return original(fd, leaf, raw)
+    monkeypatch.setattr(a, 'exclusive_write', fail)
+    with pytest.raises(PermissionError):
+        commit(transaction)
+    assert not (state / 'accepted.json').exists()
+    assert (state / a.ATTESTATION).exists() == (name == 'accepted.json')

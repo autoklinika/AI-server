@@ -190,3 +190,129 @@ Walidacja DEV: `git diff --check` PASS; AST trzech zmienionych/dodanych plików
 Python PASS. Wymagane uruchomienie
 `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src /home/harrypotter/.cache/ai-server-agent-venv/bin/python -m pytest tests/test_stage_o*.py tests/test_stage_e*.py`
 zakończyło się **212 passed**, dwa ostrzeżenia deprecation zależności.
+
+## Końcowy hardening DEV — aktywna obserwacja częściowa, PROD_BLOCKED
+
+Ta sekcja aktualizuje powyższy stan implementacji. Nie przeprowadzono w tej
+sesji żadnego odczytu ani zapisu produkcyjnego; nie wykonano recertyfikacji.
+Dodano `deploy/stage-o/recover_acceptance_observe.py --observe`, osobny program
+bez ścieżki apply. Nie jest podłączony jako autorytet do writer. Zawsze zwraca
+exit 2 i `PROD_BLOCKED`, także przy zgodnych obserwacjach. Uruchomienie
+produkcyjne pozostaje przyszłym działaniem operatora po przeglądzie.
+
+Pokryte kodem aktywne odczyty: osiem oryginałów i ich zagnieżdżona struktura,
+czasy i kolejność pod istniejącym executor.lock; dokładny target current;
+SHA-256/mode/uid/gid pięciu klientów względem baseline; bajty preload unit;
+Gateway/Bridge health i Control Center readiness; Comfy queue oraz Gateway
+active/queued/jobs leases równe zero. Odczyty systemd obejmują Gateway,
+Bridge, Comfy i timer analizy: ActiveState, InvocationID, NeedDaemonReload,
+MainPID usług oraz skonfigurowane i rzeczywiste cwd Gateway/Bridge. Dwa pomiary
+porównują boot ID, target current, tożsamości procesów, klientów, preload unit
+oraz nazwę/digest pojedynczego rezydentnego modelu p511. Stary PID Comfy jest
+wyłącznie historią. Nie sprawdza się jego równości z nowym procesem.
+
+Kontrakty odczytów odpowiadają istniejącym helperom Stage E runtime/idle/
+comfy_idle i Stage O Control Center. Celowo nie importuje się gate zawierającego
+operacje mutujące. Stałe endpointy loopback nie używają proxy ani przekierowań;
+brak zgodnego bind Bridge na loopback kończy się NO_GO, bez odczytu env.
+Limit CLI wynosi 30 s łącznie (SIGALRM), HTTP i systemctl po 2 s; odpowiedzi
+JSON mają limit 1 MiB i odrzucają duplikaty/NaN. Nie drukuje się payloadów,
+stderr ani zawartości plików. Importy wyłączają bytecode; uruchomienie wymaga
+`python -I -B -S`. Zgodność dwóch pomiarów nie stanowi dowodu braku zmian
+pomiędzy nimi ani blokady ingress.
+
+**Niepokryte aktywną walidacją:** pełne RELEASE/manifest/SHA256SUMS i kompletność
+payloadu, porównanie obu źródeł z zaufanym Git, rollback metadata/accepted;
+uwierzytelniony digest modelu, LoRA i preload script; oddzielny routing WVC;
+Hermes user service; 17 efektywnych unitów/drop-ins względem zaufanej kopii;
+świeże Stage K monitor/daily/weekly i nested restore; mount NAS i marker;
+manifesty i archiwa PlatformSecrets/PlatformConfig oraz przypięte metadane
+rozmiaru/trybu/mtime dwóch env. Obserwowany digest modelu nie dowodzi jego
+zgodności z historycznym zaufanym digestem. Każdy z tych braków pozostaje
+jawną blokadą, niezależnie od wyników częściowego check. Nie dodano pozornych
+testów tych brakujących weryfikatorów. `E_safe` nadal NOT_VERIFIED.
+
+### Kontrakt przyszłej blokady mutacji
+
+Executor.lock obejmuje tylko transakcje Stage O. Root-owned JSON z PASS,
+plik lease albo dwa zgodne pomiary nie egzekwują wyłączności. Produkcyjny apply
+pozostaje bezwarunkowo wyłączony, dopóki niezależny review nie potwierdzi
+następującego mechanizmu przygotowanego przez uprawnionego operatora:
+
+1. Przed obserwacją operator ustanawia i sprawdza rzeczywistą blokadę nowych
+   żądań wszystkich ingress (także bezpośrednich lokalnych API), Hermes,
+   timera i zewnętrznych narzędzi administracyjnych. Samo zero jobs nie wystarcza.
+   Każdy potencjalny mutator musi respektować wyłączność albo mieć odebrane
+   możliwości mutacji na czas okna; brak kompletnego pokrycia oznacza NO_GO.
+2. Wyłączna dzierżawa musi być utrzymywana przez cały czas, z mechanizmem
+   uniemożliwiającym zwolnienie, przejęcie lub wygaśnięcie podczas zapisu.
+   Zaufany dowód operatora wiąże source SHA, boot, nonce, właściciela/proces
+   i jego generację, zakres ingress/urządzeń i osobną zgodę apply. Root ownership
+   jest konieczne, ale nie zastępuje weryfikacji mechanizmu egzekwowania.
+3. Po ustanowieniu bariery: executor.lock, pełne walidacje i recheck dowodu
+   dzierżawy, bieżącego symlinka (także inode), generacji procesów/boot/urządzeń,
+   rezydencji, config i ingress przed pierwszym zapisem, między zapisami oraz
+   po obu fsync. Ta sesja nie ustanawia dzierżawy, nie zatrzymuje usług i nie
+   dostarcza fikcyjnego adaptera autoryzującego ją.
+4. Dzierżawa pozostaje utrzymana aż do niezależnej kontroli końcowego stanu.
+   Utrata bariery lub błąd końcowy wymaga ręcznego review bez retry, usuwania
+   ani automatycznego zwalniania zabezpieczeń. Dopiero osobna autoryzacja
+   operatora może otworzyć normalny ruch.
+
+To wymagania dla przyszłego apply, nie gotowy mechanizm ochrony. Bez skutecznej
+bariery żaden recheck nie usuwa wyścigu tuż po ostatnim sprawdzeniu.
+
+Rdzeń DEV sprawdza teraz attestation przed accepted i oba pliki po zapisie;
+wywołuje również końcowy runtime recheck pod lock. Accepted zawiera jawne
+`acceptance_kind=RECOVERY_RECERTIFICATION` i `historical_finalize=NOT_PASSED`.
+Gate recovery wymaga tych pól i dokładnego zakresu wyjątku env; stare accepted
+bez recovery nadal korzystają z dotychczasowego kontraktu. Błąd po trwałym
+accepted **może pozostawić plik akceptacji**: wyjątek nie oznacza rollback.
+Nie wolno wystawić tego rdzenia produkcyjnie bez bariery. Attestation-only,
+zmiana attestation między zapisami i ponowna próba są odrzucane.
+
+Testy offline obejmują nowe kontrakty health, błędny klient/preload/model,
+puste lub obce residency, unit drift, cwd/current, boot i zmianę generacji,
+non-idle, niedozwolony typ licznika, brak pola i odmowę odczytu. Transport
+fixture sprawdza redirect/status, duplikaty, NaN, limit rozmiaru, symlink,
+owner/mode i timeout całkowity; nie dotyka prawdziwych endpointów/systemd.
+Dodatkowe testy writer obejmują błąd tworzenia pliku 1/2, zmianę attestation
+między zapisami oraz błąd końcowego recheck po trwałym accepted. Testy callbacków
+writer nie dowodzą istnienia produkcyjnej dzierżawy.
+
+Plan: niezależny supervisor review zmian DEV; uzupełnienie brakujących
+aktywnych bramek i egzekwowanej wyłączności; ponowne testy i przegląd; dopiero
+potem osobna zgoda użytkownika na konkretny apply. Obecny wynik: częściowy
+postęp implementacji, **PROD_BLOCKED**, bez merge/deploy/accepted.
+
+Walidacja końcowa DEV: wskazane przez użytkownika polecenie pytest Stage O/E
+zakończyło się **252 passed, 2 warnings** (deprecation zależności).
+`git diff --check` PASS; AST i compile w pamięci czterech plików Python PASS,
+bez zapisu bytecode. Nie wykonano commit/push ani produkcyjnych poleceń.
+
+## Niezależny odbiór nadzorcy — obserwator DEV, 15.10.2026
+
+Codex dodał `deploy/stage-o/recover_acceptance_observe.py` z rzeczywistymi
+punktowymi odczytami health, kolejek, klientów, procesów, boot ID, unitów
+systemd, preload i rezydencji modelu. Dwa odczyty są porównywane, ale
+**nie stanowią aktywnej bariery przed nowym żądaniem**. Interfejs CLI
+jest wyłącznie odczytowy, zawsze zwraca `PROD_BLOCKED`; produkcyjny writer
+nie został połączony z obserwatorem.
+
+Niezależny przegląd wykrył i poprawił przypięcie Bridge/Control Center:
+usługi słuchają na `192.168.1.55:8080`, nie na `127.0.0.1:8080`
+(na tym drugim adresie test GET /health nie uzyskał odpowiedzi).
+Obserwator ma teraz jawnie przypięte adresy docelowe dla tego hosta;
+zmiana adresacji wymaga nowego audytu. Dodano hermetyczne testy właściwych
+hostów, portów i ścieżek; nigdy nie wykonują żądań do produkcji.
+
+Niezależne powtórzenie regresji Stage O/E po tej poprawce:
+**256 PASS, 0 FAIL, 2 ostrzeżenia deprecacji**; AST PASS,
+`git diff --check` PASS.
+
+**NO-GO dla rzeczywistego apply nadal obowiązuje:** nie wdrożono pełnych
+aktywnych kontroli source/rollback, Stage K, konfiguracji modelu/adaptera
+ani nie ma egzekwowanej izolacji ingress oraz mutacji spoza `executor.lock`.
+Zatwierdzony wyjątek `.env` nie obejmuje tych braków. Do czasu osobnej
+autoryzacji nie zapisuje się `recovery-attestation.json` ani `accepted.json`
+na produkcji; nie wykonuje się merge ani cutover.

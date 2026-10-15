@@ -148,13 +148,18 @@ def commit(state, verifier, *, clock=time.time):
         raw = encode(attestation)
         exclusive_write(fd, ATTESTATION, raw)
         recheck()  # Failure leaves immutable partial state for manual review.
-        accepted = dict(status='PASS', release_id=h.RELEASE, source_sha=h.SOURCE,
+        h.require(read_artifact(fd, ATTESTATION)[1] == hashlib.sha256(raw).hexdigest(), 'ATTESTATION_CHANGED')
+        accepted = dict(status='PASS', historical_finalize='NOT_PASSED',
+            acceptance_kind='RECOVERY_RECERTIFICATION', release_id=h.RELEASE, source_sha=h.SOURCE,
             schema=h.SCHEMA, control_center_contract_version=1,
             technical_conversation_contract_version=1, llm_model=MODEL,
             llm_adapter_source_sha256=ADAPTER_SOURCE, llm_adapter_runtime_sha256=ADAPTER_RUNTIME,
             time=now, phase=PHASE, recovery_provenance={
                 'attestation': ATTESTATION, 'sha256': hashlib.sha256(raw).hexdigest()})
         exclusive_write(fd, 'accepted.json', encode(accepted))
+        recheck()  # Does not undo a durable accepted on failure; manual review required.
+        h.require(read_artifact(fd, ATTESTATION)[1] == hashlib.sha256(raw).hexdigest(), 'ATTESTATION_CHANGED')
+        h.require(read_artifact(fd, 'accepted.json')[0] == accepted, 'ACCEPTED_CHANGED')
         return accepted
     finally:
         if fd is not None:
@@ -174,6 +179,10 @@ def verify_provenance(state, evidence):
         disk, _, _ = read_artifact(fd, 'accepted.json')
         h.require(disk == evidence, 'ACCEPTED_CHANGED')
         att, digest, _ = read_artifact(fd, ATTESTATION)
+        h.require(evidence['historical_finalize'] == 'NOT_PASSED' and
+                  evidence['acceptance_kind'] == 'RECOVERY_RECERTIFICATION', 'RECOVERY_SEMANTICS')
+        h.require(att['env'] == {'status': 'approved_exception', 'decision_id': p.DECISION,
+                  'files': ['ai-bridge.env', 'ai-gateway.env'], 'byte_identity': 'NOT_PROVEN'}, 'ENV_SCOPE')
         h.require(evidence['phase'] == att['phase'] == PHASE and evidence['recovery_provenance'] ==
                   {'attestation': ATTESTATION, 'sha256': digest}, 'PROVENANCE')
         h.require(att['source_sha'] == evidence['source_sha'] == h.SOURCE and
@@ -199,7 +208,7 @@ def main(argv=None):
     parser.add_argument('--expected-source', choices=[h.SOURCE], default=h.SOURCE)
     args = parser.parse_args(argv)
     print(json.dumps(dict(status='CODE_READY_IN_DEV/PROD_BLOCKED', mode='APPLY_BLOCKED' if args.apply else 'CHECK',
-        source_sha=h.SOURCE, apply_available=False, active_verification='NOT_IMPLEMENTED',
+        source_sha=h.SOURCE, apply_available=False, active_verification='PARTIAL_READ_ONLY_SEPARATE_OBSERVE_CLI',
         blockers={k: v for k, v in p.MISSING.items() if k != 'WRITE_CONTRACT'},
         write_blockers=['Separate apply consent absent', 'Trusted production verifier and external mutation barriers absent']), sort_keys=True))
     return 2
