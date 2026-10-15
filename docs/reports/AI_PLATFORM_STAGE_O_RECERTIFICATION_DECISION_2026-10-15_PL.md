@@ -79,3 +79,54 @@ Przed produkcyjnym zapisem wykonać review narzędzia i testy negatywne w DEV.
 - **RM_A=DEV_ONLY**.
 
 Protokół jest raportem, nie skryptem apply ani formalnie wykonaną akceptacją.
+
+## Aktualizacja DEV — osobna autoryzacja wyjątku, bez zgody na apply
+
+Właściciel **zatwierdził DECISION-1**, identyfikator zapisu w projekcie:
+`STAGE-O-2026-10-15-DECISION-1`. Wyjątek obejmuje wyłącznie brak historycznej
+bajtowej zgodności `/etc/ai-bridge/ai-bridge.env` i
+`/etc/ai-gateway/ai-gateway.env`. Nie jest dowodem identyczności zawartości,
+autoryzacją zapisu, wdrożenia, merge ani osłabienia standardowego gate.
+DECISION-2 pozostaje osobną decyzją operatora.
+
+Dodano `deploy/stage-o/recover_acceptance_preflight.py`: wykonywalny, wyłącznie
+odczytowy etap planu preflight, zawsze `NO_GO` (exit 2), bez implementacji apply.
+Po osobnym dostarczeniu i review kodu operator może uruchomić **wyłącznie check**:
+
+```sh
+python3 -I -B -S deploy/stage-o/recover_acceptance_preflight.py --check --expected-source 5e104ea69d0bfa342209acdc8dc88145b34ae72e
+```
+
+Polecenie nie zostało wykonane na produkcji. Wymaga istniejącej blokady
+`/var/lib/ai-platform/stage-o/executor.lock`; nie tworzy jej ani katalogów.
+Weryfikuje root-owned komponenty ścieżek, dokładny target `current`, osiem
+oryginałów (0600, katalog 0700), strukturę zagnieżdżoną, historyczne czasy,
+kolejność i hashe pod tą samą blokadą co standardowy gate. Obce pliki,
+`accepted.json`, częściowe `recovery-attestation.json`, symlinki i zauważone
+zmiany podczas odczytu powodują odrzucenie. Hash odczytanego oryginału nie
+jest niezależnym dowodem historycznej niezmienności. Stary PID pozostaje
+wartością historyczną, nie dowodem ciągłości po reboot.
+
+**Status: BLOCKED dla recovery acceptance.** Zaimplementowano ograniczony
+preflight, nie pełną recertyfikację. Raport programu wymienia niewykonane
+aktywne weryfikacje: niezależne źródło Git/archiwum i rollback accepted,
+pełny payload/metadata, klienci i efektywna konfiguracja/runtime, brak zmian
+i handoff, queue/leases/idle, świeży Stage K/restore/NAS oraz integralność
+manifestów szyfrowanych backupów i metadane dokładnie dwóch `.env`.
+Nie przyjmuje flag PASS ani deklaracji użytkownika jako substytutu tych dowodów.
+Należy również pozyskać uwierzytelniony zapis operatora wiążący wyjątek z tym
+identyfikatorem decyzji. Nie odszyfrowywać sekretów.
+
+Blokada Stage O nie zamraża konfiguracji ani pozostałych procesów; ponowne
+stat nie rozwiązuje wszystkich wyścigów. Dlatego nie dodano zapisu, tokenu ani
+procedury wznowienia częściowego apply. Testy race/partial dotyczą odrzucenia
+odczytu, nie atomowości nieistniejącego apply. Testy nie dowodzą wykrywania
+starego Stage K ani zmienionych archiwów/runtime — te obszary pozostają
+jawnie nieweryfikowane. Zalecenie: **STOP przed apply**, uzupełnić niezależne
+weryfikatory i kontrakt utrwalenia przed kolejnym go/no-go.
+
+Standardowe `90_finalize` i `accepted_stage_o()` pozostają niezmienione.
+Przed ewentualnym dodaniem writer należy uzależnić odczyt accepted z
+`recovery_provenance` od zgodnej, niezmiennej attestation i odrzucać brak lub
+rozbieżność; samo dodanie flagi nie zapewnia tej ochrony. `E_safe=NOT_VERIFIED`,
+GPU handoff poza zakresem; produkcja nie została recertyfikowana.
