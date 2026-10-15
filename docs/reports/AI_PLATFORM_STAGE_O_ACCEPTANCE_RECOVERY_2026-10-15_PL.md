@@ -203,3 +203,23 @@ sudo/root, GPU, commit/push/merge. Następny krok: review diffu i ustalenie, czy
 istnieje niezależne historyczne archiwum konfiguracji; jeśli nie, potrzebna jest
 osobno zaprojektowana i zatwierdzona manualna recertyfikacja, nie odtworzenie
 pozornej ciągłości historycznej.
+
+## Uzupełnienie nadzorcy — porównanie NAS Stage K, 15.10.2026
+
+Po zakończeniu prac Codexa wykonano dodatkowy niezależny audyt READ-ONLY
+historycznych archiwów `PlatformConfig` w GlobalNAS. Zweryfikowano manifest
+`COMPLETE`, hash SHA-256 archiwum oraz kompletność i hash każdego z 17 elementów
+dla czterech zestawów dziennych: `20261006T003014Z`,
+`20261007T003014Z`, `20261010T003013Z`, `20261014T003015Z`.
+Wszystkie cztery: 17/17 plików zgodnych z manifestem, zero błędów.
+Zestaw 14.10 sprzed reboot: 17/17 hashy identycznych z plikami obecnymi
+w systemie; między zestawami 6, 7, 10 i 14.10: zero różnic w tych plikach.
+
+To istotny niezależny punkt odniesienia dla jednostek systemd i drop-inów
+Gateway, Bridge, ComfyUI, Ollama, analizy i Hermes, ale nie dla pełnej
+historycznej konfiguracji: backup PlatformConfig nie zawiera sekretnych plików
+`.env`, nie dowodzi zawartości działających procesów, nie jest podpisaną
+atestacją konfiguracji, nie odtwarza historycznego PID/InvocationID i nie
+dowodzi `E_safe`. Bez dalszej weryfikacji pochodzenia oraz wyraźnego
+zatwierdzenia odmiennego kontraktu akceptacji `RECOVERY_APPLY=NO_GO`.
+Nie wykonano `sudo`, restore, zmiany unitów ani stanu produkcji.
