@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 DescriptorId = Annotated[str, Field(strict=True, min_length=1, max_length=128,
                                    pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_.-]*$")]
-ProviderType = Literal["llm", "media-generation", "agent"]
+ProviderType = Literal["llm", "media-generation", "agent", "vision-inference"]
 
 
 class _Descriptor(BaseModel):
@@ -96,13 +96,13 @@ class DescriptorRegistry(_Descriptor):
             raise ValueError("provider does not declare capability")
         return provider
 
-    def validate_local_gateway(self, node_id: str) -> None:
+    def validate_local_gateway(self, node_id: str, *, enable_vision: bool = False) -> None:
         """D.3 config may describe inventory, but cannot change runtime topology.
 
         Require the existing three bindings/capabilities, independent of order.
         Future multi-node execution needs a separate admission/auth contract.
         """
-        expected = local_descriptor_registry(node_id)
+        expected = local_descriptor_registry(node_id, enable_vision=enable_vision)
         if ({n.node_id for n in self.nodes} != {node_id}
                 or {p.provider_id for p in self.providers}
                 != {p.provider_id for p in expected.providers}
@@ -121,7 +121,7 @@ class DescriptorRegistry(_Descriptor):
         return self.model_dump(mode="json")
 
 
-def local_descriptor_registry(node_id: str = "ai-node-01") -> DescriptorRegistry:
+def local_descriptor_registry(node_id: str = "ai-node-01", *, enable_vision: bool = False) -> DescriptorRegistry:
     """Existing backend interfaces; embeddings do not imply an installed model."""
     capabilities = (
         CapabilityDescriptor(capability_id="chat", provider_types=("llm",)),
@@ -136,7 +136,8 @@ def local_descriptor_registry(node_id: str = "ai-node-01") -> DescriptorRegistry
         CapabilityDescriptor(capability_id="streaming", provider_types=("llm", "agent")),
         CapabilityDescriptor(capability_id="external-reservation", provider_types=()),
         CapabilityDescriptor(capability_id="unknown", provider_types=()),
-    )
+    ) + ((CapabilityDescriptor(capability_id="image-analysis", provider_types=("vision-inference",)),)
+         if enable_vision else ())
     return DescriptorRegistry(
         nodes=(NodeDescriptor(node_id=node_id),),
         capabilities=capabilities,
@@ -147,5 +148,6 @@ def local_descriptor_registry(node_id: str = "ai-node-01") -> DescriptorRegistry
         ) for provider_id, provider_type in (
             ("ollama-local", "llm"), ("comfyui-local", "media-generation"),
             ("hermes-local", "agent"),
+            *(((("vision-local", "vision-inference"),) if enable_vision else ())),
         )),
     )

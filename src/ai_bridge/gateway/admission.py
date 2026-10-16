@@ -36,6 +36,8 @@ def external_workload(registry: DescriptorRegistry, name: str = "external") -> t
         "external": (("ollama-local", (*llm, "embeddings")),
                      ("comfyui-local", ("image-generation", "image-edit", "video-generation"))),
     }
+    if name == "vision-benchmark":
+        profiles["vision-benchmark"] = (("vision-local", ("image-analysis",)),)
     if not isinstance(name, str) or name not in profiles:
         raise ValueError("invalid workload")
     return tuple(binding(registry, provider, capability)

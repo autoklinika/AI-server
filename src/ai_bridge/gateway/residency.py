@@ -4,10 +4,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import secrets
 from pathlib import Path
 
 import httpx
 from datetime import datetime, timezone
+
+from .vision_residency_evidence import gpu_vram_used_bytes, worker_birth_ticks, worker_cgroup_path, scope_members_or_terminal, gpu_device_openers
 
 
 class ResidencyError(RuntimeError):
@@ -17,7 +20,11 @@ class ResidencyError(RuntimeError):
 class GPUResidency:
     def __init__(self, ollama: httpx.AsyncClient, comfy: httpx.AsyncClient,
                  marker: Path, *, timeout: float = 90, poll: float = .25, idle_reserve_bytes: int = 0,
-                 require_comfy_extension: bool = True, resume_comfy=None):
+                 require_comfy_extension: bool = True, resume_comfy=None,
+                 vision_process_probe=worker_birth_ticks, vision_memory_probe=gpu_vram_used_bytes,
+                 vision_scope_probe=worker_cgroup_path, vision_cgroup_members=scope_members_or_terminal,
+                 vision_memory_tolerance_bytes: int = 64 * 1024 * 1024,
+                 vision_clients_probe=gpu_device_openers, vision_strict_gpu_clients: bool = False):
         self.ollama, self.comfy = ollama, comfy
         self.marker, self.timeout, self.poll = marker, timeout, poll
         self._model_observations = {"ollama": None, "comfyui": None}
@@ -26,6 +33,17 @@ class GPUResidency:
         self.resume_comfy = resume_comfy
         self.state = "blocked" if marker.exists() else "llm"
         self.cleanup_evidence = None
+        self.vision_process_probe = vision_process_probe
+        self.vision_memory_probe = vision_memory_probe
+        self.vision_clients_probe = vision_clients_probe
+        self.vision_strict_gpu_clients = bool(vision_strict_gpu_clients)
+        self._vision_baseline_clients = None
+        self.vision_scope_probe = vision_scope_probe
+        self.vision_cgroup_members = vision_cgroup_members
+        self._vision_scope_path: str | None = None
+        self.vision_memory_tolerance_bytes = vision_memory_tolerance_bytes
+        self._vision_worker: tuple[int, int] | None = None
+        self._vision_baseline_bytes: int | None = None
 
     def snapshot(self):
         return {"state": self.state, "recovery_required": self.state == "blocked",
@@ -94,11 +112,32 @@ class GPUResidency:
         observation.update(status="OBSERVED", models_unloaded=unloaded)
 
     def _dirty(self):
+        """Crash-durable blocked marker: atomic replacement + parent fsync."""
         self.marker.parent.mkdir(parents=True, exist_ok=True)
-        with self.marker.open("w") as stream:
-            stream.write("GPU ownership uncertain; verify workers stopped and both providers free before recovery.\n")
-            stream.flush()
-            os.fsync(stream.fileno())
+        pending=self.marker.with_name(self.marker.name + "." + secrets.token_hex(8) + ".pending")
+        try:
+            fd=os.open(pending, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd,"w",encoding="utf-8") as stream:
+                stream.write("GPU ownership uncertain; verify workers stopped and providers free before recovery.\n")
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(pending,self.marker)
+            directory=os.open(self.marker.parent,os.O_RDONLY | getattr(os,"O_DIRECTORY",0))
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+        finally:
+            pending.unlink(missing_ok=True)
+
+    def fail_closed(self) -> None:
+        """Persist uncertainty before any previously admitted GPU slot could reopen.
+
+        Used if an exception interrupts a resource transition after ownership
+        was pinned, including an early exception before enter_vision wrote it.
+        """
+        self.state = "blocked"
+        self._dirty()
 
     async def _json(self, client, path):
         runtime = ("ollama" if client is self.ollama and path == "/api/ps" else
@@ -158,6 +197,114 @@ class GPUResidency:
                 if not await self._comfy_models_idle():
                     raise ResidencyError("unexpected ComfyUI residency before media")
             self.state = "media"
+        except BaseException:
+            self.state = "blocked"
+            raise
+
+
+    async def enter_vision(self, worker_pid: int, scope_path: str) -> None:
+        """Pin the shared GPU before a declared, *parked* Vision worker may run.
+
+        External executor must start the worker WAITING for an ownership token.
+        The worker may run GPU kernels only after authorization is returned.
+        """
+        if self.state != "llm":
+            raise ResidencyError("GPU residency requires recovery")
+        birth = self.vision_process_probe(worker_pid)
+        if birth is None or birth <= 0:
+            raise ResidencyError("Vision process identity unavailable")
+        if not isinstance(scope_path, str) or self.vision_scope_probe(worker_pid) != scope_path:
+            raise ResidencyError("Vision worker must be in a trusted dedicated cgroup scope")
+        members = self.vision_cgroup_members(scope_path)
+        if members is None or worker_pid not in members:
+            raise ResidencyError("Vision worker is not present in declared cgroup")
+        self._vision_scope_path = scope_path
+        self._vision_worker = (worker_pid, birth)
+        self._vision_baseline_bytes = None
+        try:
+            if self.resume_comfy is not None:
+                await self.resume_comfy()
+            self._dirty()
+            self.state = "draining_ollama"
+            async with asyncio.timeout(self.timeout):
+                await self._idle()
+                while True:
+                    models = (await self._json(self.ollama, "/api/ps"))["models"]
+                    if not isinstance(models, list):
+                        raise ResidencyError("invalid Ollama inventory")
+                    if not models:
+                        break
+                    for model in models:
+                        response = await self.ollama.post("/api/generate", json={
+                            "model": model["name"], "keep_alive": 0, "stream": False})
+                        response.raise_for_status()
+                    await asyncio.sleep(self.poll)
+                if not await self._comfy_models_idle():
+                    raise ResidencyError("ComfyUI residency not idle before Vision")
+                if (self.vision_process_probe(worker_pid) != birth
+                    or self.vision_scope_probe(worker_pid) != scope_path
+                    or worker_pid not in (self.vision_cgroup_members(scope_path) or set())):
+                    raise ResidencyError("Vision scope/worker identity changed before admission")
+                # Baseline AFTER verified Ollama drain and Comfy idle, never
+                # include Ollama's old weights in the allowed cleanup ceiling.
+                baseline = self.vision_memory_probe()
+                if baseline is None or baseline < 0:
+                    raise ResidencyError("Vision GPU memory baseline unavailable")
+                self._vision_baseline_bytes = baseline
+                if self.vision_strict_gpu_clients:
+                    gpu_clients = self.vision_clients_probe()
+                    if gpu_clients is None:
+                        raise ResidencyError("cross-UID GPU client evidence unavailable")
+                    self._vision_baseline_clients = gpu_clients
+            self.state = "vision"
+        except BaseException:
+            self.state = "blocked"
+            raise
+
+    async def leave_vision(self) -> None:
+        """Release GPU ONLY after process exit plus authoritative memory evidence.
+
+        Missing/dirty cleanup evidence permanently retains the blocked marker.
+        A successful HTTP response or worker-supplied boolean is never proof.
+        """
+        if (self.state != "vision" or self._vision_worker is None
+                or self._vision_baseline_bytes is None or self._vision_scope_path is None):
+            raise ResidencyError("Vision GPU residency requires recovery")
+        worker_pid, _birth = self._vision_worker
+        try:
+            self.state = "checking_vision_cleanup"
+            async with asyncio.timeout(self.timeout):
+                if self.vision_process_probe(worker_pid) is not None:
+                    raise ResidencyError("Vision worker still alive; GPU ownership cannot release")
+                # cgroup v2 scope proves no descendants or processes that left
+                # the parent's process group may still hold GPU allocations.
+                members = self.vision_cgroup_members(self._vision_scope_path)
+                if members is None or members:
+                    raise ResidencyError("Vision cgroup not empty or evidence unavailable")
+                await self._idle()
+                if not await self._comfy_models_idle():
+                    raise ResidencyError("ComfyUI not idle after Vision")
+                if (await self._json(self.ollama, "/api/ps"))["models"] != []:
+                    raise ResidencyError("Ollama reloaded during Vision execution")
+                used = self.vision_memory_probe()
+                if used is None or used < 0 or used > self._vision_baseline_bytes + self.vision_memory_tolerance_bytes:
+                    raise ResidencyError("Vision GPU memory not returned to baseline")
+                if self.vision_strict_gpu_clients:
+                    gpu_clients = self.vision_clients_probe()
+                    if gpu_clients is None or self._vision_baseline_clients is None:
+                        raise ResidencyError("GPU client inventory unavailable at cleanup")
+                    if gpu_clients - self._vision_baseline_clients:
+                        raise ResidencyError("new GPU device client after Vision cleanup")
+                self.cleanup_evidence = {"vision_worker_exited": True,
+                                         "gpu_memory_baseline_bytes": self._vision_baseline_bytes,
+                                         "gpu_memory_final_bytes": used,
+                                         "gpu_memory_tolerance_bytes": self.vision_memory_tolerance_bytes}
+            self.marker.unlink()
+            self._vision_worker = None
+            self._vision_scope_path = None
+            self._vision_baseline_bytes = None
+            self._vision_baseline_clients = None
+            self.state = "llm"
         except BaseException:
             self.state = "blocked"
             raise
