@@ -1,0 +1,359 @@
+{
+  "selected": "AnomalyVFM RADIO",
+  "decision_date": "2026-10-17",
+  "development_status": "FROZEN_UNTIL_VISION_STATION_READY",
+  "no_new_training": true,
+  "do_not_modify_original_checkpoint": true,
+  "scope": "Vision PCB only; all production AI Platform models preserved",
+  "checkpoint": {
+    "model": "MaticFuc/anomalyvfm_radio",
+    "revision": "17654e763c8fae5ae1c44e2ec421a427783d6196",
+    "path": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-pilot-20261016/hf_cache/models--MaticFuc--anomalyvfm_radio/snapshots/17654e763c8fae5ae1c44e2ec421a427783d6196/model.safetensors",
+    "size": 1421491228,
+    "sha256": "50a219ba436ed656ad3c0405f9e81df8ad00b2e715c98be66d7e2edb62a83a37"
+  },
+  "runtime": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311",
+  "pilot": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-pilot-20261016",
+  "full_benchmark": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-full-20261016",
+  "dataset": {
+    "extracted": "/srv/ai-data/evaluation/vision-pcb-datasets/visa-20220922/extracted",
+    "manifests": "/srv/ai-data/evaluation/vision-pcb-datasets/visa-20220922/manifests",
+    "source_archive": "/srv/ai-data/evaluation/vision-pcb-datasets/visa-20220922/VisA_20220922.tar"
+  },
+  "full_inference": "3312/3312 INFER_PASS",
+  "original_scorer": "BLOCKED (historical mask binary handling)",
+  "corrected_scorer": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-full-20261016/eval_mask_union_v1/RESULTS_PL.md",
+  "posthoc_report": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-full-20261016/posthoc_analysis_20261017/RESULTS_PL.md",
+  "legacy_comparison_reports_to_preserve": [
+    {
+      "source": "B1_WinCLIP",
+      "path": "/srv/ai-data/evaluation/vision-pcb-datasets/visa-20220922/b1_full_winclip_gpu_fold0/automatic_gpu_b1_20261015/report/image_challenge.json",
+      "sha256": "2990fedd0da984c98d2b9f2760ac655783045b0055f49dc92e64b76bbc1e02a6"
+    },
+    {
+      "source": "B1_WinCLIP",
+      "path": "/srv/ai-data/evaluation/vision-pcb-datasets/visa-20220922/b1_full_winclip_gpu_fold0/automatic_gpu_b1_20261015/report/image_holdout.json",
+      "sha256": "2c9766a18333a40dba71eab173ca1f5762a9cf1e72b92021acd3e9482bddb194"
+    },
+    {
+      "source": "B1_WinCLIP",
+      "path": "/srv/ai-data/evaluation/vision-pcb-datasets/visa-20220922/b1_full_winclip_gpu_fold0/automatic_gpu_b1_20261015/report/pixel256_challenge.json",
+      "sha256": "0a10c72bf9d836edd238839581a62afe29f025cd6178624dea0dad53dcf98207"
+    },
+    {
+      "source": "B1_WinCLIP",
+      "path": "/srv/ai-data/evaluation/vision-pcb-datasets/visa-20220922/b1_full_winclip_gpu_fold0/automatic_gpu_b1_20261015/report/pixel256_holdout.json",
+      "sha256": "9ff739e7f27d64144f8646b3ca9d2ae8806c8f3cbea446ad197f493f2e6a88f8"
+    },
+    {
+      "source": "B1_WinCLIP",
+      "path": "/srv/ai-data/evaluation/vision-pcb-datasets/visa-20220922/b1_full_winclip_gpu_fold0/automatic_gpu_b1_20261015/report/thresholds.json",
+      "sha256": "adb64e06d845048db135c32d5e6f3d983736d8b72c267b3e9b20d98680162703"
+    },
+    {
+      "source": "B2_AnomalyCLIP",
+      "path": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyclip-b2-results-20261015/b2_report_full/image_challenge.json",
+      "sha256": "e6327b38cd10656313020fbe612137d7d28160b35cb20476aae5943b3c9ceaac"
+    },
+    {
+      "source": "B2_AnomalyCLIP",
+      "path": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyclip-b2-results-20261015/b2_report_full/image_holdout.json",
+      "sha256": "04d88afb4f299495a09383041f3edc92f9aaa26bdac33b801554dcb5fed1edb1"
+    },
+    {
+      "source": "B2_AnomalyCLIP",
+      "path": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyclip-b2-results-20261015/b2_report_full/pixel256_challenge.json",
+      "sha256": "ff77429042231552b2d08d527af0ad6536ac81aca177579f78333a35e4085e79"
+    },
+    {
+      "source": "B2_AnomalyCLIP",
+      "path": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyclip-b2-results-20261015/b2_report_full/pixel256_holdout.json",
+      "sha256": "e07d06c3520fa936984bd7f890041f256b408613e8d5b36a7de2bf0478261242"
+    },
+    {
+      "source": "B2_AnomalyCLIP",
+      "path": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyclip-b2-results-20261015/b2_report_full/thresholds.json",
+      "sha256": "1a8d03dcb341e819071e71fb20c2959b2a87dcd34ecb917a5083faab98b0636d"
+    }
+  ],
+  "source_path_translation_from_old_experiment_prefix": {
+    "old": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311",
+    "new": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311",
+    "source_files_validated": 54
+  },
+  "source_validation": [
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-benchmark-v1-worktree/benchmarks/vision_pcb_v1/b1_journal.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-benchmark-v1-worktree/benchmarks/vision_pcb_v1/b1_journal.py",
+      "sha256": "eadfc996209f1013223cdc572561ad2edd76ff0f3f259d60e2fc23d7fbea1b55"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-benchmark-v1-worktree/benchmarks/vision_pcb_v1/benchmark.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-benchmark-v1-worktree/benchmarks/vision_pcb_v1/benchmark.py",
+      "sha256": "4e5c8cb2fb3c2b272003b83b53f057999cfb30c2be2963ad451eb5b6eb136fbb"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-benchmark-v1-worktree/benchmarks/vision_pcb_v1/gpu_maintenance_guard.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-benchmark-v1-worktree/benchmarks/vision_pcb_v1/gpu_maintenance_guard.py",
+      "sha256": "4579580f3aeeba9b4c5dfc87e552ba4cdd4903bda1ce27832133cba0e9aef209"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-benchmark-v1-worktree/benchmarks/vision_pcb_v1/pixel_eval_256.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-benchmark-v1-worktree/benchmarks/vision_pcb_v1/pixel_eval_256.py",
+      "sha256": "3aba42b56554d11b26590cf14f680c0228756f873483b63de0902d3d7f93b7b6"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-full-20261016/radio_full_operator.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-full-20261016/radio_full_operator.py",
+      "sha256": "9993e3a83d84f266740a5adf606f972f9a74932054ee5a4be765ed46e7690a32"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-full-20261016/radio_full_score.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-full-20261016/radio_full_score.py",
+      "sha256": "56a25eb8dc9d3a8f69da39d14b199357518280be0891905feafa690aa9382cf6"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-full-20261016/radio_full_worker.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-full-20261016/radio_full_worker.py",
+      "sha256": "a3c6303fd7cc11718a8781769213c7e1592d088144808ad285d6bce91b811d56"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-full-20261016/test_radio_full.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-full-20261016/test_radio_full.py",
+      "sha256": "f5f6fbe5db3ee1cf9fa992e7b042037c23284acc3bb5d4831b7601dd48982658"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-pilot-20261016/radio_one_gpu.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-pilot-20261016/radio_one_gpu.py",
+      "sha256": "5e5b7938110a547be9ba67a4240390aa449df15c3326ebf06a990a880b874b08"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-pilot-20261016/weights_lock.json",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-pilot-20261016/weights_lock.json",
+      "sha256": "76854031ff19a315cf80d45d2af63e0d1c4d13f8771ba622794a530b5c1b903a"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/PIL/Image.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/PIL/Image.py",
+      "sha256": "1a3d2ef3dbcbd056fbb4de3415302873348c60e90129a9a107b8829395ea47ea"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/anomalib/__init__.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/anomalib/__init__.py",
+      "sha256": "323cf3aae0a601528e6c4f9aa83a1bac5bd37f2df80b9968a6154340073c128c"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/anomalib/models/__init__.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/anomalib/models/__init__.py",
+      "sha256": "b3760e075a0041aa3b09287dbf2accd01cf435af17ed97fb555725a845bf5a73"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/__init__.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/__init__.py",
+      "sha256": "73628639e81cc0c26826009287aca17df9beb9616e86a0d01f61a45aadae9210"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/anomalyvfm/__init__.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/anomalyvfm/__init__.py",
+      "sha256": "38a1131a6a5e3c3579c1754f40b062333fb9b92756899fb82cc37a3b1177f466"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/anomalyvfm/components/__init__.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/anomalyvfm/components/__init__.py",
+      "sha256": "092d838f24236535a8dffb901784bdef240a58adaaa38320dc316fd9ba113500"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/anomalyvfm/components/decoder.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/anomalyvfm/components/decoder.py",
+      "sha256": "0c861ac47091ec96e3044efa60c2c2590b3d75ae1e9a25d0c190659437941c77"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/anomalyvfm/components/dora.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/anomalyvfm/components/dora.py",
+      "sha256": "0391a74df44061a3c70dd865bcd90d01501a6b98164f511afb6e2a7dd39cb15b"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/anomalyvfm/components/radio.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/anomalyvfm/components/radio.py",
+      "sha256": "718704357f3d35b05e4361c44cfec3efc3afd8b83a5713873f918f6a3cc13e7f"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/anomalyvfm/lightning_model.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/anomalyvfm/lightning_model.py",
+      "sha256": "5df5f42fa1c1ccf15d82a759201694ed6b6366edf02bf657d6f2d02b20790b67"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/anomalyvfm/torch_model.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/anomalib/models/image/anomalyvfm/torch_model.py",
+      "sha256": "99fc064f4ce09d3d45811bc822c5aad391d71d0efbd290a1b576d086626ec968"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/safetensors/torch.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/safetensors/torch.py",
+      "sha256": "f3f476d1f8c04fe65fa3797426556a0b7afa43f8c4db9db6b799c7cf84748f3d"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/__init__.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/__init__.py",
+      "sha256": "10c7ede36075240894d75275af120de199e2b3a1093dba7e6ec1a30331fedb83"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/_functional_pil.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/_functional_pil.py",
+      "sha256": "a30262323eefa9351540515b1ff78f218ecff2ce3f6ed957b271948cc8c9a276"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/_functional_tensor.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/_functional_tensor.py",
+      "sha256": "9a83d766d38a9ecaaa77770ba49c95ceffeb9ef8b652468f4af9d7867ae0037c"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/_functional_video.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/_functional_video.py",
+      "sha256": "61c579e7b62095b26cabd4911891c5a116edc5ac222d2275a0ce6b57be4ecaa4"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/_presets.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/_presets.py",
+      "sha256": "5e5a7b80b2e73d00a3a7c798ef0f6e44ab90295eb02ecef5659308bc28219670"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/_transforms_video.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/_transforms_video.py",
+      "sha256": "06ecf92c25953c6884a271c4f9c5c85df6e406135cd2ac55adac6435dc4aa7ca"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/autoaugment.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/autoaugment.py",
+      "sha256": "f2721c8a2bd67de60a5d297b67d136988284b41b040224794b4339979d753244"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/functional.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/functional.py",
+      "sha256": "0b2fdf8e6764f4be0113acd95b58d3b14158c13fa2374ed93fbbe1f4b8730ded"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/transforms.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/transforms.py",
+      "sha256": "673f3baacde591b3cb7224c5fbfc7ad35200dbd1f9a2147f3fa0b4226e735023"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/__init__.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/__init__.py",
+      "sha256": "4368548f3937d1abeb9ab6bf18e1e7f2a3e4d4b2a6875c794d8d4ce95342dc91"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_augment.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_augment.py",
+      "sha256": "de20476b9b1e858a4070d2c8a243d3034e8f8883d50fa8e3c585973fc9e49080"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_auto_augment.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_auto_augment.py",
+      "sha256": "ec0d019fbf444b2ac8e4f082f7e954f16b71c1e1f576a03e0a4ec4ce616b4186"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_color.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_color.py",
+      "sha256": "04fe4c7598e449f97ac3d3eabfcb89a4a40d0399586aec8a544124ad245f3908"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_container.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_container.py",
+      "sha256": "7bd60df4a80c4f44851a69c8916b79b015c26131373c9dd8f23ca6b01fc3d98d"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_deprecated.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_deprecated.py",
+      "sha256": "4f831593ee1e14d51cf2bc9e209850c314cce4ed6624b86c79163d213587b226"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_geometry.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_geometry.py",
+      "sha256": "8273b284a27b6695c7238d327551f5da38d40a7288607cfe976493ee64542cee"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_meta.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_meta.py",
+      "sha256": "9544b16c05bda19c039dbe3565cfa8aebf81e656a8c8ec9b8e75bc065bf38581"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_misc.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_misc.py",
+      "sha256": "ab2ea579e066f9b38202ba80cdd8abad259aff0424da0ff7132763377a715014"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_temporal.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_temporal.py",
+      "sha256": "6529aab4c79b11132de1f5f44694cfcd7323a485f22f146c310c7816061cda81"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_transform.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_transform.py",
+      "sha256": "6132250c9382f3e26cd5de0e5508a6b78ccd9fcde965196dae9117da535919c0"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_type_conversion.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_type_conversion.py",
+      "sha256": "ddc9d71c55185f05dc500917f0b00d2380d3bbb108174071ae42a8f602e8d731"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_utils.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/_utils.py",
+      "sha256": "40638325bee2d49884fbac57ca733b9a4a85f1faa07ce7c8fa1bcc5bd52c1d62"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/__init__.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/__init__.py",
+      "sha256": "5c01478aee4c8169265393ea5704db92492b882023d0110fc435d7263b8c46d3"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_augment.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_augment.py",
+      "sha256": "31133c137fe029f4d30b4a85b7770a2385314f142db8623d31e636981b2b8f4e"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_color.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_color.py",
+      "sha256": "dedfdded81ec979c4fb6484b4a26931c538aa2941553a775e9eec32cd4149274"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_deprecated.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_deprecated.py",
+      "sha256": "bde0408845d528875c851eb1e5af9bffe2a99ae9beefdb4f02e3fb9022e99755"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_geometry.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_geometry.py",
+      "sha256": "339a06bee7c69cf2df352feda02ea76832fb4c31cd19e8d4c477e147036ca1b8"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_meta.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_meta.py",
+      "sha256": "cda255fb090a577b0e2066505c388a1e51d8f806976093c4be8a335dfd4f914b"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_misc.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_misc.py",
+      "sha256": "1f84f5dff3361bb106233f6476df2e62567ed75379cc261ad44a6230285ad4d1"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_temporal.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_temporal.py",
+      "sha256": "db80900975ced764e75bb69489441dae4e43452a533ce3638c2e23686877947e"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_type_conversion.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_type_conversion.py",
+      "sha256": "efcc25d1d34fc17d3c8ce096e8a719486cbc44042acb132d76b4d44154255133"
+    },
+    {
+      "original": "/srv/ai-data/evaluation/vision-pcb-envs/patchcore-b3-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_utils.py",
+      "current": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-rocm714-py311/lib/python3.11/site-packages/torchvision/transforms/v2/functional/_utils.py",
+      "sha256": "e930f1e2a13115f0cedfe8c1262b0c86bdbc21d0b9e57c983126f053381eea3c"
+    }
+  ],
+  "unmodified_historical_records": true,
+  "production_and_main_untouched": true,
+  "note": "Keep published full original benchmark immutable. A new tested launcher must be built before future GPU runs because frozen original operator scripts refer to the deleted old venv prefix and original baseline uses the old path. No old-path symlink recreated."
+}

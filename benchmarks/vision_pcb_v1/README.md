@@ -1,5 +1,9 @@
 # Vision PCB Benchmark V1 — specyfikacja i wykonywalny scorer
 
+**WYBÓR 17.10.2026: AnomalyVFM RADIO (zamrożony do ukończenia stanowiska Vision, nieprodukcyjny).** Wagi, wyniki pełnego benchmarku i mapy anomalii pozostają na NVMe. Konkurencyjne instancje modeli Vision oraz ich środowiska usunięto z serwera. Rejestr aktywnego modelu: [models.json](models.json).
+**Aktualna dokumentacja:** [decyzja](../../docs/vision/RADIO_DECISION_2026-10-17_PL.md), [wyniki](../../docs/vision/RADIO_BENCHMARKS_2026-10-17_PL.md), [retencja i wznowienie](../../docs/vision/RADIO_RETENTION_RESUME_2026-10-17_PL.md).
+**Informacja archiwalna:** opis poniżej stanowi specyfikację początkową z 13.10.2026. Wzmianki o dawnych modelach, stanie benchmarku lub brakujących wynikach opisują historię, a nie aktualny stan instalacji ani wyniki RADIO.
+
 **Status:** benchmark offline + testy kontraktowe; **NIE są wykonane pomiary prawdziwych modeli**. Fixture to dane syntetyczne do testów kodu, nie wyniki jakości PCB. Jest to osobny pakiet w repo `AI-server`, bez zmian produkcyjnego modelu ani usługi VENTUNO.
 
 ## Zakres i porównywalność

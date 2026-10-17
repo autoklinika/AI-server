@@ -1,55 +1,21 @@
 {
   "schema_version": 1,
-  "scope": "Vision PCB – bez wzorca referencyjnego konkretnego egzemplarza",
+  "scope": "Vision PCB — selected model only; frozen until inspection station is operational",
   "candidates": [
     {
-      "id": "minicpm-v4.7-35b-a3b",
-      "role": "vlm",
-      "train_track": "zero-shot / adapter only after independent evaluation",
-      "runtime_verified": false
-    },
-    {
-      "id": "minicpm-v4.7-1b",
-      "role": "vlm",
-      "train_track": "zero-shot / optional fine-tune",
+      "id": "anomalyvfm-radio",
+      "role": "anomaly_detection_and_localization",
+      "train_track": "frozen zero-shot; isolated LoRA/DoRA specialization only after station is operational",
       "runtime_verified": true,
-      "runtime_evidence": "cpu-smoke-2-real-images; no calibrated defect benchmark; 2026-10-13",
-      "revision": "984a89aafcd5160164f4f0d04b4be0f4eec03cb8"
-    },
-    {
-      "id": "minicpm-v4.6",
-      "role": "vlm",
-      "train_track": "zero-shot / optional fine-tune",
-      "runtime_verified": false
-    },
-    {
-      "id": "qwen3-vl-8b",
-      "role": "vlm",
-      "train_track": "zero-shot / optional fine-tune",
-      "runtime_verified": false
-    },
-    {
-      "id": "patchcore",
-      "role": "anomaly",
-      "train_track": "normal-only memory bank",
-      "runtime_verified": false
-    },
-    {
-      "id": "yolo",
-      "role": "detection",
-      "train_track": "defect-labeled supervised detection",
-      "runtime_verified": false
-    },
-    {
-      "id": "winclip",
-      "role": "anomaly",
-      "train_track": "zero-shot frozen baseline",
-      "runtime_verified": true,
-      "runtime_evidence": "cpu-smoke-and-48-image-pilot; tile paired N=12; not production B1",
-      "checkpoint_sha256": "8fb26589b9a8bab2e7a683d280e48df89b8e742f3a82132707282620b36facba",
       "runtime_gpu_verified": true,
-      "runtime_gpu": "ROCm 7.14.1 gfx1150, torch 2.12.0+rocm7.14.1, torchvision 0.27.0+rocm7.14.1",
-      "gpu_validation": "50 image equivalence, 3x24 image resumable GPU B1 smoke; no full B1 quality ranking"
+      "production": false,
+      "active_for_new_benchmarks": false,
+      "checkpoint_revision": "17654e763c8fae5ae1c44e2ec421a427783d6196",
+      "checkpoint_sha256": "50a219ba436ed656ad3c0405f9e81df8ad00b2e715c98be66d7e2edb62a83a37",
+      "full_inference_samples": 3312,
+      "full_inference_status": "INFER_PASS",
+      "scoring_note": "original frozen scorer BLOCKED; separate corrected scorer PASS; threshold recall insufficient for deployment",
+      "evidence": "/srv/ai-data/evaluation/vision-pcb-envs/anomalyvfm-radio-full-20261016/SELECTED_MODEL_20261017.json"
     }
   ]
 }

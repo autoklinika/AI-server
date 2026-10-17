@@ -1,4 +1,0 @@
-# Install separately into a Python 3.11 venv after torch 2.10.0+cpu and torchvision 0.25.0+cpu from official PyTorch CPU wheel index.
-transformers==5.18.0
-accelerate==1.15.0
-sentencepiece==0.2.2
