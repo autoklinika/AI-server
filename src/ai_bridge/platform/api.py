@@ -32,6 +32,7 @@ from ai_bridge.platform.technical_conversation import TechnicalConversationStore
 from ai_bridge.gateway.admission import WorkloadBinding
 from ai_bridge.gateway.jobs import JobLifecycle, JobMetadata
 from ai_bridge.gateway.priority import PriorityClass, priority_for_class
+from ai_bridge.gateway.integration import AdmissionNotVerified
 from ai_bridge.gateway.scheduler import SchedulerQueueFull
 from ai_bridge.knowledge.rag import (
     build_rag_prompt,
@@ -417,6 +418,12 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
         }
 
     async def run_knowledge_search(body: KnowledgeSearchRequest, request: Request):
+        # Retrieval can invoke embeddings via a separately configured gateway_url.
+        # Deny before constructing that runtime; it cannot bypass this RM's N2 gate.
+        try:
+            gateway.state.scheduler.require_execution()
+        except AdmissionNotVerified:
+            raise APIError(503, "accelerator_admission_not_verified", False) from None
         query = knowledge_query(body, request)
         runtime = runtime_factory()
         try:
@@ -596,6 +603,8 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                 )
                 parsed = parse_rag_response(generated.content, prompt)
                 outcome = JobLifecycle.COMPLETED
+        except AdmissionNotVerified:
+            raise APIError(503, "accelerator_admission_not_verified", False) from None
         except SchedulerQueueFull:
             raise APIError(429, "queue_full", True) from None
         except TimeoutError:
@@ -1427,6 +1436,8 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                         num_gpu=getattr(body, "num_gpu", None),
                     )
                 outcome = JobLifecycle.COMPLETED
+        except AdmissionNotVerified:
+            raise APIError(503, "accelerator_admission_not_verified", False) from None
         except SchedulerQueueFull:
             raise APIError(429, "queue_full", True) from None
         except TimeoutError:

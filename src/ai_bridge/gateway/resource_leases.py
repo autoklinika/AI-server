@@ -33,6 +33,7 @@ class ResourceLeaseRegistry:
         self._lock=asyncio.Lock(); self._leases={}
 
     async def create(self,*,priority:int,source:str,metadata:JobMetadata|None=None)->dict[str,object]:
+        self.scheduler.require_execution()
         metadata = metadata or JobMetadata(capability="external-reservation")
         if not metadata.workload:
             metadata = replace(metadata, workload=external_workload(self.scheduler.registry))
@@ -65,6 +66,7 @@ class ResourceLeaseRegistry:
         return await self.describe(lease_id)
 
     async def begin_use(self, lease_id: str, *, workload: WorkloadBinding | None = None) -> SchedulerTicket:
+        self.scheduler.require_execution()
         async with self._lock:
             rec = self._leases.get(lease_id)
             if rec is None:
@@ -85,6 +87,7 @@ class ResourceLeaseRegistry:
             return ticket
 
     async def begin_external_use(self, lease_id: str, workload: WorkloadBinding) -> str:
+        self.scheduler.require_execution()
         async with self._lock:
             rec = self._leases.get(lease_id)
             if rec is None:
@@ -118,6 +121,8 @@ class ResourceLeaseRegistry:
         return rec.external_use_id
 
     async def verify_external_use(self, lease_id: str, use_id: str):
+        # This endpoint is an execution authorization, not a read-only status.
+        self.scheduler.require_execution()
         async with self._lock:
             rec = self._leases.get(lease_id)
             if (rec is None or rec.external_use_id != use_id or rec.in_use
@@ -127,6 +132,7 @@ class ResourceLeaseRegistry:
             return rec.external_workload
 
     async def end_external_use(self, lease_id: str, use_id: str) -> bool:
+        self.scheduler.require_execution()
         async with self._lock:
             rec = self._leases.get(lease_id)
             if rec is not None and rec.external_use_id is None and rec.ended_use_id == use_id:
@@ -158,6 +164,7 @@ class ResourceLeaseRegistry:
             return True
 
     async def end_use(self,lease_id:str,*,release:bool=False)->None:
+        self.scheduler.require_execution()
         async with self._lock:
             rec=self._leases.get(lease_id)
             if rec is None: return
@@ -168,6 +175,7 @@ class ResourceLeaseRegistry:
                 self._leases.pop(lease_id,None)
 
     async def release(self,lease_id:str)->bool:
+        self.scheduler.require_execution()
         async with self._lock:
             rec=self._leases.get(lease_id)
             if rec is None: return False
@@ -178,6 +186,8 @@ class ResourceLeaseRegistry:
             return True
 
     async def reap_expired(self)->int:
+        if self.scheduler.n2_boundary_enabled:
+            return 0
         now=monotonic()
         async with self._lock:
             expired=[lid for lid,r in self._leases.items() if r.in_use==0 and not r.external_use_id and now-r.last_heartbeat>self.ttl_seconds]

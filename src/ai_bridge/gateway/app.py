@@ -24,6 +24,7 @@ from .resource_leases import (
 )
 from .residency import GPUResidency, ResidencyError
 from .comfy_process import resume_stopped_managed_comfy
+from .integration import AdmissionNotVerified
 from .scheduler import PriorityScheduler, SchedulerQueueFull, SchedulerTicket
 
 
@@ -166,6 +167,8 @@ def create_gateway_app(
         max_concurrency=resolved.gateway_max_concurrency,
         max_queue_size=resolved.gateway_max_queue_size,
         registry=registry,
+        admission_strategy=resolved.gateway_admission_strategy,
+        accelerator_registry=accelerator_registry,
     )
     resource_leases = ResourceLeaseRegistry(
         scheduler,
@@ -245,6 +248,12 @@ def create_gateway_app(
         ),
         lifespan=lifespan,
     )
+
+    @app.exception_handler(AdmissionNotVerified)
+    async def admission_not_verified(request: Request, exc: AdmissionNotVerified):
+        return JSONResponse(status_code=503, content={
+            "error": "accelerator_admission_not_verified", "verification": "NOT_VERIFIED",
+        })
 
     async def queue_full_response() -> JSONResponse:
         snapshot = await scheduler.snapshot()
