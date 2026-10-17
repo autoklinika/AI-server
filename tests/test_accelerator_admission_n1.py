@@ -497,3 +497,70 @@ async def test_malformed_timeout_does_not_mutate_owner(tmp_path, timeout):
         await rm.wait("a", timeout=timeout)
     assert rm.snapshot()["gpu-0"]["queued"] == ("a",)
     rm.close()
+
+
+@pytest.mark.anyio
+async def test_verifier_deadline_pins_owner_without_external_timeout(tmp_path):
+    adapter = SyntheticAdapter()
+    rm = core(tmp_path, adapter, verification_timeout=0.02)
+    await rm.recover("gpu-0")
+    rm.submit(claim("a"))
+    grant = await rm.wait("a")
+    adapter.gate = asyncio.Event()
+    with pytest.raises(TimeoutError):
+        await rm.release(grant)
+    state = rm.snapshot()["gpu-0"]
+    assert state["active"] == (grant,) and state["blocked"] and not state["verifying"]
+    rm.close()
+
+
+@pytest.mark.anyio
+async def test_late_verifier_cannot_suppress_timeout_into_success(tmp_path):
+    adapter = SyntheticAdapter()
+    rm = core(tmp_path, adapter, verification_timeout=0.02)
+    await rm.recover("gpu-0")
+    rm.submit(claim("a"))
+    grant = await rm.wait("a")
+    async def late(challenge):
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            return True
+    adapter.verify = late
+    with pytest.raises(AdmissionError):
+        await rm.release(grant)
+    assert rm.snapshot()["gpu-0"]["active"] == (grant,)
+    assert rm.snapshot()["gpu-0"]["blocked"]
+    rm.close()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("timeout", [True, 0, -1, float("inf"), float("nan"), None])
+async def test_invalid_verification_timeout(tmp_path, timeout):
+    with pytest.raises(ValueError):
+        core(tmp_path, SyntheticAdapter(), verification_timeout=timeout)
+
+
+@pytest.mark.anyio
+async def test_verifier_cannot_suppress_caller_cancellation_into_release(tmp_path):
+    adapter = SyntheticAdapter()
+    rm = core(tmp_path, adapter)
+    await rm.recover("gpu-0")
+    rm.submit(claim("a"))
+    grant = await rm.wait("a")
+    entered = asyncio.Event()
+    async def suppress(challenge):
+        entered.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            return True
+    adapter.verify = suppress
+    task = asyncio.create_task(rm.release(grant))
+    await entered.wait()
+    task.cancel()
+    with pytest.raises(AdmissionError):
+        await task
+    assert rm.snapshot()["gpu-0"]["active"] == (grant,)
+    assert rm.snapshot()["gpu-0"]["blocked"]
+    rm.close()

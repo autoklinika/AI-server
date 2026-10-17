@@ -150,12 +150,16 @@ class AcceleratorAdmission:
     def __init__(self, registry: AcceleratorRegistry, providers: DescriptorRegistry,
                  policies: tuple[PoolPolicy, ...], adapters: tuple[SafetyAdapter, ...],
                  journal: Path, *, enabled: bool = False, max_requests: int = 4096,
-                 max_queue: int = 128):
+                 max_queue: int = 128, verification_timeout: float = 5.0):
         if enabled is not True:
             raise AdmissionError("N1 DEV admission is disabled")
         if (type(max_requests) is not int or max_requests < 1
                 or type(max_queue) is not int or max_queue < 1):
             raise ValueError("invalid admission bounds")
+        if (type(verification_timeout) not in (int, float)
+                or not math.isfinite(verification_timeout) or verification_timeout <= 0):
+            raise ValueError("verification timeout must be finite and positive")
+        self._verification_timeout = verification_timeout
         registry = AcceleratorRegistry.model_validate(registry.model_dump())
         policies = tuple(PoolPolicy.model_validate(p.model_dump()) for p in policies)
         registry.validate_references(providers)
@@ -357,8 +361,13 @@ class AcceleratorAdmission:
             digest = hashlib.sha256(journal).hexdigest()
             challenge = Verification(uuid4().hex, self._epoch, pool.device, digest, journal, grant,
                                      tuple(g for g in pool.active.values() if g != grant))
-            if await pool.adapter.verify(challenge) is not True:
-                raise AdmissionError("cleanup evidence not verified")
+            deadline = self._loop.time() + self._verification_timeout
+            async with asyncio.timeout(self._verification_timeout):
+                verified = await pool.adapter.verify(challenge)
+            # Also reject an adapter that suppresses cancellation and returns late.
+            if (self._loop.time() >= deadline or verified is not True
+                    or asyncio.current_task().cancelling()):
+                raise AdmissionError("cleanup evidence not verified before deadline")
             self._check()
             if revision != pool.revision:
                 raise AdmissionError("ownership changed during verification")
