@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import SecretStr, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -51,6 +52,8 @@ class Settings(BaseSettings):
     gateway_comfy_idle_reserve_bytes: int = Field(default=0, ge=0, le=67108864)
     gateway_gpu_transition_timeout: float = Field(default=90.0, gt=0.0)
     gateway_gpu_marker: Path = Field(default_factory=lambda: Path.home() / ".local/state/ai-platform/gpu-residency.blocked")
+    # N2 is a denial boundary only; there is deliberately no operational mode.
+    gateway_admission_strategy: Literal["legacy", "n2-dev-blocked"] = "legacy"
     gateway_max_concurrency: int = Field(default=1, ge=1, le=16)
     gateway_max_queue_size: int = Field(default=128, ge=1, le=10_000)
     gateway_connect_timeout_seconds: float = Field(default=5.0, gt=0.0)

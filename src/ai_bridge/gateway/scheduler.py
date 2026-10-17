@@ -11,6 +11,9 @@ from collections import OrderedDict
 
 from ai_bridge.providers.registry import DescriptorRegistry, local_descriptor_registry
 
+from ai_bridge.providers.accelerators import AcceleratorRegistry, local_accelerator_registry
+from .integration import AdmissionStrategy, N2IntegrationBoundary
+
 from .jobs import JobLifecycle, JobMetadata, JobState, TERMINAL_STATES
 
 
@@ -66,7 +69,9 @@ class PriorityScheduler:
     """
 
     def __init__(self, *, max_concurrency: int = 1, max_queue_size: int = 128, history_limit: int = 128,
-                 registry: DescriptorRegistry | None = None) -> None:
+                 registry: DescriptorRegistry | None = None,
+                 admission_strategy: AdmissionStrategy = "legacy",
+                 accelerator_registry: AcceleratorRegistry | None = None) -> None:
         if max_concurrency < 1:
             raise ValueError("max_concurrency must be >= 1")
         if max_queue_size < 1:
@@ -75,6 +80,11 @@ class PriorityScheduler:
             raise ValueError("history_limit must be >= 0")
         self.history_limit = history_limit
         self.registry = registry or local_descriptor_registry()
+        if admission_strategy not in ("legacy", "n2-dev-blocked"):
+            raise ValueError("unknown admission strategy")
+        self._integration = (N2IntegrationBoundary.create(
+            accelerator_registry or local_accelerator_registry(), self.registry
+        ) if admission_strategy == "n2-dev-blocked" else None)
         self._jobs: dict[int, JobState] = {}
         self._history: OrderedDict[int, JobState] = OrderedDict()
         self.max_concurrency = max_concurrency
@@ -86,7 +96,25 @@ class PriorityScheduler:
         self._active: dict[int, SchedulerTicket] = {}
         self.admission_blocked = False
 
+    @property
+    def n2_boundary_enabled(self) -> bool:
+        return self._integration is not None
+
+    @property
+    def admission_blocked(self) -> bool:
+        return self._integration is not None or self._legacy_admission_blocked
+
+    @admission_blocked.setter
+    def admission_blocked(self, value: bool) -> None:
+        # Legacy residency may update its latch, but cannot authorize N2.
+        self._legacy_admission_blocked = value
+
+    def require_execution(self) -> None:
+        if self._integration is not None:
+            self._integration.require_execution()
+
     async def _enqueue(self, *, priority: int, source: str, metadata: JobMetadata | None = None) -> _PendingJob:
+        self.require_execution()
         metadata = metadata or JobMetadata()
         self.registry.capability(metadata.capability)
         for workload in metadata.workload:
@@ -158,6 +186,7 @@ class PriorityScheduler:
     async def release_job(self, job_id: int, *, state: JobLifecycle | None = None) -> bool:
         """Release either a queued reservation or an active execution slot."""
 
+        self.require_execution()
         if state is not None and state not in TERMINAL_STATES:
             raise ValueError("release requires terminal state")
         removed = False
@@ -187,6 +216,7 @@ class PriorityScheduler:
         """Return an active ticket without changing scheduler ownership."""
 
         async with self._lock:
+            self.require_execution()
             return self._active.get(int(job_id))
 
     async def job_status(self, job_id: int) -> dict[str, object] | None:
@@ -262,6 +292,8 @@ class PriorityScheduler:
             )
             active = sorted(self._active.values(), key=lambda ticket: ticket.job_id)
             return {
+                **({"accelerator_admission": self._integration.snapshot()}
+                   if self._integration is not None else {}),
                 "admission_blocked": self.admission_blocked,
                 "recent_jobs": [job.snapshot() for job in self._history.values()],
                 "max_concurrency": self.max_concurrency,
@@ -300,6 +332,8 @@ class PriorityScheduler:
             self._finish_locked(job_id, JobLifecycle.CANCELLED)
 
     def _dispatch_locked(self) -> None:
+        if self._integration is not None:
+            return
         self._purge_cancelled_locked()
         while not self.admission_blocked and len(self._active) < self.max_concurrency and self._heap:
             # Media-capable reservations are exclusive, including their prompt
@@ -333,6 +367,7 @@ class PriorityScheduler:
     async def mark_running(self, job_id: int, *, provider: str | None = None,
                            node: str | None = None) -> None:
         async with self._lock:
+            self.require_execution()
             job = self._jobs[job_id]
             if job.state != JobLifecycle.RUNNING:
                 job = job.transition(JobLifecycle.RUNNING)
