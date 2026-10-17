@@ -26,6 +26,7 @@ from .residency import GPUResidency, ResidencyError
 from .comfy_process import resume_stopped_managed_comfy
 from .integration import AdmissionNotVerified
 from .scheduler import PriorityScheduler, SchedulerQueueFull, SchedulerTicket
+from .managed_worker import ManagedWorker
 
 
 LOGGER = logging.getLogger(__name__)
@@ -204,6 +205,9 @@ def create_gateway_app(
             )
             app.state.upstream = client
             app.state.scheduler = scheduler
+            app.state.managed_worker = ManagedWorker(
+                scheduler, resolved.gateway_gpu_marker.with_name("managed-worker.dirty")
+            )
             app.state.resource_leases = resource_leases
             app.state.descriptor_registry = registry
             app.state.accelerator_registry = accelerator_registry
@@ -233,6 +237,7 @@ def create_gateway_app(
             try:
                 yield
             finally:
+                await app.state.managed_worker.close()
                 stop_reaper.set()
                 reaper_task.cancel()
                 try:
