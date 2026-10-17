@@ -1,0 +1,41 @@
+test_complete_only_exact_coverage (test_b1_journal.JournalTests.test_complete_only_exact_coverage) ... ok
+test_missing_or_corrupted_map_fail_closed (test_b1_journal.JournalTests.test_missing_or_corrupted_map_fail_closed) ... ok
+test_reject_changed_config (test_b1_journal.JournalTests.test_reject_changed_config) ... ok
+test_reject_duplicate_sample (test_b1_journal.JournalTests.test_reject_duplicate_sample) ... ok
+test_reject_invalid_prediction (test_b1_journal.JournalTests.test_reject_invalid_prediction) ... ok
+test_tampered_cached_record (test_b1_journal.JournalTests.test_tampered_cached_record) ... ok
+test_unexpected_record_detected (test_b1_journal.JournalTests.test_unexpected_record_detected) ... ok
+test_auc_ties_and_ap_order_invariant (test_benchmark.BenchmarkTests.test_auc_ties_and_ap_order_invariant) ... ok
+test_calibration_never_uses_holdout (test_benchmark.BenchmarkTests.test_calibration_never_uses_holdout) ... ok
+test_calibration_proof_tampering_fail_closed (test_benchmark.BenchmarkTests.test_calibration_proof_tampering_fail_closed) ... ok
+test_calibration_provenance_mismatch_fail_closed (test_benchmark.BenchmarkTests.test_calibration_provenance_mismatch_fail_closed) ... ok
+test_challenge_family_must_be_new (test_benchmark.BenchmarkTests.test_challenge_family_must_be_new) ... ok
+test_cli_end_to_end_and_immutable_artifact (test_benchmark.BenchmarkTests.test_cli_end_to_end_and_immutable_artifact) ... ok
+test_fixture_valid (test_benchmark.BenchmarkTests.test_fixture_valid) ... ok
+test_hash_split_leakage_fail_closed (test_benchmark.BenchmarkTests.test_hash_split_leakage_fail_closed) ... ok
+test_perfect_prediction_image_and_box_score (test_benchmark.BenchmarkTests.test_perfect_prediction_image_and_box_score) ... ok
+test_prediction_coverage_and_no_other_split (test_benchmark.BenchmarkTests.test_prediction_coverage_and_no_other_split) ... ok
+test_region_metrics_unsupported_not_zero (test_benchmark.BenchmarkTests.test_region_metrics_unsupported_not_zero) ... ok
+test_specimen_split_leakage_fail_closed (test_benchmark.BenchmarkTests.test_specimen_split_leakage_fail_closed) ... ok
+test_equivalence (test_compare_device_runs.CompareTests.test_equivalence) ... ok
+test_sample_mismatch (test_compare_device_runs.CompareTests.test_sample_mismatch) ... ok
+test_score_divergence (test_compare_device_runs.CompareTests.test_score_divergence) ... ok
+test_version_mismatch (test_compare_device_runs.CompareTests.test_version_mismatch) ... ok
+test_constant_normal_scores_no_fake_aupro (test_pixel_eval.PixelMetricTests.test_constant_normal_scores_no_fake_aupro) ... ok
+test_perfect_anomaly_segmentation (test_pixel_eval.PixelMetricTests.test_perfect_anomaly_segmentation) ... ok
+test_reject_map_nan (test_pixel_eval.PixelMetricTests.test_reject_map_nan) ... ok
+test_requires_both_classes (test_pixel_eval.PixelMetricTests.test_requires_both_classes) ... ok
+test_reverse_anomaly_ranking (test_pixel_eval.PixelMetricTests.test_reverse_anomaly_ranking) ... ok
+test_immutable_manifest (test_prepare_visa.VisaImportTests.test_immutable_manifest) ... ok
+test_mask_missing_fail_closed (test_prepare_visa.VisaImportTests.test_mask_missing_fail_closed) ... ok
+test_real_mask_to_box_and_family_roles (test_prepare_visa.VisaImportTests.test_real_mask_to_box_and_family_roles) ... ok
+test_aggregation_and_validation (test_tile_policy.TilingTests.test_aggregation_and_validation) ... ok
+test_determinism (test_tile_policy.TilingTests.test_determinism) ... ok
+test_invalid_geometry (test_tile_policy.TilingTests.test_invalid_geometry) ... ok
+test_right_bottom_covered (test_tile_policy.TilingTests.test_right_bottom_covered) ... ok
+test_small_image_one_tile (test_tile_policy.TilingTests.test_small_image_one_tile) ... ok
+
+----------------------------------------------------------------------
+Ran 36 tests in 0.274s
+
+OK

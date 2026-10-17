@@ -1,0 +1,4 @@
+{"sample_id": "calibration-01", "model_id": "winclip", "image_score": 0.1, "localization_mode": "boxes", "regions": []}
+{"sample_id": "calibration-02", "model_id": "winclip", "image_score": 0.2, "localization_mode": "boxes", "regions": []}
+{"sample_id": "calibration-03", "model_id": "winclip", "image_score": 0.8, "localization_mode": "boxes", "regions": [{"box": [0.1, 0.1, 0.4, 0.4], "score": 0.9}]}
+{"sample_id": "calibration-04", "model_id": "winclip", "image_score": 0.9, "localization_mode": "boxes", "regions": [{"box": [0.1, 0.1, 0.4, 0.4], "score": 0.9}]}

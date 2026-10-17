@@ -1,0 +1,4 @@
+# CPU-only image-level and approximate pixel metrics; does not install any model runtime.
+numpy==2.4.6
+scipy==1.17.1
+scikit-learn==1.9.1
