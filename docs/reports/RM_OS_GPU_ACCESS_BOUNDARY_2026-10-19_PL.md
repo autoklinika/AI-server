@@ -58,6 +58,28 @@ do root TCB i nie łączyć tego profilu z legacy produkcją.
 
 ## Następna bramka: system-manager cgroup device denial (root)
 
+## Gotowa procedura operatorska — jedno polecenie
+
+Przygotowano `tools/run_rm_os_gpu_systemd_probe.sh`: zwykły użytkownik
+uruchamia skrypt, a uprawnienie administratora wymagane jest wyłącznie dla
+dwóch stałych, jednorazowych jednostek `systemd-run`; żadnego Python z
+writable checkoutu nie uruchamia się jako root.
+Najpierw wykonuje test DENY i tylko przy jego sukcesie test ALLOW.
+Wykorzystuje `User=ai-vision`, `DevicePolicy=strict`, bez wykonywania
+obliczeń GPU, restartów ani modyfikowania usług. Raport zapisuje
+w nowym katalogu `/srv/ai-data/evaluation/os-gpu-gate-*/`.
+Po PASS obu etapów **nadal** `GLOBAL_OS_EXCLUSIVITY=NOT_VERIFIED`.
+
+```bash
+bash /srv/ai-data/evaluation/rocm-managed-worker-adapter-dev-20261017/tools/run_rm_os_gpu_systemd_probe.sh
+```
+
+Nie uruchamiano procedury root przez kanał zdalny: systemd wymaga
+interaktywnej autoryzacji. Przed wykonaniem operator może przejrzeć jej
+źródło w GitHub. Zamierzony zakres: tylko dwa stałe urządzenia oraz
+oddzielne ephemeral systemd units. Negatywny test musi zostać zaliczony
+przed jakimkolwiek eksperymentem instalacyjnym.
+
 Potrzebny rzeczywisty **negatywny** i **pozytywny** test na tej samej
 maszynie/wersji kernela, w osobnej transient unit systemd, z
 `User=ai-vision` i widocznymi ścieżkami /dev (PrivateDevices=no).
