@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-19",
+  "driver_global_reuse_safe": "NOT_VERIFIED",
+  "gpu": "AMD Radeon 890M",
+  "gpu_computation_comfyui": "ROCM_RUNTIME_INITIALIZATION_ONLY",
+  "gpu_computation_ollama": "VULKAN_GPU_25_OF_25_LAYERS",
+  "gpu_computation_vision": "ROCM_MATMUL_64x64",
+  "host": "harrypotter-AI-Series",
+  "n1_gpu_handoff": "NOT_RUN",
+  "n1_grant": "NOT_ADMITTED",
+  "observed_local_sequential_engines": "PASS_3_OF_3",
+  "ordered_engines": [
+    "ollama",
+    "comfyui",
+    "vision"
+  ],
+  "os_global_exclusivity": "NOT_VERIFIED",
+  "pci": "0000:c6:00.0",
+  "schema_version": 1,
+  "source_hashes": [
+    {
+      "attempt": "ollama-bge3-20261019-01",
+      "engine": "ollama",
+      "leader_or_worker_pid": 225706,
+      "original_json_path": "/srv/ai-data/evaluation/rm-exclusive-handoff-dev-20261019/hardware-smoke/ollama-bge3-20261019-01/result.json",
+      "original_json_sha256": "17fa58df2027c28d821e7f77a1715c7fd1e7e6e4e371a24c939c6f137f5abc9b",
+      "owner_during": {
+        "fuser": [
+          "225816"
+        ],
+        "kfd": []
+      },
+      "owner_post": "THREE_EMPTY_SAMPLES",
+      "status": "OBSERVED_LOCAL_LIFECYCLE_PASS"
+    },
+    {
+      "attempt": "comfyui-init-20261019-01",
+      "engine": "comfyui",
+      "leader_or_worker_pid": 226116,
+      "original_json_path": "/srv/ai-data/evaluation/rm-exclusive-handoff-dev-20261019/hardware-smoke/comfyui-init-20261019-01/result.json",
+      "original_json_sha256": "5588ef9856c03b7c2bdcf40422c2801cfe4e38a165282e416fa8f449ed1663f7",
+      "owner_during": {
+        "fuser": [
+          "226116",
+          "226116"
+        ],
+        "kfd": [
+          "226116"
+        ]
+      },
+      "owner_post": "THREE_EMPTY_SAMPLES",
+      "status": "OBSERVED_LOCAL_LIFECYCLE_PASS"
+    },
+    {
+      "attempt": "handoff-vision-20261019-01",
+      "engine": "vision",
+      "leader_or_worker_pid": 226387,
+      "original_json_path": "/srv/ai-data/evaluation/rm-rocm-hardware-pilot/handoff-vision-20261019-01/result.json",
+      "original_json_sha256": "0417c9ff089b6c474f06654d086ba7ecc7e9def416f6fa58ae7a28bed26fee4e",
+      "owner_during": {
+        "fuser": [
+          226387
+        ],
+        "kfd": [
+          226387
+        ]
+      },
+      "owner_post": "EMPTY_POSTFLIGHT",
+      "status": "WORKER_LOCAL_SYNC_AND_CLOSED"
+    }
+  ],
+  "test": "sequential standalone engines in operator maintenance window"
+}
