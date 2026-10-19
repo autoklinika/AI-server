@@ -29,6 +29,8 @@ cleanup() {
   rc=$?
   trap - EXIT INT TERM
   if [[ -n "$current" ]]; then
+    # Persist the transient unit's failure evidence before --collect removes it.
+    journalctl --no-pager -n 30 -u "$current" > "$folder/last-unit-journal.log" 2>&1 || true
     echo "STOPPING_OWNED_UNIT=$current" | tee -a "$folder/summary.log"
     sudo systemctl stop "$current" >> "$folder/summary.log" 2>&1 || true
   fi
@@ -69,7 +71,9 @@ postflight() {
   return 1
 }
 unit_properties=(
-  -p 'DevicePolicy=strict'
+  # CLOSED keeps the two GPU device rules, but permits /dev/null and
+  # other standard pseudo-devices needed for stdio and runtime startup.
+  -p 'DevicePolicy=closed'
   -p 'DeviceAllow=/dev/kfd rw'
   -p 'DeviceAllow=/dev/dri/renderD128 rw'
   -p 'PrivateDevices=no'
@@ -92,7 +96,7 @@ start_unit() {
   printf '%s\n' "$x" | tee -a "$folder/summary.log"
   grep -q '^ActiveState=active$' <<<"$x"
   grep -q "^User=$user$" <<<"$x"
-  grep -q '^DevicePolicy=strict$' <<<"$x"
+  grep -q '^DevicePolicy=closed$' <<<"$x"
   grep -Eq '^MainPID=[1-9][0-9]+$' <<<"$x"
 }
 verify_live_engine() {

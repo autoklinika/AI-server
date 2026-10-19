@@ -26,7 +26,7 @@ def test_exact_order_of_three_engines_and_no_auto_n1_grant():
 
 def test_system_manager_enforcement_and_nonroot_role():
     s = SCRIPT.read_text()
-    for value in ("sudo systemd-run --system", "DevicePolicy=strict",
+    for value in ("sudo systemd-run --system", "DevicePolicy=closed",
                   "DeviceAllow=/dev/kfd rw", "DeviceAllow=/dev/dri/renderD128 rw",
                   "KillMode=control-group", "Restart=no", "RuntimeMaxSec=95s",
                   "User=$user", "NoNewPrivileges=yes", "sudo -v"):
@@ -46,7 +46,7 @@ def test_cleanup_stays_owned_and_blocks_on_unknown_gpu():
     assert "if (( stable >= 3 )); then return 0; fi" in s
     assert "BLOCKED: postflight not verified" in s
     assert "BLOCKED: foreign GPU owner" in s
-    assert "grep -q '^DevicePolicy=strict$'" in s
+    assert "grep -q '^DevicePolicy=closed$'" in s
 
 
 @pytest.mark.parametrize("forbidden", [
