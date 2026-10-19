@@ -65,7 +65,11 @@ class WorkerObserver:
     workspace/tmp storage. Markers are conservative tombstones, not an RM journal.
     """
 
-    def __init__(self, marker: Path, *, runtime: Runtime | None = None):
+    def __init__(self, marker: Path, *, runtime: Runtime | None = None,
+                 marker_label: str = "SIMULATION"):
+        if marker_label not in ("SIMULATION", "HARDWARE-PILOT"):
+            raise ValueError("unsupported marker label")
+        self._marker_label = marker_label
         self._marker = marker
         self._runtime = runtime if runtime is not None else SyntheticCPU()
         self._child = None
@@ -86,7 +90,7 @@ class WorkerObserver:
             raise RuntimeError("attempt cannot start/restart")
         self._state = "DIRTY"  # Before persistence or spawn, including exceptions.
         with self._marker.open("x") as record:
-            record.write('SIMULATION: attempt reserved; reuse forbidden\n')
+            record.write(f"{self._marker_label}: attempt reserved; reuse forbidden\n")
             record.flush()
             os.fsync(record.fileno())
         fd = os.open(self._marker.parent, os.O_RDONLY | os.O_DIRECTORY)
