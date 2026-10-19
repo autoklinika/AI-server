@@ -1,27 +1,68 @@
-# RM N1–N5: sprzętowy pilot ROCm — 19.10.2026
+# RM N1–N5 — realny pilot ROCm, wynik 19.10.2026
 
-## Cel i ograniczenia
-N1–N5 zostaje. Dodano w DEV pojedynczy kontrolowany test rzeczywistego GPU przez istniejący `WorkerObserver` N5. Nie zmieniono produkcji ani nie włączono automatycznych grantów N1. `GPU_REUSE_SAFE` pozostaje zawsze `NOT_VERIFIED`.
+## Wynik
+**REAL_ROCM_SINGLE_WORKER=PASS (4/4 prób po poprawce).**
+**N1_REAL_GRANT=NOT_VERIFIED; GPU_REUSE_SAFE=NOT_VERIFIED.**
+Produkcja nie została zmieniona ani przełączona na N1/N2.
 
-## Nowy kod
-- `src/ai_bridge/gateway/rocm_maintenance_pilot.py` — wykonawca offline, wyłącznie stałe `rocm-matmul-64-v1`; nie ma endpointu HTTP ani dowolnych komend.
-- `tools/run_rm_rocm_maintenance_pilot.sh` — procedura lokalnego operatora: zatrzymuje timer i usługi AI po autoryzacji, sprawdza stan i uruchamia pojedynczy pilot.
-- `tests/test_rocm_maintenance_pilot.py` — pozytywne i negatywne przypadki preflight, ponownego użycia, timeoutów i raportowania.
-- Małe rozszerzenie `WorkerObserver`: jawny marker `HARDWARE-PILOT`, domyślny `SIMULATION` bez zmian.
+Zamknięte próby: `pilot-pci-fixed-20261019-04`,
+`pilot-repeat-20261019-1`, `pilot-repeat-20261019-2`, `pilot-repeat-20261019-3`.
+Każda: exit 0, `WORKER_LOCAL_SYNC`, `PROCESS_CLOSED`, poprawna
+matmul 64×64, PCI `0000:c6:00.0`, brak widocznych KFD/DRM owners przed
+i po próbie, procesy pozostałych usług AI zatrzymane.
+Dziennik kernela w sprawdzonym oknie nie wykazuje resetu/fault/timeout AMDGPU/MES.
+Ścieżka dowodów: `/srv/ai-data/evaluation/rm-rocm-hardware-pilot/`.
+`ownership.dirty` nie jest automatycznie usuwany, a wynik workera nie
+zatwierdza ponownego przydziału GPU przez N1.
 
-## Kontrola ryzyka
-Preflight przed i bezpośrednio przed uruchomieniem: timer analizy, AI Gateway, AI Bridge, ComfyUI i Ollama muszą być `inactive`; identyfikacja PCI 0000:c6:00.0 (1002:150e); brak widocznych kontekstów KFD i użytkowników `/dev/kfd` oraz `renderD128`. Postflight ponownie sprawdza te warunki. Próba ma lock, niepowtarzalną ścieżkę, trwały marker i raport.
-Nie wymusza resetu AMDGPU ani nie zwalnia N1; po timeout możliwy jest jedynie SIGTERM do własnego dziecka. Błąd zachowuje status DIRTY. Pomiary punktowe `fuser`/KFD nie stanowią globalnego dowodu bezpiecznego reuse.
+## Przyczyna pierwszych niepowodzeń
+Pierwsza próba `pilot-20261019-165639-201193` zwróciła `WORKER_FAILED`,
+a druga `pilot-diagnostic-20261019-02` ujawniła wyjątek
+`runtime PCI binding unavailable`.
+Trzecia diagnostyczna `pilot-pci-diagnostic-20261019-03` ujawniła
+wartość `torch.cuda.get_device_properties(0).pci_bus_id = 198`:
+PyTorch ROCm zwraca **liczbę magistrali**, nie pełne BDF.
+Poprzedni kod oczekiwał wyłącznie `0000:c6:00.0`, dlatego blokował pracę
+**przed** uruchomieniem obliczenia.
+Poprawka: przy numerycznym `pci_bus_id` pobierz pełne BDF przez
+udokumentowaną funkcję HIP `hipDeviceGetPCIBusId`, porównaj numer
+magistrali PyTorch do HIP, sprawdź pełny BDF i PCI vendor/device w sysfs.
+Nie poluzowano tożsamości ani zakazu wykonania na niewłaściwej karcie.
+Worker zapisuje teraz typ błędu i krótki komunikat na STDERR, bez
+zmiany fail-closed statusu `WORKER_FAILED`.
+Testy jednostkowe obejmują wartość 198, zły numer, bool i błędny string.
 
-## Status
-ROCm w `/opt/comfyui/venv/bin/python`: PyTorch 2.13.0+rocm10, HIP 7.15, wykryta jedna karta Radeon 890M. Uruchomienie modułu i zestawu testowego na CPU/mock: PASS. Wstępny host preflight: BLOCKED, ponieważ usługi wciąż działają. Zdalny Desktop Commander nie może zatrzymać systemd bez lokalnego uwierzytelnienia administratora; nie obchodzono zabezpieczeń.
-**Rzeczywisty test ROCm: NOT_RUN. Produkcja bez zmian.**
+## Architektura i granice bezpieczeństwa
+N1–N5 nie zostało skasowane. Pilot jest kontrolowanym N5 one-shot
+w oknie serwisowym, NIE produkcyjnym grantem N1.
+Używa `WorkerObserver` (PID, birth, boot, sesja), trwałego markera i
+locka. Preflight przed startem, ponowny preflight i postflight wymagają
+zatrzymania timer/AI Gateway/AI Bridge/Ollama/ComfyUI, stałego PCI
+1002:150e i braku widocznych KFD/FUSER owners.
+Powtórzone próby nie są hot handoff pomiędzy żywymi silnikami;
+oddzielna analiza driver/runtime E_safe pozostaje konieczna.
 
-## Lokalna komenda operatora
-```bash
-bash /srv/ai-data/evaluation/rocm-managed-worker-adapter-dev-20261017/tools/run_rm_rocm_maintenance_pilot.sh
-```
-Skrypt poprosi o hasło administratora, następnie wykona pilot tylko przy pomyślnym preflight. Backup Stage K i zdalny agent pozostają aktywne. Po wykonaniu usługi AI pozostają zatrzymane do przeglądu wyniku; dzienniki próby trafią do `/srv/ai-data/evaluation/rm-rocm-hardware-pilot/<attempt>/`.
+## Zmiany i walidacja
+- `src/ai_bridge/gateway/rocm_test_worker.py`: naprawa numerycznego bus ID;
+  szczegółowe, lokalne błędy workera na STDERR.
+- `tests/test_rocm_managed_adapter.py`: regresja wartości bus ID 198,
+  rozbieżności PyTorch/HIP i niewłaściwych typów.
+- Wcześniejszy `rocm_maintenance_pilot.py`, `tools/run_rm_rocm_maintenance_pilot.sh`
+  i testy DEV zachowane.
+- Testy focused po poprawce: PASS. Regresja wybranych 15 pakietów N1–N5,
+  Gateway, leasing, Stage O: **529/529 PASS po poprawce PCI**, exit 0;
+  `/tmp/rm-rocm-pci-fix-full-regression-20261019.log`.
 
-## Dalej
-Po pojedynczym realnym PASS osobno zweryfikować poprawne zamykanie kontekstu GPU, następnie podłączyć zaufany SafetyAdapter do N1 i przeprowadzić kontrolowany handoff. Nie deklarować SHARED/EXCLUSIVE na rzeczywistym GPU na podstawie samego pilota.
+## Stan usług
+Po testach timer analizy, AI Gateway, AI Bridge, ComfyUI i Ollama pozostają
+`inactive` — zgodnie z procedurą bezpieczeństwa.
+Obserwator GPU i narzędzia zdalne nie były zatrzymywane.
+Do powrotu produkcji operator powinien osobno autoryzować start systemd.
+
+## Co dalej
+1. Zatwierdzić granicę zaufanego adaptera N1 i rozliczania kontekstu;
+   obecny N3 `NonApprovingSafetyAdapter` nie może być obchodzony.
+2. Sprawdzić GPU release/ponowny start jednego właściciela oraz
+   sekwencję Ollama–ComfyUI–Ollama w oddzielnym teście z kompletną
+   kontrolą procesów.
+3. SHARED/EXCLUSIVE na prawdziwym GPU dopiero po powyższej weryfikacji.

@@ -50,15 +50,18 @@ def run_fixed(torch, *, pci_root=Path("/sys/bus/pci/devices"), hip_bus_id=None) 
     props = torch.cuda.get_device_properties(0)
     if getattr(props, "gcnArchName", "").split(":", 1)[0] != "gfx1150":
         raise RuntimeError("unexpected GPU architecture")
-    # torch's pci_bus_id field is not portable. Use HIP's documented
-    # hipDeviceGetPCIBusId ABI when that optional field is absent.
-    # Missing/malformed HIP data still denies execution.
-    bdf = getattr(props, "pci_bus_id", None)
-    if bdf is None:
-        bdf = (hip_bus_id or _hip_bus_id)(torch)
+    # ROCm PyTorch may expose pci_bus_id as an integer bus number (e.g.
+    # 198 for c6), NOT a full PCI BDF. Resolve the complete identity via HIP,
+    # then cross-check the bus number instead of rejecting the real card.
+    torch_pci = getattr(props, "pci_bus_id", None)
+    numeric_bus = torch_pci if type(torch_pci) is int else None
+    bdf = ((hip_bus_id or _hip_bus_id)(torch)
+           if torch_pci is None or numeric_bus is not None else torch_pci)
     if not isinstance(bdf, str) or not re.fullmatch(
             r"[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-1][0-9a-fA-F]\.[0-7]", bdf):
         raise RuntimeError("runtime PCI binding unavailable")
+    if numeric_bus is not None and numeric_bus != int(bdf.split(":")[1], 16):
+        raise RuntimeError("PyTorch/HIP PCI bus mismatch")
     if bdf.lower() != EXPECTED_PCI:
         raise RuntimeError("wrong runtime PCI binding")
     pci = pci_root / EXPECTED_PCI
@@ -88,7 +91,11 @@ def main() -> int:
     try:
         import torch
         result = run_fixed(torch)
-    except Exception:
+    except Exception as exc:
+        # Local diagnostics only. Do not alter the structured worker result or
+        # let a failure grant GPU ownership to the next client.
+        print(json.dumps({"error_type": type(exc).__name__,
+                          "detail": str(exc)[:500]}, sort_keys=True), file=sys.stderr)
         print(json.dumps({"schema": 1, "status": "WORKER_FAILED"}))
         return 1
     print(json.dumps(result, sort_keys=True))

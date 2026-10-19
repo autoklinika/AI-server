@@ -372,3 +372,24 @@ def test_documented_hip_pci_abi_failure_is_denied(monkeypatch, tmp_path):
     monkeypatch.setattr(ctypes, "CDLL", lambda _: SimpleNamespace(hipDeviceGetPCIBusId=FakeFn()))
     with pytest.raises(RuntimeError, match="lookup failed"):
         _hip_bus_id(torch)
+
+
+@pytest.mark.parametrize("bus", [198, 197, True, "198"])
+def test_rocm_pytorch_pci_bus_field_types(tmp_path, bus):
+    pci = tmp_path / EXPECTED_PCI
+    pci.mkdir()
+    (pci / "vendor").write_text("0x1002")
+    (pci / "device").write_text("0x150e")
+    torch = FakeTorch()
+    torch.props.pci_bus_id = bus
+    calls = []
+    def hip_binding(runtime):
+        calls.append(runtime)
+        return EXPECTED_PCI
+    if bus == 198:
+        assert run_fixed(torch, pci_root=tmp_path, hip_bus_id=hip_binding)["local_synced"] is True
+        assert calls == [torch]
+    else:
+        with pytest.raises(RuntimeError):
+            run_fixed(torch, pci_root=tmp_path, hip_bus_id=hip_binding)
+        assert torch.calls == []
