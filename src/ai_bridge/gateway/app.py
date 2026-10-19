@@ -178,6 +178,11 @@ def create_gateway_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        if scheduler.n2_boundary_enabled:
+            LOGGER.warning(
+                "Gateway admission n2-dev-blocked: execution disabled; "
+                "physical N1 grants NOT_ADMITTED, OS isolation and driver reuse NOT_VERIFIED"
+            )
         timeout = httpx.Timeout(
             connect=resolved.gateway_connect_timeout_seconds,
             read=resolved.gateway_upstream_timeout_seconds,
@@ -342,6 +347,9 @@ def create_gateway_app(
         default_priority: int,
         default_source: str,
     ) -> Response:
+        # Deny before reading client-controlled bodies or resolving old leases.
+        # Configuration and HTTP metadata cannot supply trusted N1 evidence.
+        scheduler.require_execution()
         body = await request.body()
         body, class_priority, semantic = _consume_priority_class(body, default_priority)
         if default_source == "ventilation":

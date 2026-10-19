@@ -48,6 +48,28 @@ async def test_every_http_ingress_denied_before_upstream(monkeypatch, path, stre
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("path", PATHS)
+async def test_denial_precedes_body_read_and_client_metadata(monkeypatch, path, caplog):
+    from starlette.requests import Request
+
+    app = app_for_test(monkeypatch)
+    async with api_client(app) as client:
+        async def forbidden_body(self):
+            pytest.fail("blocked inference must not consume the request body")
+
+        monkeypatch.setattr(Request, "body", forbidden_body)
+        response = await client.post(path, content=b"invalid-json", headers={
+            "x-ai-priority": "invalid", "x-ai-resource-lease": "old-or-forged",
+        })
+        assert response.status_code == 503
+        assert response.json()["verification"] == "NOT_VERIFIED"
+        state = await app.state.scheduler.snapshot()
+        assert state["active_count"] == state["queued_count"] == 0
+        assert state["recent_jobs"] == []
+    assert "physical N1 grants NOT_ADMITTED" in caplog.text
+
+
+@pytest.mark.anyio
 async def test_reservation_external_media_and_cleanup_cannot_bypass(monkeypatch):
     app = app_for_test(monkeypatch)
     async with api_client(app) as client:
