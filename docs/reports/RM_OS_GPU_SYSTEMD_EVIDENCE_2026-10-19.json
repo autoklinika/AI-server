@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-19",
+  "followup_kfd_snapshot": "EMPTY_OBSERVED_LATER",
+  "global_host_gpu_exclusivity": "NOT_VERIFIED",
+  "gpu_reuse_safe": "NOT_VERIFIED",
+  "host": "harrypotter-AI-Series",
+  "kfd_delayed_cleanup_hypothesis": "UNVERIFIED",
+  "n1_gpu_grant": "NOT_ADMITTED",
+  "original_kfd_postflight": "FAIL_NONEMPTY_UNATTRIBUTED",
+  "original_log_folder": "/srv/ai-data/evaluation/os-gpu-gate-20261019-182354-209705",
+  "records": {
+    "allow": {
+      "dev_kfd": "ALLOWED_AS_REQUIRED",
+      "dev_renderD128": "ALLOWED_AS_REQUIRED",
+      "invocation": "094f6ac586f343fdb529a673ecb360ed",
+      "original_log_sha256": "d45f5978fb85efb792638e7db1cac9951f52d1e0c77b4037ac3dc2f524e752dd",
+      "state": "PASS",
+      "uid": 994,
+      "unit": "ai-rm-os-allow-209705.service"
+    },
+    "deny": {
+      "dev_kfd": "DENIED_AS_REQUIRED",
+      "dev_renderD128": "DENIED_AS_REQUIRED",
+      "invocation": "0136f644c9f641f8837961c460144057",
+      "original_log_sha256": "49a922fe9ad552ee202ebecc575db07b8ff649ab8412738928676f0b4f5fa68c",
+      "state": "PASS",
+      "uid": 994,
+      "unit": "ai-rm-os-deny-209705.service"
+    }
+  },
+  "system_manager_device_policy_test": "PASS",
+  "systemd_device_allow": "PASS",
+  "systemd_device_deny": "PASS"
+}

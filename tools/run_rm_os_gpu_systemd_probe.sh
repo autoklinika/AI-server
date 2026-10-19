@@ -86,12 +86,42 @@ for path in /dev/kfd /dev/dri/renderD128; do
     exit 2
   fi
 done
-if [[ -n "$(ls -A /sys/class/kfd/kfd/proc)" ]]; then
-  echo 'FAIL: remaining KFD process' >&2
-  exit 2
-fi
 echo 'SYSTEM_MANAGER_DEVICE_CGROUP_NEGATIVE=PASS'
 echo 'SYSTEM_MANAGER_EXACT_ALLOWLIST=PASS'
+echo 'STAGE 3: BOUNDED READ-ONLY KFD POSTFLIGHT'
+# Kernel KFD process teardown can finish after systemd reports unit exit.
+# Observe only: do not reset GPU, delete entries or reinterpret this as E_safe.
+stable=0
+for sample in {1..40}; do
+  if ! kfd_pids="$(find /sys/class/kfd/kfd/proc -mindepth 1 -maxdepth 1 -printf '%f ' 2>&1)"; then
+    printf 'KFD_READ_ERROR sample=%s details=%s\n' "$sample" "$kfd_pids" | tee -a "$folder/kfd-postflight.log"
+    echo 'KFD_POSTFLIGHT=UNVERIFIED' >&2
+    exit 2
+  fi
+  printf 'KFD_SNAPSHOT sample=%s pids=%s\n' "$sample" "${kfd_pids:-none}" | tee -a "$folder/kfd-postflight.log"
+  if [[ -z "$kfd_pids" ]]; then
+    stable=$((stable + 1))
+  else
+    stable=0
+    for pid in $kfd_pids; do
+      if [[ "$pid" =~ ^[0-9]+$ ]]; then
+        ps -p "$pid" -o pid=,ppid=,uid=,stat=,comm= 2>&1 | tee -a "$folder/kfd-postflight.log" || true
+      fi
+    done
+  fi
+  if (( stable >= 3 )); then
+    break
+  fi
+  sleep 0.25
+done
+if (( stable < 3 )); then
+  echo 'KFD_POSTFLIGHT=UNVERIFIED: contexts remained visible past bounded window' >&2
+  echo 'GLOBAL_OS_EXCLUSIVITY=NOT_VERIFIED'
+  echo 'GPU_REUSE_SAFE=NOT_VERIFIED'
+  echo "LOGS=$folder"
+  exit 2
+fi
+echo 'KFD_POSTFLIGHT=THREE_CONSECUTIVE_EMPTY_OBSERVATIONS'
 echo 'GLOBAL_OS_EXCLUSIVITY=NOT_VERIFIED'
 echo 'GPU_REUSE_SAFE=NOT_VERIFIED'
 echo "LOGS=$folder"
