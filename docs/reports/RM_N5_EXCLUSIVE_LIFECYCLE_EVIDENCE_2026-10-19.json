@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-19",
+  "entries": [
+    {
+      "attempt": "lifecycle-20261019-1941-01",
+      "evidence_sha256": "f169d3bd1015662c748ffd372fc166ee2b139306f6c39c9ed134ddaa0e8c5c5e",
+      "gpu_reuse_safe": "NOT_VERIFIED",
+      "owner_status": "WORKER_OWNER_OBSERVED",
+      "pid": 205531,
+      "post_fuser": "none-visible",
+      "post_kfd": "none-visible",
+      "process": "PROCESS_CLOSED",
+      "status": "PASS",
+      "worker_status": "WORKER_LOCAL_SYNC"
+    },
+    {
+      "attempt": "lifecycle-repeat-20261019-1",
+      "evidence_sha256": "78618039a23c9c7d7213ba83f4fa7792cb2e75ae0d54cbc6d675ed29dc0a79b9",
+      "gpu_reuse_safe": "NOT_VERIFIED",
+      "owner_status": "WORKER_OWNER_OBSERVED",
+      "pid": 205696,
+      "post_fuser": "none-visible",
+      "post_kfd": "none-visible",
+      "process": "PROCESS_CLOSED",
+      "status": "PASS",
+      "worker_status": "WORKER_LOCAL_SYNC"
+    },
+    {
+      "attempt": "lifecycle-repeat-20261019-2",
+      "evidence_sha256": "100e0c593bd20b18ad9293e46a8806920fdaa5db5ad0a796bba0c06fe42b0a96",
+      "gpu_reuse_safe": "NOT_VERIFIED",
+      "owner_status": "WORKER_OWNER_OBSERVED",
+      "pid": 205771,
+      "post_fuser": "none-visible",
+      "post_kfd": "none-visible",
+      "process": "PROCESS_CLOSED",
+      "status": "PASS",
+      "worker_status": "WORKER_LOCAL_SYNC"
+    },
+    {
+      "attempt": "lifecycle-repeat-20261019-3",
+      "evidence_sha256": "c2b00b782d3306f37a4e7b8f89f0a952318f1034668a76ec47beae6549188734",
+      "gpu_reuse_safe": "NOT_VERIFIED",
+      "owner_status": "WORKER_OWNER_OBSERVED",
+      "pid": 205848,
+      "post_fuser": "none-visible",
+      "post_kfd": "none-visible",
+      "process": "PROCESS_CLOSED",
+      "status": "PASS",
+      "worker_status": "WORKER_LOCAL_SYNC"
+    }
+  ],
+  "gpu_reuse_safe": "NOT_VERIFIED",
+  "local_lifecycle_4_of_4": "PASS",
+  "method": "N5 fixed 64x64, parked GO, KFD/fuser sampled live and postexit",
+  "n1_grant": "NOT_ADMITTED",
+  "schema_version": 1,
+  "source": "local Radeon 890M maintenance pilot"
+}
