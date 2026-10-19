@@ -1,0 +1,36 @@
+{
+  "actual_n1_grant": "NOT_ADMITTED",
+  "attempt_id": "attempt-20261019-204102-jaYfEzik",
+  "comfyui": {
+    "cgroup_owner_verified": true,
+    "result": "PASS_ROCM_INITIALIZATION_ONLY",
+    "unit": "ai-rm-p204102-230626-comfy.service"
+  },
+  "date": "2026-10-19",
+  "gpu": "AMD Radeon 890M",
+  "gpu_reuse_safe": "NOT_VERIFIED",
+  "host": "harrypotter-AI-Series",
+  "ollama": {
+    "cgroup_owner_verified": true,
+    "embedding_dimensions": 1024,
+    "result": "PASS_EMBEDDING_VULKAN",
+    "unit": "ai-rm-p204102-230626-ollama.service"
+  },
+  "original_evidence_sha256": {
+    "http.json": "ba5079423a280f4ec875c5f3f573d461955f207d3f8cba3e3de2b979bf42a062",
+    "ollama.json": "32027a98b900d5dd4a50d959ff2633c7d259ad4d7f79c9dfa95cc7b649817fbf",
+    "summary.log": "bc1eccf2ee342a2c47488dfe0b02fc0c0a05c12f9135043055ee72759ea6c068",
+    "vision.log": "8608cdb3681bb836a814668a24130a4df0275cd8c61377999100df3f6b161796"
+  },
+  "os_global_exclusivity": "NOT_VERIFIED",
+  "outcome": "LOCAL_SYSTEMD_HANDOFF_PASS_3_OF_3",
+  "pci": "0000:c6:00.0",
+  "schema_version": 1,
+  "test": "EXCLUSIVE operator supervised transient systemd sequential engines",
+  "three_empty_postflight_observations_each": true,
+  "transient_units_inactive_after": true,
+  "vision": {
+    "result": "PASS_FIXED_ROCM_64x64",
+    "unit": "ai-rm-p204102-230626-vision.service"
+  }
+}
