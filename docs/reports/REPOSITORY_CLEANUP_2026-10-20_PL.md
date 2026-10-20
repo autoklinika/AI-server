@@ -28,8 +28,8 @@ Testowany snapshot odpowiadał 959 plikom przygotowanego commita 76b4726; każdy
 
 Pomocniczy snapshot, dziesięć katalogów buildów i ich środowiska wirtualne zostały usunięte po zachowaniu logów i manifestu. Gotowa gałąź lokalna oraz gałąź z czterema nieopublikowanymi commitami pozostają, ponieważ zawierają pracę oczekującą publikacji.
 
-## Oczekujące i przyczyna
+## Publikacja zatwierdzona przez użytkownika
 
-Repozytorium autoklinika/AI-server ma widoczność **public**. Automatyczna kontrola dwukrotnie odrzuciła publikację nowych commitów i wewnętrznych raportów, uznając dotychczasowe ogólne polecenie za niewystarczającą zgodę na ten konkretny payload i destination. Nie próbowano obejść odmowy przez API.
+Po wcześniejszym wstrzymaniu publikacji użytkownik jednoznacznie zatwierdził cały zakres 80 plików, publiczne repozytorium `autoklinika/AI-server`, utworzenie PR i scalenie po zielonym CI. Utworzono [PR #176](https://github.com/autoklinika/AI-server/pull/176). Pierwszy opublikowany commit `a42f27359bb58d028e5a6850b5cbe17db8161552` ma identyczne drzewo jak zatwierdzony lokalny HEAD: `9a37ebfcf1a95c0cce2de0974b0689a774594fdf`. Następna zmiana uzupełnia tylko te dwa dokumenty o stan publikacji.
 
-Do zgody pozostaje publikacja czystej gałęzi cleanup/production-sync-20261020 do publicznego https://github.com/autoklinika/AI-server, utworzenie PR do main i merge dopiero po zielonym platform-ci na aktualnym headzie oraz aktualności gałęzi. PR #174 można zamknąć jako zastąpiony dopiero po przyjęciu czystego PR; jego historyczną gałąź należy zachować.
+Bieżący wynik CI i stan scalenia są dostępne w PR #176. Merge wymaga zielonego `platform-ci` na aktualnym headzie; następnie #174 zostaje zamknięty jako zastąpiony, z zachowaniem historycznej gałęzi. Produkcja nie jest zmieniana przez tę operację. Lokalne oryginalne commity zachowano w gałęzi archiwalnej, ponieważ publikacja przez GitHub utworzyła równoważny commit o innym SHA.

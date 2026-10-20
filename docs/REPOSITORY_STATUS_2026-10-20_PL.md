@@ -13,13 +13,14 @@ Ta gałąź nie zawiera N1–N5, SHARED/Multi-GPU, eksperymentalnych ROCm worker
 | PR | Status | Decyzja |
 |---|---|---|
 | #175 | MERGED, CI PASS | Ograniczone ponowienia kopii Stage K; już obecne w main |
-| #174 | otwarty draft REFERENCE | Zachowany stos implementacji i dowodów; nie scalać w całości do main |
+| [#176](https://github.com/autoklinika/AI-server/pull/176) | Czysta synchronizacja produkcji | Źródła, autostart, testy i dowody; merge wymaga zielonego platform-ci |
+| #174 | historyczny REFERENCE | Zastępowany przez #176; nie scalać całego stosu DEV; gałąź pozostaje archiwum |
 | #160 | CLOSED / ARCHIVE | Historyczny szkielet benchmarku; gałąź i commity zachowane |
 | #161–#163 | CLOSED / ARCHIVE | Poprzednia integracja Vision, audyt i provisioning; gałęzie i dowody zachowane; zamknięcie nie rozwiązuje ustaleń audytu |
 | #165 | CLOSED / ARCHIVE | Historyczna propozycja recertyfikacji; main używa przyjętej poprawki recovery #166 |
 | #167–#173 | CLOSED / ARCHIVE | Prace DEV N1–N5 i eksperymentalny ROCm; zachowane bez aktywacji produkcyjnej |
 
-Nowy PR dla czystej gałęzi produkcyjnej oczekuje publikacji. Automatyczna kontrola odrzuciła push czterech lokalnych commitów gałęzi Vision, wskazując brak jednoznacznej zgody na publikację tego kodu i raportów do `autoklinika/AI-server`. Nie obchodzono odmowy przez inne API. PR produkcyjny można utworzyć po tej zgodzie; przed merge wymagane jest zielone CI na aktualnym headzie i aktualność względem main.
+Użytkownik zatwierdził publikację pełnego zakresu 80 plików do publicznego `autoklinika/AI-server`. Utworzono [PR #176](https://github.com/autoklinika/AI-server/pull/176). Drzewo pierwszego opublikowanego commita jest identyczne z zatwierdzonym lokalnym drzewem `9a37ebfcf1a95c0cce2de0974b0689a774594fdf`. Bieżący wynik CI i stan scalenia są widoczne w PR; obowiązuje merge dopiero po zielonym CI na aktualnym headzie. Po przyjęciu #176 historyczny #174 zostaje zamknięty bez merge.
 
 ## Klasyfikacja zachowanych plików
 
