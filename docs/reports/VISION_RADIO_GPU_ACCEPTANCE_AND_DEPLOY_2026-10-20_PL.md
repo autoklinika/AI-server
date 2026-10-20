@@ -2,12 +2,14 @@
 
 20.10.2026, odbiór o 12:02 CEST. **VISION_PRODUCTION_PASS**: dokładny kandydat przeszedł ponowny pilot GPU, wdrożenie, test rollbacku i końcową aktywację. Brakujący wykonawca RADIO jest dostępny w produkcyjnym Gateway.
 
+Uzupełnienie o 14:00 CEST: **PRODUCTION_GPU_CYCLE_PASS** dla rzeczywistego cyklu Ollama → Vision RADIO → ComfyUI → Ollama, z wygenerowaniem PNG i końcowym wyładowaniem modeli. [Raport zamykający praktyczny odbiór](GPU_PRODUCTION_CYCLE_2026-10-20_PL.md).
+
 ## Potwierdzony wynik
 
 - `candidate_gpu_pilot=PASS`, `production_install=PERFORMED`, `rollback_test=PASS` — [wynik wdrożenia](VISION_PRODUCTION_RESULT_2026-10-20.json).
 - Dwie rzeczywiste inferencje dokładnego backportu na Radeon gfx1150, BDF 0000:c6:00.0: 6,755 s i 6,991 s z ładowaniem modelu — [pilot produkcyjnego kandydata](VISION_PRODUCTION_GPU_PILOT_RESULT_2026-10-20.json), zakończony o 12:01:26 CEST.
 - Ten sam obraz, score 0,43257656693458557 i identyczny SHA256 mapy 768×768 w obu wykonaniach. To test powtarzalności i integracji, nie ocena jakości detekcji.
-- Sekwencje Ollama → Vision → Ollama i ComfyUI → Vision → ComfyUI: PASS. ComfyUI sprawdzono w zakresie lifecycle; generowania obrazu nie wykonywano.
+- Sekwencje pilota Ollama → Vision → Ollama i ComfyUI → Vision → ComfyUI: PASS. W pilocie ComfyUI sprawdzono w zakresie lifecycle; generowanie obrazu przeszło następnie PASS w produkcyjnym cyklu o 14:00 CEST.
 - Po końcowej aktywacji: Gateway i nadzorca RADIO aktywne, nadzorca włączony przy boot, Vision `execution_available=true`. RM: IDLE, active/queued/leases=0, admission_blocked=false; brak markera GPU i jednostek roboczych ai-radio. Ollama bez modeli, ComfyUI bez modeli/kolejki/cleanup_pending. `/api/tags`, `/api/v1/benchmarks` i `/control/`: HTTP 200.
 - Wszystkie 239 plików produkcyjnego overlay zgodne z manifestem. Stage O nadal wskazuje `/opt/ai-platform/releases/stage-o-28e3ea214660`. KFD wskazywał wyłącznie dotychczasowy PID ComfyUI 267058; brak dopasowanych błędów sterownika w zbadanym dzienniku od 12:00 CEST — [odczyt hosta o 12:02:47 CEST](VISION_PRODUCTION_LIVE_ACCEPTANCE_2026-10-20.json).
 
@@ -46,4 +48,4 @@ Wdrożenie jest zakończone; komendy `--apply` nie trzeba powtarzać. Komenda aw
 sudo /usr/bin/python3 -I /opt/ai-platform/gateway-overlays/vision-radio-5d9d267489609ccb/tools/deploy_vision_radio.py --rollback --manifest-sha256 5d9d267489609ccbd83bff7f06c7db1a919f6e3a3d56b19fa01c6d2a84bdc5e2
 ```
 
-Rootowy raport wdrożenia: `/var/lib/ai-platform-radio/DEPLOY_RESULT.json`. `GPU_REUSE_SAFE=NOT_VERIFIED`, N1=NOT_ADMITTED i ComfyUI generation=NOT_TESTED pozostają jawne; to wdrożenie nie wystawia globalnej zgody N1. Obsługa dowolnych obrazów ze stanowiska pozostaje poza odebranym zakresem.
+Rootowy raport wdrożenia: `/var/lib/ai-platform-radio/DEPLOY_RESULT.json`. Jego historyczne ComfyUI generation=NOT_TESTED uzupełnia późniejszy wynik generowania PASS w raporcie cyklu. `GPU_REUSE_SAFE=NOT_VERIFIED` i N1=NOT_ADMITTED pozostają jawne; to wdrożenie nie wystawia globalnej zgody N1. Obsługa dowolnych obrazów ze stanowiska pozostaje poza odebranym zakresem.
