@@ -30,6 +30,10 @@ User systemd użytkownika `harrypotter`, z `Linger=yes`:
 - niedziela 02:30 — weekly backup + integrity + real restore validation;
 - co godzinę — monitor backup/DR.
 
+Daily po błędzie ponawia pracę po 5 minutach. Limit wynosi 3 uruchomienia
+w ciągu 6 godzin (pierwsza próba i dwa ponowienia); trwała awaria pozostawia
+FAIL i alarm monitora. Istniejąca blokada Stage K zapobiega równoległym kopiom.
+
 Daily i weekly nie automatyzują obecnie secrets bundle. Decyzja o docelowym
 recovery key jest odroczona i nie blokuje backupów danych.
 ## 4. Retencja
