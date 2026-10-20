@@ -1,0 +1,1235 @@
+{
+  "result": "COMFYUI_POST_REBOOT_ACCEPTANCE_PASS",
+  "preflight": {
+    "backup_timers": {
+      "err": "",
+      "out": "NEXT                           LEFT LAST                         PASSED UNIT                              ACTIVATES\nTue 2026-10-20 18:00:30 CEST   9min Tue 2026-10-20 17:00:20 CEST      - ai-platform-stage-k-monitor.timer ai-platform-stage-k-monitor.service\nWed 2026-10-21 02:30:00 CEST     8h Tue 2026-10-20 02:30:00 CEST      - ai-platform-stage-k-daily.timer   ai-platform-stage-k-daily.service\nSun 2026-10-25 02:30:00 CEST 4 days Sun 2026-10-18 02:30:00 CEST      - ai-platform-stage-k-weekly.timer  ai-platform-stage-k-weekly.service\n\n3 timers listed.",
+      "rc": 0
+    },
+    "boot_id": "2fd517ae-b459-4c09-b995-609f820c0c2d",
+    "boot_journal": {
+      "err": "",
+      "out": "2026-10-20T17:50:00+02:00 harrypotter-AI-Series systemd[1]: Starting comfyui.service - ComfyUI...\n2026-10-20T17:50:07+02:00 harrypotter-AI-Series python[3284]: [INFO] Starting server\n2026-10-20T17:50:07+02:00 harrypotter-AI-Series python3[3285]: COMFYUI_READY=PASS\n2026-10-20T17:50:07+02:00 harrypotter-AI-Series systemd[1]: Started comfyui.service - ComfyUI.\n2026-10-20T17:50:07+02:00 harrypotter-AI-Series systemd[1]: Started ai-gateway.service - AI Gateway / Resource Manager admission service.\n2026-10-20T17:50:08+02:00 harrypotter-AI-Series python[4211]: INFO:     Started server process [4211]",
+      "rc": 0
+    },
+    "boot_time": {
+      "err": "",
+      "out": "2026-10-20 17:49:47",
+      "rc": 0
+    },
+    "comfyui": {
+      "data": {
+        "cleanup_pending": false,
+        "loaded_models": 0,
+        "queue_pending": 0,
+        "queue_running": 0,
+        "schema_version": 1
+      },
+      "http": 200
+    },
+    "failed_system": {
+      "err": "",
+      "out": "UNIT LOAD ACTIVE SUB DESCRIPTION\n\n0 loaded units listed.",
+      "rc": 0
+    },
+    "failed_user": {
+      "err": "",
+      "out": "UNIT LOAD ACTIVE SUB DESCRIPTION\n\n0 loaded units listed.",
+      "rc": 0
+    },
+    "gateway_health": {
+      "data": {
+        "accelerators": {
+          "devices": [
+            {
+              "accelerator_id": "local-primary",
+              "backend": "unknown",
+              "enabled": true,
+              "kind": "integrated",
+              "locality": "local",
+              "memory_class": "unified",
+              "node_id": "ai-node-01",
+              "residency": {
+                "cleanup_evidence": null,
+                "recovery_required": false,
+                "state": "llm"
+              },
+              "total_memory_bytes": null,
+              "workload_classes": [
+                "llm",
+                "media-generation",
+                "vision"
+              ]
+            }
+          ],
+          "primary_accelerator_id": "local-primary",
+          "provider_bindings": [
+            {
+              "accelerator_ids": [
+                "local-primary"
+              ],
+              "provider_id": "ollama-local"
+            },
+            {
+              "accelerator_ids": [
+                "local-primary"
+              ],
+              "provider_id": "comfyui-local"
+            },
+            {
+              "accelerator_ids": [
+                "local-primary"
+              ],
+              "provider_id": "vision-local"
+            }
+          ],
+          "schema_version": 1
+        },
+        "gpu_residency": {
+          "cleanup_evidence": null,
+          "recovery_required": false,
+          "state": "llm"
+        },
+        "ollama": "ok",
+        "resource_manager": {
+          "active_engine": null,
+          "engines": [
+            {
+              "execution_available": true,
+              "id": "ollama",
+              "provider_id": "ollama-local",
+              "status": "configured"
+            },
+            {
+              "execution_available": true,
+              "id": "comfyui",
+              "provider_id": "comfyui-local",
+              "status": "configured"
+            },
+            {
+              "execution_available": true,
+              "id": "vision",
+              "provider_id": "vision-local",
+              "status": "configured"
+            }
+          ],
+          "reason": "no_active_ticket",
+          "schema_version": 1,
+          "state": "IDLE",
+          "target_engine": null
+        },
+        "scheduler": {
+          "active": [],
+          "active_count": 0,
+          "admission_blocked": false,
+          "max_concurrency": 1,
+          "max_queue_size": 128,
+          "queued": [],
+          "queued_count": 0,
+          "recent_jobs": []
+        },
+        "status": "ok"
+      },
+      "http": 200
+    },
+    "gateway_status": {
+      "data": {
+        "accelerators": {
+          "devices": [
+            {
+              "accelerator_id": "local-primary",
+              "backend": "unknown",
+              "enabled": true,
+              "kind": "integrated",
+              "locality": "local",
+              "memory_class": "unified",
+              "node_id": "ai-node-01",
+              "residency": {
+                "cleanup_evidence": null,
+                "recovery_required": false,
+                "state": "llm"
+              },
+              "total_memory_bytes": null,
+              "workload_classes": [
+                "llm",
+                "media-generation",
+                "vision"
+              ]
+            }
+          ],
+          "primary_accelerator_id": "local-primary",
+          "provider_bindings": [
+            {
+              "accelerator_ids": [
+                "local-primary"
+              ],
+              "provider_id": "ollama-local"
+            },
+            {
+              "accelerator_ids": [
+                "local-primary"
+              ],
+              "provider_id": "comfyui-local"
+            },
+            {
+              "accelerator_ids": [
+                "local-primary"
+              ],
+              "provider_id": "vision-local"
+            }
+          ],
+          "schema_version": 1
+        },
+        "active": [],
+        "active_count": 0,
+        "admission_blocked": false,
+        "gpu_residency": {
+          "cleanup_evidence": null,
+          "recovery_required": false,
+          "state": "llm"
+        },
+        "max_concurrency": 1,
+        "max_queue_size": 128,
+        "queued": [],
+        "queued_count": 0,
+        "recent_jobs": [],
+        "registry": {
+          "capabilities": [
+            {
+              "capability_id": "chat",
+              "provider_types": [
+                "llm"
+              ]
+            },
+            {
+              "capability_id": "reasoning",
+              "provider_types": [
+                "llm",
+                "agent"
+              ]
+            },
+            {
+              "capability_id": "text-generation",
+              "provider_types": [
+                "llm"
+              ]
+            },
+            {
+              "capability_id": "structured-generation",
+              "provider_types": [
+                "llm"
+              ]
+            },
+            {
+              "capability_id": "embeddings",
+              "provider_types": [
+                "llm"
+              ]
+            },
+            {
+              "capability_id": "image-generation",
+              "provider_types": [
+                "media-generation"
+              ]
+            },
+            {
+              "capability_id": "image-edit",
+              "provider_types": [
+                "media-generation"
+              ]
+            },
+            {
+              "capability_id": "video-generation",
+              "provider_types": [
+                "media-generation"
+              ]
+            },
+            {
+              "capability_id": "tools",
+              "provider_types": [
+                "agent"
+              ]
+            },
+            {
+              "capability_id": "streaming",
+              "provider_types": [
+                "llm",
+                "agent"
+              ]
+            },
+            {
+              "capability_id": "external-reservation",
+              "provider_types": []
+            },
+            {
+              "capability_id": "unknown",
+              "provider_types": []
+            },
+            {
+              "capability_id": "pcb-inspection",
+              "provider_types": [
+                "vision"
+              ]
+            }
+          ],
+          "nodes": [
+            {
+              "node_id": "ai-node-01"
+            }
+          ],
+          "providers": [
+            {
+              "capabilities": [
+                "chat",
+                "reasoning",
+                "text-generation",
+                "structured-generation",
+                "embeddings",
+                "streaming"
+              ],
+              "node_id": "ai-node-01",
+              "provider_id": "ollama-local",
+              "provider_type": "llm"
+            },
+            {
+              "capabilities": [
+                "image-generation",
+                "image-edit",
+                "video-generation"
+              ],
+              "node_id": "ai-node-01",
+              "provider_id": "comfyui-local",
+              "provider_type": "media-generation"
+            },
+            {
+              "capabilities": [
+                "reasoning",
+                "tools",
+                "streaming"
+              ],
+              "node_id": "ai-node-01",
+              "provider_id": "hermes-local",
+              "provider_type": "agent"
+            },
+            {
+              "capabilities": [
+                "pcb-inspection"
+              ],
+              "node_id": "ai-node-01",
+              "provider_id": "vision-local",
+              "provider_type": "vision"
+            }
+          ],
+          "schema_version": 1
+        },
+        "resource_evidence": {
+          "GPU_REUSE_SAFE": {
+            "device_id": null,
+            "generation": null,
+            "observed_at": null,
+            "reason": "complete_trusted_E_safe_not_deployed",
+            "scope": "device_and_generation",
+            "source": null,
+            "status": "NOT_VERIFIED"
+          },
+          "JOB_TERMINAL": {
+            "job_id": null,
+            "observed_at": null,
+            "reason": "global_status_has_no_selected_job",
+            "scope": "individual_job",
+            "source": null,
+            "status": "NOT_OBSERVED"
+          },
+          "MODEL_UNLOADED": {
+            "comfyui": {
+              "cleanup_pending": null,
+              "models_unloaded": null,
+              "observed_at": null,
+              "runtime_generation": null,
+              "scope": "all_models_reported_by_configured_runtime",
+              "source": "comfyui:/ai-platform/residency",
+              "status": "NOT_OBSERVED",
+              "validity": "POINT_IN_TIME_ONLY"
+            },
+            "ollama": {
+              "cleanup_pending": null,
+              "models_unloaded": null,
+              "observed_at": null,
+              "runtime_generation": null,
+              "scope": "all_models_reported_by_configured_runtime",
+              "source": "ollama:/api/ps",
+              "status": "NOT_OBSERVED",
+              "validity": "POINT_IN_TIME_ONLY"
+            }
+          },
+          "schema_version": 1
+        },
+        "resource_leases": {
+          "lease_count": 0,
+          "leases": []
+        },
+        "resource_manager": {
+          "active_engine": null,
+          "engines": [
+            {
+              "execution_available": true,
+              "id": "ollama",
+              "provider_id": "ollama-local",
+              "status": "configured"
+            },
+            {
+              "execution_available": true,
+              "id": "comfyui",
+              "provider_id": "comfyui-local",
+              "status": "configured"
+            },
+            {
+              "execution_available": true,
+              "id": "vision",
+              "provider_id": "vision-local",
+              "status": "configured"
+            }
+          ],
+          "reason": "no_active_ticket",
+          "schema_version": 1,
+          "state": "IDLE",
+          "target_engine": null
+        }
+      },
+      "http": 200
+    },
+    "gpu_faults_boot": [],
+    "hermes": {
+      "active_agents": 0,
+      "pid": 4356,
+      "platforms": {
+        "api_server": "connected",
+        "discord": "connected",
+        "telegram": "connected"
+      },
+      "state": "running"
+    },
+    "hermes_unit": {
+      "err": "",
+      "out": "ActiveState=active\nActiveEnterTimestamp=Tue 2026-10-20 17:50:08 CEST\nMainPID=4356\nNRestarts=0\nExecStartPre={ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 -I /opt/ai-platform/comfyui-boot/a77e1a8245583f80/wait_ready.py gateway ; ignore_errors=no ; start_time=[Tue 2026-10-20 17:49:54 CEST] ; stop_time=[Tue 2026-10-20 17:50:08 CEST] ; pid=2540 ; code=exited ; status=0 }",
+      "rc": 0
+    },
+    "markers": {
+      "/var/lib/ai-platform-gpu/managed-worker.dirty": false,
+      "/var/lib/ai-platform-gpu/residency.blocked": false
+    },
+    "observed_at": "2026-10-20T15:50:48.381232+00:00",
+    "ollama": {
+      "data": {
+        "models": []
+      },
+      "http": 200
+    },
+    "radio_units": {
+      "err": "",
+      "out": "",
+      "rc": 0
+    },
+    "system_units": {
+      "err": "",
+      "out": "Id=comfyui.service\nRequires=\"srv-ai\\\\x2ddata.mount\" system.slice -.mount sysinit.target\nAfter=\"srv-ai\\\\x2ddata.mount\" system.slice network-online.target systemd-journald.socket -.mount sysinit.target basic.target\nActiveState=active\nSubState=running\nUnitFileState=enabled\nActiveEnterTimestamp=Tue 2026-10-20 17:50:07 CEST\nMainPID=3284\nNRestarts=0\nExecStartPost={ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 -I /opt/ai-platform/comfyui-boot/a77e1a8245583f80/wait_ready.py comfyui ; ignore_errors=no ; start_time=[Tue 2026-10-20 17:50:00 CEST] ; stop_time=[Tue 2026-10-20 17:50:07 CEST] ; pid=3285 ; code=exited ; status=0 }\n\nId=ai-gateway.service\nRequires=ai-platform-radio.service -.mount comfyui.service sysinit.target system.slice ollama.service\nAfter=systemd-journald.socket -.mount systemd-tmpfiles-setup.service systemd-remount-fs.service system.slice tmp.mount ollama.service sysinit.target network-online.target ai-platform-radio.service comfyui.service basic.target\nActiveState=active\nSubState=running\nUnitFileState=enabled\nActiveEnterTimestamp=Tue 2026-10-20 17:50:07 CEST\nMainPID=4211\nNRestarts=0\n\nId=ai-platform-radio.service\nRequires=-.mount sysinit.target system.slice ai-vision-gpu-observer.service\nAfter=systemd-remount-fs.service systemd-tmpfiles-setup.service system.slice sysinit.target -.mount local-fs.target tmp.mount ai-vision-gpu-observer.service systemd-journald.socket basic.target\nActiveState=active\nSubState=running\nUnitFileState=enabled\nActiveEnterTimestamp=Tue 2026-10-20 17:49:53 CEST\nMainPID=2067\nNRestarts=0\n\nId=ai-vision-gpu-observer.service\nRequires=system.slice sysinit.target -.mount\nAfter=sysinit.target systemd-journald.socket systemd-tmpfiles-setup.service tmp.mount local-fs.target basic.target -.mount system.slice\nActiveState=active\nSubState=running\nUnitFileState=enabled\nActiveEnterTimestamp=Tue 2026-10-20 17:49:53 CEST\nMainPID=2066\nNRestarts=0\n\nId=ai-bridge.service\nRequires=system.slice -.mount sysinit.target\nAfter=basic.target sysinit.target systemd-journald.socket system.slice tmp.mount -.mount network-online.target systemd-tmpfiles-setup.service\nActiveState=active\nSubState=running\nUnitFileState=enabled\nActiveEnterTimestamp=Tue 2026-10-20 17:50:00 CEST\nMainPID=3282\nNRestarts=0\n\nId=ollama.service\nRequires=system.slice sysinit.target\nAfter=sysinit.target basic.target network-online.target system.slice systemd-journald.socket\nActiveState=active\nSubState=running\nUnitFileState=enabled\nActiveEnterTimestamp=Tue 2026-10-20 17:50:00 CEST\nMainPID=3292\nNRestarts=0\n\nId=postgresql@18-main.service\nRequires=-.mount sysinit.target system-postgresql.slice\nAfter=-.mount network.target system-postgresql.slice basic.target sysinit.target systemd-journald.socket\nActiveState=active\nSubState=running\nUnitFileState=enabled\nActiveEnterTimestamp=Tue 2026-10-20 17:49:56 CEST\nMainPID=2436\nNRestarts=0",
+      "rc": 0
+    }
+  },
+  "extra_checks": {
+    "backup_retry_settings": {
+      "out": "StartLimitIntervalUSec=6h\nStartLimitBurst=3\nRestart=on-failure\nRestartUSec=5min",
+      "rc": 0
+    },
+    "http://127.0.0.1:11435/api/v1/benchmarks": {
+      "bytes": 1301,
+      "http": 200
+    },
+    "http://127.0.0.1:11435/api/v1/health": {
+      "body": {
+        "compatibility_health": "not_probed",
+        "components": {
+          "accelerators": {
+            "devices": [
+              {
+                "accelerator_id": "local-primary",
+                "backend": "unknown",
+                "enabled": true,
+                "kind": "integrated",
+                "locality": "local",
+                "memory_class": "unified",
+                "node_id": "ai-node-01",
+                "residency": {
+                  "cleanup_evidence": null,
+                  "recovery_required": false,
+                  "state": "llm"
+                },
+                "total_memory_bytes": null,
+                "workload_classes": [
+                  "llm",
+                  "media-generation",
+                  "vision"
+                ]
+              }
+            ],
+            "primary_accelerator_id": "local-primary",
+            "provider_bindings": [
+              {
+                "accelerator_ids": [
+                  "local-primary"
+                ],
+                "provider_id": "ollama-local"
+              },
+              {
+                "accelerator_ids": [
+                  "local-primary"
+                ],
+                "provider_id": "comfyui-local"
+              },
+              {
+                "accelerator_ids": [
+                  "local-primary"
+                ],
+                "provider_id": "vision-local"
+              }
+            ],
+            "schema_version": 1
+          },
+          "gpu_residency": {
+            "cleanup_pending": null,
+            "loaded_models": null,
+            "queue_pending": null,
+            "queue_running": null,
+            "recovery_required": false,
+            "state": "llm"
+          },
+          "inference": {
+            "status": "ready"
+          },
+          "resource_leases": {
+            "active": 1
+          },
+          "resource_manager": {
+            "active": 1,
+            "queued": 0,
+            "status": "ready"
+          }
+        },
+        "liveness": true,
+        "readiness": true,
+        "request_id": "req_28332dd9880449519f4c7ae78e9941cb",
+        "schema_version": 1,
+        "status": "ready"
+      },
+      "bytes": 1068,
+      "http": 200
+    },
+    "http://127.0.0.1:11435/control/": {
+      "bytes": 830,
+      "http": 200
+    },
+    "http://192.168.1.55:8080/health": {
+      "body": {
+        "components": {
+          "database": "ok",
+          "ollama": "not_checked"
+        },
+        "control_commands_supported": false,
+        "service": "ai-bridge",
+        "status": "ok",
+        "version": "0.4.0"
+      },
+      "bytes": 144,
+      "http": 200
+    },
+    "stage_k_readonly_current": {
+      "checked_at": "2026-10-20T15:51:16.187155+00:00",
+      "freshest_backup_age_hours": 3.504,
+      "issues": [],
+      "mount": "//globalnas.local/AI_Platform",
+      "nas_free_bytes": 7767276445696,
+      "secrets_recovery_key_decision": "DEFERRED_NON_BLOCKING",
+      "status": "PASS",
+      "weekly_age_hours": 62.945
+    }
+  },
+  "gpu_cycle": {
+    "comfyui_image_generation": "PASS",
+    "driver_error_matches": [],
+    "final": {
+      "active_count": 0,
+      "admission_blocked": false,
+      "comfyui": {
+        "cleanup_pending": false,
+        "loaded_models": 0,
+        "queue_pending": 0,
+        "queue_running": 0,
+        "schema_version": 1
+      },
+      "comfyui_devices": [
+        {
+          "index": 0,
+          "name": "cuda:0 AMD Radeon 890M Graphics : native",
+          "torch_vram_free": 0,
+          "torch_vram_total": 33554432,
+          "type": "cuda",
+          "vram_free": 102504595456,
+          "vram_total": 103079215104
+        }
+      ],
+      "gpu_residency": {
+        "cleanup_evidence": {
+          "idle_reserve_bytes": 67108864,
+          "reserved_bytes": [
+            35651584
+          ],
+          "residency": {
+            "cleanup_pending": false,
+            "loaded_models": 0,
+            "queue_pending": 0,
+            "queue_running": 0,
+            "schema_version": 1
+          }
+        },
+        "recovery_required": false,
+        "state": "llm"
+      },
+      "kfd_pids": [
+        "3284"
+      ],
+      "lease_count": 0,
+      "observed_at": "2026-10-20T15:52:07.985694+00:00",
+      "ollama": {
+        "models": []
+      },
+      "queued_count": 0,
+      "resource_manager": {
+        "active_engine": null,
+        "engines": [
+          {
+            "execution_available": true,
+            "id": "ollama",
+            "provider_id": "ollama-local",
+            "status": "configured"
+          },
+          {
+            "execution_available": true,
+            "id": "comfyui",
+            "provider_id": "comfyui-local",
+            "status": "configured"
+          },
+          {
+            "execution_available": true,
+            "id": "vision",
+            "provider_id": "vision-local",
+            "status": "configured"
+          }
+        ],
+        "reason": "no_active_ticket",
+        "schema_version": 1,
+        "state": "IDLE",
+        "target_engine": null
+      }
+    },
+    "finished_at": "2026-10-20T15:52:08.143371+00:00",
+    "gpu_reuse_safe": "NOT_VERIFIED",
+    "n1_grant": "NOT_ADMITTED",
+    "preflight": {
+      "active_count": 0,
+      "admission_blocked": false,
+      "comfyui": {
+        "cleanup_pending": false,
+        "loaded_models": 0,
+        "queue_pending": 0,
+        "queue_running": 0,
+        "schema_version": 1
+      },
+      "comfyui_devices": [
+        {
+          "index": 0,
+          "name": "cuda:0 AMD Radeon 890M Graphics : native",
+          "torch_vram_free": 2097152,
+          "torch_vram_total": 2097152,
+          "type": "cuda",
+          "vram_free": 102917734400,
+          "vram_total": 103079215104
+        }
+      ],
+      "gpu_residency": {
+        "cleanup_evidence": null,
+        "recovery_required": false,
+        "state": "llm"
+      },
+      "kfd_pids": [
+        "3284"
+      ],
+      "lease_count": 0,
+      "observed_at": "2026-10-20T15:51:11.959581+00:00",
+      "ollama": {
+        "models": []
+      },
+      "queued_count": 0,
+      "resource_manager": {
+        "active_engine": null,
+        "engines": [
+          {
+            "execution_available": true,
+            "id": "ollama",
+            "provider_id": "ollama-local",
+            "status": "configured"
+          },
+          {
+            "execution_available": true,
+            "id": "comfyui",
+            "provider_id": "comfyui-local",
+            "status": "configured"
+          },
+          {
+            "execution_available": true,
+            "id": "vision",
+            "provider_id": "vision-local",
+            "status": "configured"
+          }
+        ],
+        "reason": "no_active_ticket",
+        "schema_version": 1,
+        "state": "IDLE",
+        "target_engine": null
+      }
+    },
+    "result": "PRODUCTION_GPU_CYCLE_PASS",
+    "schema": 1,
+    "scope": "one production Ollama-Vision-ComfyUI-Ollama cycle",
+    "service_pids_after": {
+      "ai-gateway.service": "4211",
+      "ai-platform-radio.service": "2067",
+      "comfyui.service": "3284",
+      "ollama.service": "3292"
+    },
+    "service_pids_before": {
+      "ai-gateway.service": "4211",
+      "ai-platform-radio.service": "2067",
+      "comfyui.service": "3284",
+      "ollama.service": "3292"
+    },
+    "started_at": "2026-10-20T15:51:12.148181+00:00",
+    "steps": [
+      {
+        "done_reason": "stop",
+        "engine": "ollama_before",
+        "eval_count": 5,
+        "model": "qwen3.8:27b-p4-64k-gpu-p511",
+        "observation": {
+          "active_count": 1,
+          "admission_blocked": false,
+          "comfyui": {
+            "cleanup_pending": false,
+            "loaded_models": 0,
+            "queue_pending": 0,
+            "queue_running": 0,
+            "schema_version": 1
+          },
+          "comfyui_devices": [
+            {
+              "index": 0,
+              "name": "cuda:0 AMD Radeon 890M Graphics : native",
+              "torch_vram_free": 2097152,
+              "torch_vram_total": 2097152,
+              "type": "cuda",
+              "vram_free": 102917734400,
+              "vram_total": 103079215104
+            }
+          ],
+          "gpu_residency": {
+            "cleanup_evidence": null,
+            "recovery_required": false,
+            "state": "llm"
+          },
+          "kfd_pids": [
+            "3284"
+          ],
+          "lease_count": 1,
+          "observed_at": "2026-10-20T15:51:25.128661+00:00",
+          "ollama": {
+            "models": [
+              {
+                "context_length": 2048,
+                "details": {
+                  "families": [
+                    "qwen35"
+                  ],
+                  "family": "qwen35",
+                  "format": "gguf",
+                  "parameter_size": "27.3B",
+                  "parent_model": "",
+                  "quantization_level": "Q4_K_M"
+                },
+                "digest": "154cfaa11ee1399c75b2cbc1fec0dc7c35c74174f00fdd88052e25779826b259",
+                "expires_at": "2026-10-20T17:56:25.121559879+02:00",
+                "model": "qwen3.8:27b-p4-64k-gpu-p511",
+                "name": "qwen3.8:27b-p4-64k-gpu-p511",
+                "size": 17278089296,
+                "size_vram": 17278089296
+              }
+            ]
+          },
+          "queued_count": 0,
+          "resource_manager": {
+            "active_engine": "ollama",
+            "engines": [
+              {
+                "execution_available": true,
+                "id": "ollama",
+                "provider_id": "ollama-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "comfyui",
+                "provider_id": "comfyui-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "vision",
+                "provider_id": "vision-local",
+                "status": "configured"
+              }
+            ],
+            "reason": "active_ticket",
+            "schema_version": 1,
+            "state": "RUNNING",
+            "target_engine": null
+          }
+        },
+        "response": "GPU_HANDOFF_OK",
+        "seconds": 12.939069310999997
+      },
+      {
+        "after_cleanup": {
+          "active_count": 0,
+          "admission_blocked": false,
+          "comfyui": {
+            "cleanup_pending": false,
+            "loaded_models": 0,
+            "queue_pending": 0,
+            "queue_running": 0,
+            "schema_version": 1
+          },
+          "comfyui_devices": [
+            {
+              "index": 0,
+              "name": "cuda:0 AMD Radeon 890M Graphics : native",
+              "torch_vram_free": 0,
+              "torch_vram_total": 0,
+              "type": "cuda",
+              "vram_free": 102917734400,
+              "vram_total": 103079215104
+            }
+          ],
+          "gpu_residency": {
+            "cleanup_evidence": {
+              "idle_reserve_bytes": 67108864,
+              "reserved_bytes": [
+                0
+              ],
+              "residency": {
+                "cleanup_pending": false,
+                "loaded_models": 0,
+                "queue_pending": 0,
+                "queue_running": 0,
+                "schema_version": 1
+              }
+            },
+            "recovery_required": false,
+            "state": "llm"
+          },
+          "kfd_pids": [
+            "3284"
+          ],
+          "lease_count": 0,
+          "observed_at": "2026-10-20T15:51:40.528624+00:00",
+          "ollama": {
+            "models": []
+          },
+          "queued_count": 0,
+          "resource_manager": {
+            "active_engine": null,
+            "engines": [
+              {
+                "execution_available": true,
+                "id": "ollama",
+                "provider_id": "ollama-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "comfyui",
+                "provider_id": "comfyui-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "vision",
+                "provider_id": "vision-local",
+                "status": "configured"
+              }
+            ],
+            "reason": "no_active_ticket",
+            "schema_version": 1,
+            "state": "IDLE",
+            "target_engine": null
+          }
+        },
+        "engine": "vision",
+        "result": {
+          "execution_kind": "GPU_INFERENCE",
+          "image_id": "visa-pcb2-normal-0000",
+          "image_score": 0.43257656693458557,
+          "image_sha256": "b3f01fc1c1bd43df2c5a1afa63348097f7ecbcc9ebe2fd43bed6f2d074531a37",
+          "inference_and_load_seconds": 7.08703155100001,
+          "map_sha256": "95d773a6aed28e0e19a3b7973a6c78542ae85c668104a36dfc70405bbd0af187",
+          "map_shape": [
+            768,
+            768
+          ],
+          "model": "anomalyvfm-radio",
+          "pci_bdf": "0000:c6:00.0",
+          "schema": 1,
+          "weights_sha256": "50a219ba436ed656ad3c0405f9e81df8ad00b2e715c98be66d7e2edb62a83a37",
+          "worker_local_sync": true
+        }
+      },
+      {
+        "after_cleanup": {
+          "active_count": 1,
+          "admission_blocked": false,
+          "comfyui": {
+            "cleanup_pending": false,
+            "loaded_models": 0,
+            "queue_pending": 0,
+            "queue_running": 0,
+            "schema_version": 1
+          },
+          "comfyui_devices": [
+            {
+              "index": 0,
+              "name": "cuda:0 AMD Radeon 890M Graphics : native",
+              "torch_vram_free": 0,
+              "torch_vram_total": 33554432,
+              "type": "cuda",
+              "vram_free": 102504595456,
+              "vram_total": 103079215104
+            }
+          ],
+          "gpu_residency": {
+            "cleanup_evidence": {
+              "idle_reserve_bytes": 67108864,
+              "reserved_bytes": [
+                35651584
+              ],
+              "residency": {
+                "cleanup_pending": false,
+                "loaded_models": 0,
+                "queue_pending": 0,
+                "queue_running": 0,
+                "schema_version": 1
+              }
+            },
+            "recovery_required": false,
+            "state": "llm"
+          },
+          "kfd_pids": [
+            "3284"
+          ],
+          "lease_count": 1,
+          "observed_at": "2026-10-20T15:51:59.984885+00:00",
+          "ollama": {
+            "models": []
+          },
+          "queued_count": 0,
+          "resource_manager": {
+            "active_engine": null,
+            "engines": [
+              {
+                "execution_available": true,
+                "id": "ollama",
+                "provider_id": "ollama-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "comfyui",
+                "provider_id": "comfyui-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "vision",
+                "provider_id": "vision-local",
+                "status": "configured"
+              }
+            ],
+            "reason": "active_ticket",
+            "schema_version": 1,
+            "state": "RUNNING",
+            "target_engine": null
+          }
+        },
+        "engine": "comfyui",
+        "execution_status": "success",
+        "image_path": "/srv/ai-data/comfyui-output/RM-GPU-cycle-20261020_00003_.png",
+        "image_sha256": "044e387e93e0ed63c35365c38ee85c775dd19f05b1cc6af25fc1fe7f4d89fee8",
+        "image_size": [
+          512,
+          512
+        ],
+        "max_loaded_models": 3,
+        "max_torch_reserved_bytes": 2090860544,
+        "seconds": 18.480352648000007
+      },
+      {
+        "done_reason": "stop",
+        "engine": "ollama_after",
+        "eval_count": 5,
+        "model": "qwen3.8:27b-p4-64k-gpu-p511",
+        "observation": {
+          "active_count": 1,
+          "admission_blocked": false,
+          "comfyui": {
+            "cleanup_pending": false,
+            "loaded_models": 0,
+            "queue_pending": 0,
+            "queue_running": 0,
+            "schema_version": 1
+          },
+          "comfyui_devices": [
+            {
+              "index": 0,
+              "name": "cuda:0 AMD Radeon 890M Graphics : native",
+              "torch_vram_free": 0,
+              "torch_vram_total": 33554432,
+              "type": "cuda",
+              "vram_free": 102504595456,
+              "vram_total": 103079215104
+            }
+          ],
+          "gpu_residency": {
+            "cleanup_evidence": {
+              "idle_reserve_bytes": 67108864,
+              "reserved_bytes": [
+                35651584
+              ],
+              "residency": {
+                "cleanup_pending": false,
+                "loaded_models": 0,
+                "queue_pending": 0,
+                "queue_running": 0,
+                "schema_version": 1
+              }
+            },
+            "recovery_required": false,
+            "state": "llm"
+          },
+          "kfd_pids": [
+            "3284"
+          ],
+          "lease_count": 1,
+          "observed_at": "2026-10-20T15:52:07.904104+00:00",
+          "ollama": {
+            "models": [
+              {
+                "context_length": 2048,
+                "details": {
+                  "families": [
+                    "qwen35"
+                  ],
+                  "family": "qwen35",
+                  "format": "gguf",
+                  "parameter_size": "27.3B",
+                  "parent_model": "",
+                  "quantization_level": "Q4_K_M"
+                },
+                "digest": "154cfaa11ee1399c75b2cbc1fec0dc7c35c74174f00fdd88052e25779826b259",
+                "expires_at": "2026-10-20T17:57:07.897951667+02:00",
+                "model": "qwen3.8:27b-p4-64k-gpu-p511",
+                "name": "qwen3.8:27b-p4-64k-gpu-p511",
+                "size": 17278089296,
+                "size_vram": 17278089296
+              }
+            ]
+          },
+          "queued_count": 0,
+          "resource_manager": {
+            "active_engine": null,
+            "engines": [
+              {
+                "execution_available": true,
+                "id": "ollama",
+                "provider_id": "ollama-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "comfyui",
+                "provider_id": "comfyui-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "vision",
+                "provider_id": "vision-local",
+                "status": "configured"
+              }
+            ],
+            "reason": "active_ticket",
+            "schema_version": 1,
+            "state": "RUNNING",
+            "target_engine": null
+          }
+        },
+        "response": "GPU_HANDOFF_OK",
+        "seconds": 7.90749820100001
+      }
+    ],
+    "workflow_sha256": "9c2a0c6784df17d192df25fa42cd4e6c606c228c15c8d5521a0ee7e223c92ba3"
+  },
+  "live_after": {
+    "observed_at": "2026-10-20T15:52:58.595510+00:00",
+    "boot_id": "2fd517ae-b459-4c09-b995-609f820c0c2d",
+    "rm": {
+      "active_count": 0,
+      "queued_count": 0,
+      "admission_blocked": false,
+      "gpu_residency": {
+        "state": "llm",
+        "recovery_required": false,
+        "cleanup_evidence": {
+          "reserved_bytes": [
+            35651584
+          ],
+          "idle_reserve_bytes": 67108864,
+          "residency": {
+            "schema_version": 1,
+            "queue_running": 0,
+            "queue_pending": 0,
+            "loaded_models": 0,
+            "cleanup_pending": false
+          }
+        }
+      },
+      "resource_manager": {
+        "schema_version": 1,
+        "state": "IDLE",
+        "active_engine": null,
+        "target_engine": null,
+        "reason": "no_active_ticket",
+        "engines": [
+          {
+            "id": "ollama",
+            "provider_id": "ollama-local",
+            "status": "configured",
+            "execution_available": true
+          },
+          {
+            "id": "comfyui",
+            "provider_id": "comfyui-local",
+            "status": "configured",
+            "execution_available": true
+          },
+          {
+            "id": "vision",
+            "provider_id": "vision-local",
+            "status": "configured",
+            "execution_available": true
+          }
+        ]
+      }
+    },
+    "lease_count": 0,
+    "ollama": {
+      "models": []
+    },
+    "comfyui": {
+      "schema_version": 1,
+      "queue_running": 0,
+      "queue_pending": 0,
+      "loaded_models": 0,
+      "cleanup_pending": false
+    },
+    "hermes": {
+      "pid": 4356,
+      "state": "running",
+      "active_agents": 0,
+      "platforms": {
+        "telegram": "connected",
+        "api_server": "connected",
+        "discord": "connected"
+      }
+    },
+    "units": {
+      "comfyui.service": {
+        "ActiveState": "active",
+        "UnitFileState": "enabled",
+        "ActiveEnterTimestamp": "Tue 2026-10-20 17:50:07 CEST",
+        "ActiveEnterTimestampMonotonic": "19548226",
+        "MainPID": "3284",
+        "NRestarts": "0",
+        "ExecStartPost": "{ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 -I /opt/ai-platform/comfyui-boot/a77e1a8245583f80/wait_ready.py comfyui ; ignore_errors=no ; start_time=[Tue 2026-10-20 17:50:00 CEST] ; stop_time=[Tue 2026-10-20 17:50:07 CEST] ; pid=3285 ; code=exited ; status=0 }"
+      },
+      "ai-gateway.service": {
+        "ActiveState": "active",
+        "UnitFileState": "enabled",
+        "ActiveEnterTimestamp": "Tue 2026-10-20 17:50:07 CEST",
+        "ActiveEnterTimestampMonotonic": "19550474",
+        "MainPID": "4211",
+        "NRestarts": "0"
+      },
+      "ai-platform-radio.service": {
+        "ActiveState": "active",
+        "UnitFileState": "enabled",
+        "ActiveEnterTimestamp": "Tue 2026-10-20 17:49:53 CEST",
+        "ActiveEnterTimestampMonotonic": "5817606",
+        "MainPID": "2067",
+        "NRestarts": "0"
+      },
+      "ollama.service": {
+        "ActiveState": "active",
+        "UnitFileState": "enabled",
+        "ActiveEnterTimestamp": "Tue 2026-10-20 17:50:00 CEST",
+        "ActiveEnterTimestampMonotonic": "12388693",
+        "MainPID": "3292",
+        "NRestarts": "0"
+      },
+      "ai-bridge.service": {
+        "ActiveState": "active",
+        "UnitFileState": "enabled",
+        "ActiveEnterTimestamp": "Tue 2026-10-20 17:50:00 CEST",
+        "ActiveEnterTimestampMonotonic": "12370065",
+        "MainPID": "3282",
+        "NRestarts": "0"
+      },
+      "postgresql@18-main.service": {
+        "ActiveState": "active",
+        "UnitFileState": "enabled",
+        "ActiveEnterTimestamp": "Tue 2026-10-20 17:49:56 CEST",
+        "ActiveEnterTimestampMonotonic": "8704362",
+        "MainPID": "2436",
+        "NRestarts": "0"
+      }
+    },
+    "hermes_unit": {
+      "ActiveState": "active",
+      "UnitFileState": "enabled",
+      "ActiveEnterTimestamp": "Tue 2026-10-20 17:50:08 CEST",
+      "ActiveEnterTimestampMonotonic": "20559400",
+      "MainPID": "4356",
+      "NRestarts": "0",
+      "ExecStartPre": "{ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 -I /opt/ai-platform/comfyui-boot/a77e1a8245583f80/wait_ready.py gateway ; ignore_errors=no ; start_time=[Tue 2026-10-20 17:49:54 CEST] ; stop_time=[Tue 2026-10-20 17:50:08 CEST] ; pid=2540 ; code=exited ; status=0 }"
+    },
+    "markers": {
+      "/var/lib/ai-platform-gpu/residency.blocked": false,
+      "/var/lib/ai-platform-gpu/managed-worker.dirty": false
+    }
+  }
+}

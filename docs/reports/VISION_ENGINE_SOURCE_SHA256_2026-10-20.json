@@ -1,0 +1,12 @@
+{
+  "src/ai_bridge/gateway/admission.py": "13735e6a8c273a180eddc5490006c3253f071f473925fbfc3395614f375481f3",
+  "src/ai_bridge/gateway/app.py": "6d1c9c38edfdadb6ad75492d409822f39dc86839c6bc4accb2c670d280377eb1",
+  "src/ai_bridge/gateway/engine_state.py": "7ed02299331c9888f96cf6caf6fdee2f7924c22bec80e3fc7addbf156ce349af",
+  "src/ai_bridge/gateway/resource_leases.py": "056081e71ad79fef2efc9a43ca5fa6a38a9432a68932a4bfce558d9bb1a5f7ec",
+  "src/ai_bridge/gateway/vision_lifecycle.py": "44709a2a32072dee5649172f2090cbe41d2ea30e78309519686d02dc55d653af",
+  "src/ai_bridge/providers/accelerators.py": "de734413405eadcbdce12cebf33bae6175dc850f90c228ab51097d866b655fcb",
+  "src/ai_bridge/providers/registry.py": "a384a3d3c8496da1df99381071d7880b8d0ec2c14fb45e532a81406a372e7045",
+  "tests/test_vision_engine_lifecycle.py": "5720bdedf40d4f900d0f7874000311b5f1d0df985eee1dfc905da3bed703dfee",
+  "tests/test_vision_integration_preflight.py": "256251ca24716bb86c69bca8f20a73bbd20deea981e034aed3c253196cdef49a",
+  "tools/vision_integration_preflight.py": "279646b39d0ea3784cd5c7dfd2f0c113e404a2730e85bae1ebab3dae2bd1f2f7"
+}

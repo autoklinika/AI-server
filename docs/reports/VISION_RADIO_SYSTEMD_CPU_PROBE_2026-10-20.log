@@ -1,0 +1,6 @@
+observed_at=2026-10-20T08:59:15.577328+00:00
+scope=user manager, CPU only; root User/Group and mount/network namespaces not exercised
+{"family": "none", "returncode": 1, "stderr": "Failed to start transient service unit: Failed to set unit properties: Invalid argument"}
+{"family": "AF_UNIX", "returncode": 0, "stderr": ""}
+{"ExecMainStatus": "0", "RestrictAddressFamilies": "AF_UNIX", "Result": "success", "SubState": "exited"}
+REAL_CPU_AF_UNIX_ALLOWED_INET_INET6_DENIED=PASS

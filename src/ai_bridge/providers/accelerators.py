@@ -159,7 +159,7 @@ def accelerator_state_snapshot(
     }
 
 
-def local_accelerator_registry(node_id: str = "ai-node-01") -> AcceleratorRegistry:
+def local_accelerator_registry(node_id: str = "ai-node-01", *, vision: bool = False) -> AcceleratorRegistry:
     """N0 baseline: describe today's single shared local accelerator explicitly."""
     return AcceleratorRegistry(
         accelerators=(AcceleratorDescriptor(
@@ -168,7 +168,7 @@ def local_accelerator_registry(node_id: str = "ai-node-01") -> AcceleratorRegist
             kind="integrated",
             backend="unknown",
             memory_class="unified",
-            workload_classes=("llm", "media-generation"),
+            workload_classes=("llm", "media-generation") + (("vision",) if vision else ()),
         ),),
         provider_bindings=(
             ProviderAcceleratorBinding(
@@ -179,5 +179,6 @@ def local_accelerator_registry(node_id: str = "ai-node-01") -> AcceleratorRegist
                 provider_id="comfyui-local",
                 accelerator_ids=("local-primary",),
             ),
-        ),
+        ) + ((ProviderAcceleratorBinding(provider_id="vision-local",
+                    accelerator_ids=("local-primary",)),) if vision else ()),
     )

@@ -1,0 +1,12 @@
+{
+  "candidate_gpu_pilot": "PASS",
+  "comfyui_image_generation": "NOT_TESTED",
+  "gpu_reuse_safe": "NOT_VERIFIED",
+  "n1_grant": "NOT_ADMITTED",
+  "overlay": "/opt/ai-platform/gateway-overlays/vision-radio-5d9d267489609ccb",
+  "production_install": "PERFORMED",
+  "result": "VISION_PRODUCTION_PASS",
+  "rollback_command": "sudo /usr/bin/python3 -I /opt/ai-platform/gateway-overlays/vision-radio-5d9d267489609ccb/tools/deploy_vision_radio.py --rollback --manifest-sha256 5d9d267489609ccbd83bff7f06c7db1a919f6e3a3d56b19fa01c6d2a84bdc5e2",
+  "rollback_test": "PASS",
+  "schema": 1
+}
