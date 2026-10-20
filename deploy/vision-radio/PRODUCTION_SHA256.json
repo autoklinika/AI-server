@@ -1,0 +1,7 @@
+{
+  "deploy/vision-radio/GATEWAY_PRODUCTION_SOURCE_SHA256.json": "28975e1eb3646cc0dfb1b754a00376a0ad0545d0ae5bd88da957dbccff7503a7",
+  "deploy/vision-radio/gateway-production.patch": "d2d6f3083cd9dc39ec2d6318b023256416bdb101b8eb46812d02a94478431db6",
+  "tools/deploy_rm_gateway_backport_v1.py": "49612d1e5793277928f2947dce42a84d6ab69ac355ab6bbdb69244dfaf4b8ab6",
+  "tools/deploy_vision_radio.py": "5b8ce2257ba66eccaec991071cf8ec79b764a6d7fea903e9cdbb43316cb95297",
+  "tools/vision_radio_hardware_pilot.py": "d640a356316e9182433357c6154c48a2f64f87449a0ffb38a07aca372ba6c244"
+}

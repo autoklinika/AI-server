@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     # N2 is a denial boundary only; there is deliberately no operational mode.
     gateway_admission_strategy: Literal["legacy", "n2-dev-blocked"] = "legacy"
     gateway_max_concurrency: int = Field(default=1, ge=1, le=16)
+    gateway_vision_radio_enabled: bool = False
     gateway_max_queue_size: int = Field(default=128, ge=1, le=10_000)
     gateway_connect_timeout_seconds: float = Field(default=5.0, gt=0.0)
     gateway_upstream_timeout_seconds: float = Field(default=600.0, gt=0.0)

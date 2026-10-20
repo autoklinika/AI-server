@@ -1,0 +1,9 @@
+{
+  "comfyui_image_generation": "NOT_TESTED",
+  "gpu_reuse_safe": "NOT_VERIFIED",
+  "n1_grant": "NOT_ADMITTED",
+  "production_install": "NOT_PERFORMED",
+  "result": "SOURCE_AND_HOST_PREFLIGHT_PASS",
+  "root_pilot_evidence": "CHECKED_ONLY_ON_APPLY",
+  "schema": 1
+}

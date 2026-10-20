@@ -159,6 +159,13 @@ def create_gateway_app(
     vision_executor=None,
 ) -> FastAPI:
     resolved = settings or get_settings()
+    if vision_executor is None and resolved.gateway_vision_radio_enabled:
+        if resolved.gateway_max_concurrency != 1:
+            raise RuntimeError("RADIO requires the existing exclusive single-slot RM")
+        from .vision_radio_client import RadioExecutorClient
+        vision_executor = RadioExecutorClient()
+        if not vision_executor.available():
+            raise RuntimeError("configured RADIO supervisor unavailable")
     registry = resolved.gateway_registry or local_descriptor_registry(
         resolved.node_id, vision=vision_executor is not None)
     registry.validate_local_gateway(resolved.node_id, vision=vision_executor is not None)

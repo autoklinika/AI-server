@@ -1,0 +1,670 @@
+--- a/src/ai_bridge/gateway/admission.py
++++ b/src/ai_bridge/gateway/admission.py
+@@ -29,6 +29,7 @@
+     """
+     llm = ("chat", "reasoning", "text-generation", "structured-generation")
+     profiles = {
++        "vision-inspection": (("vision-local", ("pcb-inspection",)),),
+         "llm": (("ollama-local", llm),),
+         "embeddings": (("ollama-local", ("embeddings",)),),
+         "media-image": (("ollama-local", llm), ("comfyui-local", ("image-generation", "image-edit"))),
+--- a/src/ai_bridge/gateway/app.py
++++ b/src/ai_bridge/gateway/app.py
+@@ -16,7 +16,7 @@
+ from .admission import WorkloadBinding, DIRECT_READS, external_workload, http_workload
+ from .priority import PriorityClass, priority_for_class
+ from .jobs import JobLifecycle, JobMetadata
+-from .engine_state import resource_manager_snapshot
++from .engine_state import DEFAULT_ENGINES, engine_registry_with_vision, resource_manager_snapshot
+ from .resource_leases import (
+     ResourceLeaseNotActive,
+     ResourceLeaseNotAllowed,
+@@ -154,13 +154,24 @@
+     platform_provider=None,
+     platform_policy=None,
+     knowledge_runtime_factory=None,
++    vision_executor=None,
+ ) -> FastAPI:
+     resolved = settings or get_settings()
+-    registry = resolved.gateway_registry or local_descriptor_registry(resolved.node_id)
+-    registry.validate_local_gateway(resolved.node_id)
++    if vision_executor is None and resolved.gateway_vision_radio_enabled:
++        if resolved.gateway_max_concurrency != 1:
++            raise RuntimeError("RADIO requires the existing exclusive single-slot RM")
++        from .vision_radio_client import RadioExecutorClient
++        vision_executor = RadioExecutorClient()
++        if not vision_executor.available():
++            raise RuntimeError("configured RADIO supervisor unavailable")
++    registry = resolved.gateway_registry or local_descriptor_registry(
++        resolved.node_id, vision=vision_executor is not None)
++    registry.validate_local_gateway(resolved.node_id, vision=vision_executor is not None)
++    engines = (DEFAULT_ENGINES if vision_executor is None else
++               engine_registry_with_vision(vision_executor.available() is True))
+     accelerator_registry = (
+         resolved.gateway_accelerator_registry
+-        or local_accelerator_registry(resolved.node_id)
++        or local_accelerator_registry(resolved.node_id, vision=vision_executor is not None)
+     )
+     accelerator_registry.validate_references(registry)
+     upstream_provider = registry.provider("ollama-local")
+@@ -172,6 +183,7 @@
+     resource_leases = ResourceLeaseRegistry(
+         scheduler,
+         ttl_seconds=resolved.gateway_external_lease_ttl_seconds,
++        vision_executor=vision_executor,
+     )
+ 
+     @asynccontextmanager
+@@ -473,7 +485,8 @@
+         return {
+             "status": "ok" if ollama == "ok" and not scheduler.admission_blocked else "degraded",
+             "gpu_residency": residency,
+-            "resource_manager": resource_manager_snapshot(snapshot, residency),
++            "resource_manager": resource_manager_snapshot(snapshot, residency, engines,
++                activity=resource_leases.engine_activity()),
+             "accelerators": accelerator_state,
+             "ollama": ollama,
+             "scheduler": snapshot,
+@@ -485,7 +498,8 @@
+         snapshot["resource_evidence"] = resource_leases.residency.evidence_snapshot()
+         snapshot["gpu_residency"] = resource_leases.residency.snapshot()
+         snapshot["resource_manager"] = resource_manager_snapshot(
+-            snapshot, snapshot["gpu_residency"]
++            snapshot, snapshot["gpu_residency"], engines,
++            activity=resource_leases.engine_activity()
+         )
+         snapshot["accelerators"] = accelerator_state_snapshot(
+             accelerator_registry, resource_leases.residency.snapshot()
+@@ -547,11 +561,11 @@
+                 raise ValueError()
+             # Both the internal fixed adapter allowlist and the existing
+             # provider/node/capability registry must allow the external use.
+-            lifecycle_for(body["provider"], external=True)
++            resource_leases.require_external_provider(body["provider"])
+             provider = registry.provider(body["provider"])
+             workload = WorkloadBinding(provider.provider_id, provider.node_id, body["capability"])
+             workload.validate(registry)
+-        except (ValueError, TypeError, EngineLifecycleError):
++        except (ValueError, TypeError, EngineLifecycleError, ResourceLeaseNotAllowed):
+             raise HTTPException(status_code=400, detail="invalid external workload")
+         try:
+             use_id = await resource_leases.begin_external_use(lease_id, workload)
+@@ -560,6 +574,20 @@
+         except (ResourceLeaseNotActive, ResourceLeaseNotAllowed):
+             return JSONResponse(status_code=409, content={"error": "resource_lease_not_available"})
+         return JSONResponse(status_code=201, content={"use_id": use_id})
++
++    @app.post("/resource/leases/{lease_id}/uses/{use_id}/inspect")
++    async def inspect_vision(lease_id: str, use_id: str, request: Request):
++        # Same loopback/control-plane boundary as the existing lease API. There
++        # is no LAN listener, remote shell, command, model or path parameter.
++        try:
++            body = await request.json()
++            if not isinstance(body, dict) or set(body) != {"image_id"}:
++                raise ValueError("image_id required")
++            return await resource_leases.inspect_vision(lease_id, use_id, body["image_id"])
++        except (ValueError, TypeError):
++            raise HTTPException(status_code=400, detail="invalid registered image ID")
++        except ResourceLeaseNotActive:
++            raise HTTPException(status_code=409, detail="Vision ownership unavailable")
+ 
+     @app.get("/resource/leases/{lease_id}/uses/{use_id}")
+     async def verify_external_use(lease_id: str, use_id: str):
+--- a/src/ai_bridge/gateway/engine_state.py
++++ b/src/ai_bridge/gateway/engine_state.py
+@@ -56,7 +56,7 @@
+ ))
+ 
+ 
+-def resource_manager_snapshot(scheduler, residency, registry=DEFAULT_ENGINES):
++def resource_manager_snapshot(scheduler, residency, registry=DEFAULT_ENGINES, *, activity=None):
+     """Derive occupancy, not physical GPU use/readiness, without I/O or mutation.
+ 
+     Call only with server-owned snapshots. Waiting jobs do not own the resource;
+@@ -119,6 +119,19 @@
+             if engine is None or not engine.execution_available:
+                 return view(ResourceState.BLOCKED, "unknown_or_unavailable_engine")
+             owners.add(engine.id)
++    # Runtime adapters supply their own trusted activity view. Its owner must
++    # match the active scheduler ticket and the configured provider binding.
++    if activity is not None:
++        if not isinstance(activity, dict) or count != 1:
++            return view(ResourceState.BLOCKED, "invalid_engine_activity")
++        engine = providers.get(activity.get("provider"))
++        if (engine is None or not engine.execution_available or engine.id not in owners
++                or activity.get("job_id") != active[0].get("job_id")
++                or activity.get("state") not in ("RUNNING", "SWITCHING")):
++            return view(ResourceState.BLOCKED, "inconsistent_engine_activity")
++        return view(ResourceState(activity["state"]), "adapter_activity",
++                    engine.id if activity["state"] == "RUNNING" else None,
++                    engine.id if activity["state"] == "SWITCHING" else None)
+     if legacy == "llm":
+         if not count:
+             return view(ResourceState.IDLE, "no_active_ticket")
+@@ -136,3 +149,9 @@
+     owner, target = (("ollama", "comfyui") if legacy == "draining_ollama"
+                      else ("comfyui", "ollama"))
+     return view(ResourceState.SWITCHING, "legacy_transition", owner, target)
++
++
++def engine_registry_with_vision(available: bool):
++    return EngineRegistry(tuple(
++        EngineDescriptor(e.id, e.provider_id, "configured" if available else "unavailable", available)
++        if e.provider_id == "vision-local" else e for e in DEFAULT_ENGINES.engines))
+--- a/src/ai_bridge/gateway/resource_leases.py
++++ b/src/ai_bridge/gateway/resource_leases.py
+@@ -4,6 +4,7 @@
+ from time import monotonic
+ from .admission import WorkloadBinding, external_workload
+ from .engine_lifecycle import EngineLifecycleError, lifecycle_for
++from .vision_lifecycle import VisionLifecycleAdapter, VisionOwner, valid_image_id
+ from .jobs import JobLifecycle, JobMetadata
+ from .scheduler import PriorityScheduler, SchedulerTicket
+ 
+@@ -25,11 +26,13 @@
+     external_use_id: str | None = None
+     ended_use_id: str | None = None
+     external_workload: WorkloadBinding | None = None
++    lifecycle: object | None = None
+ 
+ class ResourceLeaseRegistry:
+-    def __init__(self,scheduler:PriorityScheduler,*,ttl_seconds:float=45.0, residency=None)->None:
++    def __init__(self,scheduler:PriorityScheduler,*,ttl_seconds:float=45.0, residency=None, vision_executor=None)->None:
+         if ttl_seconds<=0: raise ValueError("ttl_seconds must be > 0")
+         self.residency = residency
++        self.vision_executor = vision_executor
+         self.scheduler=scheduler; self.ttl_seconds=float(ttl_seconds)
+         self._lock=asyncio.Lock(); self._leases={}
+ 
+@@ -99,19 +102,28 @@
+             status = await self.scheduler.job_status(rec.job_id)
+             if asdict(workload) not in status["job"]["workload"]:
+                 raise ResourceLeaseNotAllowed("workload outside resource lease")
+-            try:
+-                adapter = lifecycle_for(workload.provider, external=True)
+-            except EngineLifecycleError as exc:
+-                raise ResourceLeaseNotAllowed(str(exc)) from exc
++            self.require_external_provider(workload.provider)
+             # Pin before I/O, including cancellation/disconnect. Failure must
+             # retain ownership even when the worker releases or stops heartbeats.
+             rec.external_use_id = secrets.token_urlsafe(24)
+             rec.external_workload = workload
++            if workload.provider == "vision-local":
++                owner = VisionOwner(lease_id, rec.external_use_id, rec.job_id)
++                adapter = VisionLifecycleAdapter(self.vision_executor, owner,
++                    lambda: (self._leases.get(lease_id) is rec
++                             and rec.external_use_id == owner.use_id
++                             and rec.job_id == owner.job_id
++                             and not self.scheduler.admission_blocked))
++            else:
++                adapter = lifecycle_for(workload.provider, external=True)
++            rec.lifecycle = adapter
+             rec.in_use = 1
+         try:
+             await adapter.prepare(self.residency)
+-        except BaseException:
+-            self.scheduler.admission_blocked = True
++        except BaseException as exc:
++            self._block()
++            if isinstance(adapter, VisionLifecycleAdapter) and isinstance(exc, Exception):
++                raise EngineLifecycleError("Vision preparation failed closed") from exc
+             raise
+         finally:
+             # No await: identity remains pinned throughout the transition.
+@@ -120,14 +132,24 @@
+         return rec.external_use_id
+ 
+     async def verify_external_use(self, lease_id: str, use_id: str):
++        # This endpoint is an execution authorization, not a read-only status.
+         async with self._lock:
+             rec = self._leases.get(lease_id)
+             if (rec is None or rec.external_use_id != use_id or rec.in_use
+                     or self.scheduler.admission_blocked
+                     or rec.external_workload is None):
+                 return None
+-            adapter = lifecycle_for(rec.external_workload.provider, external=True)
+-            return rec.external_workload if adapter.verify_active(self.residency) else None
++            if await self.scheduler.active_ticket(rec.job_id) is None:
++                self._block()
++                return None
++            try:
++                verified = rec.lifecycle.verify_active(self.residency)
++            except BaseException:
++                self._block()
++                raise
++            if not verified:
++                self._block()
++            return rec.external_workload if verified else None
+ 
+     async def end_external_use(self, lease_id: str, use_id: str) -> bool:
+         async with self._lock:
+@@ -138,27 +160,89 @@
+                 return False
+             if rec.in_use:
+                 raise ResourceLeaseNotActive("GPU transition already in progress")
+-            rec.in_use = 1
+-        try:
+-            adapter = lifecycle_for(rec.external_workload.provider, external=True)
+-            await adapter.release(self.residency)
+-        except BaseException:
+-            self.scheduler.admission_blocked = True
++            if await self.scheduler.active_ticket(rec.job_id) is None:
++                self._block()
++                raise ResourceLeaseNotActive("resource lease is no longer active")
++            rec.in_use = 1
++        try:
++            await rec.lifecycle.release(self.residency)
++        except BaseException as exc:
++            self._block()
+             rec.in_use = 0
+             rec.last_heartbeat = monotonic()
++            if isinstance(rec.lifecycle, VisionLifecycleAdapter) and isinstance(exc, Exception):
++                raise EngineLifecycleError("Vision cleanup failed closed") from exc
+             raise
+         # Reacquiring can be cancelled. Keep external ownership in that case;
+         # safe false-negative, never reopen admission on incomplete cleanup.
+-        async with self._lock:
++        try:
++            async with self._lock:
++                if rec.release_when_idle:
++                    await self.scheduler.release_job(rec.job_id)
++                rec.in_use = 0
++                rec.last_heartbeat = monotonic()
++                rec.ended_use_id = use_id
++                rec.external_use_id = None
++                rec.external_workload = None
++                rec.lifecycle = None
++                if rec.release_when_idle:
++                    self._leases.pop(lease_id, None)
++                return True
++        except BaseException:
++            self._block()
++            raise
++
++    def require_external_provider(self, provider):
++        if provider == "vision-local":
++            runtime = self.vision_executor
++            if (runtime is None or runtime.resource_id != "local-primary"
++                    or runtime.available() is not True or self.scheduler.max_concurrency != 1):
++                raise ResourceLeaseNotAllowed("Vision executor NOT_ADMITTED")
++            return
++        try:
++            lifecycle_for(provider, external=True)
++        except EngineLifecycleError as exc:
++            raise ResourceLeaseNotAllowed(str(exc)) from exc
++
++    def _block(self):
++        self.scheduler.admission_blocked = True
++        if self.residency is not None:
++            self.residency.state = "blocked"
++            self.residency._dirty()
++
++    async def inspect_vision(self, lease_id: str, use_id: str, image_id: str):
++        if not valid_image_id(image_id):
++            raise ValueError("invalid registered image ID")
++        async with self._lock:
++            rec = self._leases.get(lease_id)
++            if (rec is None or rec.external_use_id != use_id or rec.in_use
++                    or rec.release_when_idle or self.scheduler.admission_blocked
++                    or not isinstance(rec.lifecycle, VisionLifecycleAdapter)):
++                raise ResourceLeaseNotActive("Vision ownership unavailable")
++            if await self.scheduler.active_ticket(rec.job_id) is None:
++                self._block()
++                raise ResourceLeaseNotActive("Vision reservation not active")
++            if rec.lifecycle.completed:
++                raise ResourceLeaseNotActive("Vision use already executed")
++            rec.in_use = 1
++        try:
++            return await rec.lifecycle.execute(self.residency, image_id)
++        except BaseException as exc:
++            self._block()
++            if isinstance(exc, Exception):
++                raise EngineLifecycleError("Vision inspection failed closed") from exc
++            raise
++        finally:
+             rec.in_use = 0
+             rec.last_heartbeat = monotonic()
+-            rec.ended_use_id = use_id
+-            rec.external_use_id = None
+-            rec.external_workload = None
+-            if rec.release_when_idle:
+-                await self.scheduler.release_job(rec.job_id)
+-                self._leases.pop(lease_id, None)
+-            return True
++
++    def engine_activity(self):
++        """Trusted diagnostic view only; never used to grant GPU ownership."""
++        for rec in self._leases.values():
++            if isinstance(rec.lifecycle, VisionLifecycleAdapter) and rec.external_use_id:
++                return {"job_id": rec.job_id, "provider": "vision-local",
++                        "state": "SWITCHING" if rec.lifecycle.phase != "execute" else "RUNNING"}
++        return None
+ 
+     async def end_use(self,lease_id:str,*,release:bool=False)->None:
+         async with self._lock:
+--- /dev/null
++++ b/src/ai_bridge/gateway/vision_lifecycle.py
+@@ -0,0 +1,146 @@
++"""Lease-bound Vision lifecycle. No GPU authority is created by registration.
++
++The executor is a trusted, in-process dependency, never an HTTP/config value.
++No real GPU executor is admitted yet. CPU contract executors belong in tests.
++"""
++from __future__ import annotations
++
++from dataclasses import dataclass
++import asyncio
++import math
++import re
++from typing import Callable, Protocol
++
++from .engine_lifecycle import EngineLifecycleError
++
++
++@dataclass(frozen=True)
++class VisionOwner:
++    lease_id: str
++    use_id: str
++    job_id: int
++
++
++@dataclass(frozen=True)
++class VisionSession:
++    generation: str
++    worker_id: str
++    resource_id: str
++
++    def valid(self):
++        return (all(type(v) is str and 0 < len(v) <= 128 for v in
++                    (self.generation, self.worker_id, self.resource_id))
++                and self.resource_id == "local-primary")
++
++
++@dataclass(frozen=True)
++class VisionCleanup:
++    owner: VisionOwner
++    session: VisionSession
++    job_terminal: bool
++    model_unloaded: bool
++    execution_closed: bool
++    # Supplied by the trusted supervisor, NEVER inferred from worker output,
++    # empty queues, process exit or torch.cuda.empty_cache().
++    release_authorized: bool
++
++
++class VisionExecutor(Protocol):
++    """A future admitted executor must implement the existing safety boundary.
++
++    available() must stay false without an authorized launch AND cleanup path.
++    verify() must check the same worker incarnation, owner and resource.
++    inspect() accepts an opaque server-registered image ID, never a command/path.
++    cleanup() must account for the full execution, including descendants.
++    """
++    resource_id: str
++    def available(self) -> bool: ...
++    async def prepare(self, owner: VisionOwner) -> VisionSession: ...
++    def verify(self, owner: VisionOwner, session: VisionSession) -> bool: ...
++    async def inspect(self, owner: VisionOwner, session: VisionSession, image_id: str) -> dict: ...
++    async def cleanup(self, owner: VisionOwner, session: VisionSession) -> VisionCleanup: ...
++
++
++class VisionLifecycleAdapter:
++    """One use of one existing RM lease; no scheduler and no external grant API."""
++
++    def __init__(self, executor: VisionExecutor, owner: VisionOwner,
++                 owns_lease: Callable[[], bool], *, timeout: float = 90):
++        if not math.isfinite(timeout) or timeout <= 0:
++            raise ValueError("invalid Vision timeout")
++        self.executor, self.owner = executor, owner
++        self.owns_lease, self.timeout = owns_lease, timeout
++        self.session = None
++        self.executing = False
++        self.completed = False
++        self.released = False
++        self.phase = "prepare"
++
++    def _require_owner(self):
++        if not self.owns_lease() or self.released:
++            raise EngineLifecycleError("Vision owner is stale or unavailable")
++
++    async def prepare(self, residency):
++        self._require_owner()
++        if (self.session is not None or self.executor.resource_id != "local-primary"
++                or self.executor.available() is not True):
++            raise EngineLifecycleError("Vision executor not admitted for local-primary")
++        if residency is None:
++            raise EngineLifecycleError("Vision requires the existing GPUResidency")
++        # Legacy runtime draining is not evidence of GPU_REUSE_SAFE. The trusted
++        # executor must independently deny launch without its required authority.
++        async with asyncio.timeout(self.timeout):
++            await residency.enter_media()
++            self._require_owner()
++            session = await self.executor.prepare(self.owner)
++            if type(session) is not VisionSession or not session.valid():
++                raise EngineLifecycleError("Vision executor session invalid")
++            self.session = session
++            if not self.verify_active(residency):
++                raise EngineLifecycleError("Vision executor is not ready")
++        self.phase = "execute"
++
++    def verify_active(self, residency):
++        self._require_owner()
++        return (self.session is not None and residency is not None
++                and residency.state == "media"
++                and self.executor.verify(self.owner, self.session) is True)
++
++    async def execute(self, residency, image_id: str):
++        if not valid_image_id(image_id):
++            raise ValueError("invalid registered image ID")
++        if self.executing or self.completed or not self.verify_active(residency):
++            raise EngineLifecycleError("Vision execution is not available")
++        # Publish before awaiting: two HTTP requests can never execute this use.
++        self.executing = True
++        try:
++            async with asyncio.timeout(self.timeout):
++                result = await self.executor.inspect(self.owner, self.session, image_id)
++                if (not self.verify_active(residency) or not isinstance(result, dict)
++                        or result.get("image_id") != image_id):
++                    raise EngineLifecycleError("Vision result/worker identity mismatch")
++            self.completed = True
++            return result
++        finally:
++            self.executing = False
++
++    async def release(self, residency):
++        self._require_owner()
++        if self.executing or not self.completed or not self.verify_active(residency):
++            raise EngineLifecycleError("Vision execution/cleanup not verified")
++        self.phase = "release"
++        async with asyncio.timeout(self.timeout):
++            evidence = await self.executor.cleanup(self.owner, self.session)
++            if (type(evidence) is not VisionCleanup
++                    or evidence.owner != self.owner or evidence.session != self.session
++                    or not all(value is True for value in (
++                        evidence.job_terminal, evidence.model_unloaded,
++                        evidence.execution_closed, evidence.release_authorized))):
++                raise EngineLifecycleError("Vision cleanup not authorized")
++            self._require_owner()
++            await residency.leave_media()
++        self.released = True
++
++
++def valid_image_id(value):
++    return type(value) is str and re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,95}", value) is not None
+--- /dev/null
++++ b/src/ai_bridge/gateway/vision_radio_client.py
+@@ -0,0 +1,84 @@
++"""Local client of the root-owned fixed RADIO executor, never an N1 grant."""
++from __future__ import annotations
++import asyncio
++from dataclasses import asdict
++import json
++from pathlib import Path
++import socket
++import struct
++
++from .engine_lifecycle import EngineLifecycleError
++from .vision_lifecycle import VisionCleanup, VisionSession
++
++SOCKET = Path('/run/ai-platform-radio/executor.sock')
++
++
++class RadioExecutorClient:
++    resource_id = 'local-primary'
++
++    def __init__(self):
++        self.owner = self.session = None
++        self.closed = False
++
++    def _call(self, operation, **fields):
++        payload = json.dumps({'op': operation, **fields}, allow_nan=False).encode() + b'\n'
++        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
++            connection.settimeout(2 if operation in ('health', 'verify') else 95)
++            connection.connect(str(SOCKET))
++            _, uid, _ = struct.unpack('3i', connection.getsockopt(
++                socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize('3i')))
++            if uid != 0:
++                raise EngineLifecycleError('RADIO supervisor is not root')
++            connection.sendall(payload)
++            reply = bytearray()
++            while b'\n' not in reply and len(reply) <= 16384:
++                data = connection.recv(4096)
++                if not data:
++                    break
++                reply.extend(data)
++        if len(reply) > 16384 or reply.count(b'\n') != 1:
++            raise EngineLifecycleError('RADIO supervisor response invalid')
++        answer = json.loads(reply)
++        if type(answer) is not dict or answer.get('ok') is not True:
++            raise EngineLifecycleError('RADIO supervisor rejected operation')
++        return answer
++
++    def available(self):
++        # Only this fixed root-owned socket can advertise the implementation.
++        # It does not change N1/N3 policy or the global GPU_REUSE_SAFE field.
++        try:
++            return self._call('health').get('implementation') == 'radio-legacy-exclusive-v1'
++        except (OSError, ValueError, EngineLifecycleError):
++            return False
++
++    async def prepare(self, owner):
++        answer = await asyncio.to_thread(self._call, 'prepare', owner=asdict(owner))
++        self.owner = owner
++        self.closed = False
++        self.session = VisionSession(**answer['session'])
++        return self.session
++
++    def verify(self, owner, session):
++        if self.closed or owner != self.owner or session != self.session:
++            return False
++        try:
++            return self._call('verify', owner=asdict(owner), session=asdict(session)).get('active') is True
++        except (OSError, ValueError, EngineLifecycleError):
++            return False
++
++    async def inspect(self, owner, session, image_id):
++        if not self.verify(owner, session):
++            raise EngineLifecycleError('RADIO owner mismatch')
++        answer = await asyncio.to_thread(self._call, 'inspect', owner=asdict(owner),
++                                        session=asdict(session), image_id=image_id)
++        return answer['result']
++
++    async def cleanup(self, owner, session):
++        if not self.verify(owner, session):
++            raise EngineLifecycleError('RADIO owner mismatch')
++        answer = await asyncio.to_thread(self._call, 'cleanup', owner=asdict(owner), session=asdict(session))
++        if (answer.get('proof') != 'SUPERVISED_SCOPE_CLOSED'
++                or answer.get('owner') != asdict(owner) or answer.get('session') != asdict(session)):
++            raise EngineLifecycleError('RADIO closure proof invalid')
++        self.closed = True
++        return VisionCleanup(owner, session, True, True, True, True)
+--- a/src/ai_bridge/providers/accelerators.py
++++ b/src/ai_bridge/providers/accelerators.py
+@@ -159,7 +159,7 @@
+     }
+ 
+ 
+-def local_accelerator_registry(node_id: str = "ai-node-01") -> AcceleratorRegistry:
++def local_accelerator_registry(node_id: str = "ai-node-01", *, vision: bool = False) -> AcceleratorRegistry:
+     """N0 baseline: describe today's single shared local accelerator explicitly."""
+     return AcceleratorRegistry(
+         accelerators=(AcceleratorDescriptor(
+@@ -168,7 +168,7 @@
+             kind="integrated",
+             backend="unknown",
+             memory_class="unified",
+-            workload_classes=("llm", "media-generation"),
++            workload_classes=("llm", "media-generation") + (("vision",) if vision else ()),
+         ),),
+         provider_bindings=(
+             ProviderAcceleratorBinding(
+@@ -179,5 +179,6 @@
+                 provider_id="comfyui-local",
+                 accelerator_ids=("local-primary",),
+             ),
+-        ),
++        ) + ((ProviderAcceleratorBinding(provider_id="vision-local",
++                    accelerator_ids=("local-primary",)),) if vision else ()),
+     )
+--- a/src/ai_bridge/providers/registry.py
++++ b/src/ai_bridge/providers/registry.py
+@@ -10,7 +10,7 @@
+ 
+ DescriptorId = Annotated[str, Field(strict=True, min_length=1, max_length=128,
+                                    pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_.-]*$")]
+-ProviderType = Literal["llm", "media-generation", "agent"]
++ProviderType = Literal["llm", "media-generation", "agent", "vision"]
+ 
+ 
+ class _Descriptor(BaseModel):
+@@ -96,13 +96,13 @@
+             raise ValueError("provider does not declare capability")
+         return provider
+ 
+-    def validate_local_gateway(self, node_id: str) -> None:
++    def validate_local_gateway(self, node_id: str, *, vision: bool = False) -> None:
+         """D.3 config may describe inventory, but cannot change runtime topology.
+ 
+         Require the existing three bindings/capabilities, independent of order.
+         Future multi-node execution needs a separate admission/auth contract.
+         """
+-        expected = local_descriptor_registry(node_id)
++        expected = local_descriptor_registry(node_id, vision=vision)
+         if ({n.node_id for n in self.nodes} != {node_id}
+                 or {p.provider_id for p in self.providers}
+                 != {p.provider_id for p in expected.providers}
+@@ -121,7 +121,7 @@
+         return self.model_dump(mode="json")
+ 
+ 
+-def local_descriptor_registry(node_id: str = "ai-node-01") -> DescriptorRegistry:
++def local_descriptor_registry(node_id: str = "ai-node-01", *, vision: bool = False) -> DescriptorRegistry:
+     """Existing backend interfaces; embeddings do not imply an installed model."""
+     capabilities = (
+         CapabilityDescriptor(capability_id="chat", provider_types=("llm",)),
+@@ -137,6 +137,8 @@
+         CapabilityDescriptor(capability_id="external-reservation", provider_types=()),
+         CapabilityDescriptor(capability_id="unknown", provider_types=()),
+     )
++    if vision:
++        capabilities += (CapabilityDescriptor(capability_id="pcb-inspection", provider_types=("vision",)),)
+     return DescriptorRegistry(
+         nodes=(NodeDescriptor(node_id=node_id),),
+         capabilities=capabilities,
+@@ -147,5 +149,5 @@
+         ) for provider_id, provider_type in (
+             ("ollama-local", "llm"), ("comfyui-local", "media-generation"),
+             ("hermes-local", "agent"),
+-        )),
++        ) + ((("vision-local", "vision"),) if vision else ())),
+     )
+--- a/src/ai_bridge/settings.py
++++ b/src/ai_bridge/settings.py
+@@ -52,6 +52,7 @@
+     gateway_gpu_transition_timeout: float = Field(default=90.0, gt=0.0)
+     gateway_gpu_marker: Path = Field(default_factory=lambda: Path.home() / ".local/state/ai-platform/gpu-residency.blocked")
+     gateway_max_concurrency: int = Field(default=1, ge=1, le=16)
++    gateway_vision_radio_enabled: bool = False
+     gateway_max_queue_size: int = Field(default=128, ge=1, le=10_000)
+     gateway_connect_timeout_seconds: float = Field(default=5.0, gt=0.0)
+     gateway_upstream_timeout_seconds: float = Field(default=600.0, gt=0.0)
