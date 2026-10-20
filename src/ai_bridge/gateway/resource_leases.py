@@ -3,6 +3,7 @@ import asyncio, secrets
 from dataclasses import asdict, dataclass, replace
 from time import monotonic
 from .admission import WorkloadBinding, external_workload
+from .engine_lifecycle import EngineLifecycleError, lifecycle_for
 from .jobs import JobLifecycle, JobMetadata
 from .scheduler import PriorityScheduler, SchedulerTicket
 
@@ -101,16 +102,17 @@ class ResourceLeaseRegistry:
             status = await self.scheduler.job_status(rec.job_id)
             if asdict(workload) not in status["job"]["workload"]:
                 raise ResourceLeaseNotAllowed("workload outside resource lease")
-            if workload.provider != "comfyui-local":
-                raise ResourceLeaseNotAllowed("external execution requires ComfyUI")
+            try:
+                adapter = lifecycle_for(workload.provider, external=True)
+            except EngineLifecycleError as exc:
+                raise ResourceLeaseNotAllowed(str(exc)) from exc
             # Pin before I/O, including cancellation/disconnect. Failure must
             # retain ownership even when the worker releases or stops heartbeats.
             rec.external_use_id = secrets.token_urlsafe(24)
             rec.external_workload = workload
             rec.in_use = 1
         try:
-            if self.residency:
-                await self.residency.enter_media()
+            await adapter.prepare(self.residency)
         except BaseException:
             self.scheduler.admission_blocked = True
             raise
@@ -127,9 +129,10 @@ class ResourceLeaseRegistry:
             rec = self._leases.get(lease_id)
             if (rec is None or rec.external_use_id != use_id or rec.in_use
                     or self.scheduler.admission_blocked
-                    or (self.residency and self.residency.state != "media")):
+                    or rec.external_workload is None):
                 return None
-            return rec.external_workload
+            adapter = lifecycle_for(rec.external_workload.provider, external=True)
+            return rec.external_workload if adapter.verify_active(self.residency) else None
 
     async def end_external_use(self, lease_id: str, use_id: str) -> bool:
         self.scheduler.require_execution()
@@ -143,8 +146,8 @@ class ResourceLeaseRegistry:
                 raise ResourceLeaseNotActive("GPU transition already in progress")
             rec.in_use = 1
         try:
-            if self.residency:
-                await self.residency.leave_media()
+            adapter = lifecycle_for(rec.external_workload.provider, external=True)
+            await adapter.release(self.residency)
         except BaseException:
             self.scheduler.admission_blocked = True
             rec.in_use = 0

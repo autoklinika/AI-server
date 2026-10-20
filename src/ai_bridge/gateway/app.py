@@ -24,6 +24,7 @@ from .resource_leases import (
     ResourceLeaseRegistry,
 )
 from .residency import GPUResidency, ResidencyError
+from .engine_lifecycle import EngineLifecycleError, lifecycle_for
 from .comfy_process import resume_stopped_managed_comfy
 from .integration import AdmissionNotVerified
 from .scheduler import PriorityScheduler, SchedulerQueueFull, SchedulerTicket
@@ -375,6 +376,7 @@ def create_gateway_app(
                 return await queue_full_response()
 
         async def finish(state: JobLifecycle) -> None:
+            await lifecycle_for(workload.provider).release(resource_leases.residency)
             if lease_id:
                 # The lease describes the reservation, not each provider call.
                 await resource_leases.end_use(lease_id, release=release_after)
@@ -385,6 +387,20 @@ def create_gateway_app(
             LOGGER.warning("AI Gateway upstream unavailable path=%s", upstream_path)
             return JSONResponse(status_code=502, content={"error": "ollama_unavailable"},
                                 headers=_diagnostic_headers(ticket))
+
+        # A failed lifecycle guard makes resource ownership uncertain. Never
+        # free the scheduler ticket or a borrowed lease on this path.
+        try:
+            adapter = lifecycle_for(workload.provider)
+            await adapter.prepare(resource_leases.residency)
+        except BaseException:
+            scheduler.admission_blocked = True
+            resource_leases.residency.state = "blocked"
+            try:
+                resource_leases.residency._dirty()
+            except OSError:
+                pass  # in-memory fence and retained ticket still fail closed
+            raise
 
         state = JobLifecycle.COMPLETED
         if not _requests_stream(body):
@@ -551,14 +567,14 @@ def create_gateway_app(
             body = await request.json()
             if not isinstance(body, dict) or set(body) != {"provider", "capability"}:
                 raise ValueError()
-            # Only the existing external media executor is supported. Embedding
-            # execution still enters through scheduled HTTP.
-            if body["provider"] != "comfyui-local":
-                raise ValueError()
+            # The internal fixed adapter allowlist and trusted provider registry
+            # BOTH must approve; client headers cannot register a new engine.
+            # Today only ComfyUI has an external execution contract.
+            lifecycle_for(body["provider"], external=True)
             provider = registry.provider(body["provider"])
             workload = WorkloadBinding(provider.provider_id, provider.node_id, body["capability"])
             workload.validate(registry)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, EngineLifecycleError):
             raise HTTPException(status_code=400, detail="invalid external workload")
         try:
             use_id = await resource_leases.begin_external_use(lease_id, workload)
