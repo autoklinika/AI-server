@@ -2,6 +2,7 @@
 import importlib.util
 from pathlib import Path
 import sys
+import subprocess
 from unittest import TestCase, mock
 
 TOOLS = Path(__file__).resolve().parents[1] / "tools"
@@ -14,7 +15,7 @@ sp.loader.exec_module(a)
 class AutostartTests(TestCase):
     def test_read_only_preflight_no_privileged_ops(self):
         with mock.patch.object(a.base, "baseline") as check, \
-                mock.patch.object(a, "expected_enabled") as enabled, \
+                mock.patch.object(a, "expected_known_enablement") as enabled, \
                 mock.patch.object(a, "no_active_work") as busy, \
                 mock.patch.object(a.base, "idle") as idle, \
                 mock.patch.object(a, "command") as cmd:
@@ -27,10 +28,14 @@ class AutostartTests(TestCase):
 
     def test_apply_exact_sequence_and_guardrails(self):
         effects = []
+        states = {unit: "enabled" for unit in a.AUTOSTART}
         def action(*args):
             effects.append(args)
             if args[:2] == ("systemctl", "is-enabled"):
-                return "disabled"
+                return states[args[2]]
+            if args[:4] == ("sudo", "-n", "systemctl", "disable"):
+                for unit in args[4:]:
+                    states[unit] = "disabled"
             return ""
         with mock.patch.object(a, "check_before") as check, \
                 mock.patch.object(a.base, "baseline"), \
@@ -46,7 +51,7 @@ class AutostartTests(TestCase):
         ready.assert_called_once_with()
         self.assertEqual(owners.call_count, 2)
         self.assertEqual(effects[0], ("sudo", "-v"))
-        self.assertEqual(effects[1], ("sudo", "-n", "systemctl", "disable", *a.AUTOSTART))
+        self.assertIn(("sudo", "-n", "systemctl", "disable", *a.AUTOSTART), effects)
         self.assertIn(("sudo", "-n", "systemctl", "start", "comfyui.service"), effects)
         self.assertNotIn(("sudo", "-n", "systemctl", "start", "ollama.service"), effects)
 
@@ -59,10 +64,14 @@ class AutostartTests(TestCase):
 
     def test_failed_comfy_readiness_stops_only_own_engine(self):
         effects = []
+        states = {unit: "enabled" for unit in a.AUTOSTART}
         def action(*args):
             effects.append(args)
             if args[:2] == ("systemctl", "is-enabled"):
-                return "disabled"
+                return states[args[2]]
+            if args[:4] == ("sudo", "-n", "systemctl", "disable"):
+                for unit in args[4:]:
+                    states[unit] = "disabled"
             return ""
         with mock.patch.object(a, "check_before"), \
                 mock.patch.object(a.base, "baseline"), \
@@ -95,6 +104,65 @@ class AutostartTests(TestCase):
                      "loaded_models": 0, "cleanup_pending": False},
                     {"queue_running": [], "queue_pending": []}]):
             self.assertIsNone(a.read_comfy_ready())
+
+    def test_isenabled_disabled_rc1_is_not_a_failure(self):
+        with mock.patch.object(a.subprocess, "run", return_value=subprocess.CompletedProcess(
+                ["systemctl"], 1, "disabled\n", "")):
+            self.assertEqual(a.command("systemctl", "is-enabled", "comfyui.service"), "disabled")
+
+    def test_isenabled_ambiguous_state_is_rejected(self):
+        for rc, stdout in ((1, "masked\n"), (1, "enabled\n"),
+                           (0, "disabled\n"), (4, ""), (3, "static\n")):
+            with self.subTest(rc=rc, state=stdout), mock.patch.object(
+                    a.subprocess, "run", return_value=subprocess.CompletedProcess(
+                        ["systemctl"], rc, stdout, "")):
+                with self.assertRaisesRegex(RuntimeError, "unexpected unit enablement"):
+                    a.command("systemctl", "is-enabled", "comfyui.service")
+
+    def test_resume_with_all_disabled_skips_redundant_disable(self):
+        effects = []
+        def action(*args):
+            effects.append(args)
+            if args[:2] == ("systemctl", "is-enabled"):
+                return "disabled"
+            return ""
+        with mock.patch.object(a, "check_before"), \
+                mock.patch.object(a.base, "baseline"), \
+                mock.patch.object(a, "no_active_work"), \
+                mock.patch.object(a, "no_other_gpu_users"), \
+                mock.patch.object(a, "command", side_effect=action), \
+                mock.patch.object(a, "wait_ready"), \
+                mock.patch.object(a.base, "prop", return_value="active"), \
+                mock.patch.object(a.sys.stdin, "isatty", return_value=True), \
+                mock.patch.object(a.sys.stdout, "isatty", return_value=True):
+            a.apply()
+        self.assertIn(("sudo", "-n", "systemctl", "start", "comfyui.service"), effects)
+        self.assertFalse(any(e[:4] == ("sudo", "-n", "systemctl", "disable") for e in effects))
+
+    def test_resume_partial_disable_only_remaining_enabled_units(self):
+        states = {unit: ("enabled" if i == 1 else "disabled")
+                  for i, unit in enumerate(a.AUTOSTART)}
+        effects = []
+        def action(*args):
+            effects.append(args)
+            if args[:2] == ("systemctl", "is-enabled"):
+                return states[args[2]]
+            if args[:4] == ("sudo", "-n", "systemctl", "disable"):
+                for unit in args[4:]:
+                    states[unit] = "disabled"
+            return ""
+        with mock.patch.object(a, "check_before"), \
+                mock.patch.object(a.base, "baseline"), \
+                mock.patch.object(a, "no_active_work"), \
+                mock.patch.object(a, "no_other_gpu_users"), \
+                mock.patch.object(a, "command", side_effect=action), \
+                mock.patch.object(a, "wait_ready"), \
+                mock.patch.object(a.base, "prop", return_value="active"), \
+                mock.patch.object(a.sys.stdin, "isatty", return_value=True), \
+                mock.patch.object(a.sys.stdout, "isatty", return_value=True):
+            a.apply()
+        self.assertIn(("sudo", "-n", "systemctl", "disable", a.AUTOSTART[1]), effects)
+        self.assertEqual(set(states.values()), {"disabled"})
 
     def test_ollama_model_loaded_blocks_all(self):
         with mock.patch.object(a, "local_json", side_effect=[

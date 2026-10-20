@@ -90,3 +90,42 @@ najpierw ocenia faktyczny stan usług i przyczyny ewentualnego
 `sudo systemctl enable <nazwa-jednostki>`.
 Nie wykonywać automatycznego rollbacku bez kontroli procesów
 i stanów pośrednich.
+
+
+## Incydent pierwszego uruchomienia o 08:00 i poprawka
+
+Operator wykonał wcześniejsze `--apply`; skrypt wykonał poprawnie
+`systemctl disable` dla trzech jednostek, ale zgłosił `BLOCKED`
+z komunikatem `operation failed: systemctl is-enabled comfyui.service`.
+Przyczyną był błędny parser kodu wyjścia: dla jednostki `disabled`
+systemctl is-enabled zwraca **exit code 1**. Skrypt odrzucał
+ten oczekiwany rezultat.
+
+Faktyczne odczyty po incydencie:
+- `comfyui.service=disabled`, `ollama-preload.service=disabled`,
+  `ai-bridge-analysis.timer=disabled`, wszystkie nieaktywne.
+- `ollama.service`, `ai-gateway.service`, `ai-bridge.service`
+  aktywne; Gateway `status=ok`, brak aktywnych rezerwacji;
+  KFD/fuser bez wykazanych klientów GPU.
+- Nie wykonano startu ComfyUI. Nie było potrzeby rollbacku.
+
+Poprawka w `rm_cooperative_autostart_v1.py`:
+- `systemctl is-enabled` dopuszcza wyłącznie dokładnie
+  `(exit=0,stdout=enabled)` lub `(exit=1,stdout=disabled)`;
+  pozostałe odpowiedzi są błędem.
+- Preflight rozpoznaje wcześniej wyłączone jednostki.
+  Kolejne `--apply` wyłącza tylko jeszcze aktywne autostarty,
+  a przy wszystkich `disabled` przechodzi od razu do weryfikacji
+  i uruchomienia ComfyUI. Stan `masked`/nieznany blokuje akcję.
+- Poprawkę sprawdzono na rzeczywistym hoście przez
+  `READ_ONLY_PREFLIGHT_PASS` przy wszystkich trzech `disabled`.
+- Pełna regresja po korekcie **651/651 PASS**, exit 0,
+  `/tmp/rm-autostart-resume-regression-20261020.log`.
+
+Jedyną pozostałą akcją jest wykonanie ponownie tej samej komendy
+`--apply` przez operatora; tym razem skrypt **nie będzie ponownie
+wyłączał poprawnie wyłączonych jednostek**. Przy nieznanym stanie
+wyświetli `BLOCKED` i nie uruchomi nowego silnika.
+
+Faktyczne uruchomienie ComfyUI w poprawionej wersji:
+**NOT_RUN**, wymaga operatora.

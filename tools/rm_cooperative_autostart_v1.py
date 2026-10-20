@@ -25,9 +25,16 @@ COMFY = "comfyui.service"
 
 def command(*args):
     p = subprocess.run(args, capture_output=True, text=True, timeout=30)
+    state = p.stdout.strip()
+    # systemctl is-enabled uses exit 1 for a correctly disabled unit.
+    # Accept ONLY the two explicitly known (state, exit-code) pairs.
+    if args[:2] == ("systemctl", "is-enabled"):
+        if (p.returncode, state) in ((0, "enabled"), (1, "disabled")):
+            return state
+        raise RuntimeError("unexpected unit enablement: " + " ".join(args))
     if p.returncode:
         raise RuntimeError("operation failed: " + " ".join(args))
-    return p.stdout.strip()
+    return state
 
 
 def local_json(port, path, *, seconds=3):
@@ -53,10 +60,11 @@ def no_active_work():
         raise RuntimeError("Ollama has loaded models; refusing ComfyUI startup")
 
 
-def expected_enabled():
+def expected_known_enablement():
+    # A prior interrupted application may already have disabled some/all units.
+    # Only accept enabled/disabled, never masked/static/not-found/ambiguous.
     for name in AUTOSTART:
-        if command("systemctl", "is-enabled", name) != "enabled":
-            raise RuntimeError("unexpected autostart baseline: " + name)
+        command("systemctl", "is-enabled", name)
 
 
 def no_other_gpu_users():
@@ -65,7 +73,7 @@ def no_other_gpu_users():
 
 def check_before():
     base.baseline(started=CORE)  # all other services off + pinned production SHA
-    expected_enabled()
+    expected_known_enablement()
     no_active_work()
     base.idle(False)  # read-only KFD check, cross-UID fuser deferred to --apply
 
@@ -114,7 +122,13 @@ def apply():
     no_active_work()
     no_other_gpu_users()
     # These units were already inactive, so disable affects NEXT BOOT only.
-    command("sudo", "-n", "systemctl", "disable", *AUTOSTART)
+    # Resume safely after a prior partial/complete disable; do not reenable.
+    needs_disable = tuple(
+        unit for unit in AUTOSTART
+        if command("systemctl", "is-enabled", unit) == "enabled"
+    )
+    if needs_disable:
+        command("sudo", "-n", "systemctl", "disable", *needs_disable)
     for name in AUTOSTART:
         if command("systemctl", "is-enabled", name) != "disabled":
             raise RuntimeError("autostart disable not verified: " + name)
