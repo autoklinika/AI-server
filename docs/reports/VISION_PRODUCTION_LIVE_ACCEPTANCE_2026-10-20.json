@@ -1,0 +1,77 @@
+{
+  "api_smoke": {
+    "/api/tags": 200,
+    "/api/v1/benchmarks": 200,
+    "/control/": 200
+  },
+  "comfy": {
+    "cleanup_pending": false,
+    "loaded_models": 0,
+    "queue_pending": 0,
+    "queue_running": 0,
+    "schema_version": 1
+  },
+  "driver_error_matches": [],
+  "executor_boot_state": "enabled",
+  "gateway": {
+    "active_count": 0,
+    "admission_blocked": false,
+    "gpu_residency": {
+      "cleanup_evidence": null,
+      "recovery_required": false,
+      "state": "llm"
+    },
+    "queued_count": 0,
+    "resource_leases": {
+      "lease_count": 0,
+      "leases": []
+    },
+    "resource_manager": {
+      "active_engine": null,
+      "engines": [
+        {
+          "execution_available": true,
+          "id": "ollama",
+          "provider_id": "ollama-local",
+          "status": "configured"
+        },
+        {
+          "execution_available": true,
+          "id": "comfyui",
+          "provider_id": "comfyui-local",
+          "status": "configured"
+        },
+        {
+          "execution_available": true,
+          "id": "vision",
+          "provider_id": "vision-local",
+          "status": "configured"
+        }
+      ],
+      "reason": "no_active_ticket",
+      "schema_version": 1,
+      "state": "IDLE",
+      "target_engine": null
+    }
+  },
+  "gpu_block_marker_present": false,
+  "health": {
+    "ollama": "ok",
+    "status": "ok"
+  },
+  "kernel_journal_read_ok": true,
+  "kfd_pids": [
+    "267058"
+  ],
+  "observed_at": "2026-10-20T10:02:47.688394+00:00",
+  "ollama": {
+    "models": []
+  },
+  "production_package_manifest_sha256": "5d9d267489609ccbd83bff7f06c7db1a919f6e3a3d56b19fa01c6d2a84bdc5e2",
+  "production_source_checksums_match": true,
+  "production_source_files": 239,
+  "radio_units": "",
+  "schema": 1,
+  "services": "Id=ai-gateway.service\nActiveState=active\nMainPID=299020\n\nId=ai-platform-radio.service\nActiveState=active\nMainPID=298901\n\nId=comfyui.service\nActiveState=active\nMainPID=267058\n\nId=ollama.service\nActiveState=active\nMainPID=260833",
+  "stage_o_target": "/opt/ai-platform/releases/stage-o-28e3ea214660"
+}

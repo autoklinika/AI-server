@@ -1,0 +1,641 @@
+{
+  "operator_result": {
+    "result": "COMFYUI_BOOT_CONFIG_PASS",
+    "recovery_performed": true,
+    "post_reboot_acceptance": "PENDING"
+  },
+  "gpu_cycle": {
+    "comfyui_image_generation": "PASS",
+    "driver_error_matches": [],
+    "final": {
+      "active_count": 0,
+      "admission_blocked": false,
+      "comfyui": {
+        "cleanup_pending": false,
+        "loaded_models": 0,
+        "queue_pending": 0,
+        "queue_running": 0,
+        "schema_version": 1
+      },
+      "comfyui_devices": [
+        {
+          "index": 0,
+          "name": "cuda:0 AMD Radeon 890M Graphics : native",
+          "torch_vram_free": 0,
+          "torch_vram_total": 33554432,
+          "type": "cuda",
+          "vram_free": 102504595456,
+          "vram_total": 103079215104
+        }
+      ],
+      "gpu_residency": {
+        "cleanup_evidence": {
+          "idle_reserve_bytes": 67108864,
+          "reserved_bytes": [
+            35651584
+          ],
+          "residency": {
+            "cleanup_pending": false,
+            "loaded_models": 0,
+            "queue_pending": 0,
+            "queue_running": 0,
+            "schema_version": 1
+          }
+        },
+        "recovery_required": false,
+        "state": "llm"
+      },
+      "kfd_pids": [
+        "9093"
+      ],
+      "lease_count": 0,
+      "observed_at": "2026-10-20T15:47:32.439166+00:00",
+      "ollama": {
+        "models": []
+      },
+      "queued_count": 0,
+      "resource_manager": {
+        "active_engine": null,
+        "engines": [
+          {
+            "execution_available": true,
+            "id": "ollama",
+            "provider_id": "ollama-local",
+            "status": "configured"
+          },
+          {
+            "execution_available": true,
+            "id": "comfyui",
+            "provider_id": "comfyui-local",
+            "status": "configured"
+          },
+          {
+            "execution_available": true,
+            "id": "vision",
+            "provider_id": "vision-local",
+            "status": "configured"
+          }
+        ],
+        "reason": "no_active_ticket",
+        "schema_version": 1,
+        "state": "IDLE",
+        "target_engine": null
+      }
+    },
+    "finished_at": "2026-10-20T15:47:32.615092+00:00",
+    "gpu_reuse_safe": "NOT_VERIFIED",
+    "n1_grant": "NOT_ADMITTED",
+    "preflight": {
+      "active_count": 0,
+      "admission_blocked": false,
+      "comfyui": {
+        "cleanup_pending": false,
+        "loaded_models": 0,
+        "queue_pending": 0,
+        "queue_running": 0,
+        "schema_version": 1
+      },
+      "comfyui_devices": [
+        {
+          "index": 0,
+          "name": "cuda:0 AMD Radeon 890M Graphics : native",
+          "torch_vram_free": 0,
+          "torch_vram_total": 0,
+          "type": "cuda",
+          "vram_free": 102917734400,
+          "vram_total": 103079215104
+        }
+      ],
+      "gpu_residency": {
+        "cleanup_evidence": null,
+        "recovery_required": false,
+        "state": "llm"
+      },
+      "kfd_pids": [
+        "9093"
+      ],
+      "lease_count": 0,
+      "observed_at": "2026-10-20T15:46:42.758867+00:00",
+      "ollama": {
+        "models": []
+      },
+      "queued_count": 0,
+      "resource_manager": {
+        "active_engine": null,
+        "engines": [
+          {
+            "execution_available": true,
+            "id": "ollama",
+            "provider_id": "ollama-local",
+            "status": "configured"
+          },
+          {
+            "execution_available": true,
+            "id": "comfyui",
+            "provider_id": "comfyui-local",
+            "status": "configured"
+          },
+          {
+            "execution_available": true,
+            "id": "vision",
+            "provider_id": "vision-local",
+            "status": "configured"
+          }
+        ],
+        "reason": "no_active_ticket",
+        "schema_version": 1,
+        "state": "IDLE",
+        "target_engine": null
+      }
+    },
+    "result": "PRODUCTION_GPU_CYCLE_PASS",
+    "schema": 1,
+    "scope": "one production Ollama-Vision-ComfyUI-Ollama cycle",
+    "service_pids_after": {
+      "ai-gateway.service": "9263",
+      "ai-platform-radio.service": "2076",
+      "comfyui.service": "9093",
+      "ollama.service": "3340"
+    },
+    "service_pids_before": {
+      "ai-gateway.service": "9263",
+      "ai-platform-radio.service": "2076",
+      "comfyui.service": "9093",
+      "ollama.service": "3340"
+    },
+    "started_at": "2026-10-20T15:46:42.916010+00:00",
+    "steps": [
+      {
+        "done_reason": "stop",
+        "engine": "ollama_before",
+        "eval_count": 5,
+        "model": "qwen3.8:27b-p4-64k-gpu-p511",
+        "observation": {
+          "active_count": 1,
+          "admission_blocked": false,
+          "comfyui": {
+            "cleanup_pending": false,
+            "loaded_models": 0,
+            "queue_pending": 0,
+            "queue_running": 0,
+            "schema_version": 1
+          },
+          "comfyui_devices": [
+            {
+              "index": 0,
+              "name": "cuda:0 AMD Radeon 890M Graphics : native",
+              "torch_vram_free": 0,
+              "torch_vram_total": 0,
+              "type": "cuda",
+              "vram_free": 102917734400,
+              "vram_total": 103079215104
+            }
+          ],
+          "gpu_residency": {
+            "cleanup_evidence": null,
+            "recovery_required": false,
+            "state": "llm"
+          },
+          "kfd_pids": [
+            "9093"
+          ],
+          "lease_count": 1,
+          "observed_at": "2026-10-20T15:46:47.839957+00:00",
+          "ollama": {
+            "models": [
+              {
+                "context_length": 2048,
+                "details": {
+                  "families": [
+                    "qwen35"
+                  ],
+                  "family": "qwen35",
+                  "format": "gguf",
+                  "parameter_size": "27.3B",
+                  "parent_model": "",
+                  "quantization_level": "Q4_K_M"
+                },
+                "digest": "154cfaa11ee1399c75b2cbc1fec0dc7c35c74174f00fdd88052e25779826b259",
+                "expires_at": "2026-10-20T17:51:47.834006201+02:00",
+                "model": "qwen3.8:27b-p4-64k-gpu-p511",
+                "name": "qwen3.8:27b-p4-64k-gpu-p511",
+                "size": 17278089296,
+                "size_vram": 17278089296
+              }
+            ]
+          },
+          "queued_count": 0,
+          "resource_manager": {
+            "active_engine": "ollama",
+            "engines": [
+              {
+                "execution_available": true,
+                "id": "ollama",
+                "provider_id": "ollama-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "comfyui",
+                "provider_id": "comfyui-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "vision",
+                "provider_id": "vision-local",
+                "status": "configured"
+              }
+            ],
+            "reason": "active_ticket",
+            "schema_version": 1,
+            "state": "RUNNING",
+            "target_engine": null
+          }
+        },
+        "response": "GPU_HANDOFF_OK",
+        "seconds": 4.882677256999614
+      },
+      {
+        "after_cleanup": {
+          "active_count": 0,
+          "admission_blocked": false,
+          "comfyui": {
+            "cleanup_pending": false,
+            "loaded_models": 0,
+            "queue_pending": 0,
+            "queue_running": 0,
+            "schema_version": 1
+          },
+          "comfyui_devices": [
+            {
+              "index": 0,
+              "name": "cuda:0 AMD Radeon 890M Graphics : native",
+              "torch_vram_free": 0,
+              "torch_vram_total": 0,
+              "type": "cuda",
+              "vram_free": 102917734400,
+              "vram_total": 103079215104
+            }
+          ],
+          "gpu_residency": {
+            "cleanup_evidence": {
+              "idle_reserve_bytes": 67108864,
+              "reserved_bytes": [
+                0
+              ],
+              "residency": {
+                "cleanup_pending": false,
+                "loaded_models": 0,
+                "queue_pending": 0,
+                "queue_running": 0,
+                "schema_version": 1
+              }
+            },
+            "recovery_required": false,
+            "state": "llm"
+          },
+          "kfd_pids": [
+            "9093"
+          ],
+          "lease_count": 0,
+          "observed_at": "2026-10-20T15:47:03.180719+00:00",
+          "ollama": {
+            "models": []
+          },
+          "queued_count": 0,
+          "resource_manager": {
+            "active_engine": null,
+            "engines": [
+              {
+                "execution_available": true,
+                "id": "ollama",
+                "provider_id": "ollama-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "comfyui",
+                "provider_id": "comfyui-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "vision",
+                "provider_id": "vision-local",
+                "status": "configured"
+              }
+            ],
+            "reason": "no_active_ticket",
+            "schema_version": 1,
+            "state": "IDLE",
+            "target_engine": null
+          }
+        },
+        "engine": "vision",
+        "result": {
+          "execution_kind": "GPU_INFERENCE",
+          "image_id": "visa-pcb2-normal-0000",
+          "image_score": 0.43257656693458557,
+          "image_sha256": "b3f01fc1c1bd43df2c5a1afa63348097f7ecbcc9ebe2fd43bed6f2d074531a37",
+          "inference_and_load_seconds": 7.010807835999913,
+          "map_sha256": "95d773a6aed28e0e19a3b7973a6c78542ae85c668104a36dfc70405bbd0af187",
+          "map_shape": [
+            768,
+            768
+          ],
+          "model": "anomalyvfm-radio",
+          "pci_bdf": "0000:c6:00.0",
+          "schema": 1,
+          "weights_sha256": "50a219ba436ed656ad3c0405f9e81df8ad00b2e715c98be66d7e2edb62a83a37",
+          "worker_local_sync": true
+        }
+      },
+      {
+        "after_cleanup": {
+          "active_count": 1,
+          "admission_blocked": false,
+          "comfyui": {
+            "cleanup_pending": false,
+            "loaded_models": 0,
+            "queue_pending": 0,
+            "queue_running": 0,
+            "schema_version": 1
+          },
+          "comfyui_devices": [
+            {
+              "index": 0,
+              "name": "cuda:0 AMD Radeon 890M Graphics : native",
+              "torch_vram_free": 0,
+              "torch_vram_total": 33554432,
+              "type": "cuda",
+              "vram_free": 102504595456,
+              "vram_total": 103079215104
+            }
+          ],
+          "gpu_residency": {
+            "cleanup_evidence": {
+              "idle_reserve_bytes": 67108864,
+              "reserved_bytes": [
+                35651584
+              ],
+              "residency": {
+                "cleanup_pending": false,
+                "loaded_models": 0,
+                "queue_pending": 0,
+                "queue_running": 0,
+                "schema_version": 1
+              }
+            },
+            "recovery_required": false,
+            "state": "llm"
+          },
+          "kfd_pids": [
+            "9093"
+          ],
+          "lease_count": 1,
+          "observed_at": "2026-10-20T15:47:23.307814+00:00",
+          "ollama": {
+            "models": []
+          },
+          "queued_count": 0,
+          "resource_manager": {
+            "active_engine": null,
+            "engines": [
+              {
+                "execution_available": true,
+                "id": "ollama",
+                "provider_id": "ollama-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "comfyui",
+                "provider_id": "comfyui-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "vision",
+                "provider_id": "vision-local",
+                "status": "configured"
+              }
+            ],
+            "reason": "active_ticket",
+            "schema_version": 1,
+            "state": "RUNNING",
+            "target_engine": null
+          }
+        },
+        "engine": "comfyui",
+        "execution_status": "success",
+        "image_path": "/srv/ai-data/comfyui-output/RM-GPU-cycle-20261020_00002_.png",
+        "image_sha256": "044e387e93e0ed63c35365c38ee85c775dd19f05b1cc6af25fc1fe7f4d89fee8",
+        "image_size": [
+          512,
+          512
+        ],
+        "max_loaded_models": 3,
+        "max_torch_reserved_bytes": 497025024,
+        "seconds": 18.80926207099992
+      },
+      {
+        "done_reason": "stop",
+        "engine": "ollama_after",
+        "eval_count": 5,
+        "model": "qwen3.8:27b-p4-64k-gpu-p511",
+        "observation": {
+          "active_count": 1,
+          "admission_blocked": false,
+          "comfyui": {
+            "cleanup_pending": false,
+            "loaded_models": 0,
+            "queue_pending": 0,
+            "queue_running": 0,
+            "schema_version": 1
+          },
+          "comfyui_devices": [
+            {
+              "index": 0,
+              "name": "cuda:0 AMD Radeon 890M Graphics : native",
+              "torch_vram_free": 0,
+              "torch_vram_total": 33554432,
+              "type": "cuda",
+              "vram_free": 102504595456,
+              "vram_total": 103079215104
+            }
+          ],
+          "gpu_residency": {
+            "cleanup_evidence": {
+              "idle_reserve_bytes": 67108864,
+              "reserved_bytes": [
+                35651584
+              ],
+              "residency": {
+                "cleanup_pending": false,
+                "loaded_models": 0,
+                "queue_pending": 0,
+                "queue_running": 0,
+                "schema_version": 1
+              }
+            },
+            "recovery_required": false,
+            "state": "llm"
+          },
+          "kfd_pids": [
+            "9093"
+          ],
+          "lease_count": 1,
+          "observed_at": "2026-10-20T15:47:32.314299+00:00",
+          "ollama": {
+            "models": [
+              {
+                "context_length": 2048,
+                "details": {
+                  "families": [
+                    "qwen35"
+                  ],
+                  "family": "qwen35",
+                  "format": "gguf",
+                  "parameter_size": "27.3B",
+                  "parent_model": "",
+                  "quantization_level": "Q4_K_M"
+                },
+                "digest": "154cfaa11ee1399c75b2cbc1fec0dc7c35c74174f00fdd88052e25779826b259",
+                "expires_at": "2026-10-20T17:52:32.305923607+02:00",
+                "model": "qwen3.8:27b-p4-64k-gpu-p511",
+                "name": "qwen3.8:27b-p4-64k-gpu-p511",
+                "size": 17278089296,
+                "size_vram": 17278089296
+              }
+            ]
+          },
+          "queued_count": 0,
+          "resource_manager": {
+            "active_engine": null,
+            "engines": [
+              {
+                "execution_available": true,
+                "id": "ollama",
+                "provider_id": "ollama-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "comfyui",
+                "provider_id": "comfyui-local",
+                "status": "configured"
+              },
+              {
+                "execution_available": true,
+                "id": "vision",
+                "provider_id": "vision-local",
+                "status": "configured"
+              }
+            ],
+            "reason": "active_ticket",
+            "schema_version": 1,
+            "state": "RUNNING",
+            "target_engine": null
+          }
+        },
+        "response": "GPU_HANDOFF_OK",
+        "seconds": 8.975368007999805
+      }
+    ],
+    "workflow_sha256": "9c2a0c6784df17d192df25fa42cd4e6c606c228c15c8d5521a0ee7e223c92ba3"
+  },
+  "live_after": {
+    "observed_at": "2026-10-20T15:48:00.754021+00:00",
+    "boot_id": "074cd2c7-3a21-4347-b99b-fbe012d0a4e5",
+    "rm": {
+      "active_count": 0,
+      "queued_count": 0,
+      "admission_blocked": false,
+      "gpu_residency": {
+        "state": "llm",
+        "recovery_required": false,
+        "cleanup_evidence": {
+          "reserved_bytes": [
+            35651584
+          ],
+          "idle_reserve_bytes": 67108864,
+          "residency": {
+            "schema_version": 1,
+            "queue_running": 0,
+            "queue_pending": 0,
+            "loaded_models": 0,
+            "cleanup_pending": false
+          }
+        }
+      },
+      "resource_manager": {
+        "schema_version": 1,
+        "state": "IDLE",
+        "active_engine": null,
+        "target_engine": null,
+        "reason": "no_active_ticket",
+        "engines": [
+          {
+            "id": "ollama",
+            "provider_id": "ollama-local",
+            "status": "configured",
+            "execution_available": true
+          },
+          {
+            "id": "comfyui",
+            "provider_id": "comfyui-local",
+            "status": "configured",
+            "execution_available": true
+          },
+          {
+            "id": "vision",
+            "provider_id": "vision-local",
+            "status": "configured",
+            "execution_available": true
+          }
+        ]
+      }
+    },
+    "lease_count": 0,
+    "ollama": {
+      "models": []
+    },
+    "comfyui": {
+      "schema_version": 1,
+      "queue_running": 0,
+      "queue_pending": 0,
+      "loaded_models": 0,
+      "cleanup_pending": false
+    },
+    "hermes": {
+      "state": "running",
+      "active_agents": 0,
+      "platforms": {
+        "telegram": "connected",
+        "api_server": "connected",
+        "discord": "connected"
+      }
+    },
+    "system_failed": {
+      "rc": 0,
+      "out": "UNIT LOAD ACTIVE SUB DESCRIPTION\n\n0 loaded units listed.",
+      "err": ""
+    },
+    "user_failed": {
+      "rc": 0,
+      "out": "UNIT LOAD ACTIVE SUB DESCRIPTION\n\n0 loaded units listed.",
+      "err": ""
+    },
+    "units": {
+      "rc": 0,
+      "out": "Id=comfyui.service\nActiveState=active\nUnitFileState=enabled\nActiveEnterTimestamp=Tue 2026-10-20 17:45:35 CEST\nMainPID=9093\nNRestarts=0\nExecStartPost={ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 -I /opt/ai-platform/comfyui-boot/a77e1a8245583f80/wait_ready.py comfyui ; ignore_errors=no ; start_time=[Tue 2026-10-20 17:45:28 CEST] ; stop_time=[Tue 2026-10-20 17:45:35 CEST] ; pid=9094 ; code=exited ; status=0 }\n\nId=ai-gateway.service\nActiveState=active\nUnitFileState=enabled\nActiveEnterTimestamp=Tue 2026-10-20 17:45:35 CEST\nMainPID=9263\nNRestarts=0\n\nId=ai-platform-radio.service\nActiveState=active\nUnitFileState=enabled\nActiveEnterTimestamp=Tue 2026-10-20 17:00:51 CEST\nMainPID=2076\nNRestarts=0\n\nId=ollama.service\nActiveState=active\nUnitFileState=enabled\nActiveEnterTimestamp=Tue 2026-10-20 17:01:00 CEST\nMainPID=3340\nNRestarts=0",
+      "err": ""
+    },
+    "hermes_unit": {
+      "rc": 0,
+      "out": "ActiveState=active\nActiveEnterTimestamp=Tue 2026-10-20 17:45:36 CEST\nMainPID=9278\nNRestarts=0\nExecStartPre={ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 -I /opt/ai-platform/comfyui-boot/a77e1a8245583f80/wait_ready.py gateway ; ignore_errors=no ; start_time=[Tue 2026-10-20 17:45:36 CEST] ; stop_time=[Tue 2026-10-20 17:45:36 CEST] ; pid=9276 ; code=exited ; status=0 }",
+      "err": ""
+    }
+  }
+}

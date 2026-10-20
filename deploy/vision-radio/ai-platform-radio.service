@@ -1,0 +1,32 @@
+[Unit]
+Description=Fixed RADIO executor for the existing Gateway RM
+After=local-fs.target ai-vision-gpu-observer.service
+Requires=ai-vision-gpu-observer.service
+
+[Service]
+Type=simple
+User=root
+Group=ai-vision-rm
+ExecStart=/usr/bin/python3 -I @PACKAGE@/deploy/vision-radio/radio_supervisor.py
+RuntimeDirectory=ai-platform-radio
+RuntimeDirectoryMode=0755
+StateDirectory=ai-platform-radio
+StateDirectoryMode=0710
+UMask=0077
+Restart=no
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE
+AmbientCapabilities=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE
+ReadWritePaths=/run/ai-platform-radio /var/lib/ai-platform-radio
+DevicePolicy=closed
+
+[Install]
+WantedBy=multi-user.target

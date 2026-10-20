@@ -25,7 +25,7 @@ jobs:
           bash -n tools/local_video/generate-video-telegram
           bash -n tools/local_video/hermes-video-dispatch
       - name: Compile Python sources
-        run: python -m compileall -q src tools/local_image tools/local_video integrations deploy/stage-e deploy/stage-f deploy/stage-g deploy/stage-h deploy/stage-i deploy/stage-j deploy/stage-j4 deploy/stage-l deploy/stage-m deploy/stage-o deploy/runtime deploy/autopilot
+        run: python -m compileall -q src tools/local_image tools/local_video integrations deploy/stage-e deploy/stage-f deploy/stage-g deploy/stage-h deploy/stage-i deploy/stage-j deploy/stage-j4 deploy/stage-l deploy/stage-m deploy/stage-o deploy/runtime deploy/autopilot deploy/vision-radio deploy/comfyui-boot
       - name: Validate Control Center JavaScript
         run: node --check src/ai_bridge/control_center/static/app.js
       - name: Provider and contract tests

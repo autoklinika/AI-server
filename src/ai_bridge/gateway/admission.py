@@ -29,6 +29,7 @@ def external_workload(registry: DescriptorRegistry, name: str = "external") -> t
     """
     llm = ("chat", "reasoning", "text-generation", "structured-generation")
     profiles = {
+        "vision-inspection": (("vision-local", ("pcb-inspection",)),),
         "llm": (("ollama-local", llm),),
         "embeddings": (("ollama-local", ("embeddings",)),),
         "media-image": (("ollama-local", llm), ("comfyui-local", ("image-generation", "image-edit"))),

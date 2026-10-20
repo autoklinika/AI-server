@@ -10,23 +10,20 @@ Pierwszym obsługiwanym systemem jest Workshop Ventilation Controller. W przysz�
 
 AI Server jest warstwą analityczną i integracyjną. Nie jest elementem wymaganym do bezpiecznego sterowania wentylacją.
 
-## Aktualny stan hosta – 08.08.2026
+## Stan produkcji — 20.10.2026
 
-- Ubuntu 26.04 LTS
-- AMD Ryzen AI 9 HX 470, 12C/24T
-- AMD Radeon 890M
-- 128 GB RAM, z czego ok. 96 GB przeznaczone na UMA/iGPU
-- NVMe 4 TB jako główny dysk systemowy
-- SSH: port 22
-- Cockpit: port 9090, `active` + `enabled`
-- Docker 29.1.3, aktywny
-- Ollama 0.32.6, `active` + `enabled`
-- model `qwen3.6:35b`
-- backend AMD ROCm/Vulkan
-- wymuszone użycie iGPU przez `OLLAMA_IGPU_ENABLE=1`
-- Vulkan włączony przez `OLLAMA_VULKAN=1`
-- zwalidowane użycie modelu: ok. **4% CPU / 96% GPU**
-- zwalidowany benchmark: ok. **28.68 tokenów/s**
+- Jeden produkcyjny Gateway, jeden Resource Manager i jedna kolejka; cztery stany zasobu.
+- Qwen `qwen3.8:27b-p4-64k-gpu-p511`, ComfyUI oraz Vision RADIO współpracują przez istniejący RM.
+- Autostart i kolejność gotowości: **ComfyUI → Gateway/RM → Hermes**, odebrane po restarcie.
+- Pełny rzeczywisty cykl Ollama → RADIO → ComfyUI → Ollama po restarcie: **PASS, 56,198 s**; końcowo RM IDLE, modele wyładowane, bez wykrytych błędów GPU.
+- Telegram, Discord, PostgreSQL 18, Control Center i API: działają w odebranym zakresie.
+- Stage K: kopia i weryfikacja z 20.10 o 14:21 CEST PASS; bieżąca kontrola po restarcie PASS. Ponowienia backupu co 5 minut, maksymalnie trzy próby; daily o 02:30.
+- RADIO obsługuje na razie przypięty obraz kalibracyjny. Przyjmowanie zdjęć stanowiska jest osobnym etapem.
+- Globalne `GPU_REUSE_SAFE=NOT_VERIFIED` i N1=`NOT_ADMITTED` pozostają jawne; jeden cykl nie jest testem długotrwałej stabilności.
+
+[Stan repozytorium i mapa PR-ów](docs/REPOSITORY_STATUS_2026-10-20_PL.md) · [Odbiór po restarcie](docs/reports/COMFYUI_POST_REBOOT_ACCEPTANCE_2026-10-20_PL.md) · [Stage K](docs/reports/STAGE_K_BACKUP_RECOVERY_2026-10-20_PL.md)
+
+Historyczna konfiguracja sprzętu i benchmark z sierpnia są zachowane w [raporcie hosta](docs/reports/AI_SERVER_HOST_CONFIGURATION_AND_GPU_VALIDATION_2026-08-08_PL.md).
 
 ## Zdalna administracja
 
@@ -73,43 +70,13 @@ RDP/xrdp nie są częścią docelowej konfiguracji hosta.
 - [Raport inicjalizacji projektu](docs/AI_SERVER_PROJECT_INITIALIZATION_REPORT_PL.md)
 - [Konfiguracja hosta, zdalny dostęp i walidacja GPU – 08.08.2026](docs/reports/AI_SERVER_HOST_CONFIGURATION_AND_GPU_VALIDATION_2026-08-08_PL.md)
 
-## Aktualny kierunek prac
+## Zasady dalszych prac
 
-Audyt po Stage C z 21.09.2026 potwierdził produkcję jako **GREEN** i gotowość do rozpoczęcia Stage D development.
+Kod produkcyjnego Gateway w tej gałęzi odpowiada 239 plikom manifestu odebranego overlay `vision-radio-5d9d267489609ccb`. Stage O na hoście nadal wskazuje `stage-o-28e3ea214660`; porządkowanie repozytorium nie przełącza usług.
 
-Zakończone etapy migracji:
+Eksperymenty N1–N5, SHARED/Multi-GPU i stare warianty Vision są zachowane w historycznych gałęziach i zamkniętych PR-ach. Nie należą do bieżącej implementacji produkcyjnej. Nowe funkcje wymagają osobnych zmian i właściwego odbioru.
 
-- **Stage A** — recovery baseline + reproducible release foundation;
-- **Stage B** — security hardening i localhost-only backendy;
-- **Stage C** — provider abstraction bez wymiany modeli/backendów.
-
-Aktualny etap:
-
-**Stage D — Resource Manager v2**.
-
-**D.0 — Foundation cleanup** przeszedł pełną walidację produkcyjną. Aktywny runtime to `stage-d0-foundation-20260921-r2`; realne WVC/Gateway/Qwen, media i Telegram smoke są PASS, a rollback D.0 r2 -> Stage C r3 -> D.0 r2 został zweryfikowany.
-
-`main` jest chroniony rulesetem `main-protection`; merge wymaga PR, zielonego `platform-ci` i aktualności gałęzi. Stage D.0 został zmergowany do `main` w PR #38. Poprzedni krok to **D.1 — semantic priority classes**. Implementacja D.1 ma status **READY FOR PRODUCTION VALIDATION**; [raport i ograniczenia lokalnej walidacji](docs/reports/AI_PLATFORM_STAGE_D1_SEMANTIC_PRIORITY_2026-09-21_PL.md).
-
-Poprzedni krok **D.2 — Job model** przeszedł niezależny
-[supervisor dev gate](docs/reports/AUTONOMOUS_D2_DEV_GATE_2026-09-22.md).
-D.3 descriptors przeszedł [supervisor dev gate](docs/reports/AUTONOMOUS_D3_DEV_GATE_2026-09-22.md).
-D.4 unified admission przeszedł [supervisor dev gate](docs/reports/AUTONOMOUS_D4_DEV_GATE_2026-09-22.md).
-D.5 przeszedł [supervisor dev gate](docs/reports/AUTONOMOUS_D5_DEV_GATE_2026-09-22.md).
-Aktualny krok: **D.6 PREPARATION — READY FOR PRODUCTION VALIDATION**;
-implementacja gotowa do walidacji supervisora, bez production validation/cutover.
-Builder opisuje kompletny Resource Manager v2: phase=D.6, config schema=3,
-migration_version=resource-manager-v2. Provider contracts i recovery D.0/C
-pozostają bez zmian. [Raport przygotowania D.6](docs/reports/AI_PLATFORM_STAGE_D6_PREPARATION_2026-09-22_PL.md)
-i [runbook walidacji](deploy/stage-d/D6_VALIDATION_RUNBOOK.md).
-Korekta production gate **D6GATEFIX** dodaje apply/restore pięciu klientów oraz
-celowy restart Hermesa; [raport do walidacji supervisora](docs/reports/AI_PLATFORM_STAGE_D6_GATE_FIX_2026-09-22_PL.md).
-Produkcja pozostaje poza zakresem tej implementacji.
-
-Nie zmieniamy na D.0 modelu Qwen, GPU, backendu wiedzy ani implementacji schedulera od zera. Stage C r3 pozostaje zweryfikowanym rollback pointem.
-
-AI Bridge pozostaje aktywnym elementem obecnego runtime, ale nie jest docelową nazwą całej platformy. Docelowa AI Platform obsługuje wiele domen przez stabilne kontrakty i wymienne adaptery providerów.
-
+`main` pozostaje chroniony: zmiany trafiają przez PR i zielony `platform-ci`. Historyczne raporty Stage D–O zachowują status i datę z czasu ich sporządzenia; bieżące potwierdzenia wskazano powyżej.
 
 ## Bezpieczeństwo
 

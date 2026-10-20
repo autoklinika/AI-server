@@ -1,0 +1,8 @@
+{
+  "comfyui.conf": "ec5a68b38bb761582d6789f0a0f5066e35eb924ba30307f1d27a7a3dad4674f3",
+  "gateway-source.json": "28975e1eb3646cc0dfb1b754a00376a0ad0545d0ae5bd88da957dbccff7503a7",
+  "gateway.conf": "66fbe184bc3a896a2a042a197b62939d4090054e6bfa17903d19f9ef2f7f196a",
+  "hermes.conf": "3d2ffd29d1b3eb366537d8b91e5bb6e414ac54b93942e9937d3c763ebc859c31",
+  "install.py": "eecc82d2374dd6d50511d9ce6bed2dbd6b410081c592bbea43ee66a6bc9a79c2",
+  "wait_ready.py": "46cbd33e17838256a351a8a37b6c40ccbdef7dd7c5ce696317b3edc09a3d8b21"
+}

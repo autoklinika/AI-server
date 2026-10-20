@@ -1,0 +1,9 @@
+ollama_before: START
+ollama_before: PASS
+vision: START
+vision: PASS; supervised cleanup confirmed
+comfyui: START (FLUX.2 Klein 512x512, 4 steps)
+comfyui: PASS; image verified and models freed
+ollama_after: START
+ollama_after: PASS
+{"finished_at": "2026-10-20T12:00:44.689594+00:00", "gpu_reuse_safe": "NOT_VERIFIED", "result": "PRODUCTION_GPU_CYCLE_PASS"}
