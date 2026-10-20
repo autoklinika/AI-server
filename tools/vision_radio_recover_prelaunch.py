@@ -54,18 +54,19 @@ def no_radio_execution():
     require(not units, 'RADIO unit exists; cannot perform prelaunch recovery')
 
 
-def previous_installation():
-    require(not OLD.is_symlink() and OLD.stat().st_uid == 0, 'old package identity invalid')
-    manifest = OLD / 'SOURCE_SHA256.json'
-    require(hashlib.sha256(manifest.read_bytes()).hexdigest() == OLD_SHA, 'old package manifest changed')
+def previous_installation(expected_sha=OLD_SHA):
+    old = Path('/opt/ai-platform/vision-radio/releases') / expected_sha[:16]
+    require(not old.is_symlink() and old.stat().st_uid == 0, 'old package identity invalid')
+    manifest = old / 'SOURCE_SHA256.json'
+    require(hashlib.sha256(manifest.read_bytes()).hexdigest() == expected_sha, 'old package manifest changed')
     for name, expected in json.loads(manifest.read_text()).items():
         relative = Path(name)
         require(not relative.is_absolute() and '..' not in relative.parts, 'invalid old manifest path')
-        path = OLD / relative
+        path = old / relative
         info = path.stat()
         require(not path.is_symlink() and info.st_uid == 0 and not info.st_mode & 0o022
                 and hashlib.sha256(path.read_bytes()).hexdigest() == expected, 'old source changed')
-    content = (OLD / 'deploy/vision-radio/ai-platform-radio.service').read_text().replace('@PACKAGE@', str(OLD))
+    content = (old / 'deploy/vision-radio/ai-platform-radio.service').read_text().replace('@PACKAGE@', str(old))
     require(not UNIT.is_symlink() and UNIT.stat().st_uid == 0 and UNIT.read_text() == content,
             'executor service differs from failed installation')
     state = subprocess.run(['systemctl', 'is-active', 'ai-platform-radio.service'],
@@ -146,8 +147,9 @@ def archive_and_restore(proof):
     archive.mkdir(parents=True, mode=0o700)
     (archive / 'PILOT_RESULT.json').write_text(json.dumps(proof['report'], sort_keys=True, indent=2) + '\n')
     with (archive / 'RECOVERY.json').open('x') as stream:
-        json.dump({'reason': 'ROOT_GATEWAY_UID_MISMATCH_BEFORE_RADIO_START',
-                   'old_manifest_sha256': OLD_SHA, 'evidence': current}, stream, sort_keys=True)
+        json.dump({'reason': proof.get('reason', 'ROOT_GATEWAY_UID_MISMATCH_BEFORE_RADIO_START'),
+                   'old_manifest_sha256': proof.get('old_manifest_sha256', OLD_SHA),
+                   'ownership_archive': proof.get('ownership_archive'), 'evidence': current}, stream, sort_keys=True)
         stream.flush()
         os.fsync(stream.fileno())
     command('systemctl', 'stop', 'ai-gateway.service')

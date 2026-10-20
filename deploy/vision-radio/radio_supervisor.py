@@ -46,8 +46,28 @@ def require(condition, reason):
 
 def command(*args):
     process = subprocess.run(args, capture_output=True, text=True, timeout=12)
-    require(process.returncode == 0, 'system command failed: ' + args[0])
+    # Fixed administrative commands only; keep stderr, never request arguments.
+    detail = ' '.join(process.stderr.split())[:400]
+    require(process.returncode == 0, 'system command failed: ' + args[0] + ': ' + detail)
     return process.stdout
+
+
+def worker_command(unit, data, token):
+    props = {'User': 'ai-vision', 'Group': 'ai-vision-rm',
+        'RemainAfterExit': 'yes', 'KillMode': 'control-group', 'Delegate': 'no',
+        'NoNewPrivileges': 'yes', 'ProtectControlGroups': 'yes', 'RestrictNamespaces': 'yes',
+        'ProtectSystem': 'strict', 'ProtectHome': 'tmpfs', 'PrivateTmp': 'yes', 'PrivateNetwork': 'yes',
+        # The installed systemd transient-property API rejects the textual
+        # "none" even though systemd.exec documents it for unit files.
+        'RestrictAddressFamilies': 'AF_UNIX', 'DevicePolicy': 'closed',
+        'DeviceAllow': '/dev/kfd rw', 'MemoryMax': '16G', 'TasksMax': '64',
+        'RuntimeMaxSec': '240', 'TimeoutStopSec': '10', 'UMask': '0077',
+        'BindReadOnlyPaths': str(BASE_PYTHON), 'ReadWritePaths': str(data),
+        'Environment': 'HF_HUB_OFFLINE=1', 'LimitCORE': '0'}
+    args = ['systemd-run', '--quiet', '--unit=' + unit, '--service-type=exec']
+    args.extend('--property=' + key + '=' + value for key, value in props.items())
+    args.append('--property=DeviceAllow=/dev/dri/renderD128 rw')
+    return args + ['--', str(RUNTIME), '-I', '-u', str(WORKER), token]
 
 
 def trusted_file(path):
@@ -89,6 +109,7 @@ def closed_scope(props, expected, cgroup_root=Path('/sys/fs/cgroup')):
     require(props['Delegate'] == 'no' and props['KillMode'] == 'control-group'
             and props['NoNewPrivileges'] == 'yes' and props['ProtectControlGroups'] == 'yes'
             and props['PrivateNetwork'] == 'yes' and props['RestrictNamespaces'] == 'yes', 'containment changed')
+    require(props['RestrictAddressFamilies'] == 'AF_UNIX', 'network containment changed')
     require(props['MainPID'] == '0' and props['ActiveState'] == 'active' and props['SubState'] == 'exited'
             and props['Result'] == 'success' and props['ExecMainCode'] == '1'
             and props['ExecMainStatus'] == '0'
@@ -225,21 +246,7 @@ class Supervisor:
                   'cursor': cursor, 'baseline': baseline, 'folder': folder, 'phase': 'prepare'}
         self.persist({'owner': owner, 'unit': unit, 'session': active['session'], 'boot': self.boot})
         self.active = active
-        props = {'User': 'ai-vision', 'Group': 'ai-vision-rm', 'Type': 'exec',
-            'RemainAfterExit': 'yes', 'KillMode': 'control-group', 'Delegate': 'no',
-            'NoNewPrivileges': 'yes', 'ProtectControlGroups': 'yes', 'RestrictNamespaces': 'yes',
-            'ProtectSystem': 'strict', 'ProtectHome': 'tmpfs', 'PrivateTmp': 'yes', 'PrivateNetwork': 'yes',
-            'RestrictAddressFamilies': 'none', 'DevicePolicy': 'closed',
-            'DeviceAllow': '/dev/kfd rw', 'MemoryMax': '16G', 'TasksMax': '64',
-            'RuntimeMaxSec': '240', 'TimeoutStopSec': '10', 'UMask': '0077',
-            'BindReadOnlyPaths': str(BASE_PYTHON), 'ReadWritePaths': str(data),
-            'Environment': 'HF_HUB_OFFLINE=1', 'LimitCORE': '0'}
-        args = ['systemd-run', '--quiet', '--unit=' + unit, '--service-type=exec']
-        for key, value in props.items():
-            args.append('--property=' + key + '=' + value)
-        args.append('--property=DeviceAllow=/dev/dri/renderD128 rw')
-        args.extend(['--', str(RUNTIME), '-I', '-u', str(WORKER), token])
-        command(*args)
+        command(*worker_command(unit, data, token))
         deadline = time.monotonic() + 20
         while not (data / 'ready.json').is_file():
             require(time.monotonic() < deadline, 'parked worker readiness timeout')
@@ -371,9 +378,9 @@ def main():
                 require(len(line) <= 4096 and line.endswith(b'\n'), 'request too large')
                 reply = supervisor.dispatch(strict_json(line))
             except Exception as error:
-                reply = {'ok': False, 'error': type(error).__name__, 'reason': str(error)[:200]}
+                reply = {'ok': False, 'error': type(error).__name__, 'reason': str(error)[:600]}
                 try:
-                    (STATE / 'LAST_ERROR.json').write_text(json.dumps({'type': type(error).__name__, 'reason': str(error)[:200]}) + '\n')
+                    (STATE / 'LAST_ERROR.json').write_text(json.dumps({'type': type(error).__name__, 'reason': str(error)[:600]}) + '\n')
                 except OSError:
                     pass
             self.wfile.write(json.dumps(reply, allow_nan=False).encode() + b'\n')

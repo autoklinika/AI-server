@@ -1,6 +1,6 @@
 {
   "deploy/vision-radio/ai-platform-radio.service": "03c2f14587c4c9fdcf272fb8df88dab90f37b45d7e0366c6fd07f00f0fcf174d",
-  "deploy/vision-radio/radio_supervisor.py": "f840f25017f6086360e5512c8b8d391d3142c2d63c5e1ca8ad5b25da6f72c2b5",
+  "deploy/vision-radio/radio_supervisor.py": "272894e3a24e9f22422821523bd238cbdc9ddf199bf227b92ded748f86ced378",
   "deploy/vision-radio/radio_worker.py": "0ae2ce2fbc2f5e656da31af002a7a90e3e5915ab047f9926e0cad1e5a699969c",
   "src/ai_bridge/__init__.py": "73d977f89f361787086a059c9d1c190b6a731da5da6c4cbfca4a557d458f9379",
   "src/ai_bridge/__main__.py": "55d870f180352b7c0f3256c94182f95aabd1cc0295799d7a9994053bd551982a",
@@ -172,7 +172,8 @@
   "src/ai_bridge/storage/models.py": "9872742ab4afc0bdc7ddf06badfee20650a89f3f2f0a8c17038af8e9c0dbe9b4",
   "src/ai_bridge/storage/object_store.py": "e7594efa123fc718f174b8114804599d705e0d69c32d7b54a0de55cb150db191",
   "src/ai_bridge/storage/repository.py": "fb80f3eaa07d231e28ecf72cdac9c7038d41d172f917d4031e5e43e2c16037b4",
-  "tools/install_vision_radio_pilot.py": "f87f7056b473b07ee64a2321855d3570c131e14d58d2d422438f8206a8c96c2d",
+  "tools/install_vision_radio_pilot.py": "6456d91624c63086e0dc32e1bf8dff72792882041edc2957085dd3a03f3e2b3d",
   "tools/vision_radio_hardware_pilot.py": "d640a356316e9182433357c6154c48a2f64f87449a0ffb38a07aca372ba6c244",
-  "tools/vision_radio_recover_prelaunch.py": "4d2573db69a98e4bee7e6d80f8e49dc98a464c2f8c244b1f6cb286e0a159ebce"
+  "tools/vision_radio_recover_launch_rejected.py": "c5f3780fa4bb6f7af8d915901d945ad9c0b0b436380b28f4e5d2f179b7168d62",
+  "tools/vision_radio_recover_prelaunch.py": "1812b0a7784d493fb9679876c4207b6763c4eb3ba8b81fa78ec0e3493e324349"
 }

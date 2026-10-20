@@ -28,6 +28,7 @@ def evidence():
         'ControlGroup': '/system.slice/ai-radio-' + 'a' * 32 + '.service',
         'Delegate': 'no', 'KillMode': 'control-group', 'NoNewPrivileges': 'yes',
         'ProtectControlGroups': 'yes', 'PrivateNetwork': 'yes', 'RestrictNamespaces': 'yes',
+        'RestrictAddressFamilies': 'AF_UNIX',
         'ExecMainExitTimestampMonotonic': '100'}
 
 
@@ -50,6 +51,7 @@ def test_terminal_and_kernel_empty_are_both_required(tmp_path):
     ('NoNewPrivileges', 'no'), ('PrivateNetwork', 'no'), ('KillMode', 'process'),
     ('ControlGroup', '/system.slice/other.service'), ('ExecMainExitTimestampMonotonic', '0'),
     ('RestrictNamespaces', 'no'), ('ProtectControlGroups', 'no'),
+    ('RestrictAddressFamilies', '~'),
 ])
 def test_uncertain_or_changed_terminal_never_authorizes(key, value, tmp_path):
     expected = evidence()
@@ -308,3 +310,116 @@ def test_recovery_archives_marker_and_restores_gateway_without_reset(tmp_path, m
     archived = list((recovery.STATE / 'prelaunch-recovery').glob('*/residency.blocked'))
     assert len(archived) == 1 and archived[0].read_bytes() == recovery.MARKER_BYTES
     assert calls == [('systemctl','stop','ai-gateway.service'), ('systemctl','start','ai-gateway.service')]
+
+
+def test_fixed_transient_command_preserves_network_and_device_limits(tmp_path):
+    args = supervisor.worker_command('ai-radio-' + 'a'*32 + '.service', tmp_path, 'a'*32)
+    assert '--property=RestrictAddressFamilies=AF_UNIX' in args
+    assert '--property=PrivateNetwork=yes' in args
+    assert '--property=DevicePolicy=closed' in args
+    assert '--property=DeviceAllow=/dev/kfd rw' in args
+    assert '--property=DeviceAllow=/dev/dri/renderD128 rw' in args
+    assert not any('=none' in arg for arg in args)
+    assert args[-6:] == ['--', str(supervisor.RUNTIME), '-I', '-u', str(supervisor.WORKER), 'a'*32]
+
+
+def test_admin_command_error_includes_bounded_stderr_without_arguments(monkeypatch):
+    import subprocess
+    monkeypatch.setattr(supervisor.subprocess, 'run', lambda *a, **kw:
+                        subprocess.CompletedProcess(a, 1, '', 'Failed to set unit properties: Invalid argument\n' + 'x'*1000))
+    with pytest.raises(RuntimeError, match='Failed to set unit properties') as error:
+        supervisor.command('systemd-run', 'PRIVATE_OWNER_TOKEN')
+    assert 'PRIVATE_OWNER_TOKEN' not in str(error.value) and len(str(error.value)) < 450
+
+
+@pytest.fixture
+def rejected_attempt(tmp_path, monkeypatch):
+    import os
+    recovery = load_tool('vision_radio_recover_launch_rejected')
+    recovery.base = base = load_tool('vision_radio_recover_prelaunch')
+    base.STATE = tmp_path
+    token = 'a'*32
+    unit = 'ai-radio-' + token + '.service'
+    data = tmp_path / 'sessions' / token / 'data'
+    data.mkdir(parents=True)
+    boot = tmp_path / 'boot'
+    boot.write_text('test-boot')
+    proc = tmp_path / 'proc'
+    proc.mkdir()
+    recovery.Path = lambda p: proc if p == '/proc' else boot
+    own = {'owner': {'lease_id': 'b'*24, 'use_id': 'c'*24, 'job_id': 1}, 'unit': unit,
+           'session': {'generation': token, 'worker_id': unit, 'resource_id': 'local-primary'}, 'boot': 'test-boot'}
+    (tmp_path / 'ownership.dirty').write_text(json.dumps(own))
+    (tmp_path / 'LAST_ERROR.json').write_text(json.dumps({'type': 'RuntimeError', 'reason': 'system command failed: systemd-run'}))
+    for path in (data, data.parent, data.parent.parent): path.chmod(0o750)
+    for name in ('ownership.dirty', 'LAST_ERROR.json'): (tmp_path / name).chmod(0o640)
+    original_stat = Path.stat
+    def stat(path, **kwargs):
+        result = original_stat(path, **kwargs)
+        if path.is_relative_to(tmp_path):
+            values = list(result)
+            values[4] = 994 if path == data or path.parent == proc else 0
+            return os.stat_result(values)
+        return result
+    monkeypatch.setattr(Path, 'stat', stat)
+    replies = {'list-units': '', 'show': 'LoadState=not-found\nMainPID=0\nInvocationID=', 'journalctl': ''}
+    monkeypatch.setattr(base, 'command', lambda *a: replies[a[1] if a[0] == 'systemctl' else a[0]])
+    return recovery, own, data, replies, proc
+
+
+def test_launch_recovery_requires_exact_unexecuted_session(rejected_attempt):
+    recovery, own, *_ = rejected_attempt
+    assert recovery.rejected_execution() == own
+
+
+@pytest.mark.parametrize('artifact', ['ready.json', 'result.json', 'anything.tmp'])
+def test_launch_recovery_refuses_any_worker_artifact(rejected_attempt, artifact):
+    recovery, own, data, *_ = rejected_attempt
+    (data / artifact).write_text('{}')
+    with pytest.raises(RuntimeError, match='artifacts'):
+        recovery.rejected_execution()
+
+
+@pytest.mark.parametrize('reason', ['execute', 'unit', 'journal', 'process', 'ownership', 'other-session'])
+def test_launch_recovery_preserves_uncertain_ownership(rejected_attempt, reason):
+    recovery, own, data, replies, proc = rejected_attempt
+    if reason == 'execute': (data.parent / 'execute').write_text('1\n')
+    if reason == 'unit': replies['show'] = 'LoadState=loaded\nMainPID=123\nInvocationID=abc'
+    if reason == 'journal': replies['journalctl'] = '{"MESSAGE":"Started worker"}'
+    if reason == 'process': (proc / '123').mkdir()
+    if reason == 'ownership':
+        own['session']['worker_id'] = 'different'
+        (recovery.base.STATE / 'ownership.dirty').write_text(json.dumps(own))
+    if reason == 'other-session': (data.parent.parent / ('d'*32)).mkdir()
+    with pytest.raises(RuntimeError): recovery.rejected_execution()
+    assert (recovery.base.STATE / 'ownership.dirty').exists()
+
+
+@pytest.mark.parametrize('fail', [False, True])
+def test_real_cpu_probe_precedes_recovery_and_preserves_block_on_failure(tmp_path, monkeypatch, fail):
+    installer = load_tool('install_vision_radio_pilot')
+    installer.STATE = tmp_path
+    marker = tmp_path / 'ownership.dirty'
+    marker.write_text('preserve previous failed attempt')
+    monkeypatch.setattr(installer.os, 'chown', lambda *a: None)
+    calls = []
+    def run(*args):
+        calls.append(args)
+        if args[0] == 'systemd-run':
+            if fail: raise RuntimeError('probe launch rejected')
+            data = next(tmp_path.glob('config-probe-*/data'))
+            (data / 'cpu-proof.json').write_text(json.dumps({'uid': 994, 'inet_denied': True}))
+        if args[:2] == ('systemctl', 'show'):
+            return 'ActiveState=active\nSubState=exited\nResult=success\nExecMainStatus=0'
+        return ''
+    monkeypatch.setattr(installer, 'command', run)
+    files = {name: (ROOT / name).read_bytes() for name in
+             ('deploy/vision-radio/radio_supervisor.py', 'deploy/vision-radio/radio_worker.py')}
+    if fail:
+        with pytest.raises(RuntimeError, match='probe launch rejected'): installer.worker_configuration_probe(files)
+    else:
+        installer.worker_configuration_probe(files)
+    assert marker.read_text() == 'preserve previous failed attempt'
+    assert not list(tmp_path.glob('config-probe-*'))
+    assert '--property=User=ai-vision' in calls[0] and '--property=PrivateNetwork=yes' in calls[0]
+    assert calls[-1][:2] == ('systemctl', 'stop')

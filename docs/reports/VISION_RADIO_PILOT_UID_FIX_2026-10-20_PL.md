@@ -1,5 +1,7 @@
 # RADIO pilot — naprawa UID Gateway i kontrolowane wznowienie
 
+> Aktualizacja: odzyskanie tej próby przeszło, lecz następny pilot ujawnił odrzucenie właściwości systemd. Aktualna poprawka i komenda: [VISION_RADIO_SYSTEMD_FIX_2026-10-20_PL.md](VISION_RADIO_SYSTEMD_FIX_2026-10-20_PL.md). Poniższa komenda opisuje wcześniejszy etap.
+
 Data: 20.10.2026. Nieudany pilotaż operatora: 10:27 CEST. Baza: `b1a82a5` / PR #174.
 
 ## Przyczyna i stan

@@ -15,6 +15,8 @@ import shutil
 import subprocess
 import sys
 import types
+import secrets
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / 'deploy/vision-radio/BUNDLE_SHA256.json'
@@ -51,8 +53,67 @@ def verified_files(root, manifest, digest):
 
 def command(*args):
     p = subprocess.run(args, capture_output=True, text=True, timeout=35)
-    require(p.returncode == 0, 'system command failed: ' + args[0])
+    require(p.returncode == 0, 'system command failed: ' + args[0] + ': ' + ' '.join(p.stderr.split())[:500])
     return p.stdout.strip()
+
+
+def worker_configuration_probe(files):
+    """Real CPU exec as ai-vision with the exact transient sandbox, no GPU opens.
+
+    Run before archiving any block. A failed probe leaves the old failure and
+    global block intact, so the operator never starts inference on bad config.
+    """
+    module = types.ModuleType('_pinned_supervisor_config')
+    module.__file__ = str(ROOT / 'deploy/vision-radio/radio_supervisor.py')
+    exec(compile(files['deploy/vision-radio/radio_supervisor.py'], module.__file__, 'exec'), module.__dict__)
+    worker = types.ModuleType('_pinned_worker_config')
+    exec(compile(files['deploy/vision-radio/radio_worker.py'], 'pinned-radio-worker', 'exec'), worker.__dict__)
+    token = secrets.token_hex(16)
+    unit = 'ai-radio-config-' + token + '.service'
+    folder = STATE / ('config-probe-' + token)
+    folder.mkdir(mode=0o750)
+    os.chown(folder, 0, 972)
+    folder.chmod(0o750)
+    data = folder / 'data'
+    data.mkdir(mode=0o750)
+    os.chown(data, 994, 972)
+    data.chmod(0o750)
+    code = '''import os,socket,errno,sys,pathlib,json
+assert os.getuid()==994 and pathlib.Path(sys.prefix).resolve()==pathlib.Path(sys.argv[2])
+s=socket.socket(socket.AF_UNIX);s.close()
+denied=0
+for family in (socket.AF_INET,socket.AF_INET6):
+ try: socket.socket(family)
+ except OSError as e: denied+=int(e.errno in (errno.EAFNOSUPPORT,errno.EPERM,errno.EACCES))
+assert denied==2
+for p in ('/dev/kfd','/dev/dri/renderD128'): assert os.access(p,os.R_OK|os.W_OK)
+for p in sys.argv[3:]:
+ with open(p,'rb') as f: assert f.read(1)
+with (pathlib.Path(sys.argv[1])/'cpu-proof.json').open('x') as f: json.dump({'uid':994,'inet_denied':True},f)
+'''
+    args = module.worker_command(unit, data, token)
+    args = args[:args.index('--')] + ['--', str(module.RUNTIME), '-I', '-c', code,
+                                     str(data), str(module.RUNTIME.parent.parent), str(worker.WEIGHTS), str(worker.IMAGE)]
+    try:
+        command(*args)
+        deadline = time.monotonic() + 20
+        while True:
+            status = dict(line.split('=', 1) for line in command('systemctl', 'show', unit,
+                '-p', 'ActiveState', '-p', 'SubState', '-p', 'Result', '-p', 'ExecMainStatus').splitlines())
+            if status.get('SubState') == 'exited':
+                require(status == {'ActiveState': 'active', 'SubState': 'exited', 'Result': 'success',
+                                   'ExecMainStatus': '0'}, 'CPU sandbox probe failed: ' + str(status))
+                break
+            require(status.get('ActiveState') not in ('failed', 'inactive') and time.monotonic() < deadline,
+                    'CPU sandbox probe did not complete: ' + str(status))
+            time.sleep(.1)
+        require(json.loads((data / 'cpu-proof.json').read_text()) == {'uid': 994, 'inet_denied': True},
+                'CPU probe proof missing')
+        print(json.dumps({'worker_config_cpu_probe': 'PASS', 'gpu_inference': 'NOT_STARTED'}), flush=True)
+    finally:
+        # Only this unique, fixed CPU probe; never a model execution unit.
+        command('systemctl', 'stop', unit)
+        shutil.rmtree(folder)
 
 
 def install(files, digest, *, previous_unit=None):
@@ -130,8 +191,12 @@ def main():
     parser.add_argument('--pilot', action='store_true')
     parser.add_argument('--resume-prelaunch', action='store_true',
                         help='Recover only the pinned failed root-Gateway attempt before any RADIO worker')
+    parser.add_argument('--resume-launch-rejected', action='store_true',
+                        help='Recover only the pinned systemd transient-property rejection before worker exec')
     args = parser.parse_args()
     require(not args.resume_prelaunch or args.pilot, 'resume-prelaunch requires pilot')
+    require(not args.resume_launch_rejected or args.pilot, 'resume-launch-rejected requires pilot')
+    require(not (args.resume_prelaunch and args.resume_launch_rejected), 'choose one recovery case')
     files = verified_files(ROOT, MANIFEST, args.manifest_sha256)
     result = {'source': 'SOURCE_SHA256_PASS', 'files': len(files), 'result': 'READY_FOR_OPERATOR_PILOT',
               'production_install': 'NOT_PERFORMED', 'n1_grant': 'NOT_ADMITTED'}
@@ -139,13 +204,29 @@ def main():
         require(os.geteuid() == 0 and sys.stdin.isatty(), 'pilot requires interactive operator authorization')
         require(command('systemctl', 'is-active', 'ai-gateway.service') == 'active', 'Gateway not active')
         recovery = proof = None
-        if args.resume_prelaunch:
+        if args.resume_prelaunch or args.resume_launch_rejected:
             name = 'tools/vision_radio_recover_prelaunch.py'
             require(name in files, 'pinned recovery code missing')
             recovery = types.ModuleType('_pinned_radio_recovery')
             recovery.__file__ = str(ROOT / name)
             exec(compile(files[name], recovery.__file__, 'exec'), recovery.__dict__)
+            if args.resume_launch_rejected:
+                base = recovery
+                name = 'tools/vision_radio_recover_launch_rejected.py'
+                require(name in files, 'pinned launch recovery code missing')
+                recovery = types.ModuleType('_pinned_launch_recovery')
+                recovery.__file__ = str(ROOT / name)
+                exec(compile(files[name], recovery.__file__, 'exec'), recovery.__dict__)
+                recovery.base = base
             proof = recovery.preflight()
+        STATE.mkdir(mode=0o710, exist_ok=True)
+        require(not STATE.is_symlink() and STATE.stat().st_uid == 0 and not STATE.stat().st_mode & 0o022,
+                'untrusted executor state before CPU probe')
+        os.chown(STATE, 0, 972)
+        STATE.chmod(0o710)
+        worker_configuration_probe(files)
+        if proof is not None and args.resume_launch_rejected:
+            recovery.archive_ownership(proof)
         destination = install(files, args.manifest_sha256,
                               previous_unit=None if proof is None else proof['previous_unit'])
         pilot = destination / 'tools/vision_radio_hardware_pilot.py'
