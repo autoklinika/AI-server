@@ -2,6 +2,8 @@
 
 Data: 20.10.2026. Kontynuacja draft PR #174. Bazowy etap kontraktów: `ee28746`.
 
+**Aktualizacja po próbie 10:27 CEST:** stara komenda zakończyła się BLOCKED przez UID 0 testowego Gateway. Poprawka i aktualna komenda kontrolowanego wznowienia: [VISION_RADIO_PILOT_UID_FIX_2026-10-20_PL.md](VISION_RADIO_PILOT_UID_FIX_2026-10-20_PL.md). Poniżej zachowano historyczny opis pakietu `b1a82a5`.
+
 ## Aktualny wynik
 
 | Obszar | Wynik |

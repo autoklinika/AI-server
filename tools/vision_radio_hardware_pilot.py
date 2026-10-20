@@ -11,6 +11,7 @@ import asyncio
 from datetime import datetime, timezone
 import json
 import os
+import pwd
 from pathlib import Path
 import subprocess
 import sys
@@ -149,6 +150,42 @@ async def run_pilot():
     return outputs
 
 
+def run_as_gateway():
+    """The Gateway keeps its production UID; root remains only the operator."""
+    account = pwd.getpwnam('harrypotter')
+    require(account.pw_uid == 1000 and account.pw_gid == 1000, 'Gateway account changed')
+    python = '/opt/ai-platform/current/services/ai-gateway/.venv/bin/python'
+    child = subprocess.run([python, '-I', str(Path(__file__).resolve()), '--gateway-window'],
+        user=account.pw_uid, group=account.pw_gid,
+        extra_groups=os.getgrouplist(account.pw_name, account.pw_gid),
+        cwd=str(ROOT), env={'PATH': '/usr/local/bin:/usr/bin:/bin', 'HOME': account.pw_dir,
+                           'LANG': 'C.UTF-8'},
+        capture_output=True, text=True, timeout=300)
+    try:
+        answer = json.loads(child.stdout)
+    except ValueError as error:
+        raise RuntimeError('Gateway child returned no valid result') from error
+    require(child.returncode == 0 and answer.get('gateway_uid') == 1000
+            and answer.get('ok') is True, 'Gateway child failed: ' + str(answer.get('error', 'unknown'))[:160])
+    return answer['radio_inspections']
+
+
+def gateway_window():
+    result = {'ok': False, 'gateway_uid': os.getuid()}
+    try:
+        require(os.getuid() == 1000 and os.geteuid() == 1000, 'Gateway must use production UID 1000')
+        state = subprocess.run(['systemctl', 'is-active', 'ai-gateway.service'],
+                               capture_output=True, text=True, timeout=5)
+        require(state.returncode == 3 and state.stdout.strip() == 'inactive',
+                'prior Gateway is still active; second RM forbidden')
+        result['radio_inspections'] = asyncio.run(run_pilot())
+        result['ok'] = True
+    except BaseException as error:
+        result['error'] = type(error).__name__ + ': ' + str(error)[:180]
+    print(json.dumps(result, sort_keys=True))
+    return 0 if result['ok'] else 2
+
+
 def main():
     result = {'schema': 1, 'observed_at': datetime.now(timezone.utc).isoformat(),
         'result': 'BLOCKED', 'gpu_reuse_safe': 'NOT_VERIFIED', 'n1_grant': 'NOT_ADMITTED',
@@ -170,7 +207,8 @@ def main():
         window = reserve_window()
         stopped = True
         command('systemctl', 'stop', 'ai-gateway.service')
-        result['radio_inspections'] = asyncio.run(run_pilot())
+        result['radio_inspections'] = run_as_gateway()
+        result['gateway_uid'] = 1000
         result['result'] = 'GPU_PILOT_PASS'
         result['handoffs'] = ['Ollama-Vision-Ollama', 'ComfyUI-Vision-ComfyUI']
     except BaseException as error:
@@ -217,4 +255,5 @@ def main():
 
 
 if __name__ == '__main__':
-    raise SystemExit(main())
+    require(sys.argv[1:] in ([], ['--gateway-window']), 'invalid fixed pilot mode')
+    raise SystemExit(gateway_window() if sys.argv[1:] == ['--gateway-window'] else main())

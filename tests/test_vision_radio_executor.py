@@ -173,12 +173,12 @@ def test_pilot_failure_restores_prior_gateway_blocked_and_keeps_marker(tmp_path,
     def command(*args):
         calls.append(args)
         return '123' if 'MainPID' in args else 'active'
-    async def failed_run():
+    def failed_run():
         raise RuntimeError('simulated uncertain worker')
     monkeypatch.setattr(pilot, 'command', command)
     monkeypatch.setattr(pilot, 'read', lambda _: idle if not pilot.MARKER.exists() else {'admission_blocked': True})
     monkeypatch.setattr(pilot, 'production_marker', lambda _: None)
-    monkeypatch.setattr(pilot, 'run_pilot', failed_run)
+    monkeypatch.setattr(pilot, 'run_as_gateway', failed_run)
     monkeypatch.setattr(pilot, 'reserve_window', lambda: '/resource/leases/test-window')
     monkeypatch.setattr(pilot.os, 'geteuid', lambda: 0)
     monkeypatch.setattr(pilot.subprocess, 'run', lambda *a, **k: subprocess.CompletedProcess(a, 3, 'inactive\n', ''))
@@ -237,3 +237,74 @@ def test_control_is_readable_by_fixed_worker_group_even_under_private_umask(tmp_
     assert stat.S_IMODE((tmp_path / 'execute').stat().st_mode) == 0o640
     assert (tmp_path / 'execute').read_text() == '1\n'
     assert chowns == [(0, 972)]
+
+
+def test_gateway_child_is_launched_with_production_uid_and_groups(monkeypatch):
+    import subprocess
+    import types
+    pilot = load_tool('vision_radio_hardware_pilot')
+    account = types.SimpleNamespace(pw_uid=1000, pw_gid=1000, pw_name='harrypotter', pw_dir='/home/harrypotter')
+    monkeypatch.setattr(pilot.pwd, 'getpwnam', lambda _: account)
+    monkeypatch.setattr(pilot.os, 'getgrouplist', lambda *args: [1000, 44, 990])
+    launches = []
+    def child(args, **kwargs):
+        launches.append((args, kwargs))
+        return subprocess.CompletedProcess(args, 0, json.dumps({'ok': True, 'gateway_uid': 1000, 'radio_inspections': []}), '')
+    monkeypatch.setattr(pilot.subprocess, 'run', child)
+    assert pilot.run_as_gateway() == []
+    args, kwargs = launches[0]
+    assert args[-1] == '--gateway-window'
+    assert kwargs['user'] == 1000 and kwargs['group'] == 1000
+    assert kwargs['extra_groups'] == [1000, 44, 990]
+
+
+@pytest.mark.parametrize('uid', [0, 993, 994])
+def test_gateway_window_never_runs_as_root_or_worker_account(uid, monkeypatch):
+    pilot = load_tool('vision_radio_hardware_pilot')
+    monkeypatch.setattr(pilot.os, 'getuid', lambda: uid)
+    monkeypatch.setattr(pilot.os, 'geteuid', lambda: uid)
+    assert pilot.gateway_window() == 2
+
+
+def test_recovery_requires_zero_radio_sessions_and_no_ownership_marker(tmp_path, monkeypatch):
+    recovery = load_tool('vision_radio_recover_prelaunch')
+    recovery.STATE = tmp_path
+    (tmp_path / 'sessions').mkdir()
+    monkeypatch.setattr(recovery, 'command', lambda *args: '')
+    recovery.no_radio_execution()
+    (tmp_path / 'sessions' / 'any-attempt').mkdir()
+    with pytest.raises(RuntimeError, match='session exists'):
+        recovery.no_radio_execution()
+    (tmp_path / 'sessions' / 'any-attempt').rmdir()
+    (tmp_path / 'ownership.dirty').write_text('unknown')
+    with pytest.raises(RuntimeError, match='ownership evidence'):
+        recovery.no_radio_execution()
+
+
+def test_recovery_never_archives_an_unknown_block_marker(tmp_path, monkeypatch):
+    recovery = load_tool('vision_radio_recover_prelaunch')
+    recovery.MARKER = tmp_path / 'gpu.blocked'
+    recovery.MARKER.write_text('Unrelated driver failure')
+    with pytest.raises(RuntimeError, match='not the exact prelaunch'):
+        recovery.host_evidence({'observed_at': '2026-10-20T08:27:20+00:00'})
+    assert recovery.MARKER.read_text() == 'Unrelated driver failure'
+
+
+def test_recovery_archives_marker_and_restores_gateway_without_reset(tmp_path, monkeypatch):
+    recovery = load_tool('vision_radio_recover_prelaunch')
+    recovery.STATE = tmp_path / 'state'
+    recovery.MARKER = tmp_path / 'gpu.blocked'
+    recovery.MARKER.write_bytes(recovery.MARKER_BYTES)
+    report = {'result': 'BLOCKED'}
+    monkeypatch.setattr(recovery, 'no_radio_execution', lambda: None)
+    monkeypatch.setattr(recovery, 'host_evidence', lambda _: {'radio_never_started': True})
+    calls = []
+    monkeypatch.setattr(recovery, 'command', lambda *args: calls.append(args))
+    monkeypatch.setattr(recovery, 'get', lambda _: {'resource_manager': {'state': 'IDLE'}, 'admission_blocked': False})
+    result = recovery.archive_and_restore({'report': report})
+    assert result['prelaunch_recovery'] == 'PASS'
+    assert result['driver_reset'] == 'NOT_PERFORMED'
+    assert not recovery.MARKER.exists()
+    archived = list((recovery.STATE / 'prelaunch-recovery').glob('*/residency.blocked'))
+    assert len(archived) == 1 and archived[0].read_bytes() == recovery.MARKER_BYTES
+    assert calls == [('systemctl','stop','ai-gateway.service'), ('systemctl','start','ai-gateway.service')]
