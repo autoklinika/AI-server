@@ -1,0 +1,51 @@
+{
+  "comfyui_image_generation": "NOT_TESTED",
+  "gateway_uid": 1000,
+  "gpu_reuse_safe": "NOT_VERIFIED",
+  "handoffs": [
+    "Ollama-Vision-Ollama",
+    "ComfyUI-Vision-ComfyUI"
+  ],
+  "n1_grant": "NOT_ADMITTED",
+  "observed_at": "2026-10-20T10:01:26.371757+00:00",
+  "prior_gateway_restored": true,
+  "production_install": "NOT_PERFORMED",
+  "radio_inspections": [
+    {
+      "execution_kind": "GPU_INFERENCE",
+      "image_id": "visa-pcb2-normal-0000",
+      "image_score": 0.43257656693458557,
+      "image_sha256": "b3f01fc1c1bd43df2c5a1afa63348097f7ecbcc9ebe2fd43bed6f2d074531a37",
+      "inference_and_load_seconds": 6.755027756007621,
+      "map_sha256": "95d773a6aed28e0e19a3b7973a6c78542ae85c668104a36dfc70405bbd0af187",
+      "map_shape": [
+        768,
+        768
+      ],
+      "model": "anomalyvfm-radio",
+      "pci_bdf": "0000:c6:00.0",
+      "schema": 1,
+      "weights_sha256": "50a219ba436ed656ad3c0405f9e81df8ad00b2e715c98be66d7e2edb62a83a37",
+      "worker_local_sync": true
+    },
+    {
+      "execution_kind": "GPU_INFERENCE",
+      "image_id": "visa-pcb2-normal-0000",
+      "image_score": 0.43257656693458557,
+      "image_sha256": "b3f01fc1c1bd43df2c5a1afa63348097f7ecbcc9ebe2fd43bed6f2d074531a37",
+      "inference_and_load_seconds": 6.99109962998773,
+      "map_sha256": "95d773a6aed28e0e19a3b7973a6c78542ae85c668104a36dfc70405bbd0af187",
+      "map_shape": [
+        768,
+        768
+      ],
+      "model": "anomalyvfm-radio",
+      "pci_bdf": "0000:c6:00.0",
+      "schema": 1,
+      "weights_sha256": "50a219ba436ed656ad3c0405f9e81df8ad00b2e715c98be66d7e2edb62a83a37",
+      "worker_local_sync": true
+    }
+  ],
+  "result": "GPU_PILOT_PASS",
+  "schema": 1
+}

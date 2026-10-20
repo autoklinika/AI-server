@@ -1,6 +1,6 @@
 # RADIO — naprawa odrzucenia właściwości transient systemd
 
-> Aktualizacja: pilot operatora zakończył się GPU_PILOT_PASS. Aktualny stan i komenda wdrożenia: [VISION_RADIO_GPU_ACCEPTANCE_AND_DEPLOY_2026-10-20_PL.md](VISION_RADIO_GPU_ACCEPTANCE_AND_DEPLOY_2026-10-20_PL.md). Poniższe informacje opisują naprawy przed odbiorem.
+> Aktualizacja: wdrożenie zakończyło się VISION_PRODUCTION_PASS, z ponownym pilotem GPU i testem rollbacku PASS. Aktualny odbiór: [VISION_RADIO_GPU_ACCEPTANCE_AND_DEPLOY_2026-10-20_PL.md](VISION_RADIO_GPU_ACCEPTANCE_AND_DEPLOY_2026-10-20_PL.md). Poniższe informacje opisują naprawy przed odbiorem.
 
 Data: 20.10.2026. Dotyczy próby operatora z 08:50:30 UTC, po udanym `prelaunch_recovery=PASS`. PR #174; baza tej poprawki `c110835`.
 
