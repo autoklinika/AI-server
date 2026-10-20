@@ -105,7 +105,9 @@ def resource_manager_snapshot(scheduler, residency, registry=DEFAULT_ENGINES):
         if not isinstance(job, dict) or job.get("state") not in ("admitted", "running"):
             return result
         workload = job.get("workload")
-        if not isinstance(workload, list) or not workload:
+        # JobState.snapshot() retains tuples until FastAPI JSON encoding.
+        # The view consumes trusted in-process snapshots, not HTTP payloads.
+        if not isinstance(workload, (tuple, list)) or not workload:
             return result
         for binding in workload:
             if not isinstance(binding, dict) or any(

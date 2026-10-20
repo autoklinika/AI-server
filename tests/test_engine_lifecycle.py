@@ -108,6 +108,9 @@ async def test_comfy_contract_pins_existing_scheduler_and_verifies(tmp_path, mon
         assert response.status_code == 201
         use = path + "/uses/" + response.json()["use_id"]
         assert (await client.get(use)).status_code == 200
+        # The actual Gateway snapshot contains tuple-shaped job.workload.
+        rm = (await client.get("/status")).json()["resource_manager"]
+        assert rm["state"] == "RUNNING" and rm["active_engine"] == "comfyui"
         assert app.state.resource_leases.residency.marker.exists()
         assert (await client.delete(path)).json()["released"]
         assert (await app.state.scheduler.snapshot())["active_count"] == 1

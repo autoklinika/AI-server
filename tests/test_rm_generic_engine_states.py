@@ -83,6 +83,17 @@ def test_incomplete_active_metadata_blocks(job):
     assert resource_manager_snapshot(scheduler, residency)["state"] == "BLOCKED"
 
 
+def test_in_process_tuple_workload_preserves_real_owner():
+    # Dataclass asdict leaves workload tuple-shaped; HTTP serialization
+    # later turns it into a list. Both inputs must have identical semantics.
+    sched, resident = snapshots("media", ("ollama-local", "comfyui-local"))
+    sched["active"][0]["job"]["workload"] = tuple(
+        sched["active"][0]["job"]["workload"])
+    view = resource_manager_snapshot(sched, resident)
+    assert view["state"] == "RUNNING"
+    assert view["active_engine"] == "comfyui"
+
+
 def test_waiters_do_not_own_resource_and_private_data_is_ignored():
     scheduler, residency = snapshots()
     scheduler.update(queued_count=5, token="SECRET", lease_id="SECRET", source="SECRET")
