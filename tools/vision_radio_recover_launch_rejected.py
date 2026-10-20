@@ -58,14 +58,12 @@ def rejected_execution():
                   '-p', 'LoadState', '-p', 'MainPID', '-p', 'InvocationID').splitlines())
     base.require(status == {'LoadState': 'not-found', 'MainPID': '0', 'InvocationID': ''},
                  'unit was registered or process evidence exists')
+    base.require(not Path('/sys/fs/cgroup/system.slice/' + unit).exists(), 'worker cgroup remains')
     base.require(not base.command('journalctl', '--boot', '-u', unit, '--no-pager', '-o', 'json'),
                  'worker unit journal exists; cannot prove rejected launch')
-    for proc in Path('/proc').iterdir():
-        if proc.name.isdecimal():
-            try:
-                base.require(proc.stat().st_uid != 994, 'ai-vision process exists')
-            except FileNotFoundError:
-                pass
+    # OS session processes may share UID 994. Worker identity is the owned
+    # systemd invocation above; host_evidence() independently rejects every
+    # foreign GPU FD/KFD owner before any block can be archived.
     return own
 
 

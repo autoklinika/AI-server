@@ -346,7 +346,8 @@ def rejected_attempt(tmp_path, monkeypatch):
     boot.write_text('test-boot')
     proc = tmp_path / 'proc'
     proc.mkdir()
-    recovery.Path = lambda p: proc if p == '/proc' else boot
+    recovery.Path = lambda p: (proc if p == '/proc' else
+        tmp_path / 'worker-cgroup' if p.startswith('/sys/fs/cgroup/') else boot)
     own = {'owner': {'lease_id': 'b'*24, 'use_id': 'c'*24, 'job_id': 1}, 'unit': unit,
            'session': {'generation': token, 'worker_id': unit, 'resource_id': 'local-primary'}, 'boot': 'test-boot'}
     (tmp_path / 'ownership.dirty').write_text(json.dumps(own))
@@ -380,13 +381,13 @@ def test_launch_recovery_refuses_any_worker_artifact(rejected_attempt, artifact)
         recovery.rejected_execution()
 
 
-@pytest.mark.parametrize('reason', ['execute', 'unit', 'journal', 'process', 'ownership', 'other-session'])
+@pytest.mark.parametrize('reason', ['execute', 'unit', 'cgroup', 'journal', 'ownership', 'other-session'])
 def test_launch_recovery_preserves_uncertain_ownership(rejected_attempt, reason):
     recovery, own, data, replies, proc = rejected_attempt
     if reason == 'execute': (data.parent / 'execute').write_text('1\n')
     if reason == 'unit': replies['show'] = 'LoadState=loaded\nMainPID=123\nInvocationID=abc'
+    if reason == 'cgroup': (recovery.base.STATE / 'worker-cgroup').mkdir()
     if reason == 'journal': replies['journalctl'] = '{"MESSAGE":"Started worker"}'
-    if reason == 'process': (proc / '123').mkdir()
     if reason == 'ownership':
         own['session']['worker_id'] = 'different'
         (recovery.base.STATE / 'ownership.dirty').write_text(json.dumps(own))
@@ -423,3 +424,25 @@ def test_real_cpu_probe_precedes_recovery_and_preserves_block_on_failure(tmp_pat
     assert not list(tmp_path.glob('config-probe-*'))
     assert '--property=User=ai-vision' in calls[0] and '--property=PrivateNetwork=yes' in calls[0]
     assert calls[-1][:2] == ('systemctl', 'stop')
+
+
+def test_unrelated_ai_vision_cpu_process_does_not_identify_radio_worker(rejected_attempt):
+    recovery, own, _, _, proc = rejected_attempt
+    (proc / '123').mkdir()
+    assert recovery.rejected_execution() == own
+
+
+def test_cpu_processes_never_bypass_host_gpu_evidence(monkeypatch):
+    recovery = load_tool('vision_radio_recover_launch_rejected')
+    recovery.base = base = load_tool('vision_radio_recover_prelaunch')
+    monkeypatch.setattr(recovery.os, 'geteuid', lambda: 0)
+    monkeypatch.setattr(base, 'previous_installation', lambda *a: 'unit')
+    report = {'result': 'BLOCKED', 'prior_gateway_restored': True, 'production_install': 'NOT_PERFORMED',
+              'error': 'RuntimeError: Gateway child failed: RuntimeError: Vision prepare failed closed',
+              'supervisor_error': {'type': 'RuntimeError', 'reason': 'system command failed: systemd-run'},
+              'observed_at': '2026-10-20T08:50:30+00:00'}
+    monkeypatch.setattr(recovery, 'trusted_json', lambda *a: report)
+    monkeypatch.setattr(recovery, 'rejected_execution', lambda *a: {})
+    def foreign_gpu(*a): raise RuntimeError('unknown/foreign GPU owner')
+    monkeypatch.setattr(base, 'host_evidence', foreign_gpu)
+    with pytest.raises(RuntimeError, match='foreign GPU owner'): recovery.preflight()
