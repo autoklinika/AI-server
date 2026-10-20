@@ -3,6 +3,8 @@
 Data: 20.10.2026. Baza: `9664cf6`, produkcyjny overlay RM V1.
 Gałąź: `feature/vision-engine-integration-20261020`.
 
+**Aktualizacja:** poniżej zachowano stan historyczny etapu `ee28746`. Rzeczywisty executor RADIO został następnie zaimplementowany; aktualny status i komenda pilotażu: [VISION_RADIO_EXECUTOR_READY_2026-10-20_PL.md](VISION_RADIO_EXECUTOR_READY_2026-10-20_PL.md). Instalacja/GPU nadal oczekują na operatora.
+
 ## Wynik i granice odbioru
 
 | Etap | Wynik | Zakres dowodu |
