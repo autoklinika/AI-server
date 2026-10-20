@@ -1,0 +1,195 @@
+{
+  "after_daily": {
+    "adapter_backup_id": "20261020T121428Z",
+    "adapter_verify": {
+      "adapter_count": 2,
+      "adapters": [
+        "automotive-specialization-v1",
+        "wvc-advisory-v1"
+      ],
+      "backup_id": "20261020T121428Z",
+      "domain": "Adapters",
+      "runtime_bytes": 467048864,
+      "source_bytes": 438928584,
+      "status": "PASS"
+    },
+    "completed_at": "2026-10-20T12:21:00.045566+00:00",
+    "domain_backup_id": "20261020T121409Z",
+    "domain_verify": {
+      "ers": {
+        "backup_id": "20261020T121409Z",
+        "domain": "ERS",
+        "files": 114,
+        "snapshot_bytes": 77590178,
+        "status": "PASS"
+      },
+      "hermes": {
+        "backup_id": "20261020T121409Z",
+        "domain": "Hermes",
+        "files": 373,
+        "snapshot_bytes": 5546354,
+        "sqlite_databases": 5,
+        "status": "PASS"
+      },
+      "platform": {
+        "backup_id": "20261020T121409Z",
+        "domain": "PlatformConfig",
+        "files": 17,
+        "snapshot_bytes": 3497,
+        "status": "PASS"
+      }
+    },
+    "duration_seconds": 461.861,
+    "ers_case_store_verify": {
+      "backup_id": "20261020T121318Z",
+      "domain": "ERSCaseStore",
+      "ers_availability_counts": {
+        "available": 33
+      },
+      "ers_case_count": 2,
+      "ers_object_set": {
+        "bytes": 10556749,
+        "objects": 33,
+        "pool_objects_total": 33,
+        "referenced_versions": 33
+      },
+      "ers_table_counts": {
+        "ers_artifact_versions": 33,
+        "ers_artifacts": 33,
+        "ers_asset_revisions": 2,
+        "ers_assets": 2,
+        "ers_case_assets": 2,
+        "ers_case_counters": 1,
+        "ers_case_ecus": 3,
+        "ers_case_events": 67,
+        "ers_case_results": 2,
+        "ers_cases": 2,
+        "ers_diagnostic_steps": 9,
+        "ers_dtcs": 1,
+        "ers_ecu_identity_observations": 3,
+        "ers_ecu_software_observations": 3,
+        "ers_ecus": 3,
+        "ers_evidence": 0,
+        "ers_hypotheses": 0,
+        "ers_hypothesis_evidence": 0,
+        "ers_measurements": 0,
+        "ers_provenance_edges": 0,
+        "ers_provenance_records": 2,
+        "ers_repair_actions": 2,
+        "ers_symptoms": 1
+      },
+      "postgres_dump_bytes": 41761495,
+      "status": "PASS"
+    },
+    "knowledge_backup_id": "20261020T121318Z",
+    "knowledge_verify": {
+      "backup_id": "20261020T121318Z",
+      "canonical_bytes": 172249970,
+      "canonical_objects": 128,
+      "canonical_pool_objects_total": 128,
+      "domain": "Knowledge",
+      "knowledge_chunks": 12283,
+      "knowledge_versions": 129,
+      "postgres_dump_bytes": 41761495,
+      "status": "PASS"
+    },
+    "manual_sets_touched": false,
+    "nas_free_bytes": 7767276445696,
+    "restore_validation": {},
+    "retention": {
+      "canonical_pool_gc": "disabled",
+      "keep": 30,
+      "manual_sets_touched": false,
+      "removed_adapters": [],
+      "removed_k2": [],
+      "removed_k3": [],
+      "removed_restore_evidence": [],
+      "secrets_sets_touched": false,
+      "status": "PASS",
+      "tier": "daily"
+    },
+    "secrets_automation": "DEFERRED",
+    "stage_k_code_git_sha": "5e104ea69d0bfa342209acdc8dc88145b34ae72e",
+    "started_at": "2026-10-20T12:13:18.184256+00:00",
+    "status": "PASS",
+    "tier": "daily",
+    "wvc_verify": {
+      "backup_id": "20261020T121318Z",
+      "domain": "WVC",
+      "postgres_dump_bytes": 41761495,
+      "status": "PASS",
+      "wvc_table_counts": {
+        "ventilation_analysis_runs": 2742,
+        "ventilation_ingest_batches": 44391,
+        "ventilation_telemetry_raw": 98751
+      }
+    }
+  },
+  "after_monitor": {
+    "checked_at": "2026-10-20T12:21:02.036277+00:00",
+    "freshest_backup_age_hours": 0.001,
+    "issues": [],
+    "mount": "//globalnas.local/AI_Platform",
+    "nas_free_bytes": 7767276445696,
+    "secrets_recovery_key_decision": "DEFERRED_NON_BLOCKING",
+    "status": "PASS",
+    "weekly_age_hours": 59.441
+  },
+  "before_daily": {
+    "duration_seconds": 0.62,
+    "error": "knowledge_backup failed rc=1",
+    "error_type": "CommandError",
+    "failed_at": "2026-10-20T00:30:00.831544+00:00",
+    "phase": "knowledge_backup",
+    "secrets_automation": "DEFERRED",
+    "stage_k_code_git_sha": "5e104ea69d0bfa342209acdc8dc88145b34ae72e",
+    "started_at": "2026-10-20T00:30:00.211457+00:00",
+    "status": "FAIL",
+    "tier": "daily"
+  },
+  "before_monitor": {
+    "checked_at": "2026-10-20T12:01:50.662126+00:00",
+    "freshest_backup_age_hours": 59.121,
+    "issues": [
+      "automatic backup stale: 59.1h"
+    ],
+    "mount": "//globalnas.local/AI_Platform",
+    "nas_free_bytes": 7768313004032,
+    "secrets_recovery_key_decision": "DEFERRED_NON_BLOCKING",
+    "status": "FAIL",
+    "weekly_age_hours": 59.121
+  },
+  "daily_service": {
+    "ActiveState": "inactive",
+    "ExecMainStatus": "0",
+    "NRestarts": "0",
+    "Restart": "on-failure",
+    "RestartUSec": "5min",
+    "Result": "success",
+    "StartLimitBurst": "3",
+    "StartLimitIntervalUSec": "6h"
+  },
+  "enabled_timers": [
+    "ai-platform-stage-k-daily.timer",
+    "ai-platform-stage-k-weekly.timer",
+    "ai-platform-stage-k-monitor.timer"
+  ],
+  "initial_failure_detail_available": false,
+  "observed_at": "2026-10-20T12:21:02.403888+00:00",
+  "result": "STAGE_K_RECOVERY_PASS",
+  "retry_install": {
+    "backup_service_restarted": false,
+    "observed_at": "2026-10-20T12:17:18.140214+00:00",
+    "settings": {
+      "ActiveState": "activating",
+      "NRestarts": "0",
+      "Restart": "on-failure",
+      "RestartUSec": "5min",
+      "StartLimitBurst": "3",
+      "StartLimitIntervalUSec": "6h"
+    },
+    "unit_sha256": "5007bda4c8f9afe349044e7ff7d7e76a1e58ed60d2bf78db94c297ec98a4bce7"
+  },
+  "schema": 1,
+  "timer_schedule": "NEXT                           LEFT LAST                             PASSED UNIT                              ACTIVATES\nTue 2026-10-20 15:00:37 CEST  39min Tue 2026-10-20 14:01:50 CEST  19min ago ai-platform-stage-k-monitor.timer ai-platform-stage-k-monitor.service\nWed 2026-10-21 02:30:00 CEST    12h Tue 2026-10-20 02:30:00 CEST    11h ago ai-platform-stage-k-daily.timer   ai-platform-stage-k-daily.service\nSun 2026-10-25 02:30:00 CEST 4 days Sun 2026-10-18 02:30:00 CEST 2 days ago ai-platform-stage-k-weekly.timer  ai-platform-stage-k-weekly.service\n\n3 timers listed.\n"
+}

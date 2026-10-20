@@ -2,6 +2,8 @@
 Description=AI Platform Stage K daily backup
 After=network-online.target
 Wants=network-online.target
+StartLimitIntervalSec=6h
+StartLimitBurst=3
 
 [Service]
 Type=oneshot
@@ -13,3 +15,5 @@ IOSchedulingClass=best-effort
 IOSchedulingPriority=7
 ExecStart=/opt/ai-platform/current/services/ai-bridge/.venv/bin/python %h/AI-server/deploy/stage-k/k5_run.py daily
 TimeoutStartSec=1h
+Restart=on-failure
+RestartSec=5min
