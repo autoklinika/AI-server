@@ -40,13 +40,26 @@ Po udanym teście CPU te warunki są ponownie sprawdzane. Ownership, LAST_ERROR 
 
 - 842 testy CPU PASS, 25 modułów, 6,77 s; jedno dotychczasowe ostrzeżenie Starlette/httpx. Log: `VISION_RADIO_SYSTEMD_FIX_TESTS_2026-10-20.log`.
 - Rzeczywisty test menedżera użytkownika: `REAL_CPU_AF_UNIX_ALLOWED_INET_INET6_DENIED=PASS`; log: `VISION_RADIO_SYSTEMD_CPU_PROBE_2026-10-20.log`.
-- Manifest 177 plików: `SOURCE_SHA256_PASS`; SHA256 `2ac621032cf59063be516d8c994c20ba890d8e017e52d37b028cf6e5cf51641e`.
+- Manifest 177 plików: `SOURCE_SHA256_PASS`; SHA256 `7cec662df1089831571ef0184b2e256a56579100cba8e478bfa310fb2df2b0fe`.
 - Stan GPU nie został zweryfikowany nową inferencją. Produkcyjne Vision nie jest włączone. GPU_REUSE_SAFE=NOT_VERIFIED; N1=NOT_ADMITTED; ComfyUI image generation=NOT_TESTED.
+
+## Interpreter i pozostałość testu CPU — aktualizacja 11:18 CEST
+
+Jednostka blokująca kolejne wznowienie to **ai-radio-config-641d732a3fc69a81c17223d715fbbf90.service**, czyli własny test CPU, nie worker RADIO. Dziennik z 11:12:59 potwierdza `203/EXEC`, `MainPID=0` i pusty ControlGroup. Interpreter nie został uruchomiony; test nie otwierał GPU. Jednostka pozostała jako failed mimo stop, co blokowało następne preflight. Instalator po zatrzymaniu własnego testu CPU czyści teraz również jego status failed; journal pozostaje zachowany.
+
+Przyczyną 203/EXEC był link venv `bin/python3.11` prowadzący przez `/home/harrypotter/.local/bin/python3.11`, a następnie alias `cpython-3.11-linux-x86_64-gnu`. ProtectHome=tmpfs ukrywa te aliasy, a BindReadOnlyPaths udostępnia tylko właściwy katalog Pythona 3.11.16. W środowisku Vision zmieniono wyłącznie ten link na bezpośredni cel `/home/harrypotter/.local/share/uv/python/cpython-3.11.16-linux-x86_64-gnu/bin/python3.11`. Przed i po zmianie resolve wskazuje ten sam plik wykonywalny; sys.prefix i sys.base_prefix pozostały prawidłowe. Pakiety i model nie były zmieniane. Instalator sprawdza teraz bezpośredni cel linku przed uruchomieniem usługi.
+
+Rzeczywista usługa CPU w menedżerze użytkownika, z PrivateUsers=yes, ProtectHome=tmpfs, ProtectSystem=strict i tym samym BindReadOnlyPaths, uruchomiła interpreter i zakończyła się naturalnie statusem 0: `CANONICAL_VENV_WITH_HOME_HIDDEN=PASS`. Jest to potwierdzenie naprawy ścieżki w izolacji plików, nie test GPU ani pełny test UID 994. Pełny test CPU pod ai-vision nadal wykona komenda operatora.
+
+**845 testów CPU PASS**, 25 modułów, 6,83 s. Log: `VISION_RADIO_RUNTIME_FIX_TESTS_2026-10-20.log`. Log rzeczywistego testu: `VISION_RADIO_CANONICAL_RUNTIME_CPU_2026-10-20.log`. Manifest 177 plików: SOURCE_SHA256_PASS.
+
+Pierwsze polecenie poniżej czyści wyłącznie zachowany status wskazanego testu CPU. Nie zatrzymuje workerów, nie usuwa journal ani markerów GPU. Następnie uruchamiany jest dotychczasowy kontrolowany pilot.
 
 ## Komenda operatora na AI Platform
 
 ```bash
-sudo /usr/bin/python3 -I /srv/ai-data/evaluation/vision-engine-integration-20261020/tools/install_vision_radio_pilot.py --pilot --resume-launch-rejected --manifest-sha256 2ac621032cf59063be516d8c994c20ba890d8e017e52d37b028cf6e5cf51641e
+sudo systemctl reset-failed ai-radio-config-641d732a3fc69a81c17223d715fbbf90.service && \
+sudo /usr/bin/python3 -I /srv/ai-data/evaluation/vision-engine-integration-20261020/tools/install_vision_radio_pilot.py --pilot --resume-launch-rejected --manifest-sha256 7cec662df1089831571ef0184b2e256a56579100cba8e478bfa310fb2df2b0fe
 ```
 
 Wymagane etapy: `worker_config_cpu_probe=PASS`, `launch_rejection_recovery=PASS`, następnie wynik rzeczywistego pilota i `prior_gateway_restored=true`. Samo przejście testu CPU nie potwierdza GPU ani wdrożenia produkcyjnego. Narzędzie zdalne blokuje sudo, dlatego ten etap wymaga terminala operatora.

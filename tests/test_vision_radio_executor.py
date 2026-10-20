@@ -403,6 +403,7 @@ def test_real_cpu_probe_precedes_recovery_and_preserves_block_on_failure(tmp_pat
     marker = tmp_path / 'ownership.dirty'
     marker.write_text('preserve previous failed attempt')
     monkeypatch.setattr(installer.os, 'chown', lambda *a: None)
+    monkeypatch.setattr(installer, 'verify_runtime_link', lambda *a: None)
     calls = []
     def run(*args):
         calls.append(args)
@@ -411,6 +412,7 @@ def test_real_cpu_probe_precedes_recovery_and_preserves_block_on_failure(tmp_pat
             data = next(tmp_path.glob('config-probe-*/data'))
             (data / 'cpu-proof.json').write_text(json.dumps({'uid': 994, 'inet_denied': True}))
         if args[:2] == ('systemctl', 'show'):
+            if '--value' in args: return 'failed' if fail else 'inactive'
             return 'ActiveState=active\nSubState=exited\nResult=success\nExecMainStatus=0'
         return ''
     monkeypatch.setattr(installer, 'command', run)
@@ -423,7 +425,8 @@ def test_real_cpu_probe_precedes_recovery_and_preserves_block_on_failure(tmp_pat
     assert marker.read_text() == 'preserve previous failed attempt'
     assert not list(tmp_path.glob('config-probe-*'))
     assert '--property=User=ai-vision' in calls[0] and '--property=PrivateNetwork=yes' in calls[0]
-    assert calls[-1][:2] == ('systemctl', 'stop')
+    assert any(call[:2] == ('systemctl', 'stop') for call in calls)
+    assert any(call[:2] == ('systemctl', 'reset-failed') for call in calls) is fail
 
 
 def test_unrelated_ai_vision_cpu_process_does_not_identify_radio_worker(rejected_attempt):
@@ -446,3 +449,25 @@ def test_cpu_processes_never_bypass_host_gpu_evidence(monkeypatch):
     def foreign_gpu(*a): raise RuntimeError('unknown/foreign GPU owner')
     monkeypatch.setattr(base, 'host_evidence', foreign_gpu)
     with pytest.raises(RuntimeError, match='foreign GPU owner'): recovery.preflight()
+
+
+def test_runtime_symlink_cannot_depend_on_a_hidden_home_alias(tmp_path):
+    from types import SimpleNamespace
+    installer = load_tool('install_vision_radio_pilot')
+    runtime = tmp_path / 'venv/bin/python'
+    runtime.parent.mkdir(parents=True)
+    base = tmp_path / 'canonical-python'
+    canonical = base / 'bin/python3.11'
+    canonical.parent.mkdir(parents=True)
+    canonical.write_text('same interpreter')
+    alias = tmp_path / 'hidden-home/python3.11'
+    alias.parent.mkdir()
+    alias.symlink_to(canonical)
+    link = runtime.with_name('python3.11')
+    link.symlink_to(alias)
+    module = SimpleNamespace(RUNTIME=runtime, BASE_PYTHON=base)
+    assert link.resolve() == canonical
+    with pytest.raises(RuntimeError, match='canonical Python'): installer.verify_runtime_link(module)
+    link.unlink()
+    link.symlink_to(canonical)
+    installer.verify_runtime_link(module)

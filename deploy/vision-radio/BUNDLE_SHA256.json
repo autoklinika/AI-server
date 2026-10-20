@@ -172,7 +172,7 @@
   "src/ai_bridge/storage/models.py": "9872742ab4afc0bdc7ddf06badfee20650a89f3f2f0a8c17038af8e9c0dbe9b4",
   "src/ai_bridge/storage/object_store.py": "e7594efa123fc718f174b8114804599d705e0d69c32d7b54a0de55cb150db191",
   "src/ai_bridge/storage/repository.py": "fb80f3eaa07d231e28ecf72cdac9c7038d41d172f917d4031e5e43e2c16037b4",
-  "tools/install_vision_radio_pilot.py": "6456d91624c63086e0dc32e1bf8dff72792882041edc2957085dd3a03f3e2b3d",
+  "tools/install_vision_radio_pilot.py": "92519d2a371720f40014c4376e61585f3d03ec5d6f3c4f51d12b609b512d2e28",
   "tools/vision_radio_hardware_pilot.py": "d640a356316e9182433357c6154c48a2f64f87449a0ffb38a07aca372ba6c244",
   "tools/vision_radio_recover_launch_rejected.py": "d56e5e5f17f87fdec63b08e53c749edfee956d2cdb3fae78b5c8b684d1dded90",
   "tools/vision_radio_recover_prelaunch.py": "1812b0a7784d493fb9679876c4207b6763c4eb3ba8b81fa78ec0e3493e324349"

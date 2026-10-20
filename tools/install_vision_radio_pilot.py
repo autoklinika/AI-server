@@ -57,6 +57,13 @@ def command(*args):
     return p.stdout.strip()
 
 
+def verify_runtime_link(module):
+    # ProtectHome exposes the canonical Python tree, not aliases elsewhere in
+    # the home directory. Check this before attempting a systemd launch.
+    require((module.RUNTIME.parent / 'python3.11').readlink() == module.BASE_PYTHON / 'bin/python3.11',
+            'Vision venv interpreter link must target the exposed canonical Python')
+
+
 def worker_configuration_probe(files):
     """Real CPU exec as ai-vision with the exact transient sandbox, no GPU opens.
 
@@ -68,6 +75,7 @@ def worker_configuration_probe(files):
     exec(compile(files['deploy/vision-radio/radio_supervisor.py'], module.__file__, 'exec'), module.__dict__)
     worker = types.ModuleType('_pinned_worker_config')
     exec(compile(files['deploy/vision-radio/radio_worker.py'], 'pinned-radio-worker', 'exec'), worker.__dict__)
+    verify_runtime_link(module)
     token = secrets.token_hex(16)
     unit = 'ai-radio-config-' + token + '.service'
     folder = STATE / ('config-probe-' + token)
@@ -113,6 +121,11 @@ with (pathlib.Path(sys.argv[1])/'cpu-proof.json').open('x') as f: json.dump({'ui
     finally:
         # Only this unique, fixed CPU probe; never a model execution unit.
         command('systemctl', 'stop', unit)
+        # A failed transient unit otherwise remains listed as failed and
+        # blocks the next recovery. Its diagnostic journal is retained.
+        status = command('systemctl', 'show', unit, '-p', 'ActiveState', '--value')
+        if status == 'failed':
+            command('systemctl', 'reset-failed', unit)
         shutil.rmtree(folder)
 
 
