@@ -16,6 +16,7 @@ from ai_bridge.providers.registry import local_descriptor_registry
 from .admission import WorkloadBinding, DIRECT_READS, external_workload, http_workload
 from .priority import PriorityClass, priority_for_class
 from .jobs import JobLifecycle, JobMetadata
+from .engine_state import resource_manager_snapshot
 from .resource_leases import (
     ResourceLeaseNotActive,
     ResourceLeaseNotAllowed,
@@ -471,12 +472,14 @@ def create_gateway_app(
         except httpx.RequestError:
             ollama = "unavailable"
         snapshot = await scheduler.snapshot()
+        residency = resource_leases.residency.snapshot()
         accelerator_state = accelerator_state_snapshot(
-            accelerator_registry, resource_leases.residency.snapshot()
+            accelerator_registry, residency
         )
         return {
             "status": "ok" if ollama == "ok" and not scheduler.admission_blocked else "degraded",
-            "gpu_residency": resource_leases.residency.snapshot(),
+            "gpu_residency": residency,
+            "resource_manager": resource_manager_snapshot(snapshot, residency),
             "accelerators": accelerator_state,
             "ollama": ollama,
             "scheduler": snapshot,
@@ -487,6 +490,9 @@ def create_gateway_app(
         snapshot = await scheduler.snapshot()
         snapshot["resource_evidence"] = resource_leases.residency.evidence_snapshot()
         snapshot["gpu_residency"] = resource_leases.residency.snapshot()
+        snapshot["resource_manager"] = resource_manager_snapshot(
+            snapshot, snapshot["gpu_residency"]
+        )
         snapshot["accelerators"] = accelerator_state_snapshot(
             accelerator_registry, resource_leases.residency.snapshot()
         )
