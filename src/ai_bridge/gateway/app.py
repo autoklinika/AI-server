@@ -16,7 +16,7 @@ from ai_bridge.providers.registry import local_descriptor_registry
 from .admission import WorkloadBinding, DIRECT_READS, external_workload, http_workload
 from .priority import PriorityClass, priority_for_class
 from .jobs import JobLifecycle, JobMetadata
-from .engine_state import resource_manager_snapshot
+from .engine_state import DEFAULT_ENGINES, engine_registry_with_vision, resource_manager_snapshot
 from .resource_leases import (
     ResourceLeaseNotActive,
     ResourceLeaseNotAllowed,
@@ -156,13 +156,17 @@ def create_gateway_app(
     platform_provider=None,
     platform_policy=None,
     knowledge_runtime_factory=None,
+    vision_executor=None,
 ) -> FastAPI:
     resolved = settings or get_settings()
-    registry = resolved.gateway_registry or local_descriptor_registry(resolved.node_id)
-    registry.validate_local_gateway(resolved.node_id)
+    registry = resolved.gateway_registry or local_descriptor_registry(
+        resolved.node_id, vision=vision_executor is not None)
+    registry.validate_local_gateway(resolved.node_id, vision=vision_executor is not None)
+    engines = (DEFAULT_ENGINES if vision_executor is None else
+               engine_registry_with_vision(vision_executor.available() is True))
     accelerator_registry = (
         resolved.gateway_accelerator_registry
-        or local_accelerator_registry(resolved.node_id)
+        or local_accelerator_registry(resolved.node_id, vision=vision_executor is not None)
     )
     accelerator_registry.validate_references(registry)
     upstream_provider = registry.provider("ollama-local")
@@ -176,6 +180,7 @@ def create_gateway_app(
     resource_leases = ResourceLeaseRegistry(
         scheduler,
         ttl_seconds=resolved.gateway_external_lease_ttl_seconds,
+        vision_executor=vision_executor,
     )
 
     @asynccontextmanager
@@ -495,7 +500,8 @@ def create_gateway_app(
         return {
             "status": "ok" if ollama == "ok" and not scheduler.admission_blocked else "degraded",
             "gpu_residency": residency,
-            "resource_manager": resource_manager_snapshot(snapshot, residency),
+            "resource_manager": resource_manager_snapshot(snapshot, residency, engines,
+                activity=resource_leases.engine_activity()),
             "accelerators": accelerator_state,
             "ollama": ollama,
             "scheduler": snapshot,
@@ -507,7 +513,8 @@ def create_gateway_app(
         snapshot["resource_evidence"] = resource_leases.residency.evidence_snapshot()
         snapshot["gpu_residency"] = resource_leases.residency.snapshot()
         snapshot["resource_manager"] = resource_manager_snapshot(
-            snapshot, snapshot["gpu_residency"]
+            snapshot, snapshot["gpu_residency"], engines,
+            activity=resource_leases.engine_activity()
         )
         snapshot["accelerators"] = accelerator_state_snapshot(
             accelerator_registry, resource_leases.residency.snapshot()
@@ -569,12 +576,11 @@ def create_gateway_app(
                 raise ValueError()
             # The internal fixed adapter allowlist and trusted provider registry
             # BOTH must approve; client headers cannot register a new engine.
-            # Today only ComfyUI has an external execution contract.
-            lifecycle_for(body["provider"], external=True)
+            resource_leases.require_external_provider(body["provider"])
             provider = registry.provider(body["provider"])
             workload = WorkloadBinding(provider.provider_id, provider.node_id, body["capability"])
             workload.validate(registry)
-        except (ValueError, TypeError, EngineLifecycleError):
+        except (ValueError, TypeError, EngineLifecycleError, ResourceLeaseNotAllowed):
             raise HTTPException(status_code=400, detail="invalid external workload")
         try:
             use_id = await resource_leases.begin_external_use(lease_id, workload)
@@ -583,6 +589,20 @@ def create_gateway_app(
         except (ResourceLeaseNotActive, ResourceLeaseNotAllowed):
             return JSONResponse(status_code=409, content={"error": "resource_lease_not_available"})
         return JSONResponse(status_code=201, content={"use_id": use_id})
+
+    @app.post("/resource/leases/{lease_id}/uses/{use_id}/inspect")
+    async def inspect_vision(lease_id: str, use_id: str, request: Request):
+        # Same loopback/control-plane boundary as the existing lease API. There
+        # is no LAN listener, remote shell, command, model or path parameter.
+        try:
+            body = await request.json()
+            if not isinstance(body, dict) or set(body) != {"image_id"}:
+                raise ValueError("image_id required")
+            return await resource_leases.inspect_vision(lease_id, use_id, body["image_id"])
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="invalid registered image ID")
+        except ResourceLeaseNotActive:
+            raise HTTPException(status_code=409, detail="Vision ownership unavailable")
 
     @app.get("/resource/leases/{lease_id}/uses/{use_id}")
     async def verify_external_use(lease_id: str, use_id: str):

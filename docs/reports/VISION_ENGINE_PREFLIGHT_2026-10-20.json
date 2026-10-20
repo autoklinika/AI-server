@@ -1,0 +1,23 @@
+{
+  "automatic_n1_grant": "NOT_ADMITTED",
+  "candidate_deployment_rollback": "NOT_TESTED_NOT_INSTALLED",
+  "capture_host": "vision",
+  "existing_overlay_and_rollback_identity": "READ_ONLY_VERIFIED",
+  "gateway_idle": true,
+  "gpu_inference": "NOT_RUN",
+  "gpu_pilot": "BLOCKED",
+  "gpu_reuse_safe": "NOT_VERIFIED",
+  "inference_host": "harrypotter-AI-Series",
+  "observed_at": "2026-10-20T07:53:18.896684+00:00",
+  "production": "BLOCKED",
+  "production_vision_execution_available": false,
+  "radio_checkpoint_sha256": "50a219ba436ed656ad3c0405f9e81df8ad00b2e715c98be66d7e2edb62a83a37",
+  "radio_checkpoint_verified": true,
+  "radio_runtime_present": true,
+  "reasons": [
+    "NO_ADMITTED_LOCAL_RADIO_EXECUTOR",
+    "NO_VERIFIED_VISION_GPU_HANDOFF_OR_CLEANUP",
+    "INCOMPLETE_INTEGRATION_MUST_NOT_BE_DEPLOYED"
+  ],
+  "schema": 1
+}

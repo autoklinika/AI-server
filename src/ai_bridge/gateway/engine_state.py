@@ -56,7 +56,7 @@ DEFAULT_ENGINES = EngineRegistry((
 ))
 
 
-def resource_manager_snapshot(scheduler, residency, registry=DEFAULT_ENGINES):
+def resource_manager_snapshot(scheduler, residency, registry=DEFAULT_ENGINES, *, activity=None):
     """Derive occupancy, not physical GPU use/readiness, without I/O or mutation.
 
     Call only with server-owned snapshots. Waiting jobs do not own the resource;
@@ -119,6 +119,19 @@ def resource_manager_snapshot(scheduler, residency, registry=DEFAULT_ENGINES):
             if engine is None or not engine.execution_available:
                 return view(ResourceState.BLOCKED, "unknown_or_unavailable_engine")
             owners.add(engine.id)
+    # Runtime adapters supply their own trusted activity view. Its owner must
+    # match the active scheduler ticket and the configured provider binding.
+    if activity is not None:
+        if not isinstance(activity, dict) or count != 1:
+            return view(ResourceState.BLOCKED, "invalid_engine_activity")
+        engine = providers.get(activity.get("provider"))
+        if (engine is None or not engine.execution_available or engine.id not in owners
+                or activity.get("job_id") != active[0].get("job_id")
+                or activity.get("state") not in ("RUNNING", "SWITCHING")):
+            return view(ResourceState.BLOCKED, "inconsistent_engine_activity")
+        return view(ResourceState(activity["state"]), "adapter_activity",
+                    engine.id if activity["state"] == "RUNNING" else None,
+                    engine.id if activity["state"] == "SWITCHING" else None)
     if legacy == "llm":
         if not count:
             return view(ResourceState.IDLE, "no_active_ticket")
@@ -136,3 +149,9 @@ def resource_manager_snapshot(scheduler, residency, registry=DEFAULT_ENGINES):
     owner, target = (("ollama", "comfyui") if legacy == "draining_ollama"
                      else ("comfyui", "ollama"))
     return view(ResourceState.SWITCHING, "legacy_transition", owner, target)
+
+
+def engine_registry_with_vision(available: bool):
+    return EngineRegistry(tuple(
+        EngineDescriptor(e.id, e.provider_id, "configured" if available else "unavailable", available)
+        if e.provider_id == "vision-local" else e for e in DEFAULT_ENGINES.engines))
