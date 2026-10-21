@@ -1,0 +1,101 @@
+{
+  "result": {
+    "result": "PASS",
+    "mcp_tools": 207,
+    "isolation": "PASS",
+    "target": "synthetic x86_64 ELF with symbols",
+    "decompiled_conditions": [
+      "sensor_ok",
+      "pressure > 250",
+      "0x1234",
+      "0x5678"
+    ],
+    "jvm": [
+      {
+        "pid": "137",
+        "heap": "2G",
+        "status": [
+          "VmRSS:\t  475948 kB",
+          "Cpus_allowed_list:\t0-23"
+        ]
+      }
+    ]
+  },
+  "verified_at": "2026-10-21T09:46:20.351246+00:00",
+  "image": "sha256:cd38179d4baa9a841b80c22e7a7c676c889bc7b95838aebc2277a61feb1d38d5",
+  "ghidra_zip_sha256": "ddac49f903da9d5bac833e5cc79395098b9c33cfd3279be5f31bd00387d2d4db",
+  "doctor_healthy_for_ghidra": true,
+  "doctor_scope_checks": [
+    {
+      "name": "node",
+      "ok": true,
+      "classification": "healthy",
+      "detail": "24.22.0",
+      "details": {
+        "runtime": "node",
+        "version": "24.22.0"
+      }
+    },
+    {
+      "name": "ghidra",
+      "ok": true,
+      "classification": "healthy",
+      "detail": "/opt/ghidra_12.1.4_PUBLIC"
+    },
+    {
+      "name": "ghidra-platform",
+      "ok": true,
+      "classification": "healthy",
+      "detail": "linux"
+    },
+    {
+      "name": "ghidra-architecture",
+      "ok": true,
+      "classification": "healthy",
+      "detail": "x64"
+    },
+    {
+      "name": "ghidra-installation",
+      "ok": true,
+      "classification": "healthy",
+      "detail": "/opt/ghidra_12.1.4_PUBLIC/Ghidra/application.properties"
+    },
+    {
+      "name": "ghidra-version",
+      "ok": true,
+      "classification": "healthy",
+      "detail": "12.1.4"
+    },
+    {
+      "name": "ghidra-headless",
+      "ok": true,
+      "classification": "healthy",
+      "detail": "/opt/ghidra_12.1.4_PUBLIC/support/analyzeHeadless"
+    },
+    {
+      "name": "ghidra-native_decompiler",
+      "ok": true,
+      "classification": "healthy",
+      "detail": "/opt/ghidra_12.1.4_PUBLIC/Ghidra/Features/Decompiler/os/linux_x86_64/decompile reports elf x86_64, which matches linux/x64"
+    },
+    {
+      "name": "ghidra-java",
+      "ok": true,
+      "classification": "healthy",
+      "detail": "21.0.12.1; 64-bit; JDK; /usr/lib/jvm/java-21-openjdk-amd64; accepted a 64-bit full JDK 21 or newer"
+    }
+  ],
+  "target_sha256": "5d03db882c89cd3a899aebfe91a885c3789b272eead342412c9d9d7416aa67b7",
+  "production_service_identity_unchanged": true,
+  "containers_remaining": [],
+  "limits": {
+    "cpus": 2,
+    "memory_bytes": 4294967296,
+    "swap_bytes": 0,
+    "java_heap": "2G",
+    "network": "none",
+    "gpu": false,
+    "pids": 256
+  },
+  "scope": "Synthetic x86_64 ELF only; no local LLM or real ECU firmware verified"
+}

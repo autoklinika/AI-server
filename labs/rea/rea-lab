@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+lab_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+runtime_dir="${REA_LAB_DATA:-/srv/ai-data/tools/rea-lab-data}"
+image_id="$(cat "$lab_dir/image.lock")"
+[[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
+test -d "$runtime_dir/input" && test -d "$runtime_dir/output" && test -d "$runtime_dir/state"
+# No host HOME, credentials, devices, Docker socket, host PID namespace or production mounts.
+exec docker run --rm -i --init --name "rea-lab-$$" --label ai-platform.lab=rea \
+  --network none --read-only --cap-drop ALL --security-opt no-new-privileges:true \
+  --user 1000:1000 --cpus 2 --memory 4g --memory-swap 4g --pids-limit 256 \
+  --ulimit nofile=4096:4096 --shm-size 64m \
+  --tmpfs /tmp:rw,nosuid,nodev,size=1073741824,mode=1777 \
+  --mount "type=bind,src=$runtime_dir/input,dst=/input,readonly" \
+  --mount "type=bind,src=$runtime_dir/output,dst=/work" \
+  --mount "type=bind,src=$runtime_dir/state,dst=/home/node" \
+  --workdir /work "$image_id" "$@"
