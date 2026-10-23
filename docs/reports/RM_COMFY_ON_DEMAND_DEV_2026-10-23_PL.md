@@ -104,3 +104,15 @@ This probe does NOT use RM as its process controller, does NOT use
 CUDA/ROCm, and does NOT prove GPU DevicePolicy isolation. Together
 with 434/434 focused Gateway/RM/GPU regression tests this validates
 implementation groundwork only, not real ComfyUI on-demand production.
+
+## Uwaga po próbie rzeczywistego ComfyUI (23.10.2026)
+
+Rzeczywiste ComfyUI z istniejącego venv ROCm nie przeszło startu w odizolowanym
+środowisku DEV. Opcja --cpu nie zapobiega inicjalizacji komponentów HIP.
+ROCm nie akceptował ROCR_VISIBLE_DEVICES=-1 ani CUDA_VISIBLE_DEVICES=-1:
+proces zakończył się ABRT bez generowania obrazu. Testowy RM pozostał
+fail-closed, a system produkcyjny nietknięty. Ten wynik **blokuje**
+zatwierdzenie GPU on-demand i nie unieważnia jedynie testów logicznych RM.
+
+Szczegółowy raport: RM_COMFY_REAL_STARTUP_DEV_BLOCKER_2026-10-23_PL.md.
+Dowody: RM_COMFY_REAL_START_DEV_BLOCKED_2026-10-23.json.

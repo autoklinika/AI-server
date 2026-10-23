@@ -1,0 +1,56 @@
+{
+  "attempts": [
+    {
+      "at": "2026-10-23 22:31:15 CEST",
+      "attempt": 1,
+      "dev_rm_lease_use_admitted": false,
+      "failed_result_sha256": "7d6d3c01b57f42a2a0d3bf04a1c7ad517c2988df50d672529cf6cbf7574451d4",
+      "production_service_modified": false,
+      "reason": "Python -I excludes project imports: ModuleNotFoundError comfy",
+      "result": "INCOMPLETE_FAIL_CLOSED",
+      "scope": "real ComfyUI --cpu in isolated transient systemd --user"
+    },
+    {
+      "at": "2026-10-23 22:31:57 CEST",
+      "attempt": 2,
+      "dev_rm_lease_use_admitted": false,
+      "failed_result_sha256": "7d6d3c01b57f42a2a0d3bf04a1c7ad517c2988df50d672529cf6cbf7574451d4",
+      "production_service_modified": false,
+      "reason": "ROCm rejects ROCR_VISIBLE_DEVICES=-1: HIP ABRT",
+      "result": "INCOMPLETE_FAIL_CLOSED",
+      "scope": "real ComfyUI --cpu in isolated transient systemd --user"
+    },
+    {
+      "at": "2026-10-23 22:33:45 CEST",
+      "attempt": 3,
+      "dev_rm_lease_use_admitted": false,
+      "failed_result_sha256": "7d6d3c01b57f42a2a0d3bf04a1c7ad517c2988df50d672529cf6cbf7574451d4",
+      "production_service_modified": false,
+      "reason": "ROCm rejects CUDA_VISIBLE_DEVICES=-1: HIP ABRT",
+      "result": "INCOMPLETE_FAIL_CLOSED",
+      "scope": "real ComfyUI --cpu in isolated transient systemd --user"
+    }
+  ],
+  "captured_utc": "2026-10-23T20:35:26.752687+00:00",
+  "dev_port_open": false,
+  "dev_process_running": false,
+  "dev_recovery_marker_retained": true,
+  "global_os_gpu_exclusivity": "NOT_VERIFIED",
+  "gpu_driver_reuse_safe": "NOT_VERIFIED",
+  "next_approval_gate": "separate production-Comfy maintenance isolation and trusted systemd AMD GPU proof",
+  "overall_result": "BLOCKED_REAL_COMFYUI_DEV_GPU_ACCEPTANCE",
+  "pcie_aer_sum": 0,
+  "production_comfyui_active": true,
+  "production_comfyui_mainpid": 4937,
+  "production_gateway_active": true,
+  "production_rm_recovery_required": false,
+  "production_rm_state": "IDLE",
+  "production_scheduled_jobs": 0,
+  "rtx_postflight": {
+    "pcie": "Gen3x4",
+    "state": "P8",
+    "vram_mib": 2
+  },
+  "schema": 1,
+  "scope": "DEV in-process Gateway RM and actual ComfyUI executable --cpu; NOT GPU acceptance"
+}

@@ -98,3 +98,35 @@ docs/reports/RM_COMFY_CPU_SYSTEMD_LIFECYCLE_2026-10-23.json .
 The trusted real system-manager controller has NOT been installed
 and no physical GPU ComfyUI job was dispatched. This smoke cannot
 remove the NO-GO for real GPU driver-safe release or global isolation.
+
+
+## Real ComfyUI --cpu startup attempts — DEV blocked (23 October 2026)
+
+A separately launched real ComfyUI process (using the installed ROCm PyTorch
+virtual environment, with --cpu and all custom nodes disabled) failed
+before the first permitted image task. In chronological order:
+
+1. Python -I hid the project's comfy package (ModuleNotFoundError);
+2. ROCm/HIP aborted when ROCR_VISIBLE_DEVICES=-1 was supplied;
+3. ROCm/HIP aborted when CUDA_VISIBLE_DEVICES=-1 was supplied.
+
+Importing comfy_kitchen calls torch.cuda.is_available() on this ROCm
+installation even with --cpu. Thus --cpu alone is NOT evidence that no
+device initialization occurs. Do not repeat parallel ComfyUI starts
+beside the active production AMD context.
+
+The existing DEV RM rejected the external /uses phase and retained
+its isolated recovery marker. No test port, service or process remained.
+Production ComfyUI remained PID 4937; Gateway/Ollama stayed active;
+RTX was in P8 with 2MiB VRAM and Gen3x4, AER=0.
+
+**Real on-demand Comfy GPU acceptance is BLOCKED.** Two simulated/CPU-only
+contract suites and the isolated systemd CPU stub remain useful, but do
+not override this failed startup. The next real GPU test requires a
+controlled service maintenance window, a root-owned OS-managed unit,
+removal of the Gateway Requires=comfyui.service coupling with verified
+rollback, and real driver teardown evidence before new admission.
+
+Details:
+docs/reports/RM_COMFY_REAL_STARTUP_DEV_BLOCKER_2026-10-23_PL.md
+docs/reports/RM_COMFY_REAL_START_DEV_BLOCKED_2026-10-23.json
