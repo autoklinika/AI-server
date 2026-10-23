@@ -93,3 +93,23 @@ runtime. It will not install, enable, stop or restart production services.
 cutover, review the scripts, run the bounded probes with explicit operator
 authorization and collect evidence. Passing the local device filter alone
 does NOT establish global OS exclusivity or GPU_REUSE_SAFE.
+
+## Operator-run system-manager test result — 23 October 2026
+
+Two short transient **system** cgroups with DevicePolicy=closed passed
+tested GPU open allow/deny cases for AMD Radeon 890M and RTX 5060 Ti.
+No production services were installed or restarted, and both transient
+units were collected after completion.
+
+The follow-up read-only host boundary audit is still BLOCKED: NVIDIA
+nodes are world writable; platform users retain GPU device permissions;
+ComfyUI retains AMD KFD/renderD128 handles even when RM reports IDLE;
+the local direct Ollama API is reachable without going through Gateway.
+
+Details: docs/reports/RM_SYSTEM_SCOPE_GPU_ISOLATION_ACCEPTANCE_2026-10-23_PL.md
+Evidence: docs/reports/RM_SYSTEM_SCOPE_GPU_ACCESS_EVIDENCE_2026-10-23.json
+DEV module: src/ai_bridge/gateway/gpu_host_boundary_audit_dev.py
+
+This accepted system-manager **scope** test does not authorize
+N1 grants, shared RM dispatch, driver safe release, global host-wide
+device exclusivity, or a production rollout.
