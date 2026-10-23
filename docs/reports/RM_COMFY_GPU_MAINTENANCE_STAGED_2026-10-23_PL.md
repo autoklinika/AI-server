@@ -113,3 +113,23 @@ workdir ownership/mode before stopping any production service.
 
 See RM_COMFY_GPU_MAINTENANCE_FAILURE_AND_RECOVERY_2026-10-23_PL.md.
 Current real GPU ComfyUI on-demand result remains NO-GO.
+
+
+## Latest verified outcome — second operator GPU run 23:53 CEST
+
+After successful DEV permissions recovery, operator executed the next
+controlled real GPU run. The actual system-manager ComfyUI on Radeon 890M
+performed a 64×64 Flux2 VAE decode, saved a verified PNG, released the
+model and stopped the managed process. The existing single-queue DEV RM
+released its media lease only after completion. Rollback restored both
+production ComfyUI and Gateway, watchdog closed and marker absent:
+**REAL_COMFY_GPU_DEV_ONDEMAND_AND_PRODUCTION_ROLLBACK_PASS.**
+
+The original unsuccessful 23:08 run above remains preserved as a
+historical diagnostic, NOT as the current outcome. The second execution
+did not deploy anything to production.
+
+Details: RM_COMFY_GPU_REAL_ON_DEMAND_ACCEPTANCE_2026-10-23_PL.md
+Sanitized evidence: RM_COMFY_GPU_REAL_DEV_PASS_2026-10-23.json
+GPU_REUSE_SAFE, N1_SHARED_GRANTS and production cutover remain NOT_VERIFIED
+/ NOT_ADMITTED / NOT_DEPLOYED respectively.

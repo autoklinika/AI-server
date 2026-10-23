@@ -118,3 +118,27 @@ any further unresolved failure.
 
 Full incident audit:
 docs/reports/RM_COMFY_GPU_MAINTENANCE_FAILURE_AND_RECOVERY_2026-10-23_PL.md
+
+
+## Actual second operator test 23:53 CEST — one-shot GPU DEV PASS
+
+After recovery of root-created staging directories, the operator reran
+the fixed bounded maintenance script. It completed with:
+REAL_GPU_DEV_PASS_PENDING_PRODUCTION_RESTORE,
+PRODUCTION_RESTORE_PASS, MAINTENANCE_EXIT_CODE=0.
+
+Verified journald: ComfyUI loaded an existing Flux2 VAE on
+AMD Radeon 890M via PyTorch ROCm cuda:0, decoded in 0.86s, then
+stopped its system-manager transient unit. The output PNG is 64×64
+and 7922 bytes; SHA256 is recorded in
+docs/reports/RM_COMFY_GPU_REAL_DEV_PASS_2026-10-23.json.
+
+The original production ComfyUI/Gateway were automatically restored,
+their health/readiness are PASS, and both the DEV test unit and watchdog
+are inactive; no DEV recovery marker remains. The original ComfyUI
+continues running permanently because this was DEV only.
+
+No production rollout; this one-shot does not certify AMDGPU/KFD/MES
+E_safe, global GPU device node exclusivity, handling of forced crashes
+during GPU work or concurrent N1/SHARED grants. Future production
+cutover requires a separate explicit authorization.

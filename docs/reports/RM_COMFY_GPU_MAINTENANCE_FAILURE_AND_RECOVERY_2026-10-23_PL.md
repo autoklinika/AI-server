@@ -98,3 +98,19 @@ zwolnienia GPU.
 
 PRODUKCJA BEZ TRWAŁYCH ZMIAN. PR #178 Draft.
 GPU_REUSE_SAFE=NOT_VERIFIED. N1_GPU_GRANTS=NOT_ADMITTED.
+
+
+## Subsequent verified DEV test, 23:53 CEST
+
+The operator performed the restricted archive/permissions recovery
+successfully and then separately executed the next bounded --run.
+This **second** real Radeon 890M DEV cycle and production rollback
+finished with operator exit code 0. A 64×64 Flux2 VAE PNG was verified
+and systemd closed the transient engine, then the original Gateway and
+ComfyUI were restored and healthy. The original 23:08 fail-closed
+incident remains archived and was not erased from the historical report.
+
+Details and independent evidence are in
+RM_COMFY_GPU_REAL_ON_DEMAND_ACCEPTANCE_2026-10-23_PL.md
+and RM_COMFY_GPU_REAL_DEV_PASS_2026-10-23.json.
+PRODUCTION_CUTOVER=NOT_DEPLOYED and GPU_REUSE_SAFE=NOT_VERIFIED.
