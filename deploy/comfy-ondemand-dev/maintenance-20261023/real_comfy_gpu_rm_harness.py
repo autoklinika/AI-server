@@ -202,8 +202,17 @@ async def exercise():
         fixed_observation()
     except (OSError,TimeoutError):
         pass
+    # Never create workdirs as root while the ComfyUI process runs nonroot.
+    # Enforce ownership/permissions even when harness is called without runner.
+    import stat
     for folder in ("input","output","temp","user"):
-        (BASE/folder).mkdir(parents=True,exist_ok=True)
+        path=BASE/folder
+        if path.is_symlink() or not path.is_dir():
+            raise RuntimeError("DEV workdir missing or symlinked")
+        metadata=path.stat()
+        if (metadata.st_uid!=1000 or metadata.st_gid!=1000 or
+            stat.S_IMODE(metadata.st_mode)!=0o700):
+            raise RuntimeError("DEV ComfyUI user lacks owner/mode on workdir")
     ctrl=FixedSystemdController()
     report={"schema":1,"started_local":time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             "verdict":"INCOMPLETE","scope":"DEV transient system-manager real ROCm",

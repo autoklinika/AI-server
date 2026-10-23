@@ -95,3 +95,21 @@ AMDGPU/KFD/MES nadal są osobnymi etapami.
 
 **Nie wykonano wdrożenia produkcyjnego, nie zmieniono GRUB,
 sterownika, firmware, PCIe Gen3 + HA, power limit ani systemd.**
+
+
+## Actual first operator invocation at 23:08 — FAIL-CLOSED + ROLLBACK PASS
+
+The previously staged --run WAS subsequently executed by the operator.
+The test returned exit code 19 before real GPU inference because the
+root-owned DEV workdirs (input/output/temp/user, mode 0700) were
+unreadable to the harrypotter account running ComfyUI.
+Production ComfyUI and Gateway recovered, the DEV unit vanished,
+and the DEV-only recovery marker remained.
+
+A scoped operator-only archive/repair procedure is now prepared,
+but sudo --repair and the repeated real GPU --run have NOT been executed.
+The main --check/--run and GPU harness have been hardened to verify
+workdir ownership/mode before stopping any production service.
+
+See RM_COMFY_GPU_MAINTENANCE_FAILURE_AND_RECOVERY_2026-10-23_PL.md.
+Current real GPU ComfyUI on-demand result remains NO-GO.

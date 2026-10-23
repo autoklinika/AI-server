@@ -19,6 +19,27 @@ flock -n 9 || { echo "BLOCKED: concurrent GPU maintenance"; exit 12; }
 test -f "$HARNESS" && test -f "$ROLLBACK"
 test ! -e "$BASE/dev-residency.blocked"
 test ! -e "$BASE/real-comfy-gpu-result.json"
+# Readable and writable from the exact nonroot account BEFORE service outage.
+# Root with umask 077 previously created these as root:root mode 0700.
+for folder in input output temp user; do
+  work="$BASE/$folder"
+  if [[ -L "$work" || ! -d "$work" ]]; then
+    echo "DEV_DIRECTORY_NOT_PREPARED=$work";exit 33
+  fi
+  if [[ "$(stat -c %U:%G:%a "$work")" != "harrypotter:harrypotter:700" ]]; then
+    echo "DEV_DIRECTORY_OWNER_MODE_INVALID=$work";exit 34
+  fi
+  if [[ "$MODE" == "--run" ]]; then
+    runuser -u harrypotter -- test -r "$work" -a -w "$work" -a -x "$work" || {
+      echo "DEV_COMFY_USER_DIRECTORY_ACCESS_DENIED=$work";exit 35;
+    }
+  else
+    test -r "$work" -a -w "$work" -a -x "$work" || {
+      echo "DEV_DIRECTORY_ACCESS_CHECK_DENIED=$work";exit 36;
+    }
+  fi
+done
+echo "DEV_COMFY_UID_DIRECTORY_RW_PASS"
 test "$(systemctl is-active ai-egpu-gen3-ha.service)" == active
 test "$(systemctl is-active ai-gateway.service)" == active
 test "$(systemctl is-active comfyui.service)" == active

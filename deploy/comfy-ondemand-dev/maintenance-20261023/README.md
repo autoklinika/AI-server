@@ -68,3 +68,53 @@ Preserve NO-GO for GPU_REUSE_SAFE, SHARED/N1 grants and production cutover.
 
 Logs (after executing --run): original unit snapshots in backup/,
 real-gpu-dev.log, real-comfy-gpu-result.json, rollback.log and watchdog-setup.log.
+
+
+## 2026-10-23: first operator run FAILED; original production RESTORED
+
+The first real operator --run produced:
+
+- MAINTENANCE_PREFLIGHT_PASS_RM_AND_PHYSICAL_GPU
+- ROLLBACK_WATCHDOG_ARMED
+- GPU_OWNER_FREE_WINDOW_PASS
+- REAL_COMFY_DEV_FAIL_CLOSED RuntimeError
+- PRODUCTION_RESTORE_PASS (MAINTENANCE_EXIT_CODE=19)
+
+Systemd journal revealed the exact cause: ComfyUI user harrypotter
+could not read its own --user-directory. The original harness ran under
+sudo + umask 077 and created input/output/temp/user as root:root mode 0700,
+inaccessible to the isolated nonroot ComfyUI unit.
+
+The original production Gateway and ComfyUI were automatically restored.
+The DEV process/watchdog no longer exist; the original negative result,
+root-owned log and DEV recovery marker are preserved. Do not classify
+this failed run as an AMD GPU or RM scheduler fault.
+
+**Two-stage operator procedure (NOT executed by the assistant):**
+
+1. sudo bash /srv/ai-data/staging/comfy-ondemand-maintenance-dev-20261023/recover-after-failure-dev.sh --repair
+
+   This fixed, root-only audit verifies the precise current-boot
+   systemd error, production health, GPU holders and saved fail-closed
+   result. It changes only the four DEV input/output/temp/user directories
+   to owner harrypotter:harrypotter mode 0700; tests real nonroot access;
+   archives the negative evidence SHA256 and moves the *DEV-only* marker.
+   No systemd stop/start or production permissions are changed.
+
+2. bash /srv/ai-data/staging/comfy-ondemand-maintenance-dev-20261023/run-maintenance-dev.sh --check
+
+   This is a read-only prerequisite. The test will REFUSE to stop
+   production services unless all four DEV directories are correctly
+   owned and writable by harrypotter.
+
+Only after PASS and a separate operator decision, run the original
+--run maintenance command. It temporarily interrupts Gateway/Hermes
+and production ComfyUI and uses the same bounded rollback watchdog.
+
+The AMD GPU driver-safe handoff, global process-device exclusivity and
+real GPU on-demand acceptance remain NOT VERIFIED until the actual
+new test passes. Preserve the operator-only fail-closed marker on
+any further unresolved failure.
+
+Full incident audit:
+docs/reports/RM_COMFY_GPU_MAINTENANCE_FAILURE_AND_RECOVERY_2026-10-23_PL.md
