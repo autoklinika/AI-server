@@ -85,3 +85,16 @@ scheduler, Docker coordinator or new root daemon is introduced.
 No production service has been stopped, restarted, reconfigured or masked.
 Do not manually stop the current comfyui.service while Gateway still
 Requires it. Legacy Ollama/ComfyUI scheduling remains unchanged.
+
+## CPU-only real process smoke (not GPU)
+
+An isolated fake ComfyUI served local HTTP on 127.0.0.1:11657 under
+a temporary **user** systemd unit with a 96MiB cgroup RAM limit.
+Start -> readiness -> dummy prompt -> free -> stop returned PASS,
+with actual PID/cgroup identity and no remaining port/process.
+Evidence is archived in
+docs/reports/RM_COMFY_CPU_SYSTEMD_LIFECYCLE_2026-10-23.json .
+
+The trusted real system-manager controller has NOT been installed
+and no physical GPU ComfyUI job was dispatched. This smoke cannot
+remove the NO-GO for real GPU driver-safe release or global isolation.

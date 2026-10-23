@@ -88,3 +88,19 @@ W istniejącym Gateway / RM:
 
 **NO PROD CUTOVER.** Nie zmieniano systemd, GRUB, sterownika,
 PCIe Gen3+HA, GPU power, Gateway, Ollama, ComfyUI ani Hermesa w produkcji.
+
+## Additional real CPU systemd lifecycle proof
+
+A deliberately GPU-free fake ComfyUI HTTP endpoint ran in a bounded
+temporary **user** systemd unit (not production, not the trusted system
+manager) with MemoryMax=96M, Restart=no and a 45s maximum duration.
+The probe verified real PID/cgroup/InvocationID, handled dummy /queue,
+CPU-only /prompt and /free, then stopped the precise transient unit.
+After stop, MainPID=0, service inactive, PID absent and the port closed:
+**USER_SYSTEMD_CPU_ONLY_START_PROMPT_FREE_STOP_PASS**.
+
+Machine evidence: RM_COMFY_CPU_SYSTEMD_LIFECYCLE_2026-10-23.json.
+This probe does NOT use RM as its process controller, does NOT use
+CUDA/ROCm, and does NOT prove GPU DevicePolicy isolation. Together
+with 434/434 focused Gateway/RM/GPU regression tests this validates
+implementation groundwork only, not real ComfyUI on-demand production.
