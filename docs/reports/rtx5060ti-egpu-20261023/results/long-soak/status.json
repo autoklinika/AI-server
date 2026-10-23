@@ -1,0 +1,9 @@
+{
+  "completed_ops": 432577,
+  "reason": null,
+  "run_dir": "/srv/ai-data/staging/egpu-gen3-ha-stability-20261023/long-soak-20261023T151659Z",
+  "sample_count": 7621,
+  "sustain_compute_s": 7200.001,
+  "utc": "2026-10-23T17:24:06.269237+00:00",
+  "verdict": "PASS"
+}

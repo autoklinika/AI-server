@@ -1,0 +1,15 @@
+[Unit]
+Description=One-attempt eGPU PCIe Gen3 and HA boot gate
+After=local-fs.target systemd-udev-trigger.service
+Before=nvidia-powerd.service nvidia-persistenced.service ollama.service comfyui.service ai-gateway.service ai-platform-radio.service gpu-manager.service ollama-preload.service ai-bridge.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/python3 -B /usr/local/libexec/ai-egpu-gen3-ha/ai_egpu_boot.py apply
+ExecStopPost=/usr/bin/rm -f /run/ai-egpu-gen3-ha/ready.json
+TimeoutStartSec=75
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

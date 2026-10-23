@@ -1,0 +1,14 @@
+{"boot_id": "d05627f7-8703-40d8-bc36-971578675050", "event": "PREFLIGHT_PASS", "isolated_port": 11931, "model": "qwen3:0.6b", "model_dir": "/srv/ai-data/staging/egpu-ollama-ai-smoke-20261023/models", "utc": "2026-10-23T10:20:48.764979+00:00"}
+{"boot_id": "d05627f7-8703-40d8-bc36-971578675050", "event": "SERVER_LAUNCH", "utc": "2026-10-23T10:20:48.766238+00:00"}
+{"boot_id": "d05627f7-8703-40d8-bc36-971578675050", "event": "SERVER_READY", "utc": "2026-10-23T10:20:53.188822+00:00", "version": {"version": "0.40.7"}}
+{"boot_id": "d05627f7-8703-40d8-bc36-971578675050", "event": "MODEL_PULL_BEGIN", "model": "qwen3:0.6b", "utc": "2026-10-23T10:20:53.229173+00:00"}
+{"boot_id": "d05627f7-8703-40d8-bc36-971578675050", "event": "MODEL_PULL_PASS", "model": "qwen3:0.6b", "utc": "2026-10-23T10:21:02.499976+00:00"}
+{"boot_id": "d05627f7-8703-40d8-bc36-971578675050", "event": "INFERENCE_BEGIN", "prompt": "Ile wynosi 17 + 25? Odpowiedz tylko liczb\u0105.", "utc": "2026-10-23T10:21:02.541970+00:00"}
+{"boot_id": "d05627f7-8703-40d8-bc36-971578675050", "done": true, "eval_count": 11, "eval_duration": 4891189000, "event": "INFERENCE_RETURN", "prompt_eval_count": 37, "response": "17 + 25 = 42", "utc": "2026-10-23T10:21:39.203757+00:00"}
+{"boot_id": "d05627f7-8703-40d8-bc36-971578675050", "event": "GPU_OFFLOAD_PASS", "size_total": 574934220, "size_vram": 574934220, "utc": "2026-10-23T10:21:39.244164+00:00"}
+{"answer": "17 + 25 = 42", "boot_id": "d05627f7-8703-40d8-bc36-971578675050", "eval_tokens": 11, "event": "MODEL_INFERENCE_PASS", "journal": "/srv/ai-data/staging/egpu-ollama-ai-smoke-20261023/attempt.jsonl", "model": "qwen3:0.6b", "model_size_bytes": 574934220, "status": "PASS", "utc": "2026-10-23T10:21:39.245536+00:00", "vram_bytes": 574934220}
+{"boot_id": "d05627f7-8703-40d8-bc36-971578675050", "event": "UNLOAD_BEGIN", "utc": "2026-10-23T10:21:39.246671+00:00"}
+{"boot_id": "d05627f7-8703-40d8-bc36-971578675050", "event": "UNLOAD_REQUESTED", "utc": "2026-10-23T10:21:39.248796+00:00"}
+{"boot_id": "d05627f7-8703-40d8-bc36-971578675050", "event": "SERVER_STOP_BEGIN", "pid": 16765, "utc": "2026-10-23T10:21:39.249907+00:00"}
+{"boot_id": "d05627f7-8703-40d8-bc36-971578675050", "event": "SERVER_STOPPED", "returncode": 0, "utc": "2026-10-23T10:21:39.465727+00:00"}
+{"boot_id": "d05627f7-8703-40d8-bc36-971578675050", "event": "END", "outcome": "PASS", "utc": "2026-10-23T10:21:39.473343+00:00"}

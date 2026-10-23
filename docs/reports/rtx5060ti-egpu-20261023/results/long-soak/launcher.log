@@ -1,0 +1,9 @@
+EVENT {"utc": "2026-10-23T15:16:59.870937+00:00", "event": "PREFLIGHT_BEGIN"}
+EVENT {"utc": "2026-10-23T15:16:59.990318+00:00", "event": "PREFLIGHT_PASS", "baseline": {"temperature_c": 32.0, "power_w": 3.7, "util_pct": 0.0, "used_mib": 2.0, "free_mib": 15941.0, "total_mib": 16311.0, "pcie_gen": 3.0, "pcie_width": 4.0, "clock_sm_mhz": 180.0}}
+EVENT {"utc": "2026-10-23T15:16:59.998166+00:00", "event": "WORKER_STARTED", "pid": 19404}
+EVENT {"utc": "2026-10-23T15:17:00.030196+00:00", "event": "STAGE", "stage": "starting"}
+EVENT {"utc": "2026-10-23T15:17:01.029644+00:00", "event": "STAGE", "stage": "warmup"}
+EVENT {"utc": "2026-10-23T15:22:01.029658+00:00", "event": "STAGE", "stage": "ramp"}
+EVENT {"utc": "2026-10-23T15:24:01.034091+00:00", "event": "STAGE", "stage": "sustain"}
+EVENT {"utc": "2026-10-23T17:24:06.290237+00:00", "event": "FINAL", "verdict": "PASS", "sustain_s": 7200.001, "samples": 7621}
+FINAL PASS RESULT_DIR /srv/ai-data/staging/egpu-gen3-ha-stability-20261023/long-soak-20261023T151659Z
