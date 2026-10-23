@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass, replace
 from time import monotonic
 from .admission import WorkloadBinding, external_workload
 from .engine_lifecycle import EngineLifecycleError, lifecycle_for
+from .comfy_ondemand_dev import OnDemandComfyLifecycle
 from .vision_lifecycle import VisionLifecycleAdapter, VisionOwner, valid_image_id
 from .jobs import JobLifecycle, JobMetadata
 from .scheduler import PriorityScheduler, SchedulerTicket
@@ -266,6 +267,38 @@ class ResourceLeaseRegistry:
             await self.scheduler.release_job(rec.job_id)
             self._leases.pop(lease_id,None)
             return True
+
+    async def audit_on_demand_processes(self) -> int:
+        """DEV: inspect owned ComfyUI PID even if the client stops polling.
+
+        Never release a ticket on failed identity attestation. Do not hold
+        the lease registry lock while the OS-backed identity check runs.
+        """
+        if self.comfy_lifecycle_factory is None:
+            return 0
+        async with self._lock:
+            monitored = [
+                (lid,rec,rec.external_use_id)
+                for lid,rec in self._leases.items()
+                if (rec.external_use_id and rec.in_use==0
+                    and isinstance(rec.lifecycle,OnDemandComfyLifecycle))
+            ]
+        blocked=0
+        for lid,rec,useid in monitored:
+            try:
+                verified=await asyncio.wait_for(asyncio.to_thread(
+                    rec.lifecycle.verify_active,self.residency),timeout=4.0)
+            except Exception:
+                verified=False
+            if verified:
+                continue
+            async with self._lock:
+                current=self._leases.get(lid)
+                if (current is rec and current.external_use_id==useid
+                    and current.in_use==0 and not self.scheduler.admission_blocked):
+                    self._block()
+                    blocked+=1
+        return blocked
 
     async def reap_expired(self)->int:
         now=monotonic()

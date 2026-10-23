@@ -268,6 +268,8 @@ def create_gateway_app(
                     1.0,
                     min(10.0, resolved.gateway_external_lease_ttl_seconds / 3.0),
                 )
+                if resolved.gateway_comfy_ondemand_dev_mode:
+                    interval = min(interval, 2.0)
                 while not stop_reaper.is_set():
                     try:
                         await asyncio.wait_for(stop_reaper.wait(), timeout=interval)
@@ -278,6 +280,17 @@ def create_gateway_app(
                                 "Reaped %d expired external resource lease(s)",
                                 removed,
                             )
+                        if resolved.gateway_comfy_ondemand_dev_mode:
+                            try:
+                                broken=await resource_leases.audit_on_demand_processes()
+                                if broken:
+                                    LOGGER.error(
+                                        "DEV ComfyUI process identity lost; RM fenced %d lease(s)",
+                                        broken,
+                                    )
+                            except Exception:
+                                resource_leases._block()
+                                LOGGER.exception("DEV ComfyUI process audit failed closed")
 
             reaper_task = asyncio.create_task(lease_reaper())
             try:

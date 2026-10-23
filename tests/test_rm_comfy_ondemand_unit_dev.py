@@ -77,4 +77,5 @@ def test_legacy_gateway_service_configuration_remains_unmodified():
     assert {p.name for p in deploy.iterdir()} <= {
         "README.md","ai-rm-comfy-ondemand-dev.service",
         "maintenance-20261023",  # operator-only DEV scripts, no installed units
+        "fault-stop-dev-20261024",  # scoped, one-shot DEV negative test scripts
     }
