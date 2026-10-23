@@ -27,6 +27,7 @@ from .residency import GPUResidency, ResidencyError
 from .engine_lifecycle import EngineLifecycleError, lifecycle_for
 from .comfy_process import resume_stopped_managed_comfy
 from .scheduler import PriorityScheduler, SchedulerQueueFull, SchedulerTicket
+from .physical_ollama_routing import PhysicalOllamaRouter, GPUModelRouteRejected
 
 
 LOGGER = logging.getLogger(__name__)
@@ -157,6 +158,10 @@ def create_gateway_app(
     vision_executor=None,
 ) -> FastAPI:
     resolved = settings or get_settings()
+    physical_router = PhysicalOllamaRouter.from_json(resolved.gateway_physical_ollama_routes_json)
+    if physical_router is not None and (resolved.gateway_max_concurrency != 1 or
+                                        resolved.gateway_vision_radio_enabled):
+        raise RuntimeError("DEV physical routing requires one global RM slot and no RADIO")
     if vision_executor is None and resolved.gateway_vision_radio_enabled:
         if resolved.gateway_max_concurrency != 1:
             raise RuntimeError("RADIO requires the existing exclusive single-slot RM")
@@ -346,6 +351,16 @@ def create_gateway_app(
         body, class_priority, semantic = _consume_priority_class(body, default_priority)
         if default_source == "ventilation":
             body = _force_model(body, resolved.ventilation_model)
+        target_url, gpu_route = upstream_path, None
+        if physical_router is not None:
+            # DEV-only fail closed: do not conflate a preexisting external lease
+            # with physical GPU ownership for either isolated Ollama runtime.
+            if request.headers.get(_RESOURCE_LEASE_HEADER):
+                return JSONResponse(status_code=409, content={"error": "gpu_route_lease_not_supported"})
+            try:
+                target_url, gpu_route = physical_router.resolve(body, upstream_path)
+            except GPUModelRouteRejected:
+                return JSONResponse(status_code=422, content={"error": "model_gpu_route_denied"})
         priority = _parse_priority(request, class_priority)
         source = _parse_source(request, default_source)
         workload = http_workload(registry, upstream_path, ventilation=default_source == "ventilation")
@@ -399,7 +414,7 @@ def create_gateway_app(
                     await scheduler.mark_running(ticket.job_id, provider=upstream_provider.provider_id,
                                                  node=upstream_provider.node_id)
                 upstream = await client.request(
-                    request.method, upstream_path, content=body,
+                    request.method, target_url, content=body,
                     headers=_forward_request_headers(request),
                 )
                 if upstream.is_error:
@@ -417,10 +432,12 @@ def create_gateway_app(
                 await finish(state)
             headers = _forward_response_headers(upstream)
             headers.update(_diagnostic_headers(ticket))
+            if gpu_route is not None:
+                headers["X-AI-GPU-Route"] = gpu_route
             return Response(content=upstream.content, status_code=upstream.status_code, headers=headers)
 
         stream_context = client.stream(
-            request.method, upstream_path, content=body,
+            request.method, target_url, content=body,
             headers=_forward_request_headers(request),
         )
         try:
@@ -464,6 +481,8 @@ def create_gateway_app(
 
         headers = _forward_response_headers(upstream)
         headers.update(_diagnostic_headers(ticket))
+        if gpu_route is not None:
+            headers["X-AI-GPU-Route"] = gpu_route
         return StreamingResponse(iterator(), status_code=upstream.status_code, headers=headers)
 
     @app.get("/health")
@@ -490,6 +509,7 @@ def create_gateway_app(
             "accelerators": accelerator_state,
             "ollama": ollama,
             "scheduler": snapshot,
+            **({"physical_gpu_routing": physical_router.snapshot()} if physical_router else {}),
         }
 
     @app.get("/status")
@@ -506,6 +526,8 @@ def create_gateway_app(
         )
         snapshot["resource_leases"] = await resource_leases.snapshot()
         snapshot["registry"] = registry.snapshot()
+        if physical_router is not None:
+            snapshot["physical_gpu_routing"] = physical_router.snapshot()
         return snapshot
 
     # External Resource Manager API. It is intentionally served by the existing
