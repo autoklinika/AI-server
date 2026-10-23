@@ -4,6 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 import json
 import logging
+from urllib.parse import urlsplit
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
@@ -26,6 +27,7 @@ from .resource_leases import (
 from .residency import GPUResidency, ResidencyError
 from .engine_lifecycle import EngineLifecycleError, lifecycle_for
 from .comfy_process import resume_stopped_managed_comfy
+from .comfy_ondemand_dev import OnDemandComfyLifecycle
 from .scheduler import PriorityScheduler, SchedulerQueueFull, SchedulerTicket
 from .physical_ollama_routing import PhysicalOllamaRouter, GPUModelRouteRejected
 from .physical_gpu_budget import (
@@ -161,6 +163,7 @@ def create_gateway_app(
     knowledge_runtime_factory=None,
     vision_executor=None,
     gpu_memory_probe=None,
+    comfy_process_controller=None,
 ) -> FastAPI:
     resolved = settings or get_settings()
     physical_router = PhysicalOllamaRouter.from_json(resolved.gateway_physical_ollama_routes_json)
@@ -176,6 +179,17 @@ def create_gateway_app(
     if physical_router is not None and (resolved.gateway_max_concurrency != 1 or
                                         resolved.gateway_vision_radio_enabled):
         raise RuntimeError("DEV physical routing requires one global RM slot and no RADIO")
+    if resolved.gateway_comfy_ondemand_dev_mode:
+        target = urlsplit(resolved.gateway_comfy_url)
+        if (resolved.gateway_host != "127.0.0.1" or
+            resolved.gateway_max_concurrency != 1 or
+            resolved.gateway_vision_radio_enabled or
+            physical_router is not None or
+            target.scheme != "http" or target.hostname != "127.0.0.1" or
+            target.port in (None, 8188, 11434, 11435) or
+            target.path not in ("", "/") or target.query or target.fragment or
+            comfy_process_controller is None):
+            raise RuntimeError("on-demand ComfyUI requires isolated localhost DEV controller and single RM queue")
     if vision_executor is None and resolved.gateway_vision_radio_enabled:
         if resolved.gateway_max_concurrency != 1:
             raise RuntimeError("RADIO requires the existing exclusive single-slot RM")
@@ -203,6 +217,10 @@ def create_gateway_app(
         scheduler,
         ttl_seconds=resolved.gateway_external_lease_ttl_seconds,
         vision_executor=vision_executor,
+        comfy_lifecycle_factory=(
+            (lambda: OnDemandComfyLifecycle(comfy_process_controller))
+            if resolved.gateway_comfy_ondemand_dev_mode else None
+        ),
     )
 
     @asynccontextmanager
@@ -225,7 +243,9 @@ def create_gateway_app(
             residency = GPUResidency(client, comfy, resolved.gateway_gpu_marker,
                                      timeout=resolved.gateway_gpu_transition_timeout,
                                      idle_reserve_bytes=resolved.gateway_comfy_idle_reserve_bytes,
-                                     resume_comfy=(resume_stopped_managed_comfy if residency_transport is None else None))
+                                     resume_comfy=(resume_stopped_managed_comfy
+                                                   if residency_transport is None and
+                                                   not resolved.gateway_comfy_ondemand_dev_mode else None))
             resource_leases.residency = residency
             scheduler.admission_blocked = residency.state == "blocked"
             from ai_bridge.platform.provider import GatewayLLMAdapter

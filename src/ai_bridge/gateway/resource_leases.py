@@ -29,10 +29,11 @@ class _Lease:
     lifecycle: object | None = None
 
 class ResourceLeaseRegistry:
-    def __init__(self,scheduler:PriorityScheduler,*,ttl_seconds:float=45.0, residency=None, vision_executor=None)->None:
+    def __init__(self,scheduler:PriorityScheduler,*,ttl_seconds:float=45.0, residency=None, vision_executor=None, comfy_lifecycle_factory=None)->None:
         if ttl_seconds<=0: raise ValueError("ttl_seconds must be > 0")
         self.residency = residency
         self.vision_executor = vision_executor
+        self.comfy_lifecycle_factory = comfy_lifecycle_factory
         self.scheduler=scheduler; self.ttl_seconds=float(ttl_seconds)
         self._lock=asyncio.Lock(); self._leases={}
 
@@ -114,6 +115,8 @@ class ResourceLeaseRegistry:
                              and rec.external_use_id == owner.use_id
                              and rec.job_id == owner.job_id
                              and not self.scheduler.admission_blocked))
+            elif workload.provider == "comfyui-local" and self.comfy_lifecycle_factory is not None:
+                adapter = self.comfy_lifecycle_factory()
             else:
                 adapter = lifecycle_for(workload.provider, external=True)
             rec.lifecycle = adapter

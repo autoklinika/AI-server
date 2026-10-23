@@ -1,0 +1,30 @@
+# STAGED DEV DRAFT, NOT INSTALLED, NOT ENABLED, NOT PRODUCTION-READY
+# Requires explicit GPU OS access and service-controller authorization later.
+[Unit]
+Description=AI Platform RM DEV on-demand ComfyUI (AMD Radeon 890M)
+After=local-fs.target network-online.target
+RequiresMountsFor=/srv/ai-data/comfyui-output
+ConditionPathExists=/sys/bus/pci/devices/0000:c6:00.0
+
+[Service]
+Type=simple
+User=harrypotter
+Group=harrypotter
+WorkingDirectory=/opt/comfyui/ComfyUI
+ExecStart=/opt/comfyui/venv/bin/python /opt/comfyui/ComfyUI/main.py --listen 127.0.0.1 --port 11657 --enable-manager --models-directory /opt/comfyui/data/models --input-directory /opt/comfyui/data/input --output-directory /srv/ai-data/comfyui-output --temp-directory /opt/comfyui/data/temp --user-directory /opt/comfyui/data/user --disable-auto-launch
+Restart=no
+RuntimeMaxSec=300
+TimeoutStopSec=20
+KillMode=control-group
+NoNewPrivileges=yes
+DevicePolicy=closed
+DeviceAllow=/dev/kfd rw
+DeviceAllow=/dev/dri/renderD128 rw
+MemoryAccounting=yes
+MemoryHigh=10G
+MemoryMax=12G
+MemorySwapMax=0
+TasksMax=256
+PrivateTmp=yes
+UMask=0077
+# Intentionally NO [Install] section. Root-only install/enable not authorized.

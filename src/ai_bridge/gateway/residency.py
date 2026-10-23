@@ -162,7 +162,7 @@ class GPUResidency:
             self.state = "blocked"
             raise
 
-    async def leave_media(self):
+    async def leave_media(self, *, hold_until_service_stop: bool = False):
         if self.state != "media":
             raise ResidencyError("GPU residency requires recovery")
         try:
@@ -204,9 +204,23 @@ class GPUResidency:
                 await self._idle()
                 if (await self._json(self.ollama, "/api/ps"))["models"] != []:
                     raise ResidencyError("Ollama reloaded outside Resource Manager")
+            if not hold_until_service_stop:
+                self.marker.unlink()
+                self.state = "llm"
+            # Else state stays freeing_comfy, marker remains, and RM owns
+            # the active lease until the validated service stops.
+        except BaseException:
+            self.state = "blocked"
+            logging.getLogger(__name__).error("ComfyUI cleanup blocked: %s", self.cleanup_evidence)
+            raise
+
+    def finalize_after_service_stop(self) -> None:
+        """DEV-only: release legacy residency after independent process shutdown."""
+        if self.state != "freeing_comfy" or not self.marker.exists():
+            raise ResidencyError("not awaiting verified ComfyUI process stop")
+        try:
             self.marker.unlink()
             self.state = "llm"
         except BaseException:
             self.state = "blocked"
-            logging.getLogger(__name__).error("ComfyUI cleanup blocked: %s", self.cleanup_evidence)
             raise

@@ -70,6 +70,8 @@ class Settings(BaseSettings):
     gateway_physical_gpu_budget_json: str = ""
     # Never enable hardware routing on production without a separate OS acceptance.
     gateway_physical_gpu_dev_mode: bool = False
+    # Disabled by default. Requires a separately trusted DEV process controller.
+    gateway_comfy_ondemand_dev_mode: bool = False
 
     # External Resource Manager leases let FLUX/LTX and other non-HTTP workers
     # reserve the same admission slot as Ollama. Idle leases expire so a crashed
