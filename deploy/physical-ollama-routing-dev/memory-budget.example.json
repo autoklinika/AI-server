@@ -1,0 +1,18 @@
+{
+  "host_reserve_mib": 8192,
+  "rtx_reserve_mib": 3072,
+  "pools": {
+    "amd": {
+      "max_pool_mib": 4096,
+      "models_mib": {
+        "qwen3:0.6b": 1536
+      }
+    },
+    "rtx": {
+      "max_pool_mib": 8192,
+      "models_mib": {
+        "bge-m3:latest": 2048
+      }
+    }
+  }
+}

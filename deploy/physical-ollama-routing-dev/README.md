@@ -44,3 +44,52 @@ Production acceptance still requires trusted process/service launch identity,
 protected GPU device node access, anti-bypass checks, memory enforcement,
 recovery/rollback and separate approval. Never enable this flag in the
 production Gateway based solely on these DEV tests.
+
+
+## DEV memory and runtime containment extension (23 October 2026)
+
+Physical routing requires **three explicitly configured settings**; production
+defaults still do not enable any of them:
+
+- AI_BRIDGE_GATEWAY_PHYSICAL_GPU_DEV_MODE=true (hard fail unless localhost)
+- AI_BRIDGE_GATEWAY_PHYSICAL_OLLAMA_ROUTES_JSON=(review example.json)
+- AI_BRIDGE_GATEWAY_PHYSICAL_GPU_BUDGET_JSON=(review memory-budget.example.json)
+
+The Gateway calls the **same single PriorityScheduler** and checks the selected
+runtime's /api/ps before dispatch. Memory estimates for every exact model,
+host physical MemTotal/MemAvailable and NVIDIA-SMI VRAM total/used/free are
+checked before submission. Missing metrics, unknown resident model, too little
+physical RAM/VRAM, oversized context, CPU-offload overrides and unbounded model
+keepalive are refused without CPU fallback. This is **logical admission**;
+NVIDIA VRAM is not cgroup-memory limited. Do not assign a large AMD model based
+on Vulkan's fictitious ~111 GiB reading.
+
+Draft, **not installed**, system-manager unit profiles:
+- systemd/ai-rm-ollama-amd-dev.service — DevicePolicy closed, only
+  /dev/dri/renderD128, MemoryMax 6G, 1 model, only small DEV Qwen;
+- systemd/ai-rm-ollama-rtx-dev.service — DevicePolicy closed, only CUDA
+  /dev/nvidia devices, MemoryMax 4G (CPU-side memory only), up to 2 models.
+  Requires the verified ai-egpu-gen3-ha.service boot gate.
+
+Static systemd-analyze verify PASS. Both units have Restart=no,
+RuntimeMaxSec=360, KillMode=control-group, no Install section. The unit
+profiles are **not permitted to start automatically or on production.**
+No production model store or systemd service has been changed.
+
+**Security finding:** in an actual unprivileged user-manager transient unit,
+DevicePolicy=closed did NOT stop access to /dev/dri/renderD128
+(OPEN_SUCCEEDED). By contrast, cgroup MemoryMax=48M killed an attempted 96M
+allocation (systemd result oom-kill). An earlier host audit independently found
+that users/processes outside the RM can open a GPU device.
+Therefore root-managed/system-manager enforcement and host-wide access
+restrictions remain **NOT VERIFIED**. They cannot be inferred from static
+files, process exit, an empty GPU owner list, or a successful DEV inference.
+
+An operator-only, unexecuted negative probe is prepared:
+run_system_scope_gpu_negative_dev.sh + os_gpu_access_probe.py. It requires
+root authorization and uses transient system-manager units with bounded
+runtime. It will not install, enable, stop or restart production services.
+**Do not run from ChatGPT unattended.** Before considering any production
+cutover, review the scripts, run the bounded probes with explicit operator
+authorization and collect evidence. Passing the local device filter alone
+does NOT establish global OS exclusivity or GPU_REUSE_SAFE.

@@ -28,6 +28,10 @@ from .engine_lifecycle import EngineLifecycleError, lifecycle_for
 from .comfy_process import resume_stopped_managed_comfy
 from .scheduler import PriorityScheduler, SchedulerQueueFull, SchedulerTicket
 from .physical_ollama_routing import PhysicalOllamaRouter, GPUModelRouteRejected
+from .physical_gpu_budget import (
+    PhysicalGPUBudget, PhysicalGPUBudgetDenied, read_physical_memory,
+    validate_bounded_model_request,
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -156,9 +160,19 @@ def create_gateway_app(
     platform_policy=None,
     knowledge_runtime_factory=None,
     vision_executor=None,
+    gpu_memory_probe=None,
 ) -> FastAPI:
     resolved = settings or get_settings()
     physical_router = PhysicalOllamaRouter.from_json(resolved.gateway_physical_ollama_routes_json)
+    if physical_router is not None and (not resolved.gateway_physical_gpu_dev_mode or
+                                        resolved.gateway_host != "127.0.0.1"):
+        raise RuntimeError("physical GPU routing is blocked outside explicit localhost DEV mode")
+    if physical_router is None and resolved.gateway_physical_gpu_budget_json:
+        raise RuntimeError("GPU budget provided without physical routing")
+    physical_budget = (PhysicalGPUBudget.from_json(
+        resolved.gateway_physical_gpu_budget_json, physical_router.model_routes,
+    ) if physical_router is not None else None)
+    memory_probe = gpu_memory_probe or read_physical_memory
     if physical_router is not None and (resolved.gateway_max_concurrency != 1 or
                                         resolved.gateway_vision_radio_enabled):
         raise RuntimeError("DEV physical routing requires one global RM slot and no RADIO")
@@ -359,7 +373,8 @@ def create_gateway_app(
                 return JSONResponse(status_code=409, content={"error": "gpu_route_lease_not_supported"})
             try:
                 target_url, gpu_route = physical_router.resolve(body, upstream_path)
-            except GPUModelRouteRejected:
+                validate_bounded_model_request(body)
+            except (GPUModelRouteRejected, PhysicalGPUBudgetDenied):
                 return JSONResponse(status_code=422, content={"error": "model_gpu_route_denied"})
         priority = _parse_priority(request, class_priority)
         source = _parse_source(request, default_source)
@@ -379,6 +394,35 @@ def create_gateway_app(
                 ticket = await scheduler.acquire(priority=priority, source=source, metadata=metadata)
             except SchedulerQueueFull:
                 return await queue_full_response()
+
+        # One existing PriorityScheduler owns admission. Check actual physical
+        # RAM/VRAM only AFTER acquiring the single slot, avoiding race with
+        # another queued request. This is a DEV admission check, not an N1 grant.
+        if physical_budget is not None:
+            try:
+                inventory = await client.get(
+                    physical_router.endpoints[gpu_route] + "/api/ps", timeout=4,
+                )
+                inventory.raise_for_status()
+                data = inventory.json()
+                if (not isinstance(data, dict) or
+                    not isinstance(data.get("models"), list)):
+                    raise PhysicalGPUBudgetDenied("target resident model list unavailable")
+                loaded = set()
+                for item in data["models"]:
+                    if (not isinstance(item, dict) or
+                        not isinstance(item.get("name"), str)):
+                        raise PhysicalGPUBudgetDenied("untrusted model residency field")
+                    loaded.add(item["name"])
+                metrics = await asyncio.to_thread(memory_probe)
+                physical_budget.evaluate(gpu=gpu_route,
+                    model=json.loads(body)["model"],loaded=loaded,
+                    metrics=metrics)
+            except Exception as exc:
+                LOGGER.warning("DEV GPU budget refused job: %s", type(exc).__name__)
+                await scheduler.release(ticket, state=JobLifecycle.FAILED)
+                return JSONResponse(status_code=503,
+                    content={"error": "physical_gpu_budget_denied"})
 
         async def finish(state: JobLifecycle) -> None:
             await lifecycle_for(workload.provider).release(resource_leases.residency)
@@ -509,7 +553,8 @@ def create_gateway_app(
             "accelerators": accelerator_state,
             "ollama": ollama,
             "scheduler": snapshot,
-            **({"physical_gpu_routing": physical_router.snapshot()} if physical_router else {}),
+            **({"physical_gpu_routing": physical_router.snapshot(),
+                "physical_gpu_budget": physical_budget.snapshot()} if physical_router else {}),
         }
 
     @app.get("/status")
@@ -528,6 +573,7 @@ def create_gateway_app(
         snapshot["registry"] = registry.snapshot()
         if physical_router is not None:
             snapshot["physical_gpu_routing"] = physical_router.snapshot()
+            snapshot["physical_gpu_budget"] = physical_budget.snapshot()
         return snapshot
 
     # External Resource Manager API. It is intentionally served by the existing

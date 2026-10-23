@@ -10,6 +10,17 @@ from ai_bridge.gateway.physical_ollama_routing import (
     PhysicalOllamaRouter, GPUModelRouteRejected,
 )
 from ai_bridge.settings import Settings
+from ai_bridge.gateway.physical_gpu_budget import MemoryObservation
+
+FAKE_MEMORY = MemoryObservation(30720,24576,16311,2,15941)
+BUDGET = json.dumps({
+    "host_reserve_mib":8192,
+    "rtx_reserve_mib":3072,
+    "pools":{
+        "amd":{"max_pool_mib":4096,"models_mib":{"qwen3:0.6b":1536}},
+        "rtx":{"max_pool_mib":8192,"models_mib":{"bge-m3:latest":2048}},
+    },
+})
 
 CONFIG = json.dumps({
     "endpoints": {
@@ -29,6 +40,8 @@ def settings(tmp_path, **overrides):
         "gateway_gpu_marker": tmp_path/"isolated-gpu-state",
         "gateway_max_concurrency": 1,
         "gateway_physical_ollama_routes_json": CONFIG,
+        "gateway_physical_gpu_budget_json": BUDGET,
+        "gateway_physical_gpu_dev_mode": True,
         "gateway_vision_radio_enabled": False,
     }
     args.update(overrides)
@@ -92,13 +105,16 @@ def test_routes_exact_models_only_inside_gateway_single_scheduler(tmp_path):
     async def go():
         destinations=[]
         async def handler(request):
+            if request.url.path=="/api/ps":
+                return httpx.Response(200,json={"models":[]})
             destinations.append((request.url.host,request.url.port,request.url.path))
             if request.url.path=="/api/tags":
                 return httpx.Response(200,json={"models":[]})
             return httpx.Response(200,json={"ok":True})
         transport=httpx.MockTransport(handler)
         app=create_gateway_app(settings(tmp_path),
-             upstream_transport=transport, residency_transport=transport)
+             upstream_transport=transport, residency_transport=transport,
+            gpu_memory_probe=lambda:FAKE_MEMORY)
         async with app.router.lifespan_context(app):
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app),
@@ -137,7 +153,7 @@ def test_gateway_has_one_global_queue_across_both_physical_backends(tmp_path):
         release=asyncio.Event()
         seen=[]
         async def handler(request):
-            if request.url.path=="/api/tags":
+            if request.url.path in ("/api/tags","/api/ps"):
                 return httpx.Response(200,json={"models":[]})
             seen.append(request.url.port)
             if request.url.port==11641:
@@ -146,7 +162,8 @@ def test_gateway_has_one_global_queue_across_both_physical_backends(tmp_path):
             return httpx.Response(200,json={"ok":True})
         transport=httpx.MockTransport(handler)
         app=create_gateway_app(settings(tmp_path),
-            upstream_transport=transport,residency_transport=transport)
+            upstream_transport=transport,residency_transport=transport,
+            gpu_memory_probe=lambda:FAKE_MEMORY)
         async with app.router.lifespan_context(app):
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app),
@@ -177,8 +194,10 @@ def test_legacy_path_unchanged_when_feature_off(tmp_path):
             return httpx.Response(200,json={"ok":True})
         m=httpx.MockTransport(handler)
         app=create_gateway_app(settings(tmp_path,
-            gateway_physical_ollama_routes_json=""),
-            upstream_transport=m,residency_transport=m)
+            gateway_physical_ollama_routes_json="",
+            gateway_physical_gpu_budget_json=""),
+            upstream_transport=m,residency_transport=m,
+            gpu_memory_probe=lambda:FAKE_MEMORY)
         async with app.router.lifespan_context(app):
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app),
@@ -198,13 +217,16 @@ def test_streaming_path_uses_selected_physical_backend(tmp_path):
             async def aclose(self):
                 pass
         async def upstream(request):
+            if request.url.path=="/api/ps":
+                return httpx.Response(200,json={"models":[]})
             targets.append((request.url.port,request.url.path))
             return httpx.Response(200,
                 headers={"content-type":"application/x-ndjson"},
                 stream=Stream())
         backend=httpx.MockTransport(upstream)
         app=create_gateway_app(settings(tmp_path),
-            upstream_transport=backend,residency_transport=backend)
+            upstream_transport=backend,residency_transport=backend,
+            gpu_memory_probe=lambda:FAKE_MEMORY)
         async with app.router.lifespan_context(app):
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app),
@@ -218,3 +240,17 @@ def test_streaming_path_uses_selected_physical_backend(tmp_path):
                 state=(await client.get("/status")).json()
                 assert state["active_count"]==0
     asyncio.run(go())
+
+
+def test_hardware_routing_refused_without_explicit_dev_scope(tmp_path):
+    with pytest.raises(RuntimeError,match="DEV mode"):
+        create_gateway_app(settings(tmp_path,gateway_physical_gpu_dev_mode=False))
+    with pytest.raises(RuntimeError,match="DEV mode"):
+        create_gateway_app(settings(tmp_path,gateway_host="0.0.0.0"))
+
+def test_old_gateway_configuration_does_not_load_physical_routing(tmp_path):
+    app=create_gateway_app(settings(tmp_path,
+        gateway_physical_ollama_routes_json="",
+        gateway_physical_gpu_budget_json="",
+        gateway_physical_gpu_dev_mode=False))
+    assert app is not None
