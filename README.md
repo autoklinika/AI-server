@@ -10,6 +10,14 @@ Pierwszym obsługiwanym systemem jest Workshop Ventilation Controller. W przysz�
 
 AI Server jest warstwą analityczną i integracyjną. Nie jest elementem wymaganym do bezpiecznego sterowania wentylacją.
 
+## Aktualizacja produkcji — 24.10.2026
+
+- **BGE-M3 / Knowledge Service działa na RTX 5060 Ti przez dotychczasowy Gateway/Resource Manager.** Migracja produkcyjna oraz odczyt po wdrożeniu: **PASS** (1024D, fizyczna inferencja CUDA, 816 MiB podczas testu; wektor direct RTX = wektor przez RM).
+- Oddzielna Ollama RTX `127.0.0.1:11436`; pierwotna Ollama `:11434` nadal obsługuje Qwen i dotychczasowy tor Radeon. ComfyUI i Vision RADIO bez zmian. Jeden istniejący scheduler/kolejka RM.
+- **GLiNER nie został wybrany do produkcji.** Modele GLiNER i Whisper pozostają modelami testowymi; brak produkcyjnego lekkiego routera. Benchmark routerów na RTX to osobna przyszła decyzja.
+- Granice: `GPU_REUSE_SAFE=NOT_VERIFIED`; fizyczne N1 multi-GPU `NOT_ADMITTED`; nie wykonano osobnego nowego RAG end-to-end po cutover ani produkcyjnego rollbacku.
+- [Raport wdrożenia RTX BGE-M3](docs/reports/RTX_BGE_M3_PRODUCTION_ACCEPTANCE_2026-10-24_PL.md) · [Runbook i rollback](docs/runbooks/RTX_BGE_M3_OPERATIONS_2026-10-24_PL.md). Kod tras jest obecnie na hoście w osobnym overlay; `main` nie zawiera jeszcze tej poprawki runtime.
+
 ## Stan produkcji — 20.10.2026
 
 - Jeden produkcyjny Gateway, jeden Resource Manager i jedna kolejka; cztery stany zasobu.
