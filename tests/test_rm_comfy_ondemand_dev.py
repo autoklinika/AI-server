@@ -1,5 +1,6 @@
 """CPU-only integration of leased ComfyUI start/free/stop with existing RM."""
 import asyncio
+import json
 from pathlib import Path
 
 import httpx
@@ -51,11 +52,20 @@ class MockServices:
         self.cleanup_failed=False
         self.reserved=0
         self.queued=False
+        self.ollama_resident=[]
+        self.fail_ollama_unload=False
 
     def ollama(self, request):
         self.events.append(("ollama",request.url.path))
         if request.url.path=="/api/ps":
-            return httpx.Response(200,json={"models":[]})
+            return httpx.Response(200,json={"models":[{"name":name} for name in self.ollama_resident]})
+        if request.url.path=="/api/generate":
+            if self.fail_ollama_unload:
+                return httpx.Response(503,json={"error":"DEV injected unload refused"})
+            data=json.loads(request.content)
+            assert data["keep_alive"] == 0 and data["stream"] is False
+            self.ollama_resident.remove(data["model"])
+            return httpx.Response(200,json={"done":True})
         if request.url.path=="/api/tags":
             return httpx.Response(200,json={"models":[]})
         return httpx.Response(200,json={"done":True})
@@ -268,4 +278,73 @@ def test_token_must_be_unchanged_during_lease(tmp_path):
                 status=(await client.get("/status")).json()
                 assert status["gpu_residency"]["recovery_required"] is True
                 assert status["active_count"]==1
+    asyncio.run(run())
+
+
+def test_realistic_qwen_resident_is_drained_before_managed_comfy_start(tmp_path):
+    """CPU/mock lifecycle catches any future regression in GPU handoff order."""
+    async def run():
+        ctl,svc,server=instance(tmp_path, gateway_gpu_transition_timeout=1.5)
+        svc.ollama_resident=["qwen3.6:35b-hermes64k"]
+        original_start=ctl.start
+        async def checked_start():
+            assert svc.ollama_resident==[], "ComfyUI would overlap resident Qwen"
+            assert ("ollama","/api/generate") in svc.events
+            assert ctl.residency.marker.exists(), "must fence before unloading"
+            return await original_start()
+        ctl.start=checked_start
+
+        async with server.router.lifespan_context(server):
+            ctl.residency=server.state.resource_leases.residency
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=server),
+                base_url="http://gateway",
+            ) as client:
+                lease=(await client.post("/resource/leases",json={
+                    "workload":"media-image","source":"telegram-foto"})).json()
+                base=f"/resource/leases/{lease['lease_id']}"
+                started=await client.post(base+"/uses",json={
+                    "provider":"comfyui-local","capability":"image-generation"})
+                assert started.status_code==201,started.text
+                assert ctl.events==["start"]
+                assert not svc.ollama_resident
+                assert ctl.residency.state=="media"
+                assert ctl.residency.marker.exists()
+                use=started.json()["use_id"]
+                stopped=await client.delete(base+"/uses/"+use)
+                assert stopped.status_code==200,stopped.text
+                assert ctl.events==["start","stop"]
+                assert ctl.residency.state=="llm"
+                assert not ctl.residency.marker.exists()
+                assert (await client.delete(base)).json()["released"] is True
+    asyncio.run(run())
+
+
+def test_qwen_unload_failure_blocks_comfy_start_and_preserves_recovery(tmp_path):
+    """Unloading errors cannot start ComfyUI or release the global lease."""
+    async def run():
+        ctl,svc,server=instance(tmp_path)
+        svc.ollama_resident=["qwen3.6:35b-hermes64k"]
+        svc.fail_ollama_unload=True
+        async with server.router.lifespan_context(server):
+            ctl.residency=server.state.resource_leases.residency
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=server),
+                base_url="http://gateway",
+            ) as client:
+                lease=(await client.post("/resource/leases",json={
+                    "workload":"media-image","source":"telegram-foto"})).json()
+                base=f"/resource/leases/{lease['lease_id']}"
+                refused=await client.post(base+"/uses",json={
+                    "provider":"comfyui-local","capability":"image-generation"})
+                assert refused.status_code==503,refused.text
+                assert ctl.events==[] and not ctl.active
+                assert ctl.residency.state=="blocked"
+                assert ctl.residency.marker.exists()
+                assert svc.ollama_resident
+                assert (await client.delete(base)).json()["released"] is True
+                status=(await client.get("/status")).json()
+                assert status["admission_blocked"] is True
+                assert status["active_count"]==1
+                assert status["gpu_residency"]["recovery_required"] is True
     asyncio.run(run())

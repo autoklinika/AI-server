@@ -58,6 +58,9 @@ class OnDemandComfyLifecycle:
         try:
             # A durable recovery marker must precede opening any GPU device.
             residency._dirty()
+            # Ollama/Qwen must be unloaded BEFORE managed ComfyUI opens KFD.
+            # The lease and recovery fence remain held throughout both phases.
+            await residency.drain_ollama_before_managed_comfy_start()
             identity=await self.controller.start()
             if not isinstance(identity,ServiceIdentity):
                 raise OnDemandComfyError("invalid managed service identity")

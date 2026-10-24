@@ -134,6 +134,41 @@ class GPUResidency:
             and evidence.get("queue_running") == 0
             and evidence.get("queue_pending") == 0)
 
+    async def _drain_ollama_models(self) -> None:
+        while True:
+            models = (await self._json(self.ollama, "/api/ps"))["models"]
+            if not isinstance(models, list) or any(
+                not isinstance(model, dict)
+                or not isinstance(model.get("name"), str)
+                or not model["name"]
+                for model in models
+            ):
+                raise ResidencyError("invalid Ollama inventory")
+            if not models:
+                return
+            for model in models:
+                response = await self.ollama.post("/api/generate", json={
+                    "model": model["name"], "keep_alive": 0, "stream": False})
+                response.raise_for_status()
+            await asyncio.sleep(self.poll)
+
+    async def drain_ollama_before_managed_comfy_start(self) -> None:
+        """Prevent loading a managed ComfyUI process while Ollama is resident.
+
+        Caller must already own the single RM lease and have made the
+        durable recovery marker dirty. This does not certify driver reuse.
+        """
+        if self.state != "llm" or not self.marker.is_file():
+            raise ResidencyError("managed ComfyUI pre-start drain requires RM fence")
+        try:
+            self.state = "draining_ollama"
+            async with asyncio.timeout(self.timeout):
+                await self._drain_ollama_models()
+            self.state = "llm"
+        except BaseException:
+            self.state = "blocked"
+            raise
+
     async def enter_media(self):
         if self.state != "llm":
             raise ResidencyError("GPU residency requires recovery")
@@ -144,17 +179,9 @@ class GPUResidency:
             self.state = "draining_ollama"
             async with asyncio.timeout(self.timeout):
                 await self._idle()
-                while True:
-                    models = (await self._json(self.ollama, "/api/ps"))["models"]
-                    if not isinstance(models, list):
-                        raise ResidencyError("invalid Ollama inventory")
-                    if not models:
-                        break
-                    for model in models:
-                        response = await self.ollama.post("/api/generate", json={
-                            "model": model["name"], "keep_alive": 0, "stream": False})
-                        response.raise_for_status()
-                    await asyncio.sleep(self.poll)
+                # Recheck residency after process start: a concurrent bypass
+                # must never silently be accepted as a valid transition.
+                await self._drain_ollama_models()
                 if not await self._comfy_models_idle():
                     raise ResidencyError("unexpected ComfyUI residency before media")
             self.state = "media"

@@ -100,4 +100,14 @@ To są bramki do zaadresowania małymi zmianami w kodzie DEV, nie przesłanki do
 - **Snapshot NIE JEST runnerem dopuszczonym do uruchomienia.** Nadal trzeba przygotować bezwzględne przechwytywanie wszystkich wiadomości/outbox Hermesa, jawny sandbox procesu, połączenie z prawdziwym RM/Qwen oraz niezależny watchdog dla operator-only full-chain window. Nie uruchamiać izolowanych workerów bez tych zabezpieczeń.
 - Nie zmieniono portów produkcji, ani nie wykonywano nowego zadania GPU.
 
+## H. Naprawa kolejności Qwen → ComfyUI przed testem GPU (DEV)
+
+Audyt zidentyfikował błąd kolejności: wcześniejszy OnDemandComfyLifecycle najpierw startował proces ComfyUI, a dopiero potem GPUResidency.enter_media czyścił rezydentne modele Ollama. Przy rezydentnym Qwen na AMD mogłoby dojść do przejściowego współdzielenia urządzenia.
+
+- W trybie on-demand najpierw zapisujemy trwały recovery marker, a następnie wyładowujemy modele Ollamy, odpytując /api/ps aż do pustej listy. **Dopiero po tym** kontroler może wystartować ComfyUI. Rezerwacja RM pozostaje aktywna cały czas.
+- Po starcie następuje ponowne sprawdzenie i ewentualne wyładowanie nowej rezydencji, a następnie walidacja stanu ComfyUI.
+- Błąd lub timeout wyładowania oznacza fail-closed: **brak startu ComfyUI, RM zablokowany, recovery marker zachowany**.
+- Test CPU z realnie zasymulowanym rezydentnym Qwen wymaga pustej Ollamy **już w callbacku controller.start**. Osobny test wstrzykuje HTTP 503 na wyładowaniu i weryfikuje brak startu oraz zachowanie globalnej blokady.
+- **Nie jest to potwierdzenie fizycznej izolacji ani GPU_REUSE_SAFE.** Zewnętrzny bypass do urządzeń wciąż pozostaje do wyeliminowania przed produkcją.
+
 Nigdy nie traktować zielonego CI, testu CPU, ani realnego VAE jako potwierdzenia pełnego FLUX2 i bezpieczeństwa sterownika.
