@@ -250,7 +250,12 @@ async def test_media_cannot_start_while_compiler_http_call_is_in_flight(tmp_path
 async def test_empty_torch_allocator_is_not_proof_of_comfy_unload(tmp_path, pending, loaded):
     providers = Providers()
     gpu, scheduler, leases = setup(tmp_path, providers)
+    # This test verifies cleanup timeout, not startup time. Give startup
+    # enough CI scheduling margin, then restore the short failing cleanup
+    # deadline without changing production behavior.
+    gpu.timeout = 1.0
     await gpu.enter_media()
+    gpu.timeout = .05
     providers.loaded_models, providers.cleanup_pending = loaded, pending
     with pytest.raises(TimeoutError):
         await gpu.leave_media()

@@ -156,3 +156,6 @@ GitHub Actions run #808 po commicie 0f8fd36 zakończył się **failure** (3 niep
 Lokalne testy ukierunkowane po poprawce (26 PASS). Zaliczenie Gate A dla najnowszego commita wymaga nowego **GitHub CI SUCCESS** oraz pełnych release builds, nie wolno polegać na wcześniejszym #807.
 
 **Aktualny Gate B/C: BLOCKED — brak realnej inferencji Qwen i FLUX2 oraz bezpiecznego zatwierdzonego okna GPU.**
+
+
+Uzupełnienie po CI #809 (commit f6dcded): wszystkie nowe testy fullchain i guard przeszły, ale jeden starszy test test_empty_torch_allocator_is_not_proof_of_comfy_unload[False-1] przekroczył 50 ms podczas **poprawnego wejścia** w stan media na obciążonym runnerze. Poprawiono wyłącznie test: przed enter_media stosuje limit 1,0 s, a przed oczekiwanym błędem cleanup ponownie 0,05 s. Obie odmiany testu lokalnie PASS. Wymagana ponowna pełna weryfikacja GitHub CI.
