@@ -36,6 +36,7 @@ def test_snapshot_transforms_only_staging_ports_and_output():
             assert str(module.TARGET / "input") in staged
         if rel not in module.PORT_GATEWAY_FILES + module.GENERATORS + (
             "tools/local_image/hermes_foto_dispatch.py",
+            "tools/local_image/hermes_foto_dispatch_global.py",
         ):
             assert original == staged
 
@@ -65,7 +66,7 @@ def test_original_sources_remain_production_pinned():
 
 
 def test_staging_root_and_flags_are_fixed():
-    assert str(module.TARGET) == "/srv/ai-data/staging/comfy-fullchain-dev-20261024-captured"
+    assert str(module.TARGET) == "/srv/ai-data/staging/comfy-fullchain-dev-20261024-guarded"
     assert "generator" not in module.SOURCE_FILES
 
 

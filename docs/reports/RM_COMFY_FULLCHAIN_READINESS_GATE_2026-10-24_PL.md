@@ -95,11 +95,13 @@ To są bramki do zaadresowania małymi zmianami w kodzie DEV, nie przesłanki do
 - Narzędzie: tools/local_image/prepare_comfy_fullchain_isolated_dev.py (--check / --prepare).
 - Na serwerze wykonano --check oraz --prepare: DEV_SNAPSHOT_SOURCE_STATIC_PASS i DEV_SNAPSHOT_PREPARED_NO_EXECUTION.
 - Początkowy snapshot DEV bez przechwytywania dostarczania znajduje się w /srv/ai-data/staging/comfy-fullchain-dev-20261024; **nie uruchamiać tej wersji**.
-- Wersja poprawiona: /srv/ai-data/staging/comfy-fullchain-dev-20261024-captured; manifest SHA256 obejmuje źródła i odizolowane kopie. Pliki produkcyjne pozostały niezmienione.
-- Klient RM/Qwen/media admission kopii wskazuje 127.0.0.1:11656; generatory kopii wskazują 127.0.0.1:11657, lokalne input/output i 256×256 w domyślnym text-to-image. Kompilacja źródeł PASS.
-- Kopie _send i _notify zostały podmienione na lokalny zapis JSONL: wyłącznie target telegram:DEV_UNROUTABLE_NO_SEND; każdy inny odbiorca jest odrzucany. Nie jest wywoływane realne polecenie hermes send.
-- Testy static/CPU przekierowania i lokalnego capture: 7/7 PASS, w tym testy odmowy prawdziwego odbiorcy oraz przechwycenia komunikatu.
-- **Snapshot NIE JEST jeszcze runnerem dopuszczonym do uruchomienia.** Nadal trzeba przygotować jawny sandbox procesu, połączenie z prawdziwym RM/Qwen i ComfyUI oraz niezależny watchdog dla operator-only full-chain window. Nie uruchamiać izolowanych workerów bez tych zabezpieczeń.
+- Historyczny snapshot z capture: /srv/ai-data/staging/comfy-fullchain-dev-20261024-captured; **nie uruchamiać go** — pierwotne ścieżki fallback/lock nie były jeszcze całkowicie odseparowane.
+- Aktualny snapshot: /srv/ai-data/staging/comfy-fullchain-dev-20261024-guarded. Manifest SHA256 obejmuje oryginalne pliki i kopie, a audyt porównuje również resztę pakietu ai_bridge z bieżącym worktree.
+- Klient RM/Qwen/media admission wskazuje 127.0.0.1:11656, generatory 127.0.0.1:11657; output/input/jobs/lock/Hermes inbound mieszczą się wyłącznie w staging. Domyślne text-to-image 256×256.
+- Kopie _send i _notify zapisują komunikaty wyłącznie do JSONL i wymagają targetu telegram:DEV_UNROUTABLE_NO_SEND. Oryginalna binarka CLI Hermesa jest dodatkowo wyłączona w snapshot. Fallbacki generatora, kompilatora i pomocniczego klienta kierują na snapshot, nie do /usr/local.
+- tools/local_image/fullchain_gpu_window_preflight_dev.py --check wykonał na rzeczywistym serwerze audyt read-only: **PASS**, problems=[]; brak ingerencji w systemd/GPU.
+- Testy izolacji snapshot/HTTP/negatywne preflight wykonano w CPU-only. Wszystkie scenariusze odmowy nieautoryzowanej komunikacji oraz modyfikacji źródła i markera przeszły.
+- **To wciąż nie jest dopuszczony runner rzeczywistego GPU.** Przed live Qwen/FLUX2 trzeba odebrać limit pamięci, niezależny watchdog, bezpieczne wyładowanie Ollama podczas rollbacku i warunki sterownika. Nie uruchamiać snapshotu jako testu GPU.
 - Nie zmieniono portów produkcji, ani nie wykonywano nowego zadania GPU.
 
 ## H. Naprawa kolejności Qwen → ComfyUI przed testem GPU (DEV)
@@ -113,3 +115,27 @@ Audyt zidentyfikował błąd kolejności: wcześniejszy OnDemandComfyLifecycle n
 - **Nie jest to potwierdzenie fizycznej izolacji ani GPU_REUSE_SAFE.** Zewnętrzny bypass do urządzeń wciąż pozostaje do wyeliminowania przed produkcją.
 
 Nigdy nie traktować zielonego CI, testu CPU, ani realnego VAE jako potwierdzenia pełnego FLUX2 i bezpieczeństwa sterownika.
+
+
+## I. Nowy CPU-only HTTP E2E całego kodu /foto
+
+Plik testów: tests/test_hermes_foto_fullchain_http_isolated_dev.py.
+
+W odizolowanych katalogach tymczasowych użyto **rzeczywistego źródłowego workera /foto, kompilatora promptu, generatora obrazu uruchomionego jako oddzielny proces, klienta Resource Managera i nagłówków przydziału**. Uruchomiono rzeczywisty loopback HTTP do izolowanego Gateway na 11656 oraz API emulatora ComfyUI na 11657. Transport upstream Qwen zwrócił deterministyczną odpowiedź, a emulator ComfyUI wygenerował *syntetyczny plik PNG przez CPU*, nie przez FLUX2 ani AMD. Test potwierdził, że po poprawnej sekwencji RM wrócił do IDLE, aktywnych/oczekujących zadań było zero, marker nie pozostał, a komunikat został zapisany wyłącznie w lokalnym capture.
+
+Negatywny scenariusz nieprawidłowego JSON Qwen odmówił dalszej generacji, nie uruchomił kontrolera ComfyUI, zwolnił rezerwację i zachował wyłącznie lokalny komunikat błędu. Potwierdzono również prawidłowe usunięcie nagłówka autoryzacji RM przed upstream Ollama — nie jest to błąd routingu; kontrolę lease wykonuje Gateway.
+
+**Wynik: 2/2 PASS (w pełni CPU + mock modeli). FULLCHAIN_REAL_INFERENCE=NOT_TESTED.**
+
+## J. Osobna bramka bezpiecznego rollbacku po Qwen
+
+Wcześniejszy niezależny rollback VAE był testowany przy pustej Ollamie. Nie wolno automatycznie uznać go za bezpieczny po pełnej inferencji Qwen 35B: Qwen może pozostać rezydentny albo nadal wykonywać zadanie, gdy DEV ComfyUI już nie odpowiada.
+
+Zanim wolno uruchomić okno GPU z Qwen, rollback musi:
+1. Potwierdzić zatrzymanie DEV Gateway/worker, brak otwartego portu 11656, oraz stan exact systemd unit, PID, boot i cgroup DEV ComfyUI.
+2. Zaakceptować wyłącznie pusty inventory Ollama albo bezpiecznie i jawnie wyładować zatwierdzony model Qwen, sprawdzając ponownie /api/ps. Jakikolwiek inny rezydentny model lub timeout → fail-closed.
+3. Zweryfikować brak pozostałych deskryptorów AMD /dev/kfd i renderD128 przed przywróceniem produkcyjnego ComfyUI. Sam brak modelu w /api/ps nie jest dowodem bezpieczeństwa sterownika.
+4. Przy braku dowodów nie uruchamiać kolejnego właściciela GPU i zachować marker, watchdog oraz logi. Dalsze odzyskiwanie wymaga operatora.
+5. Dopiero po potwierdzonym bezpiecznym powrocie uruchomić oryginalne ComfyUI/Gateway, smoke-testować dostępność i zakończyć okno.
+
+**Rollback dla live-Qwen/full-FLUX2 = NOT_READY. Nie uruchamiać operator-only testu, dopóki nie zostanie przetestowana taka procedura.**

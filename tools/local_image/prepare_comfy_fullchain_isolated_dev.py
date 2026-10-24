@@ -16,7 +16,7 @@ import sys
 
 REPO = Path(__file__).resolve().parents[2]
 STAGING = Path("/srv/ai-data/staging")
-TARGET = STAGING / "comfy-fullchain-dev-20261024-captured"
+TARGET = STAGING / "comfy-fullchain-dev-20261024-guarded"
 SOURCE_FILES = (
     "tools/local_image/hermes_foto_dispatch_global.py",
     "tools/local_image/hermes_foto_dispatch.py",
@@ -52,7 +52,32 @@ def replace_function(source: str, beginning: str, following: str, stub: str) -> 
 def transform(rel: str, source: str) -> str:
     # A copied worker must be incapable of sending notifications to real chats.
     # Only the fixed non-routable DEV target can write to a local capture file.
+    if rel == "tools/local_image/hermes_foto_dispatch_global.py":
+        source = patch_one(
+            source,
+            'BASE_PROD=Path("/usr/local/libexec/ai-server/hermes_foto_dispatch_base.py");HELPER_PROD=Path("/usr/local/libexec/ai-server/hermes_resource_queue.py")',
+            f'BASE_PROD=Path("{TARGET}/tools/local_image/hermes_foto_dispatch.py");'
+            f'HELPER_PROD=Path("{TARGET}/tools/hermes_resource_queue.py")',
+        )
     if rel == "tools/local_image/hermes_foto_dispatch.py":
+        source = patch_one(
+            source, 'JOB_ROOT_DEFAULT = Path("/srv/ai-data/hermes-foto-jobs")',
+            f'JOB_ROOT_DEFAULT = Path("{TARGET}/jobs")')
+        source = patch_one(
+            source, 'TEXT_GENERATOR_DEFAULT = "/usr/local/bin/generate-image"',
+            f'TEXT_GENERATOR_DEFAULT = "{TARGET}/tools/local_image/generate_image.py"')
+        source = patch_one(
+            source, 'EDIT_GENERATOR_DEFAULT = "/usr/local/bin/generate-image-edit"',
+            f'EDIT_GENERATOR_DEFAULT = "{TARGET}/tools/local_image/generate_image_edit.py"')
+        source = patch_one(
+            source,
+            'PROMPT_COMPILER_PROD = Path("/usr/local/libexec/ai-server/hermes_foto_prompt_compiler.py")',
+            f'PROMPT_COMPILER_PROD = Path("{TARGET}/tools/local_image/hermes_foto_prompt_compiler.py")')
+        source = replace_function(
+            source, "def _hermes_bin()", "\n\ndef _input_image(",
+            'def _hermes_bin() -> str:\n'
+            '    raise FotoDispatchError("live Hermes CLI forbidden in DEV")\n',
+        )
         source = replace_function(
             source, "def _send(target:", "\n\ndef worker(",
             'def _send(target: str, message: str, *, timeout: int = 120) -> None:\n'
@@ -63,7 +88,12 @@ def transform(rel: str, source: str) -> str:
         )
     if rel == "tools/hermes_resource_queue.py":
         source = replace_function(
-            source, "def _notify(target:", "\n\ndef _notify_best_effort(",
+            source, "def _hermes_bin()", "\n\ndef _notification_platform(",
+            'def _hermes_bin() -> str:\n'
+            '    raise ResourceQueueError("live Hermes CLI forbidden in DEV")\n',
+        )
+        source = replace_function(
+            source, "def _notify(target:" , "\n\ndef _notify_best_effort(",
             'def _notify(target: str | None, message: str | None) -> None:\n'
             '    if not message or target is None:\n'
             '        return\n'
@@ -94,6 +124,12 @@ def transform(rel: str, source: str) -> str:
         source = patch_one(source,
             'COMFY_INPUT = Path("/opt/comfyui/data/input")',
             f'COMFY_INPUT = Path("{TARGET}/input")')
+        source = patch_one(source,
+            'HERMES_ROOT = Path("/srv/ai-data/hermes")',
+            f'HERMES_ROOT = Path("{TARGET}/hermes-inbound")')
+        source = patch_one(source,
+            'lock_path = "/tmp/generate-image.lock"',
+            f'lock_path = "{TARGET}/generate-image.lock"')
     if rel in PORT_GATEWAY_FILES + GENERATORS:
         for unsafe in ("127.0.0.1:11435", "127.0.0.1:8188"):
             if unsafe in source:
@@ -133,7 +169,7 @@ def prepare() -> dict:
     report = verify_source()
     TARGET.mkdir(mode=0o700, parents=False, exist_ok=False)
     os.chmod(TARGET, 0o700)
-    for dirname in ("output", "input", "temp", "user", "tools", "src"):
+    for dirname in ("output", "input", "temp", "user", "jobs", "hermes-inbound", "tools", "src"):
         d = TARGET / dirname
         d.mkdir(mode=0o700)
         os.chmod(d, 0o700)
