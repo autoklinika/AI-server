@@ -63,6 +63,15 @@ class Settings(BaseSettings):
     # Stage N0 static accelerator inventory. It is descriptive only: live
     # routing remains on the existing shared local resource pool until N1.
     gateway_accelerator_registry: AcceleratorRegistry | None = None
+    # DEV ONLY: exact-model -> two loopback Ollama runtimes with operator-verified
+    # physical device pinning. Disabled in production until security acceptance.
+    gateway_physical_ollama_routes_json: str = ""
+    # Required when DEV physical routing is enabled; reject guessed Vulkan VRAM.
+    gateway_physical_gpu_budget_json: str = ""
+    # Never enable hardware routing on production without a separate OS acceptance.
+    gateway_physical_gpu_dev_mode: bool = False
+    # Disabled by default. Requires a separately trusted DEV process controller.
+    gateway_comfy_ondemand_dev_mode: bool = False
 
     # External Resource Manager leases let FLUX/LTX and other non-HTTP workers
     # reserve the same admission slot as Ollama. Idle leases expire so a crashed

@@ -1,0 +1,38 @@
+{
+  "cases": [
+    {
+      "evidence": "PASS",
+      "expected_result": "Finished with result: oom-kill",
+      "fault": "memory_limit",
+      "log_sha256": "aa54efc8aa213b907b5db2c7fe66b046670d43d936fe1e95ae365f6114a3db9b",
+      "mainpid_after": 0,
+      "service_after": "inactive",
+      "unit": "ai-rm-cpu-mem-dev-20261024.service"
+    },
+    {
+      "evidence": "PASS",
+      "expected_result": "Finished with result: timeout",
+      "fault": "service_timeout",
+      "log_sha256": "264ff297606759c4f0afdee498c67bdb47e6c9e580d0318135f94d00da82cf5b",
+      "mainpid_after": 0,
+      "service_after": "inactive",
+      "unit": "ai-rm-cpu-timeout-dev-20261024.service"
+    },
+    {
+      "evidence": "PASS",
+      "expected_result": "code=killed, status=15/TERM",
+      "fault": "forced_termination",
+      "log_sha256": "b991bbe03cc31752c3f60b8832c9ebf761971f853d72444e1a2051389c83258c",
+      "mainpid_after": 0,
+      "service_after": "inactive",
+      "unit": "ai-rm-cpu-signal-dev-20261024.service"
+    }
+  ],
+  "gpu_driver_reuse_safe": "NOT_VERIFIED",
+  "n1_gpu_grant": "NOT_ADMITTED",
+  "production_modified": false,
+  "schema": 1,
+  "scope": "DEV_REAL_USER_SYSTEMD_CPU_ONLY; NOT_ACTUAL_AMD_GPU_CRASH",
+  "status": "THREE_REAL_CPU_ONLY_SYSTEMD_FAULTS_PASS",
+  "verified_utc": "2026-10-23T22:08:08.714524+00:00"
+}

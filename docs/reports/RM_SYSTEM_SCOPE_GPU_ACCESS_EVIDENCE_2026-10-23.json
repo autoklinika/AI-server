@@ -1,0 +1,50 @@
+{
+  "actual_readonly_findings": [
+    "ACTIVE_SERVICE_GPU_ACCESS_NOT_CGROUP_RESTRICTED",
+    "DIRECT_OLLAMA_API_REACHABLE_OUTSIDE_GATEWAY",
+    "GPU_FILE_DESCRIPTORS_OBSERVED",
+    "WORLD_WRITABLE_GPU_DEVICE"
+  ],
+  "captured_utc": "2026-10-23T19:43:12.721050+00:00",
+  "direct_ollama_api_observation": "REACHABLE_DIRECT",
+  "global_audit_decision": "BLOCKED",
+  "global_exclusivity": "NOT_VERIFIED",
+  "gpu_reuse_safe": "NOT_VERIFIED",
+  "n1_gpu_grant": "NOT_ADMITTED",
+  "operator_scoped_unit_results": {
+    "amd": {
+      "permissions_allow_confirmed": [
+        "/dev/dri/renderD128"
+      ],
+      "permissions_deny_confirmed": [
+        "/dev/dri/renderD129",
+        "/dev/nvidia0",
+        "/dev/kfd"
+      ],
+      "raw_log_sha256": "93c85adfcf8d6eed535ae6038a3a3adaa63e5a064978e7d6d61c90263fa4b44c",
+      "result": "PASS",
+      "scope": "one transient system-manager unit, bounded one-time invocation",
+      "unit": "ai-rm-dev-amd-probe-20261023.service"
+    },
+    "rtx": {
+      "permissions_allow_confirmed": [
+        "/dev/nvidia0",
+        "/dev/nvidiactl"
+      ],
+      "permissions_deny_confirmed": [
+        "/dev/dri/renderD128",
+        "/dev/kfd"
+      ],
+      "raw_log_sha256": "054cc6581b6248d1e551d942b59a4d6734a862c39d037117dc0e4e20412234a7",
+      "result": "PASS",
+      "scope": "one transient system-manager unit, bounded one-time invocation",
+      "unit": "ai-rm-dev-rtx-probe-20261023.service"
+    }
+  },
+  "schema": 1,
+  "scope_note": "Passing transient systemd units does not establish host-wide access denial, full model execution in cgroups, or driver cleanup safety.",
+  "test_result": "SYSTEM_SCOPE_ALLOW_DENY_PASS_2_OF_2",
+  "visible_gpu_holder_cgroups": [
+    "/system.slice/comfyui.service"
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "gpu_reuse_safe": "NOT_VERIFIED",
+  "n1_shared_gpu_grant": "NOT_ADMITTED",
+  "observed_utc": "2026-10-24T05:58:26.060147+00:00",
+  "operator_stdout": "DEV_EXPECTED_STOP_FAILURE_PENDING_ROLLBACK; PRODUCTION_RESTORE_PASS; MAINTENANCE_EXIT_CODE=0",
+  "outcome": {
+    "VAE_decode_seconds": 0.66,
+    "dev_failure_marker_retained": true,
+    "dev_negative_result_file_retained": true,
+    "dev_unit_stopped_by_bounded_rollback": true,
+    "genuine_gpu_backend": "PyTorch ROCm cuda:0 AMD Radeon 890M Graphics",
+    "new_gpu_kernel_errors_in_checked_window": "NONE_OBSERVED",
+    "nvidia_postflight": {
+      "link": "Gen3x4",
+      "memory_mib": 2,
+      "pstate": "P8"
+    },
+    "output_png": {
+      "bytes": 7922,
+      "dimensions_px": [
+        64,
+        64
+      ],
+      "sha256": "16e0117ddd83e8d051956f3e70cfccf1e9ac81e091f19527383b13fe0d44f205"
+    },
+    "pcie_aer_totals": {
+      "0000:00:01.1": {
+        "correctable": 0,
+        "fatal": 0,
+        "nonfatal": 0
+      },
+      "0000:01:00.0": {
+        "correctable": 0,
+        "fatal": 0,
+        "nonfatal": 0
+      },
+      "0000:02:00.0": {
+        "correctable": 0,
+        "fatal": 0,
+        "nonfatal": 0
+      },
+      "0000:03:00.0": {
+        "correctable": 0,
+        "fatal": 0,
+        "nonfatal": 0
+      }
+    },
+    "production_comfyui_queue_and_models_empty": true,
+    "production_gateway_comfyui_ollama_restored": true,
+    "production_gateway_health": "ok",
+    "production_rm_recovery_required": false,
+    "production_rm_state": "IDLE",
+    "systemd_cpu_ram_peak": "1.3G",
+    "test_port_closed": true,
+    "watchdog_unloaded": true
+  },
+  "production_cutover": "NOT_DEPLOYED",
+  "raw_logs": "Preserved root-owned on NVMe; excluded from public repository",
+  "schema": 1,
+  "scope": "One real AMD Radeon 890M VAE decode then simulated controller stop refusal, NOT hardware GPU crash",
+  "verdict": "DEV_REAL_AMD_VAE_STOP_REFUSAL_AND_PRODUCTION_ROLLBACK_PASS",
+  "verification_limits": [
+    "Original root-owned failed harness record and stop injection trace not directly read",
+    "Controller stop refusal is deliberately simulated; NOT a physical GPU fault",
+    "Current ComfyUI production process owns AMD KFD/DRM again as expected",
+    "Device-node exclusivity for unmanaged host processes not established",
+    "GPU_REUSE_SAFE/E_safe still NOT_VERIFIED",
+    "GPU_OOM, SIGKILL during kernel work and failed rollback not tested",
+    "Hermes and simultaneous physical GPU RM grants not acceptance-tested"
+  ]
+}

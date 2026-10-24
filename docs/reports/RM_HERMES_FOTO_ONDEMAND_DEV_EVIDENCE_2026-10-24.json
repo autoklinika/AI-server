@@ -1,0 +1,82 @@
+{
+  "captured_utc": "2026-10-24T06:26:53.234004+00:00",
+  "delivered_telegram_messages": 0,
+  "dev_comfy_url": "127.0.0.1:11657 (MockTransport, no real listener)",
+  "dev_gateway": "127.0.0.1:11656",
+  "dev_lifecycle_controller": "SIMULATED_NO_GPU_PROCESS",
+  "dev_renderer": "SIMULATED_RETURN_OF_PREVIOUSLY_REAL_GPU_RENDERED_PNG",
+  "dev_worker_actual_http_calls": true,
+  "gpu_reuse_safe": "NOT_VERIFIED",
+  "integration_test_source_sha256": "291ce12a67c7fe839e2823e1505ed2ddd084f60dc979cefdec563e588474b652",
+  "isolated_http_port_released": true,
+  "n1_shared_gpu_grants": "NOT_ADMITTED",
+  "negative_controls": [
+    "simulated Qwen refusal never starts ComfyUI",
+    "edit without input image never starts ComfyUI",
+    "generator exception releases ComfyUI and RM ticket",
+    "Comfy /free error retains blocked RM ticket and recovery marker",
+    "managed ComfyUI startup failure retains recovery marker",
+    "renderer gate rejects missing use token and wrong capability"
+  ],
+  "positive_controls": [
+    "resource lease obtained by original Hermes worker over isolated HTTP",
+    "existing RM single priority queue enforces FIFO/priority scheduling",
+    "media use through original Hermes helper",
+    "image-generation and image-edit capability routing",
+    "renderer-side token gate validates active lease and use",
+    "Hermes fake delivery occurs only in test memory",
+    "cleanup returns controller to idle and releases RM ticket"
+  ],
+  "production_comfyui_models_after": 0,
+  "production_cutover": "NOT_DEPLOYED",
+  "production_gateway_requests_by_hermes_worker": 0,
+  "production_queue_after": "0/0",
+  "production_recovery_required_after": false,
+  "production_rm_after": "IDLE",
+  "production_services_after": "ACTIVE",
+  "production_source_hash_matches": [
+    {
+      "sha256": "da1cacb350d8ad582206e74f64100cfea706944d83fce66bc5471f32544e3426",
+      "source_matches_deployed_bytes": true,
+      "source_name": "hermes_foto_dispatch_global.py"
+    },
+    {
+      "sha256": "092fa5cdf2e31e4a129c5b82489c5299e8e3aa0e5496832c55d65c6978b172c4",
+      "source_matches_deployed_bytes": true,
+      "source_name": "hermes_resource_queue.py"
+    },
+    {
+      "sha256": "5ee79aae9b542d405cc2fa59d2bdce17db31a6b58406f32640d606ba95a30343",
+      "source_matches_deployed_bytes": true,
+      "source_name": "hermes_foto_prompt_compiler.py"
+    },
+    {
+      "sha256": "5733671176f46d470e767227dd51dfa8eab26a4af48ad8194156de7316f8facf",
+      "source_matches_deployed_bytes": true,
+      "source_name": "media_admission.py"
+    }
+  ],
+  "prompt_compiler": "DETERMINISTIC_FIXTURE; NO_LIVE_QWEN_INFERENCE",
+  "sample_prior_real_amd_png": {
+    "bytes": 7922,
+    "dimensions": [
+      64,
+      64
+    ],
+    "newly_rendered_during_this_integration_test": false,
+    "sha256": "16e0117ddd83e8d051956f3e70cfccf1e9ac81e091f19527383b13fe0d44f205"
+  },
+  "schema": 1,
+  "test_case_count": 11,
+  "test_type": "actual_repo_Hermes_worker_and_helper_to_real_DEV_Gateway_ASGI_HTTP",
+  "unverified": [
+    "real Qwen model prompt compiler inference",
+    "new Flux2 text-to-image execution and actual GPU on-demand within same Hermes job",
+    "real Telegram transport delivery/receipt",
+    "host-wide GPU process/device exclusivity",
+    "GPU_REUSE_SAFE for AMDGPU/KFD/MES",
+    "production unit dependency migration and cutover"
+  ],
+  "verdict": "HERMES_FOTO_WORKER_TO_ISOLATED_DEV_RM_HTTP_PASS",
+  "verified_after_source_hash_extension": true
+}

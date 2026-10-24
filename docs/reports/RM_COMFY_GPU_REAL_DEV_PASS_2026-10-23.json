@@ -1,0 +1,95 @@
+{
+  "existing_rm_lifecycle": {
+    "dev_harness_asserted": "external_media_lease_then_shared_priority_scheduler_waiter_then_unload_then_process_stop_then_lease_release",
+    "dev_recovery_marker_present": false,
+    "end_rm_state": "IDLE",
+    "end_scheduler": {
+      "active": 0,
+      "queued": 0
+    },
+    "independent_real_GPU_reuse_safe": "NOT_VERIFIED"
+  },
+  "generated_image": {
+    "dimensions_px": [
+      64,
+      64
+    ],
+    "file_size_bytes": 7922,
+    "notes": "Actual ComfyUI EmptyFlux2LatentImage -> VAELoader flux2-vae -> VAEDecode -> SaveImage, not a full text-to-image diffusion benchmark",
+    "public_repository_copy": false,
+    "relative_source": "output/rm-comfy-dev-flux2-vae_00001_.png",
+    "sha256": "16e0117ddd83e8d051956f3e70cfccf1e9ac81e091f19527383b13fe0d44f205"
+  },
+  "host": "harrypotter-AI-Series",
+  "image_created_local": "2026-10-23T23:53:11+02:00",
+  "nvidia_postflight": {
+    "memory_used_mib": 2,
+    "pci_express": "Gen3x4",
+    "pcie_aer_counters": {
+      "0000:00:01.1": {
+        "correctable": 0,
+        "fatal": 0,
+        "nonfatal": 0
+      },
+      "0000:01:00.0": {
+        "correctable": 0,
+        "fatal": 0,
+        "nonfatal": 0
+      },
+      "0000:02:00.0": {
+        "correctable": 0,
+        "fatal": 0,
+        "nonfatal": 0
+      },
+      "0000:03:00.0": {
+        "correctable": 0,
+        "fatal": 0,
+        "nonfatal": 0
+      }
+    },
+    "pstate": "P8",
+    "xid_or_aer_in_test_window": "NONE_OBSERVED"
+  },
+  "observed_utc": "2026-10-23T21:55:34.603579+00:00",
+  "operator_return": "MAINTENANCE_EXIT_CODE=0",
+  "physical_GPU_backend": "PyTorch ROCm cuda:0 AMD Radeon 890M Graphics",
+  "production_cutover": "NOT_DEPLOYED",
+  "production_restoration": {
+    "comfyui": "active",
+    "comfyui_queue_pending": 0,
+    "comfyui_queue_running": 0,
+    "comfyui_ready_log": "PASS",
+    "comfyui_residency_models": 0,
+    "gateway": "active",
+    "gateway_rm_health": "PASS",
+    "ollama": "active"
+  },
+  "root_owned_raw_operator_logs": "present on NVMe only, not exposed in public Git",
+  "schema": 1,
+  "scope": "one-shot AMD Radeon 890M VAE decode 64x64 via DEV in-memory RM, not production routing",
+  "system_manager_service": {
+    "end_port_11657": "CLOSED",
+    "final_active_state": "inactive",
+    "final_load_state": "not-found",
+    "final_mainpid": "0",
+    "lifecycle": "STARTED_EXECUTED_STOPPED_SUCCESS",
+    "name": "ai-rm-comfy-ondemand-dev.service"
+  },
+  "system_watchdog": {
+    "end_state": "inactive",
+    "name": "ai-rm-comfy-restore-20261023.timer"
+  },
+  "temp_systemd_memory_peak": "1.4G",
+  "test_started_local": "2026-10-23T23:53:06+02:00",
+  "unverified_conditions": [
+    "global GPU device node exclusivity against other users/processes",
+    "full asynchronous driver GPU_REUSE_SAFE/E_safe",
+    "abnormal termination/oom/hang recovery",
+    "production Hermes /foto and WVC/ComfyUI/Vision integration",
+    "multiple simultaneous RM GPU grants",
+    "production release upgrade and end-to-end rollback"
+  ],
+  "vae_backend": "cuda:0 with CPU offload, torch.bfloat16",
+  "vae_prompt_duration_s": 0.86,
+  "verdict": "REAL_COMFY_GPU_DEV_ONDEMAND_AND_PRODUCTION_ROLLBACK_PASS"
+}

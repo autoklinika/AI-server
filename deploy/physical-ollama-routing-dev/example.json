@@ -1,0 +1,10 @@
+{
+  "endpoints": {
+    "amd": "http://127.0.0.1:11646",
+    "rtx": "http://127.0.0.1:11647"
+  },
+  "models": {
+    "qwen3:0.6b": "amd",
+    "bge-m3:latest": "rtx"
+  }
+}

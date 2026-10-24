@@ -1,0 +1,23 @@
+{
+  "GPU_COMPUTE": "NOT_RUN",
+  "GPU_DEVICE_OPEN": "NOT_RUN",
+  "PRODUCTION_CHANGED": false,
+  "REAL_RM_CONTROLLER": "NOT_RUN",
+  "cgroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/ai-rm-comfy-cpu-ondemand-pilot-20261023.service",
+  "dummy_prompt": {
+    "number": 1,
+    "prompt_id": "dummy-cpu-dev"
+  },
+  "free": {
+    "released": true
+  },
+  "incarnation": "fdac89197e6a4031a607f8c64e4820bb",
+  "memory_max_bytes": 100663296,
+  "pid": 69454,
+  "queue": {
+    "queue_pending": [],
+    "queue_running": []
+  },
+  "result": "USER_SYSTEMD_CPU_ONLY_START_PROMPT_FREE_STOP_PASS",
+  "service_poststop": "PID_ABSENT_AND_PORT_CLOSED"
+}
