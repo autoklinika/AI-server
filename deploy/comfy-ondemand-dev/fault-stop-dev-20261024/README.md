@@ -116,3 +116,26 @@ NEVER re-run the fault pilot while the marker exists. Even after
 archival, GPU_REUSE_SAFE/E_safe remains NOT_VERIFIED. Future
 GPU SIGKILL/OOM tests require a separately reviewed maintenance
 window and must not be inferred from this injected stop-refusal pass.
+
+
+## Archive status after operator action (24 October 2026)
+
+The operator subsequently ran the separately scoped
+review-and-archive-stop-fault-dev.sh --archive successfully:
+- exact injected fault record PASS
+- solely restored ComfyUI owns AMD GPU PASS
+- SHA256 backup of negative logs PASS
+- archived DEV marker removed from active staging PASS
+
+A new independent read-only check confirmed the archive directory
+exists with root:root 0700, active DEV marker/result absent, production
+Gateway/ComfyUI/Ollama still active and RM IDLE 0/0 without recovery.
+The archive interior could not be read from the nonroot account:
+the original bytes/hash PASS is supported by the operator script output,
+not by an independent nonroot full-file audit.
+
+No further real GPU fault test was executed, no production on-demand
+enablement took place, and GPU_REUSE_SAFE stays NOT_VERIFIED.
+
+Machine evidence:
+docs/reports/RM_COMFY_STOP_FAULT_ARCHIVE_ACCEPTED_2026-10-24.json

@@ -1,0 +1,44 @@
+{
+  "dev_transient_unit": "inactive",
+  "dev_watchdog": "inactive",
+  "global_gpu_exclusivity": "NOT_VERIFIED",
+  "gpu_reuse_safe": "NOT_VERIFIED",
+  "independent_active_marker_absent": true,
+  "independent_active_negative_result_absent": true,
+  "independent_archive_metadata": {
+    "interior_access": "UNVERIFIED_FROM_NONROOT",
+    "mode": "0700",
+    "owner_gid": 0,
+    "owner_uid": 0,
+    "path": "/srv/ai-data/staging/comfy-ondemand-faults-dev-20261024/accepted-stop-fault-20261024-0752",
+    "sha256_copy_validation": "PASS_REPORTED_BY_OPERATOR_SCRIPT"
+  },
+  "n1_gpu_grants": "NOT_ADMITTED",
+  "nvidia_gpu_postflight": {
+    "pcie": "Gen3x4",
+    "pstate": "P8",
+    "vram_mib": 2
+  },
+  "observed_utc": "2026-10-24T06:09:10.734449+00:00",
+  "operator_report_is_secondhand": true,
+  "operator_reported_lines": [
+    "DEV_STOP_FAULT_READONLY_HOST_AUDIT_PASS",
+    "EXACT_INJECTED_RM_STOP_FAILURE_RECOGNIZED_PASS",
+    "ONLY_RESTORED_COMFY_OWNS_AMD_GPU_PASS",
+    "NEGATIVE_GPU_FAULT_EVIDENCE_COPIED_SHA256_PASS",
+    "DEV_STOP_FAULT_ARCHIVED_AND_RECOVERY_FENCE_CLEARED_FOR_FUTURE_TEST_PASS"
+  ],
+  "production_comfyui": "active",
+  "production_comfyui_models": 0,
+  "production_comfyui_queued": 0,
+  "production_comfyui_running": 0,
+  "production_cutover": "NOT_DEPLOYED",
+  "production_gateway": "active",
+  "production_ollama": "active",
+  "production_rm_active": 0,
+  "production_rm_queued": 0,
+  "production_rm_recovery_required": false,
+  "production_rm_state": "IDLE",
+  "schema": 1,
+  "verdict": "DEV_STOP_FAULT_ARCHIVED_AND_ACTIVE_RECOVERY_FENCE_CLEARED"
+}

@@ -89,3 +89,32 @@ odczytach HTTP, journald i sysfs.
 
 **Werdykt: FAIL-CLOSED NEGATIVE CASE PASS, PRODUCTION ROLLBACK PASS;
 PHYSICAL GPU CRASH/OOM NOT TESTED; PRODUCTION NO-GO.**
+
+
+## Archiwizacja negatywnej próby — 24.10.2026, 08:07 CEST
+
+Po powyższym negatywnym teście operator wykonał oddzielny,
+uprawniony skrypt review-and-archive-stop-fault-dev.sh --archive.
+Operator potwierdził: exact injected RM stop failure recognized,
+only restored ComfyUI owns AMD GPU, backup original evidence SHA256
+PASS, a następnie usunięcie aktywnego **DEV-only** recovery marker
+przez przeniesienie do prywatnego archiwum.
+
+Niezależny audyt read-only na rzeczywistym hoście potwierdził:
+- archiwum accepted-stop-fault-20261024-0752 istnieje i jest
+  root:root, mode 0700; jego zawartość nie była dostępna dla
+  nieuprzywilejowanego obserwatora, więc SHA256 archiwum opiera
+  się wyłącznie na wyniku skryptu operatorskiego;
+- aktywny DEV marker i negatywny wynik nie występują już w
+  katalogu roboczym;
+- produkcyjne Gateway/ComfyUI/Ollama/ai-bridge/eGPU są active;
+- RM IDLE, active=0, queued=0, recovery_required=false;
+- ComfyUI modele=0, kolejka=0, cleanup_pending=false;
+- jednostka DEV i watchdog inactive, RTX P8, 2 MiB VRAM, Gen3x4.
+
+Zarchiwizowano błąd, ale NIE udowodniono driver E_safe ani globalnej
+wyłączności procesów GPU; żaden nowy test fizycznego SIGKILL/OOM nie
+został wykonany i żaden produkcyjny cutover nie nastąpił.
+
+Dowody odczytowe i deklaracja operatorska:
+RM_COMFY_STOP_FAULT_ARCHIVE_ACCEPTED_2026-10-24.json
