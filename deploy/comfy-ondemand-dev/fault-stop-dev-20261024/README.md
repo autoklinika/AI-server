@@ -66,3 +66,53 @@ rerun --run before recovery and full baseline revalidation.
 
 Do not install these scripts or units in production. They require
 fresh operator authorization and may interrupt Hermes/Gateway.
+
+
+## Operator execution result — 24 October 2026
+
+The operator executed one controlled real AMD stop-refusal trial.
+Actual output:
+
+- DEV_COMFY_UID_DIRECTORY_RW_PASS
+- MAINTENANCE_PREFLIGHT_PASS_RM_AND_PHYSICAL_GPU
+- ROLLBACK_WATCHDOG_ARMED
+- GPU_OWNER_FREE_WINDOW_PASS
+- REAL_GPU_DEV_START
+- DEV_EXPECTED_STOP_FAILURE_PENDING_ROLLBACK
+- PRODUCTION_RESTORE_PASS
+- MAINTENANCE_EXIT_CODE=0
+
+Independently verified ComfyUI journal: AMD Radeon 890M (PyTorch ROCm),
+Flux2 VAE decode on cuda:0, prompt completed in 0.66 s, resulting
+PNG 64x64, 7922 bytes and sha256
+16e0117ddd83e8d051956f3e70cfccf1e9ac81e091f19527383b13fe0d44f205.
+Transient systemd process stopped successfully during rollback
+(~5.1s wall, 1.3G RAM peak). Production ComfyUI/Gateway active,
+RM IDLE, watchdog inactive, no DEV port, RTX P8 2MiB Gen3x4,
+no GPU errors in checked kernel window.
+
+The negative DEV RM result and recovery marker are retained
+root-owned, as they MUST be after a simulated controller stop refusal.
+They are not evidence of a real AMD driver crash or E_safe.
+
+Detailed report:
+docs/reports/RM_COMFY_STOP_REFUSAL_REAL_GPU_DEV_2026-10-24_PL.md
+Independent JSON:
+docs/reports/RM_COMFY_REAL_GPU_STOP_FAULT_DEV_2026-10-24.json
+
+To review before accepting a recovery (READ-ONLY, already PASS):
+
+    bash /srv/ai-data/staging/comfy-ondemand-faults-dev-20261024/review-and-archive-stop-fault-dev.sh --check
+
+A separate root operator action can verify the original failure
+record, expected trace, current production health and the sole
+AMD GPU owner, archive root-only logs with SHA256 and then move
+ONLY the DEV recovery marker:
+
+    sudo bash /srv/ai-data/staging/comfy-ondemand-faults-dev-20261024/review-and-archive-stop-fault-dev.sh --archive
+
+This --archive has NOT BEEN EXECUTED and DOES NOT touch production.
+NEVER re-run the fault pilot while the marker exists. Even after
+archival, GPU_REUSE_SAFE/E_safe remains NOT_VERIFIED. Future
+GPU SIGKILL/OOM tests require a separately reviewed maintenance
+window and must not be inferred from this injected stop-refusal pass.

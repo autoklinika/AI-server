@@ -131,3 +131,27 @@ Wykonano bash -n, Python AST, sześć statycznych testów ochrony,
 weryfikację workdirów użytkownika i rzeczywisty read-only
 preflight na AI Platform: PASS.
 Operator --run: **NOT_EXECUTED**. Produkcja nietknięta.
+
+
+## 6. Wynik rzeczywistej próby odmowy stop — 24.10.2026, 07:52 CEST
+
+Po przygotowaniu powyższej procedury operator wykonał jednorazowe
+sudo --run. **Wynik kontrolowanego testu negatywnego PASS, rollback PASS,
+MAINTENANCE_EXIT_CODE=0.** ComfyUI użył prawdziwego Radeona 890M do
+dekodowania Flux2 VAE (0,66s) i zapisania PNG 64×64 (7922 B).
+Kontroler DEV następnie celowo odmówił potwierdzenia stop. RM
+zachował oryginalną rezerwację i znacznik recovery; osobny
+rollback zatrzymał tymczasową jednostkę GPU i przywrócił ComfyUI
+i Gateway. Wszystkie usługi produkcyjne są zdrowe, RM IDLE 0/0,
+testowy port zamknięty, watchdog nieaktywny, Xid/AER=0.
+
+**Znacznik recovery środowiska DEV NADAL ISTNIEJE** — ten fakt jest
+prawidłowy po negatywnym teście. Przygotowano audyt i osobny,
+operator-only proces archiwizacji (nie wykonany). Nie nadano
+GPU_REUSE_SAFE, E_safe ani zgody na produkcyjne zmiany.
+Odmowa stop była symulowana PO pracy GPU, nie podczas aktywnego
+kernela ROCm.
+
+Szczegóły i ocena dowodów:
+RM_COMFY_STOP_REFUSAL_REAL_GPU_DEV_2026-10-24_PL.md
+RM_COMFY_REAL_GPU_STOP_FAULT_DEV_2026-10-24.json
