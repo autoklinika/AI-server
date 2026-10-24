@@ -1,0 +1,7 @@
+PHASE_BEGIN warmup N 2048 duration 300.0
+PHASE_END {"stage": "warmup", "matrix_n": 2048, "requested_seconds": 300.0, "compute_seconds": 300.001, "sgemm_ops": 292566, "numerical_check": 1142.984009}
+PHASE_BEGIN ramp N 4096 duration 120.0
+PHASE_END {"stage": "ramp", "matrix_n": 4096, "requested_seconds": 120.0, "compute_seconds": 120.004, "sgemm_ops": 15672, "numerical_check": 2285.994629}
+PHASE_BEGIN sustain N 8192 duration 7200.0
+PHASE_END {"stage": "sustain", "matrix_n": 8192, "requested_seconds": 7200.0, "compute_seconds": 7200.001, "sgemm_ops": 124339, "numerical_check": 4571.994629}
+WORKER_FINAL WORK_COMPLETE SGEMM 432577

@@ -1,0 +1,332 @@
+{
+  "baseline": {
+    "clock_sm_mhz": 180.0,
+    "free_mib": 15941.0,
+    "pcie_gen": 3.0,
+    "pcie_width": 4.0,
+    "power_w": 3.86,
+    "temperature_c": 33.0,
+    "total_mib": 16311.0,
+    "used_mib": 2.0,
+    "util_pct": 0.0
+  },
+  "boot_id": "067e4fa7-1585-4f81-86fd-30cd6cc4e6ea",
+  "cuda_cleanup_errors": [],
+  "cuda_start_free": {
+    "free_mib": 15804.1,
+    "total_mib": 15941.1
+  },
+  "end": "2026-10-23T14:54:35.855572+00:00",
+  "max_temp_c": 35.0,
+  "max_used_mib": 14730.0,
+  "max_used_percent": 90.31,
+  "max_util_pct": 100.0,
+  "peak_power_fraction": 0.112,
+  "peak_power_w": 20.14,
+  "phase": "memory",
+  "post_aer": {
+    "0000:00:01.1": {
+      "correctable": 0,
+      "fatal": 0,
+      "nonfatal": 0
+    },
+    "0000:01:00.0": {
+      "correctable": 0,
+      "fatal": 0,
+      "nonfatal": 0
+    },
+    "0000:02:00.0": {
+      "correctable": 0,
+      "fatal": 0,
+      "nonfatal": 0
+    },
+    "0000:03:00.0": {
+      "correctable": 0,
+      "fatal": 0,
+      "nonfatal": 0
+    }
+  },
+  "post_driver": {
+    "clock_sm_mhz": 2602.0,
+    "free_mib": 15938.0,
+    "pcie_gen": 3.0,
+    "pcie_width": 4.0,
+    "power_w": 20.07,
+    "temperature_c": 34.0,
+    "total_mib": 16311.0,
+    "used_mib": 4.0,
+    "util_pct": 8.0
+  },
+  "post_kernel_errors": [],
+  "post_links": {
+    "0000:02:00.0": {
+      "speed": "8.0 GT/s PCIe",
+      "width": "4"
+    },
+    "0000:03:00.0": {
+      "speed": "8.0 GT/s PCIe",
+      "width": "4"
+    }
+  },
+  "precleanup_aer": {
+    "0000:00:01.1": {
+      "correctable": 0,
+      "fatal": 0,
+      "nonfatal": 0
+    },
+    "0000:01:00.0": {
+      "correctable": 0,
+      "fatal": 0,
+      "nonfatal": 0
+    },
+    "0000:02:00.0": {
+      "correctable": 0,
+      "fatal": 0,
+      "nonfatal": 0
+    },
+    "0000:03:00.0": {
+      "correctable": 0,
+      "fatal": 0,
+      "nonfatal": 0
+    }
+  },
+  "samples": [
+    {
+      "clock_sm_mhz": 180.0,
+      "free_mib": 13757.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 4.34,
+      "t": 0.02,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 2186.0,
+      "util_pct": 1.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 13757.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 11.74,
+      "t": 0.78,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 2186.0,
+      "util_pct": 0.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 11709.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 19.53,
+      "t": 1.5,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 4234.0,
+      "util_pct": 48.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 11709.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 19.59,
+      "t": 2.23,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 4234.0,
+      "util_pct": 0.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 7613.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 20.14,
+      "t": 2.98,
+      "temperature_c": 35.0,
+      "total_mib": 16311.0,
+      "used_mib": 8330.0,
+      "util_pct": 14.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 7613.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 19.96,
+      "t": 3.71,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 8330.0,
+      "util_pct": 0.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 3517.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 19.49,
+      "t": 4.43,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 12426.0,
+      "util_pct": 100.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 3517.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 20.04,
+      "t": 5.19,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 12426.0,
+      "util_pct": 0.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 1469.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 19.65,
+      "t": 5.92,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 14474.0,
+      "util_pct": 7.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 1469.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 19.67,
+      "t": 6.64,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 14474.0,
+      "util_pct": 0.0
+    },
+    {
+      "clock_sm_mhz": 2602.0,
+      "free_mib": 1213.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 19.41,
+      "t": 7.4,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 14730.0,
+      "util_pct": 0.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 1213.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 19.36,
+      "t": 8.13,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 14730.0,
+      "util_pct": 0.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 1213.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 19.41,
+      "t": 8.85,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 14730.0,
+      "util_pct": 0.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 1213.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 19.13,
+      "t": 9.61,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 14730.0,
+      "util_pct": 0.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 1213.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 19.14,
+      "t": 10.33,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 14730.0,
+      "util_pct": 0.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 1213.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 19.14,
+      "t": 11.06,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 14730.0,
+      "util_pct": 0.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 1213.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 19.09,
+      "t": 11.81,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 14730.0,
+      "util_pct": 0.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 1213.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 19.1,
+      "t": 12.54,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 14730.0,
+      "util_pct": 0.0
+    },
+    {
+      "clock_sm_mhz": 2595.0,
+      "free_mib": 1213.0,
+      "pcie_gen": 3.0,
+      "pcie_width": 4.0,
+      "power_w": 19.02,
+      "t": 13.26,
+      "temperature_c": 34.0,
+      "total_mib": 16311.0,
+      "used_mib": 14730.0,
+      "util_pct": 0.0
+    }
+  ],
+  "start": "2026-10-23T14:54:21.543603+00:00",
+  "status": "HIGH_VRAM_PASS",
+  "watchdog_violations": [],
+  "work": {
+    "allocated_mib": 14592,
+    "chunks": 8,
+    "full_residency_free_mib": 1212.1,
+    "sample_checks_per_allocation": 6
+  }
+}

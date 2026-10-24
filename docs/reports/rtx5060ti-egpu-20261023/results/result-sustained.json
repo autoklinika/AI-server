@@ -1,0 +1,104 @@
+{
+  "baseline": {
+    "link_gen": 3.0,
+    "link_width": 4.0,
+    "mem_mib": 2.0,
+    "power_w": 3.84,
+    "t": 0.09468020200006322,
+    "temp_c": 32.0,
+    "util_pct": 0.0
+  },
+  "boot_id": "067e4fa7-1585-4f81-86fd-30cd6cc4e6ea",
+  "documents_per_request": 3,
+  "embeddings_generated": 18,
+  "final_aer": {
+    "0000:02:00.0": [
+      0,
+      0,
+      0
+    ],
+    "0000:03:00.0": [
+      0,
+      0,
+      0
+    ]
+  },
+  "final_gpu": {
+    "link_gen": 3.0,
+    "link_width": 4.0,
+    "mem_mib": 2.0,
+    "power_w": 27.53,
+    "t": 4.7720991850001155,
+    "temp_c": 34.0,
+    "util_pct": 0.0
+  },
+  "final_kernel_errors": [],
+  "final_models": [],
+  "gpu_memory_delta_mib": 860.0,
+  "iterations": 6,
+  "max_mem_mib": 862.0,
+  "max_power_w": 46.51,
+  "max_temp_c": 43.0,
+  "max_util_pct": 57.0,
+  "memory_release_wait_s": 1.48,
+  "model": "bge-m3:latest",
+  "model_stop": {
+    "rc": 0,
+    "stderr": "\u001b[?2026h\u001b[?25l\u001b[1G\u001b[K\u001b[?25h\u001b[?2026l\u001b[?25l\u001b[2K\u001b[1G\u001b[?25h",
+    "stdout": ""
+  },
+  "phase": "sustained",
+  "safety_monitor_errors": [],
+  "sample_count": 5,
+  "samples": [
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 2.0,
+      "power_w": 3.84,
+      "t": 0.14218844200013336,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 19.0,
+      "power_w": 8.94,
+      "t": 0.9451506880000125,
+      "temp_c": 33.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 34.0,
+      "power_w": 22.34,
+      "t": 1.7183720450000237,
+      "temp_c": 33.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 138.0,
+      "power_w": 20.56,
+      "t": 2.4911810309999964,
+      "temp_c": 33.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 862.0,
+      "power_w": 46.51,
+      "t": 3.2665760020001926,
+      "temp_c": 43.0,
+      "util_pct": 57.0
+    }
+  ],
+  "stage": "compute",
+  "status": "GPU_COMPUTE_PASS",
+  "test_finished_at": "2026-10-23T14:26:49.453165+00:00",
+  "test_started_at": "2026-10-23T14:26:44.675512+00:00"
+}

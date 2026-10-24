@@ -1,0 +1,8 @@
+{"event": "PREFLIGHT_BEGIN", "utc": "2026-10-23T15:16:59.870937+00:00"}
+{"baseline": {"clock_sm_mhz": 180.0, "free_mib": 15941.0, "pcie_gen": 3.0, "pcie_width": 4.0, "power_w": 3.7, "temperature_c": 32.0, "total_mib": 16311.0, "used_mib": 2.0, "util_pct": 0.0}, "event": "PREFLIGHT_PASS", "utc": "2026-10-23T15:16:59.990318+00:00"}
+{"event": "WORKER_STARTED", "pid": 19404, "utc": "2026-10-23T15:16:59.998166+00:00"}
+{"event": "STAGE", "stage": "starting", "utc": "2026-10-23T15:17:00.030196+00:00"}
+{"event": "STAGE", "stage": "warmup", "utc": "2026-10-23T15:17:01.029644+00:00"}
+{"event": "STAGE", "stage": "ramp", "utc": "2026-10-23T15:22:01.029658+00:00"}
+{"event": "STAGE", "stage": "sustain", "utc": "2026-10-23T15:24:01.034091+00:00"}
+{"event": "FINAL", "samples": 7621, "sustain_s": 7200.001, "utc": "2026-10-23T17:24:06.290237+00:00", "verdict": "PASS"}

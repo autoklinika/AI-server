@@ -1,0 +1,275 @@
+{
+  "baseline": {
+    "link_gen": 3.0,
+    "link_width": 4.0,
+    "mem_mib": 2.0,
+    "power_w": 3.64,
+    "t": 0.07845587199994952,
+    "temp_c": 31.0,
+    "util_pct": 0.0
+  },
+  "boot_id": "067e4fa7-1585-4f81-86fd-30cd6cc4e6ea",
+  "documents_per_request": 2,
+  "embeddings_generated": 2,
+  "final_aer": {
+    "0000:02:00.0": [
+      0,
+      0,
+      0
+    ],
+    "0000:03:00.0": [
+      0,
+      0,
+      0
+    ]
+  },
+  "final_gpu": {
+    "link_gen": 3.0,
+    "link_width": 4.0,
+    "mem_mib": 862.0,
+    "power_w": 20.76,
+    "t": 18.218314001999943,
+    "temp_c": 34.0,
+    "util_pct": 52.0
+  },
+  "final_kernel_errors": [],
+  "final_models": [],
+  "gpu_memory_delta_mib": 856.0,
+  "iterations": 1,
+  "max_mem_mib": 858.0,
+  "max_power_w": 25.03,
+  "max_temp_c": 33.0,
+  "max_util_pct": 85.0,
+  "model": "bge-m3:latest",
+  "model_stop": {
+    "rc": 0,
+    "stderr": "\u001b[?2026h\u001b[?25l\u001b[1G\u001b[K\u001b[?25h\u001b[?2026l\u001b[?25l\u001b[2K\u001b[1G\u001b[?25h",
+    "stdout": ""
+  },
+  "phase": "smoke",
+  "reason": "CUDA model still occupies RTX VRAM after stop",
+  "safety_monitor_errors": [],
+  "sample_count": 24,
+  "samples": [
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 2.0,
+      "power_w": 3.64,
+      "t": 0.10615019900001244,
+      "temp_c": 31.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 19.0,
+      "power_w": 7.41,
+      "t": 0.891409172999829,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 19.0,
+      "power_w": 20.98,
+      "t": 1.673601761999862,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 138.0,
+      "power_w": 20.08,
+      "t": 2.4470618619998277,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 800.0,
+      "power_w": 20.37,
+      "t": 3.2231200899998385,
+      "temp_c": 32.0,
+      "util_pct": 85.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 800.0,
+      "power_w": 24.17,
+      "t": 3.9939722519998213,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 802.0,
+      "power_w": 25.03,
+      "t": 4.767081154999914,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 802.0,
+      "power_w": 22.86,
+      "t": 5.538398487999984,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 814.0,
+      "power_w": 18.84,
+      "t": 6.312703256999839,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 814.0,
+      "power_w": 18.74,
+      "t": 7.0859718579999935,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 814.0,
+      "power_w": 18.8,
+      "t": 7.856077574999972,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 814.0,
+      "power_w": 18.42,
+      "t": 8.629515462999962,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 816.0,
+      "power_w": 18.51,
+      "t": 9.403041986999824,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 816.0,
+      "power_w": 18.59,
+      "t": 10.17574387899981,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 816.0,
+      "power_w": 18.66,
+      "t": 10.948735010999826,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 816.0,
+      "power_w": 18.99,
+      "t": 11.723081638999929,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 858.0,
+      "power_w": 18.77,
+      "t": 12.49584555599995,
+      "temp_c": 32.0,
+      "util_pct": 3.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 858.0,
+      "power_w": 18.83,
+      "t": 13.269656371999872,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 858.0,
+      "power_w": 18.92,
+      "t": 14.043398808999882,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 858.0,
+      "power_w": 18.83,
+      "t": 14.81735413499996,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 858.0,
+      "power_w": 18.83,
+      "t": 15.590222036999876,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 858.0,
+      "power_w": 18.52,
+      "t": 16.36036367099996,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 858.0,
+      "power_w": 18.45,
+      "t": 17.133634526999913,
+      "temp_c": 32.0,
+      "util_pct": 0.0
+    },
+    {
+      "link_gen": 3.0,
+      "link_width": 4.0,
+      "mem_mib": 858.0,
+      "power_w": 18.34,
+      "t": 17.907430664999993,
+      "temp_c": 33.0,
+      "util_pct": 0.0
+    }
+  ],
+  "stage": "compute",
+  "status": "BLOCKED",
+  "test_finished_at": "2026-10-23T14:23:56.325300+00:00",
+  "test_started_at": "2026-10-23T14:23:37.658098+00:00"
+}

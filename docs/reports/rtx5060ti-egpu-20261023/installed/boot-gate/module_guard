@@ -1,0 +1,11 @@
+#!/usr/bin/python3 -IB
+import sys
+sys.path.insert(0, '/usr/local/libexec/ai-egpu-gen3-ha')
+from ai_egpu_boot import Boot, MODULES
+
+if len(sys.argv) != 2 or sys.argv[1] not in MODULES[:4]:
+    raise SystemExit('FAIL CLOSED: exactly one allowed module required')
+try:
+    Boot().load(sys.argv[1])
+except Exception as exc:
+    raise SystemExit('FAIL CLOSED: ' + str(exc))
