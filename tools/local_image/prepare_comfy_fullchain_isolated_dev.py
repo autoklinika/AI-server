@@ -16,7 +16,7 @@ import sys
 
 REPO = Path(__file__).resolve().parents[2]
 STAGING = Path("/srv/ai-data/staging")
-TARGET = STAGING / "comfy-fullchain-dev-20261024"
+TARGET = STAGING / "comfy-fullchain-dev-20261024-captured"
 SOURCE_FILES = (
     "tools/local_image/hermes_foto_dispatch_global.py",
     "tools/local_image/hermes_foto_dispatch.py",
@@ -41,7 +41,37 @@ def patch_one(text: str, old: str, new: str, expected: int = 1) -> str:
     return text.replace(old, new)
 
 
+def replace_function(source: str, beginning: str, following: str, stub: str) -> str:
+    if source.count(beginning) != 1 or source.count(following) != 1:
+        raise RuntimeError("DEV delivery capture source drift")
+    left = source.index(beginning)
+    right = source.index(following, left + len(beginning))
+    return source[:left] + stub + source[right:]
+
+
 def transform(rel: str, source: str) -> str:
+    # A copied worker must be incapable of sending notifications to real chats.
+    # Only the fixed non-routable DEV target can write to a local capture file.
+    if rel == "tools/local_image/hermes_foto_dispatch.py":
+        source = replace_function(
+            source, "def _send(target:", "\n\ndef worker(",
+            'def _send(target: str, message: str, *, timeout: int = 120) -> None:\n'
+            '    if target != "telegram:DEV_UNROUTABLE_NO_SEND":\n'
+            '        raise FotoDispatchError("DEV recipient refused")\n'
+            f'    with open("{TARGET}/captured-deliveries.jsonl", "a", encoding="utf-8") as capture:\n'
+            '        capture.write(json.dumps({"target": "DEV_CAPTURE_ONLY", "message": message}, ensure_ascii=False) + "\\n")\n',
+        )
+    if rel == "tools/hermes_resource_queue.py":
+        source = replace_function(
+            source, "def _notify(target:", "\n\ndef _notify_best_effort(",
+            'def _notify(target: str | None, message: str | None) -> None:\n'
+            '    if not message or target is None:\n'
+            '        return\n'
+            '    if target != "telegram:DEV_UNROUTABLE_NO_SEND":\n'
+            '        raise ResourceQueueError("DEV recipient refused")\n'
+            f'    with open("{TARGET}/captured-queue.jsonl", "a", encoding="utf-8") as capture:\n'
+            '        capture.write(json.dumps({"target": "DEV_CAPTURE_ONLY", "message": message}, ensure_ascii=False) + "\\n")\n',
+        )
     if rel in PORT_GATEWAY_FILES:
         if "11435" not in source:
             raise RuntimeError("expected production gateway reference absent")

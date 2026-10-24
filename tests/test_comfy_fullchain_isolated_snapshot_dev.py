@@ -1,6 +1,7 @@
 """CPU-only verification of strict staging-only Hermes /foto source transforms."""
 import ast
 import importlib.util
+import json
 from pathlib import Path
 
 import pytest
@@ -33,7 +34,9 @@ def test_snapshot_transforms_only_staging_ports_and_output():
             assert 'default=1024' not in staged
         if rel == "tools/local_image/generate_image_edit.py":
             assert str(module.TARGET / "input") in staged
-        if rel not in module.PORT_GATEWAY_FILES + module.GENERATORS:
+        if rel not in module.PORT_GATEWAY_FILES + module.GENERATORS + (
+            "tools/local_image/hermes_foto_dispatch.py",
+        ):
             assert original == staged
 
 
@@ -62,5 +65,60 @@ def test_original_sources_remain_production_pinned():
 
 
 def test_staging_root_and_flags_are_fixed():
-    assert str(module.TARGET) == "/srv/ai-data/staging/comfy-fullchain-dev-20261024"
+    assert str(module.TARGET) == "/srv/ai-data/staging/comfy-fullchain-dev-20261024-captured"
     assert "generator" not in module.SOURCE_FILES
+
+
+@pytest.mark.parametrize("relative,fn,filename", [
+    ("tools/local_image/hermes_foto_dispatch.py", "_send",
+     "captured-deliveries.jsonl"),
+    ("tools/hermes_resource_queue.py", "_notify",
+     "captured-queue.jsonl"),
+])
+def test_isolated_hermes_delivery_never_calls_live_cli(relative, fn, filename):
+    """Execute the captured function with a fake file; never touch network."""
+    staged = module.transform(relative, (ROOT / relative).read_text())
+    tree = ast.parse(staged)
+    selected = next(
+        item for item in tree.body
+        if isinstance(item, ast.FunctionDef) and item.name == fn
+    )
+    body = ast.get_source_segment(staged, selected)
+    assert "subprocess" not in body and '"send", "--to"' not in body
+    assert "DEV_UNROUTABLE_NO_SEND" in body
+
+    writes = []
+    paths = []
+
+    class FakeFile:
+        def __enter__(self):
+            return self
+
+        def write(self, value):
+            writes.append(value)
+
+        def __exit__(self, *_):
+            pass
+
+    def fake_open(path, mode, *, encoding):
+        paths.append((path, mode, encoding))
+        assert path == str(module.TARGET / filename)
+        assert mode == "a" and encoding == "utf-8"
+        return FakeFile()
+
+    context = {
+        "open": fake_open, "json": json,
+        "FotoDispatchError": RuntimeError,
+        "ResourceQueueError": RuntimeError,
+    }
+    exec(compile(ast.Module(body=[selected], type_ignores=[]),
+                 "<isolated-dev-delivery-test>", "exec"), context)
+    deliver = context[fn]
+    with pytest.raises(RuntimeError, match="DEV recipient refused"):
+        deliver("telegram:REAL_RECIPIENT_NEVER_SEND", "unroutable")
+    assert paths == [] and writes == []
+    deliver("telegram:DEV_UNROUTABLE_NO_SEND", "MEDIA:/dev/null")
+    assert len(paths) == 1 and len(writes) == 1
+    assert json.loads(writes[0]) == {
+        "target": "DEV_CAPTURE_ONLY", "message": "MEDIA:/dev/null",
+    }
