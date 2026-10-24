@@ -194,3 +194,16 @@ Jeśli Qwen jest rezydentny, przekazany zaufany callback wysyła pojedyncze unlo
 Testy CPU **29/29 PASS** obejmują pozytywny mock, 11 niezależnych blokad precondition, modele obce/WVC, innego właściciela GPU, brak enumeracji PID, wiszące deskryptory i timeout. **Nie przeprowadzono rzeczywistego wyładowania Qwen.**
 
 **Nadal BLOCKED:** nie ma jeszcze zatwierdzonego i przetestowanego niezależnego operatorowego runnera/rollbacku po pełnym FLUX2 ani rzeczywistego odbioru budżetu pamięci. Sama funkcja callback oraz zielone testy CPU nie są przyzwoleniem na test GPU.
+
+
+## N. Candidate systemd controller i independent rollback — DEV static/CPU, 24.10.2026
+
+Przygotowano dwa dodatkowe pliki DEV: tools/local_image/fullchain_systemd_controller_dev.py i tools/local_image/fullchain_independent_rollback_dev.py. Ich dokumentację odbiorową zawiera deploy/comfy-ondemand-dev/FULLCHAIN_SYSTEMD_RECOVERY_DEV_2026-10-24_PL.md.
+
+**Testy CPU-only 57/57 PASS.** Kontroler buduje jeden stały plan systemd --system, ze znanym unit name, device policy, ograniczeniami i bez shella. Weryfikuje boot/invocation/PID birth/cgroup/cmdline i właścicieli AMD. Plan blokowany jest przy braku którejkolwiek rezerwacji/recovery/watchdog, przy niewystarczającym MemoryMax oraz gdy nie można potwierdzić fizycznie dostępnej pamięci hosta. Wersja CLI dopuszcza tylko --check; start/stop nie są uzbrojone.
+
+Niezależny rollback ma jednorazową logiczną sekwencję z fail-closed i testami negatywnymi: snapshot → stop zidentyfikowanego workera → stop DEV Gateway i dokładnie jednej jednostki ComfyUI → wyładowanie wyłącznie Qwen35 → potwierdzenie AMD no owners → E_safe poza RM → archiwizacja dowodów → restore starej produkcji → smoke → rozbrojenie watchdoga. Jeśli dowód sterownika jest niewystarczający, nie wolno uruchamiać kolejnego właściciela GPU. Wersja CLI rollbacku udostępnia tylko --check. **Nie istnieje jeszcze zainstalowana niezależna, root-owned kopia z trybem --execute; timer nie jest uzbrojony.**
+
+Read-only weryfikacja rzeczywistego hosta: kod/podstawowe ścieżki DEV PASS, ale start_enabled=false i production_os_isolation=BLOCKED. Szczególnie istotne: konto harrypotter może zapisywać /opt/comfyui/ComfyUI/main.py (0664, właściciel harrypotter), a /opt/comfyui/ComfyUI jest zapisywalny przez to konto (0775). Nie ma jeszcze osobnego konta wykonawczego ComfyUI. Nie zmieniono własności ani uprawnień na produkcji.
+
+**Wniosek:** testy statyczne controller+recovery PASS; rzeczywisty bounded recovery po Qwen, pełny FLUX2, E_safe, izolacja OS i produkcyjny release candidate pozostają BLOCKED/NOT_TESTED. Nie traktować planu watchdog jako uruchamialnej ochrony przed testem GPU.

@@ -104,4 +104,5 @@ def test_legacy_gateway_service_configuration_remains_unmodified():
         "README.md","ai-rm-comfy-ondemand-dev.service",
         "maintenance-20261023",  # operator-only DEV scripts, no installed units
         "fault-stop-dev-20261024",  # scoped, one-shot DEV negative test scripts
+        "FULLCHAIN_SYSTEMD_RECOVERY_DEV_2026-10-24_PL.md",  # documentation only
     }
