@@ -90,4 +90,14 @@ To są bramki do zaadresowania małymi zmianami w kodzie DEV, nie przesłanki do
 7. Sprawdzić osobno: job done, models unloaded, PID/cgroup gone, driver state/E_safe. Błąd → zachować marker i dowody, niezależny rollback, bez automatycznego ponownego grantu.
 8. Dopiero po pierwszym PASS: kontrolowany reuse, negatywne scenariusze, WVC/Vision i formalne odbiory izolacji. RC i cutover wymagają osobnej decyzji.
 
+## G. Izolowane źródła DEV przygotowane do dalszego spięcia
+
+- Narzędzie: tools/local_image/prepare_comfy_fullchain_isolated_dev.py (--check / --prepare).
+- Na serwerze wykonano --check oraz --prepare: DEV_SNAPSHOT_SOURCE_STATIC_PASS i DEV_SNAPSHOT_PREPARED_NO_EXECUTION.
+- Snapshot wyłącznie w /srv/ai-data/staging/comfy-fullchain-dev-20261024; manifest SHA256 zawiera źródła i odizolowane kopie. Pliki produkcyjne pozostały niezmienione.
+- Klient RM/Qwen/media admission kopii wskazuje 127.0.0.1:11656; generatory kopii wskazują 127.0.0.1:11657, lokalne input/output i 256×256 w domyślnym text-to-image. Kompilacja źródeł PASS.
+- Wybrane testy statycznej izolacji, Hermesa i jednostki systemd: 21/21 PASS (CPU-only).
+- **Snapshot NIE JEST runnerem dopuszczonym do uruchomienia.** Nadal trzeba przygotować bezwzględne przechwytywanie wszystkich wiadomości/outbox Hermesa, jawny sandbox procesu, połączenie z prawdziwym RM/Qwen oraz niezależny watchdog dla operator-only full-chain window. Nie uruchamiać izolowanych workerów bez tych zabezpieczeń.
+- Nie zmieniono portów produkcji, ani nie wykonywano nowego zadania GPU.
+
 Nigdy nie traktować zielonego CI, testu CPU, ani realnego VAE jako potwierdzenia pełnego FLUX2 i bezpieczeństwa sterownika.
