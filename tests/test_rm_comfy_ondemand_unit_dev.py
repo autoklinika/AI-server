@@ -1,6 +1,8 @@
 """Static safety gates for the staged, UNINSTALLED on-demand ComfyUI unit."""
+import os
 from pathlib import Path
 import subprocess
+import sys
 
 from ai_bridge.gateway.comfy_ondemand_dev import (
     OnDemandComfyLifecycle, ServiceIdentity, UnapprovedController,
@@ -31,10 +33,34 @@ def test_draft_unit_is_nonpersistent_and_short_lived():
     assert "systemctl" not in text
 
 
-def test_systemd_unit_is_statically_valid():
-    run=subprocess.run(["/usr/bin/systemd-analyze","verify",str(UNIT)],
-                       capture_output=True,text=True,timeout=10,check=False)
-    assert run.returncode==0,run.stderr[-500:]
+def test_systemd_unit_is_statically_valid(tmp_path):
+    # Keep the deployable unit unchanged. CI does not have the ComfyUI venv,
+    # so verify a disposable copy with only the executable substituted.
+    text = UNIT.read_text()
+    executable = "/opt/comfyui/venv/bin/python"
+    original_start = f"ExecStart={executable} "
+    assert text.count(original_start) == 1, "Unexpected ComfyUI ExecStart"
+    ci_unit = tmp_path / UNIT.name
+    ci_unit.write_text(text.replace(original_start, f"ExecStart={sys.executable} ", 1))
+    run = subprocess.run(
+        ["/usr/bin/systemd-analyze", "verify", str(ci_unit)],
+        capture_output=True, text=True, timeout=10, check=False,
+    )
+    assert run.returncode == 0, run.stderr[-1000:]
+
+    # On the real host, verify the unmodified production-path unit as well.
+    # If its venv directory exists, a missing or non-executable Python is
+    # a regression and must not be silently treated as a CI-only limitation.
+    runtime_python = Path(executable)
+    if runtime_python.parent.is_dir():
+        assert runtime_python.is_file() and os.access(runtime_python, os.X_OK), (
+            f"ComfyUI host executable missing or not executable: {runtime_python}"
+        )
+        host_run = subprocess.run(
+            ["/usr/bin/systemd-analyze", "verify", str(UNIT)],
+            capture_output=True, text=True, timeout=10, check=False,
+        )
+        assert host_run.returncode == 0, host_run.stderr[-1000:]
 
 
 def test_activation_requires_trusted_controller_and_full_token():
