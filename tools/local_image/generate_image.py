@@ -77,7 +77,7 @@ workflow = {
         "inputs": {
             "clip_name": "qwen_3_4b.safetensors",
             "type": "flux2",
-            "device": "default",
+            "device": "cpu",  # AMD Radeon: prevent mixed HIP/CUDA Triton driver selection
         },
     },
 

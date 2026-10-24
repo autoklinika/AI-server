@@ -120,7 +120,7 @@ def build_workflow(staged_name: str, prompt: str, seed: int):
     # Image Edit (Flux.2 Klein 4B Distilled) one-reference-image workflow.
     return {
         "1": {"class_type": "UNETLoader", "inputs": {"unet_name": "flux-2-klein-4b-fp8.safetensors", "weight_dtype": "default"}},
-        "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen_3_4b.safetensors", "type": "flux2", "device": "default"}},
+        "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen_3_4b.safetensors", "type": "flux2", "device": "cpu"}},
         "3": {"class_type": "VAELoader", "inputs": {"vae_name": "flux2-vae.safetensors"}},
         "4": {"class_type": "LoadImage", "inputs": {"image": staged_name}},
         "5": {"class_type": "ImageScaleToTotalPixels", "inputs": {"image": ["4", 0], "upscale_method": "nearest-exact", "megapixels": 1.0, "resolution_steps": 1}},
