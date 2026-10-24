@@ -72,7 +72,24 @@ def test_original_gpu_image_hash_on_host_when_present():
     assert len(blob)==expected["bytes"]
     assert hashlib.sha256(blob).hexdigest()==expected["sha256"]
     marker=folder/"dev-residency.blocked"
-    assert marker.is_file(), "negative DEV recovery marker must be preserved"
+    if marker.is_file():
+        # Earlier state: unresolved negative DEV test, no retry allowed.
+        assert (folder/"real-comfy-gpu-result.json").is_file()
+    else:
+        # Later state: the operator explicitly reviewed/archived this
+        # particular fail-closed result. It is incorrect to demand that the
+        # active marker remain AFTER a verified archive transition.
+        archive_record=ROOT/"docs/reports/RM_COMFY_STOP_FAULT_ARCHIVE_ACCEPTED_2026-10-24.json"
+        archived=json.loads(archive_record.read_text())
+        assert archived["verdict"]=="DEV_STOP_FAULT_ARCHIVED_AND_ACTIVE_RECOVERY_FENCE_CLEARED"
+        assert archived["independent_active_marker_absent"] is True
+        assert archived["independent_active_negative_result_absent"] is True
+        assert archived["independent_archive_metadata"]["mode"]=="0700"
+        assert archived["independent_archive_metadata"]["interior_access"]=="UNVERIFIED_FROM_NONROOT"
+        archive_dir=folder/"accepted-stop-fault-20261024-0752"
+        assert archive_dir.is_dir()
+        assert archive_dir.stat().st_uid==0
+        assert not (folder/"real-comfy-gpu-result.json").exists()
 
 
 def test_scoped_archive_script_never_automatically_clears_marker():
