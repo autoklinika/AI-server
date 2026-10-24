@@ -159,3 +159,38 @@ Lokalne testy ukierunkowane po poprawce (26 PASS). Zaliczenie Gate A dla najnows
 
 
 Uzupełnienie po CI #809 (commit f6dcded): wszystkie nowe testy fullchain i guard przeszły, ale jeden starszy test test_empty_torch_allocator_is_not_proof_of_comfy_unload[False-1] przekroczył 50 ms podczas **poprawnego wejścia** w stan media na obciążonym runnerze. Poprawiono wyłącznie test: przed enter_media stosuje limit 1,0 s, a przed oczekiwanym błędem cleanup ponownie 0,05 s. Obie odmiany testu lokalnie PASS. Wymagana ponowna pełna weryfikacja GitHub CI.
+
+
+## L. Read-only badanie rozmiaru wag FLUX2 i minimalnego budżetu pamięci
+
+Nowy skrypt tools/local_image/fullchain_flux2_memory_preflight_dev.py czyta wyłącznie nagłówki safetensors (bez torch, bez dotykania KFD/ROCm, bez uruchomienia modeli). Na realnym serwerze potwierdzono strukturę tensorów:
+
+| Model | Liczba tensorów | Rozmiar wag |
+|---|---:|---:|
+| FLUX2 Klein 4B FP8 | 309 | 3,791 GiB |
+| Qwen 3 4B text encoder BF16 | 398 | 7,492 GiB |
+| FLUX2 VAE FP32 | 251 | 0,313 GiB |
+| **Suma wag** | **958** | **11,597 GiB** |
+
+To jest **dolna granica**: nie obejmuje allocatorów PyTorch/HIP, activations, VAE scratch, cgroup page cache, hosta ani ewentualnych kopii/konwersji wag. Pole MemTotal hosta wynosi 31 965 708 kB (~30,49 GiB); MemAvailable w czasie audytu ~25,79 GiB, zmienne.
+
+Obecny profil draft ComfyUI DEV ma **MemoryMax=12G**. Weryfikator porównuje dolną granicę z cgroup MemoryMax plus **screening margin 2 GiB** (nie jest to zmierzony maksymalny narzut modelu). Wynik na hoście: **cgroup_screen=INSUFFICIENT, host_screen=PASS, exit code 4**. Ten wynik oznacza **BLOCKED dla obecnego limitu**, nie błąd modelu. Przed rzeczywistym startem konieczny osobny przegląd limitów i brak innych właścicieli pamięci. Nie ustawiono nowego MemoryMax ani MemoryHigh.
+
+Testy CPU parsera safetensors, offsetów, symlinków, formatów MemoryMax i budżetu odmowy: PASS. Każda poprawna analiza nadal ustawia fullchain_gpu_authorized=false i gpu_reuse_safe=NOT_VERIFIED.
+
+## M. Kontrolowany, wąski proces unload Qwen po inferencji — DEV, nie wdrożony
+
+Moduł tools/local_image/fullchain_qwen_drain_dev.py przygotowuje pojedynczą funkcję odbiorową do użycia **wyłącznie wewnątrz przyszłego root-owned, operator-authorized recovery runnera**. Zwykłe CLI pozwala wyłącznie na --check (GET /api/ps, bez wyładowywania). Na hoście: NO_QWEN_RESIDENT, unload_executed=false.
+
+Przed możliwym unlodem moduł wymaga jednocześnie:
+- istniejącego zaufanego recovery marker i uzbrojonego niezależnego watchdog;
+- potwierdzonego zakończenia workera Hermes (pełna tożsamość), zatrzymanego DEV Gateway/ComfyUI, zamkniętych portów 11656/11657, pustego DEV cgroup;
+- produkcyjnych ComfyUI i Gateway wyłączonych na czas maintenance oraz działającej Ollamy;
+- ścisłego inventory /api/ps. Dopuszczony **tylko** qwen3.6:35b-hermes64k, inne aliasy, WVC i pozostałe modele prowadzą do BLOCKED;
+- potwierdzenia, że każdy proces trzymający AMD (jeśli jest) należy do /system.slice/ollama.service, odrzucenia obcych PID i niepełnej telemetrii.
+
+Jeśli Qwen jest rezydentny, przekazany zaufany callback wysyła pojedyncze unload modelu, następnie odczytuje /api/ps co najmniej dwukrotnie, z limitem czasu, oraz oczekuje na potwierdzenie braku deskryptorów AMD. Nie wysyła poleceń do innych modeli, nie wyłącza i nie uruchamia jednostek systemd, nigdy nie usuwa markera. W każdym wyniku status driver E_safe i GPU_REUSE_SAFE pozostaje NOT_VERIFIED.
+
+Testy CPU **29/29 PASS** obejmują pozytywny mock, 11 niezależnych blokad precondition, modele obce/WVC, innego właściciela GPU, brak enumeracji PID, wiszące deskryptory i timeout. **Nie przeprowadzono rzeczywistego wyładowania Qwen.**
+
+**Nadal BLOCKED:** nie ma jeszcze zatwierdzonego i przetestowanego niezależnego operatorowego runnera/rollbacku po pełnym FLUX2 ani rzeczywistego odbioru budżetu pamięci. Sama funkcja callback oraz zielone testy CPU nie są przyzwoleniem na test GPU.
