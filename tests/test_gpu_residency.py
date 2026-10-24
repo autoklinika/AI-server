@@ -281,9 +281,10 @@ async def test_cleanup_retries_lost_comfy_wakeup_until_acknowledged(tmp_path):
             providers.cleanup_pending = len(frees) < 2
         return providers.handle(request)
     client = httpx.AsyncClient(base_url='http://test', transport=httpx.MockTransport(handle))
-    # Keep the timing relationship under test, but leave enough wall-clock
-    # budget for slower CI event loops. Runtime behavior is unchanged.
-    gpu = GPUResidency(client, client, tmp_path / 'marker', timeout=.6, poll=.001)
+    # A second /free is scheduled after min(2.0, timeout/3). Keep
+    # enough event-loop margin for loaded GitHub Actions runners while
+    # testing the exact same lost-acknowledgment behavior.
+    gpu = GPUResidency(client, client, tmp_path / 'marker', timeout=3.0, poll=.005)
     await gpu.enter_media()
     await gpu.leave_media()
     assert len(frees) == 2 and gpu.state == 'llm' and not gpu.marker.exists()

@@ -139,3 +139,20 @@ Zanim wolno uruchomić okno GPU z Qwen, rollback musi:
 5. Dopiero po potwierdzonym bezpiecznym powrocie uruchomić oryginalne ComfyUI/Gateway, smoke-testować dostępność i zakończyć okno.
 
 **Rollback dla live-Qwen/full-FLUX2 = NOT_READY. Nie uruchamiać operator-only testu, dopóki nie zostanie przetestowana taka procedura.**
+
+
+## K. Walidacja rollbacku read-only i poprawka przenośności CI
+
+- Moduł tools/local_image/fullchain_rollback_gate_dev.py weryfikuje jedynie predykaty fizycznego procesu: DEV unit inactive, MainPID=0, pusty cgroup, potwierdzony koniec identyfikacji workera, zamknięte porty DEV 11656/11657, ścisły JSON /api/ps Ollama i brak właścicieli AMD. Sam moduł **nie zatrzymuje, nie uruchamia i nie przywraca żadnych usług**.
+- Wynik syntetyczny, gdy wszystkie obserwacje są poprawne: restore_prerequisites=PASS, ale gpu_reuse_safe=NOT_VERIFIED i permission_to_start_production_comfy=false. Predykat nigdy nie przyznaje prawa do produkcyjnego grant GPU.
+- Wynik rzeczywistego read-only wywołania na działającym serwerze bez sudo: **BLOCKED**, ponieważ nie istnieje jeszcze dowód zakończenia przyszłego workera i odczyt właścicieli urządzeń przez zwykłe konto nie może poświadczyć pełnej listy PID. Oczekiwane zachowanie fail-closed.
+- 23 testy CPU-only klasyfikacji rollbacku: PASS; symulowana rezydencja Qwen wymaga jawnego unload, nieznany model (np. WVC) jest odrzucany, błędy i niekompletne obserwacje nie dają prawa do restore.
+- To **kontrakt zabezpieczeń**, nie ukończony skrypt watchdog/rollback. Konieczna pozostaje kontrolowana implementacja rozładowania Qwen, odzyskania PID/cgroup i bramka sterownika GPU, przed oknem serwisowym z pełnym FLUX2.
+
+GitHub Actions run #808 po commicie 0f8fd36 zakończył się **failure** (3 niepowodzenia mimo lokalnej regresji PASS):
+1. Dwa testy HTTP worker miały host-only /home/harrypotter/AI-server/.venv/bin/python zamiast przenośnego sys.executable.
+2. Starszy test lost wakeup Comfy cleanup z timeout=0,6 s wykazał podatność na opóźnienie asyncio w GitHub Actions. Powiększono **wyłącznie budżet czasu testu** do 3,0 s, bez zmian runtime; drugi test sprawdzający dokładną zależność czasową pozostaje niezmieniony.
+
+Lokalne testy ukierunkowane po poprawce (26 PASS). Zaliczenie Gate A dla najnowszego commita wymaga nowego **GitHub CI SUCCESS** oraz pełnych release builds, nie wolno polegać na wcześniejszym #807.
+
+**Aktualny Gate B/C: BLOCKED — brak realnej inferencji Qwen i FLUX2 oraz bezpiecznego zatwierdzonego okna GPU.**

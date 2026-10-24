@@ -213,7 +213,9 @@ def _run_worker(snapshot_path: Path, *, prompt: str) -> tuple[subprocess.Complet
         "input_image": None,
         "mode": "generate",
     }))
-    py = Path("/home/harrypotter/AI-server/.venv/bin/python")
+    # The runner uses its active Python environment; do not require
+    # host-only venv paths on GitHub Actions.
+    py = Path(sys.executable)
     assert py.is_file()
     env = {
         **os.environ,
