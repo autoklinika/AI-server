@@ -155,6 +155,7 @@ def create_gateway_app(
     platform_policy=None,
     knowledge_runtime_factory=None,
     vision_executor=None,
+    granite_router_backend=None,
 ) -> FastAPI:
     resolved = settings or get_settings()
     if vision_executor is None and resolved.gateway_vision_radio_enabled:
@@ -734,6 +735,7 @@ def create_gateway_app(
             resolved,
             platform_policy,
             knowledge_runtime_factory=knowledge_runtime_factory,
+            granite_router_backend=granite_router_backend,
         ),
     )
     return app
