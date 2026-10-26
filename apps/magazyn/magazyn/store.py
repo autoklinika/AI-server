@@ -8,7 +8,7 @@ import os
 import re
 import secrets
 import sqlite3
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -277,7 +277,7 @@ class Store:
             con.execute("DELETE FROM balances WHERE location_id=?",(location_id,))
             con.execute("DELETE FROM locations WHERE id=?",(location_id,))
 
-    def add_item(self, data, actor):
+    def add_item(self, data, actor, *, connection=None):
         kind = data.get("kind")
         if kind not in KINDS or not data.get("designation","").strip():
             raise Problem(422, "Rodzaj produktu i oznaczenie są wymagane")
@@ -290,7 +290,7 @@ class Store:
         if any(len(x)>2000 for x in values):
             raise Problem(422,"Zbyt długie dane produktu")
         timestamp = now()
-        with self.connect(write=True) as con:
+        with (nullcontext(connection) if connection is not None else self.connect(write=True)) as con:
             item_id = con.execute("INSERT INTO items(" + ",".join(fields) +
                     ",created_at,updated_at) VALUES (" + ",".join(["?"]*(len(fields)+2)) +
                     ") RETURNING id", [*values,timestamp,timestamp]).fetchone()[0]
@@ -429,7 +429,7 @@ class Store:
                     break
             return result
 
-    def stock_operation(self, data, actor):
+    def stock_operation(self, data, actor, *, connection=None):
         action=data.get("action")
         if action not in OPERATIONS:
             raise Problem(422,"Nieprawidłowa operacja")
@@ -441,7 +441,7 @@ class Store:
             raise Problem(422,"Powód wydania jest obowiązkowy")
         if action=="adjust" and actor["role"]!="admin":
             raise Problem(403,"Korekta wymaga administratora")
-        with self.connect(write=True) as con:
+        with (nullcontext(connection) if connection is not None else self.connect(write=True)) as con:
             item=self._get_item(con,item_id)
             origin=con.execute("SELECT * FROM locations WHERE id=?",(location_id,)).fetchone()
             if origin is None:
@@ -459,6 +459,8 @@ class Store:
                                 (item_id,loc,ps,ts)).fetchone()
                 return row[0] if row else 0
             before=balance(location_id)
+            if "expected_quantity" in data and before != data["expected_quantity"]:
+                raise Problem(409,"Stan zmienił się od odczytu. Odśwież inwentaryzację")
             target_id, target_code, before_target, after_target = None,"",None,None
             if action=="receive":
                 after=before+qty
@@ -494,7 +496,7 @@ class Store:
                 "quantity,before_source,after_source,before_target,after_target,reason,order_ref,"
                 "note,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
                 (item_id,label,actor["id"],actor["username"],action,location_id,origin["code"],
-                 target_id,target_code,ps,ts,qty,before,after,before_target,after_target,
+                 target_id,target_code,ps,ts,after-before if data.get("inventory") else qty,before,after,before_target,after_target,
                  (data.get("reason","") or "") if action=="issue" else "",
                  (data.get("order_ref","") or "") if action=="issue" else "",
                  data.get("note","") or "",now())).fetchone()[0]
@@ -569,3 +571,40 @@ class Store:
                 "units":con.execute("SELECT COALESCE(SUM(quantity),0) FROM balances").fetchone()[0],
                 "locations":con.execute("SELECT COUNT(*) FROM locations").fetchone()[0],
             }
+
+    def inventory(self, location_id):
+        # A read transaction keeps the catalogue and balances in one snapshot.
+        with self.connect() as con:
+            con.execute("BEGIN")
+            if not con.execute("SELECT 1 FROM locations WHERE id=?", (location_id,)).fetchone():
+                raise Problem(404,"Brak lokalizacji")
+            rows=[]
+            for item in con.execute("SELECT id,designation,kind FROM items ORDER BY id"):
+                states = [(p,t) for p in sorted(PRODUCT_STATES) for t in sorted(TECH_STATES)] if item["kind"]=="ecu" else [("na","na")]
+                for ps,ts in states:
+                    balance=con.execute("SELECT quantity FROM balances WHERE item_id=? AND location_id=? AND product_state=? AND technical_state=?",
+                                        (item["id"],location_id,ps,ts)).fetchone()
+                    rows.append(dict(item_id=item["id"],designation=item["designation"],
+                                     product_state=ps,technical_state=ts,
+                                     expected_quantity=balance[0] if balance else 0))
+            return rows
+
+    def apply_inventory(self, location_id, rows, actor):
+        if actor["role"]!="admin":
+            raise Problem(403,"Korekta wymaga administratora")
+        if not rows or len(rows)>1000:
+            raise Problem(422,"Inwentaryzacja wymaga 1–1000 wierszy")
+        seen=set()
+        with self.connect(write=True) as con:
+            results=[]
+            for row in rows:
+                key=(row["item_id"],row["product_state"],row["technical_state"])
+                if key in seen:
+                    raise Problem(422,"Powtórzona pozycja inwentaryzacji")
+                seen.add(key)
+                for field in ("quantity","expected_quantity"):
+                    if type(row[field]) is not int or not 0 <= row[field] <= 2_000_000_000:
+                        raise Problem(422,"Nieprawidłowa ilość")
+                results.append(self.stock_operation(dict(row,location_id=location_id,
+                    action="adjust",inventory=True,note="Inwentaryzacja"),actor,connection=con))
+            return results

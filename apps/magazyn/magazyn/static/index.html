@@ -31,6 +31,7 @@
       <nav aria-label="Główne sekcje">
         <button class="nav-item active" data-tab="products">Sterowniki i elektronika</button>
         <button class="nav-item" data-tab="low">Do zamówienia</button>
+        <button class="nav-item" data-tab="inventory">Inwentaryzacja</button>
         <button class="nav-item" data-tab="history">Historia</button>
         <button class="nav-item admin-only" data-tab="admin">Administracja</button>
       </nav>
@@ -62,8 +63,39 @@
           <div id="history-results" class="panel"></div>
         </section>
 
+        <section id="page-inventory" class="page" hidden>
+          <div class="page-heading"><div><h1>Inwentaryzacja</h1>
+            <p class="muted">Wpisz policzone ilości. Puste pola pozostają bez zmian. Korektę zatwierdza administrator.</p></div></div>
+          <div class="panel stack">
+            <label>Lokalizacja<select id="inventory-location"></select></label>
+            <button id="inventory-load" type="button">Odczytaj / odśwież stany</button>
+            <p class="muted">Lista obejmuje także zerowe i dotąd nieutworzone kombinacje stanów. Limit jednego zapisu: 1000 wierszy.</p>
+            <form id="inventory-form" class="stack">
+              <div id="inventory-results" class="table-wrap"></div>
+              <button class="primary admin-only" id="inventory-apply" type="submit" disabled>Zastosuj policzone ilości</button>
+            </form>
+          </div>
+        </section>
+
         <section id="page-admin" class="page" hidden>
           <div class="page-heading"><div><h1>Administracja</h1><p class="muted">Konta użytkowników i lokalizacje.</p></div></div>
+          <div class="panel stack transfer-panel">
+            <h2>Import i eksport katalogu</h2>
+            <p class="muted">Eksport obejmuje wszystkie lokalizacje i zapisane kombinacje stanów (także zera). Nie jest plikiem importu ani kopią zapasową.</p>
+            <div class="two-cols">
+              <label>Rodzaj eksportu<select id="export-kind"><option value="">Cały katalog</option><option value="ecu">Sterowniki</option><option value="part">Elektronika</option></select></label>
+              <label>Marka eksportu (puste = wszystkie)<input id="export-brand"></label>
+            </div>
+            <div><button type="button" id="export-csv">Eksport CSV</button> <button type="button" id="export-xlsx">Eksport XLSX</button></div>
+            <h3>Import nowych pozycji</h3>
+            <p class="muted">Maks. 1 MB / 1000 wierszy. Jeden wiersz = nowy produkt, jedna istniejąca lokalizacja i stan. Konflikty numerów, nazw/modeli lub HW/SW blokują cały import. XLSX wymaga opcjonalnej biblioteki na serwerze.</p>
+            <p class="muted">W szablonie: format = magazyn-new-v1, kind = ecu/part, quantity = całkowita ≥ 0. ECU: new/used oraz working/faulty/unknown; elektronika: na/na. brands_json i numbers_json: tablice JSON lub puste. Szczegóły w README.</p>
+            <div><button type="button" id="template-csv">Szablon CSV</button> <button type="button" id="template-xlsx">Szablon XLSX</button></div>
+            <label>Plik CSV UTF-8 lub XLSX<input id="import-file" type="file" accept=".csv,.xlsx"></label>
+            <button type="button" id="import-preview">Sprawdź plik (bez zapisu)</button>
+            <div id="import-results" role="status"></div>
+            <button class="primary" type="button" id="import-apply" disabled>Potwierdź import nowych pozycji</button>
+          </div>
           <div class="admin-grid">
             <div class="panel">
               <h2>Użytkownicy</h2>

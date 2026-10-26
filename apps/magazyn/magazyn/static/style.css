@@ -5,3 +5,9 @@ input,select,textarea{width:100%;background:white;border:1px solid #cbd7e0;borde
 @media(max-width:530px){.site-header{gap:4px}.header-right{gap:4px}.brandmark{font-size:16px}.page-heading{align-items:start;flex-direction:column}.page-heading>.primary{width:100%}.filters{grid-template-columns:1fr 1fr}.panel{padding:13px}.result-card{padding:12px}.stat-card{padding:11px}.stat-card strong{font-size:22px}.result-title{font-size:14px}.two-cols{grid-template-columns:1fr}dialog{padding:17px}}
 
 [hidden]{display:none!important}
+
+.transfer-panel{margin-bottom:24px}
+.inventory-count{min-width:110px;max-width:160px}
+#inventory-results{max-height:65vh;overflow:auto}
+#inventory-results th{position:sticky;top:0;background:var(--panel,#fff)}
+#import-results p{margin:6px 0;color:#a33}

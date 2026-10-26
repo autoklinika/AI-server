@@ -22,7 +22,7 @@ async function api(path,opts={}){
   return data;
 }
 function showLogin(){
-  session=null;byId("app").hidden=true;byId("login").hidden=false;
+  resetTransfers();session=null;byId("app").hidden=true;byId("login").hidden=false;
 }
 function setSignedIn(user){
   session=user;byId("login").hidden=true;byId("app").hidden=false;
@@ -45,6 +45,8 @@ function locationOptions(empty=false){
 }
 async function loadLocations(){
   locations=await api("/api/locations");
+  byId("inventory-location").innerHTML=locationOptions();
+  clearInventory();
   byId("filter-location").innerHTML=locationOptions(true);
   byId("new-location").innerHTML=locationOptions();
   byId("operation-location").innerHTML=locationOptions();
@@ -302,4 +304,94 @@ document.addEventListener("DOMContentLoaded",async()=>{
   try{const me=await api("/api/auth/me");
     setSignedIn(me);await Promise.all([loadLocations(),loadBrands(),loadStats(),loadItems()]);}
   catch{showLogin();}
+});
+
+let inventoryRows=[],inventoryLocation=null,inventoryRequest=0,importUpload=null;
+function clearInventory(){
+  inventoryRequest++;inventoryRows=[];inventoryLocation=null;
+  byId("inventory-results").replaceChildren();byId("inventory-apply").disabled=true;
+}
+function clearImport(){
+  importUpload=null;byId("import-apply").disabled=true;byId("import-results").replaceChildren();
+}
+function resetTransfers(){clearInventory();clearImport();byId("import-file").value="";}
+async function loadInventory(){
+  clearInventory();
+  const request=inventoryRequest,loc=Number(byId("inventory-location").value),user=session;
+  if(!loc){toast("Wybierz lokalizację",true);return;}
+  try{
+    const rows=await api("/api/inventory?location_id="+loc);
+    if(request!==inventoryRequest||user!==session)return;
+    inventoryRows=rows;inventoryLocation=loc;
+    byId("inventory-results").innerHTML='<table><thead><tr><th>Produkt</th><th>Stan</th><th>Sprawność</th><th>Oczekiwane</th><th>Policzone</th><th>Różnica</th></tr></thead><tbody>'+rows.map((r,i)=>
+      '<tr><td>'+esc(r.designation)+' (#'+r.item_id+')</td><td>'+esc(stateLabels[r.product_state])+'</td><td>'+esc(stateLabels[r.technical_state])+'</td><td>'+fmt(r.expected_quantity)+'</td><td><input aria-label="Policzone: '+esc(r.designation)+'" class="inventory-count" data-index="'+i+'" type="number" min="0" max="2000000000" step="1" placeholder="Bez zmian" '+(session.role==='admin'?'':'disabled')+'></td><td class="inventory-delta">—</td></tr>').join('')+'</tbody></table>';
+    byId("inventory-apply").disabled=!rows.length;
+  }catch(e){toast(e.message,true);}
+}
+async function downloadTable(path,filename){
+  try{
+    const response=await fetch(path,{credentials:"same-origin"});
+    if(!response.ok){const error=await response.json();throw new Error(error.detail);}
+    const url=URL.createObjectURL(await response.blob()),a=document.createElement("a");
+    a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch(e){toast(e.message,true);}
+}
+document.addEventListener("DOMContentLoaded",()=>{
+  byId("inventory-load").addEventListener("click",loadInventory);
+  byId("inventory-location").addEventListener("change",clearInventory);
+  byId("inventory-results").addEventListener("input",ev=>{
+    const input=ev.target;if(!input.classList.contains("inventory-count"))return;
+    input.closest("tr").querySelector(".inventory-delta").textContent=input.value===""?'—':String(Number(input.value)-inventoryRows[Number(input.dataset.index)].expected_quantity);
+  });
+  byId("inventory-form").addEventListener("submit",async ev=>{
+    ev.preventDefault();const rows=[];
+    document.querySelectorAll(".inventory-count").forEach(input=>{
+      if(input.value!==""){
+        const {designation,...row}=inventoryRows[Number(input.dataset.index)];
+        rows.push({...row,quantity:Number(input.value)});
+      }
+    });
+    if(!rows.length||rows.length>1000){toast("Wypełnij od 1 do 1000 wierszy",true);return;}
+    if(!confirm("Zastosować korekty dla "+rows.length+" pozycji stanów?"))return;
+    byId("inventory-apply").disabled=true;
+    try{await api("/api/inventory",{method:"POST",body:JSON.stringify({location_id:inventoryLocation,rows})});
+      toast("Zapisano inwentaryzację");await loadInventory();loadStats();}
+    catch(e){toast(e.message,true);byId("inventory-apply").disabled=false;}
+  });
+  for(const format of ["csv","xlsx"]){
+    byId("export-"+format).addEventListener("click",()=>{
+      const query=new URLSearchParams({format});
+      if(byId("export-kind").value)query.set("kind",byId("export-kind").value);
+      if(byId("export-brand").value.trim())query.set("brand",byId("export-brand").value.trim());
+      downloadTable("/api/export?"+query,"magazyn-snapshot."+format);
+    });
+    byId("template-"+format).addEventListener("click",()=>downloadTable("/api/import/template?format="+format,"magazyn-new."+format));
+  }
+  byId("import-file").addEventListener("change",clearImport);
+  byId("import-preview").addEventListener("click",async()=>{
+    clearImport();const file=byId("import-file").files[0],user=session;
+    if(!file||file.size>1000000){toast("Wybierz plik do 1 MB",true);return;}
+    const format=file.name.split('.').pop().toLowerCase();
+    if(!['csv','xlsx'].includes(format)){toast("Wybierz CSV lub XLSX",true);return;}
+    byId("import-preview").disabled=true;
+    try{
+      const bytes=new Uint8Array(await file.arrayBuffer());let binary='';
+      for(const byte of bytes)binary+=String.fromCharCode(byte);
+      const upload={format,content_base64:btoa(binary)};
+      const result=await api("/api/import/preview",{method:"POST",body:JSON.stringify(upload)});
+      if(file!==byId("import-file").files[0]||session!==user)return;
+      byId("import-results").textContent='Pozycje: '+result.count+'. Poprawne: '+result.valid_count+'. Problemy: '+result.problems.length+'.';
+      for(const problem of result.problems){const p=document.createElement('p');p.textContent='Wiersz '+problem.row+': '+problem.detail;byId("import-results").append(p);}
+      if(result.token){importUpload={...upload,token:result.token};byId("import-apply").disabled=false;}
+    }catch(e){toast(e.message,true);}finally{byId("import-preview").disabled=false;}
+  });
+  byId("import-apply").addEventListener("click",async()=>{
+    if(!importUpload)return;
+    const upload=importUpload;byId("import-apply").disabled=true;
+    try{const result=await api("/api/import/apply",{method:"POST",body:JSON.stringify(upload)});
+      clearImport();byId("import-results").textContent='Zaimportowano '+result.count+' nowych pozycji.';
+      byId("import-file").value='';loadStats();loadItems();loadBrands();clearInventory();}
+    catch(e){clearImport();toast(e.message+' Wykonaj podgląd ponownie.',true);}
+  });
 });

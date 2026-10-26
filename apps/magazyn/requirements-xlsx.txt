@@ -1,0 +1,3 @@
+# Opcjonalne tylko dla aplikacji Magazyn: import/eksport XLSX.
+# Instalować wyłącznie w osobnym środowisku aplikacji/testów.
+openpyxl>=3.1.5,<4

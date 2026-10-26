@@ -3,15 +3,17 @@ from __future__ import annotations
 
 import hmac
 import os
+import secrets
 from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, Header, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictInt
 
 from .store import Problem, Store
+from . import transfers
 
 COOKIE = "magazyn_session"
 STATIC = Path(__file__).parent / "static"
@@ -58,6 +60,25 @@ class Minimum(BaseModel):
     provider: str = ""
 
 
+class InventoryRow(BaseModel):
+    item_id: StrictInt = Field(gt=0)
+    product_state: str = Field(min_length=1, max_length=16)
+    technical_state: str = Field(min_length=1, max_length=16)
+    expected_quantity: StrictInt = Field(ge=0, le=2_000_000_000)
+    quantity: StrictInt = Field(ge=0, le=2_000_000_000)
+
+
+class InventoryUpdate(BaseModel):
+    location_id: StrictInt = Field(gt=0)
+    rows: list[InventoryRow] = Field(min_length=1, max_length=1000)
+
+
+class Upload(BaseModel):
+    format: str = Field(pattern="^(csv|xlsx)$")
+    content_base64: str = Field(max_length=1_333_336)
+    token: str = Field(default="", max_length=100, pattern=r"^(?:|[0-9]{1,12}\.[a-f0-9]{64})$")
+
+
 def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> FastAPI:
     path = db_path or os.environ.get("MAGAZYN_DB_PATH")
     if not path:
@@ -65,6 +86,7 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
     store = Store(path)
     app = FastAPI(title="Magazyn V1 DEV", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.store = store
+    preview_secret = secrets.token_bytes(32)
 
     @app.exception_handler(Problem)
     async def known_error(_request: Request, exc: Problem):
@@ -72,6 +94,14 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
+        if request.url.path.startswith(("/api/import/", "/api/inventory")) and request.method == "POST":
+            # Bound the actual streamed body, including requests without Content-Length.
+            body = bytearray()
+            async for chunk in request.stream():
+                body.extend(chunk)
+                if len(body) > transfers.MAX_BODY:
+                    return JSONResponse(status_code=413, content={"detail":"Zbyt duże żądanie"})
+            request._body = bytes(body)
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
@@ -179,6 +209,38 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
     @app.post("/api/stock",status_code=201)
     def stock(body: StockOperation,actor: dict = Depends(require_write)):
         return store.stock_operation(body.model_dump(),actor)
+
+    @app.get("/api/inventory")
+    def inventory(location_id: int, _user: dict = Depends(require_user)):
+        return store.inventory(location_id)
+
+    @app.post("/api/inventory")
+    def apply_inventory(body: InventoryUpdate, actor: dict = Depends(require_admin_write)):
+        return store.apply_inventory(body.location_id, [r.model_dump() for r in body.rows], actor)
+
+    def download(data, fmt, name):
+        media = "text/csv; charset=utf-8" if fmt == "csv" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        return Response(data, media_type=media,
+                        headers={"Content-Disposition": f'attachment; filename="{name}.{fmt}"'})
+
+    @app.get("/api/export")
+    def export(format: str = "csv", kind: str | None = None, brand: str | None = None,
+               _user: dict = Depends(require_admin)):
+        return download(transfers.export_catalog(store, format, kind, brand), format, "magazyn-snapshot")
+
+    @app.get("/api/import/template")
+    def import_template(format: str = "csv", _user: dict = Depends(require_admin)):
+        return download(transfers.encode_table(transfers.IMPORT_HEADERS, [], format), format, "magazyn-new")
+
+    @app.post("/api/import/preview")
+    def preview(body: Upload, actor: dict = Depends(require_admin_write)):
+        return transfers.import_preview(store, transfers.decode_upload(body.content_base64),
+                                        body.format, actor, preview_secret)
+
+    @app.post("/api/import/apply", status_code=201)
+    def apply_import(body: Upload, actor: dict = Depends(require_admin_write)):
+        return transfers.import_apply(store, transfers.decode_upload(body.content_base64),
+                                      body.format, actor, preview_secret, body.token)
 
     @app.get("/api/history")
     def history(item_id: int | None=None, actor_id: int | None=None,

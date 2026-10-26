@@ -1,51 +1,60 @@
 # Magazyn V1 — aplikacja magazynowa (DEV)
 
-**Status: etap rozwoju / niewdrożona.** Samodzielna aplikacja WebGUI, API i SQLite, odseparowana od produkcyjnej AI Platform. Nie jest podłączona do Gateway, RM, Ollamy, GPU ani Vision.
+**Status: implementacja DEV, bez wdrożenia produkcyjnego.** Samodzielne WebGUI, FastAPI i SQLite. Nie jest podłączona do Gateway, RM, Ollamy, GPU ani Vision.
 
-Pełna specyfikacja: ../../docs/reports/MAGAZYN_V1_RAPORT_USTALEN_2026-10-25_PL.md
+Źródło wymagań: [Raport Magazyn V1](../../docs/reports/MAGAZYN_V1_RAPORT_USTALEN_2026-10-25_PL.md).
 
-## Zaimplementowane w pierwszym przyroście
+## Aktualnie działające
 
-- Indywidualne konta i sesje, scrypt z solą, HttpOnly/SameSite i token CSRF.
-- Administrator zarządza użytkownikami, lokalizacjami, katalogiem, historią oraz minimami; pracownik wykonuje podstawowe operacje.
-- Ewidencja ECU i elektroniki, stany Nowy/Używany oraz Sprawny/Uszkodzony/Nieznany dla ECU.
-- Wielolokalizacyjne stany, atomowe przyjęcia, wydania, przenoszenia, korekty i rejestrowanie autora.
-- Wiele numerów katalogowych i marek przypisanych do jednej pozycji. Wyszukiwarka toleruje spacje, myślniki i części numerów.
-- Prosty responsywny panel WebGUI: katalog, wyszukiwanie, stany, historia, minima i podstawowa administracja.
-- Zatwierdzony proces wydania z powodem, opcjonalnym numerem zlecenia i podglądem bilansu.
-- Osobne API przygotowane pod kolejne interfejsy.
+- Konta i sesje: indywidualne loginy, scrypt+salt, ciasteczko HttpOnly, SameSite, CSRF. Administrator ma pełne funkcje administracyjne, w tym edycję/usuwanie historii. Pracownik ma operacje podstawowe.
+- Sterowniki i elektronika: jedna pozycja, wiele marek i numerów, wiele lokalizacji. ECU: Nowy/Używany oraz stan techniczny (Sprawny/Uszkodzony/Nieznany).
+- Przyjęcie, wydanie z obowiązkowym powodem, przesunięcie i korekta z atomowym zapisem ilości i historii.
+- Wyszukiwarka po oznaczeniach i numerach z normalizacją spacji, myślników i wielkości liter; filtrowanie.
+- Minimalne stany magazynowe i lista „Do zamówienia”. Ustawienia odbiorcy powiadomień są przechowywane, ale powiadomienia jeszcze **nie są wysyłane**.
+- **Inwentaryzacja**: `GET /api/inventory?location_id=N`, `POST /api/inventory`. Pracownik może przeglądać, administrator wprowadza policzone stany. W jednej transakcji powstają korekty; parametr `expected_quantity` chroni przed nadpisaniem nowszego stanu (409 Conflict).
+- **CSV/XLSX**: eksport katalogu `GET /api/export?format=csv|xlsx&kind=ecu|part&brand=...`, szablon nowych pozycji `GET /api/import/template?format=csv|xlsx`, podgląd `POST /api/import/preview`, zatwierdzenie `POST /api/import/apply`. Wszystkie endpointy transferu wymagają administratora; POST wymagają CSRF. Import ma ograniczenie 1 MB / 1000 wierszy, walidację numerów/OEM/HW/SW, konflikty blokują całą transakcję; potwierdzenie podglądu ma krótką ważność i jest związane z plikiem i użytkownikiem. Żadnego automatycznego scalania z istniejącymi produktami.
+- Eksport w formie migawki z wszystkimi lokalizacjami i wariantami stanów, także o ilości 0. Eksport i szablon **mają celowo różne nagłówki** — migawka katalogu nie jest automatycznym importem/backupem.
 
-## Jeszcze NIE zaimplementowane
+## Sposób uruchamiania wyłącznie do testów
 
-- Import/eksport CSV i XLSX oraz osobny ekran inwentaryzacji.
-- Telegram i Discord: prywatne zapytania, parowanie kont, wysyłka alertów.
-- Automatyczny backup do GlobalNAS, lokalny bufor, retencja 7/4/3, szyfrowanie i odtwarzanie.
-- Szyfrowanie danych bazy i pełny audyt bezpieczeństwa, rate limiting logowania, HTTPS/reverse proxy.
-- Wygodna edycja wszystkich danych i historii w WebGUI (część operacji admina jest już w API).
-- Aplikacja Android, OCR i zdjęcia — świadomie poza V1.
+Wymagany Python 3.12+, FastAPI, Pydantic 2, Uvicorn; testy wymagają pytest i httpx, XLSX wymaga **openpyxl** z [requirements-xlsx.txt](requirements-xlsx.txt). Instalować zależności tylko w osobnym wirtualnym środowisku DEV, nie w systemowym lub produkcyjnym Pythonie.
 
-## Uruchomienie tylko w DEV
+Z katalogu `apps/magazyn`:
 
-Wymagany Python 3.12+, FastAPI, Pydantic 2, Uvicorn. Do testów: pytest, httpx.
+```bash
+export PYTHONPATH="$PWD"
+export MAGAZYN_DB_PATH="/prywatny/katalog/testowy/magazyn.sqlite3"
+python -m magazyn create-admin
+python -m pytest tests/test_magazyn.py tests/test_inventory_transfers.py -q
+MAGAZYN_COOKIE_SECURE=0 python -m magazyn run --host 127.0.0.1 --port 18765
+```
 
-Z katalogu apps/magazyn:
+Domyślnie cookie ma flagę Secure (wymagane HTTPS). Wartość `MAGAZYN_COOKIE_SECURE=0` wolno stosować **wyłącznie na loopback podczas testów**, nigdy na interfejsie publicznym. Uruchomienie CLI z `create-admin` pyta o hasło bez ujawniania go w parametrach procesu. Baza i hasła nie należą do repozytorium — GitHub jest publiczny.
 
-    export PYTHONPATH="$PWD"
-    export MAGAZYN_DB_PATH="/prywatna/bezpieczna/sciezka/magazyn.sqlite3"
-    python -m magazyn create-admin
-    python -m pytest tests -q
-    MAGAZYN_COOKIE_SECURE=0 python -m magazyn run --host 127.0.0.1 --port 18765
+### Format importu
 
-Używaj oddzielnego środowiska wirtualnego, nie modyfikuj systemowego lub produkcyjnego Pythona. Domyślnie ciasteczka mają flagę Secure (wymagają HTTPS); wyłączenie tylko jawnie na loopback przy testach. Nie publikować portu na LAN/Internet. Baza danych oraz sekrety muszą pozostawać poza repozytorium.
+- Plik CSV UTF-8 (BOM dozwolony) lub XLSX **jeden arkusz**, pierwszy wiersz musi odpowiadać szablonowi `magazyn-new-v1`.
+- Każdy wiersz = **nowy** produkt, istniejąca lokalizacja, stan i ilość. Inne numery w `numbers_json` jako lista obiektów `{"number":"...","number_type":"OEM"}`. Dodatkowe marki w `brands_json` jako lista napisów.
+- Dla ECU: `kind=ecu`, `product_state=new|used`, `technical_state=working|faulty|unknown`. Dla elektroniki: `kind=part`, oba pola stanów `na`.
+- `quantity` jest liczbą całkowitą 0–2 000 000 000.
+- Nieznana lokalizacja, ten sam numer w innym produkcie, powtórzenie w pliku albo niezgodny wariant produktu = błąd; import **nie zapisuje części danych**.
+- Dla podglądu i zastosowania identyczny JSON `{"format":"csv","content_base64":"..."}`; dla zastosowania dodatkowo `token` zwrócony przez podgląd. WebGUI przygotowuje tę strukturę automatycznie.
+- Arkusze XLSX z makrami, formułami i zewnętrznymi odwołaniami są odrzucane. Eksport neutralizuje wartości mogące zostać zinterpretowane jako formuły przez programy biurowe.
 
-## Niezmienniki
+## Wynik testów
 
-- Przyjęcia i wydania nie mogą doprowadzić do ujemnych stanów.
-- Operacja stanu oraz wpis historii są transakcyjne.
-- Transfer między lokalizacjami nie zmienia sumy globalnej.
-- Wpisy wielu marek nie podwajają fizycznej ilości.
-- Bez sesji brak dostępu do stanów, zły CSRF blokuje zapisy.
-- Administrator ma pełne prawa, w tym edycję/usuwanie historii.
-- Brak integracji z produkcyjnym RM i jakichkolwiek usług systemd.
+W DEV 26.10.2026: **52 / 52 testów PASS**, wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
 
-Przed produkcją należy wykonać kolejne etapy i testy odbiorowe z raportu.
+## Niezaimplementowane, wymagane przed produkcją
+
+- Powiadomienia o niskim stanie wyłącznie do wskazanego odbiorcy oraz prywatne zapytania przez Telegram i Discord, wraz z weryfikacją i powiązaniem kont.
+- **Backup do GlobalNAS**, szyfrowanie, lokalne kolejki kopii, retencja 7 dziennych / 4 tygodniowe / 3 miesięczne, odtwarzanie i testy DR.
+- Szyfrowanie danych bazy i audyt bezpieczeństwa wdrożenia, ograniczanie prób logowania, gotowe HTTPS/reverse proxy.
+- Wygodna pełna edycja administracyjna w GUI, dodatkowe filtry historii oraz pełna walidacja ergonomii interfejsu.
+- Aplikacja Android/OCR/zdjęcia — celowo poza V1.
+
+## Niezmienniki bezpieczeństwa i integracji
+
+Nie można wydać ani przesunąć większej ilości niż dostępna. Operacje ilościowe i historia są zapisywane atomowo. Jeden produkt widoczny pod kilkoma markami nie jest podwójnie liczony. Admin ma pełne możliwości; użytkownik nie ma dostępu do endpointów administracyjnych. Import i eksport nie ujawniają kont, sesji ani haseł. Magazyn pozostaje niezależny od usług AI Platform, nie tworzy unitów systemd, timerów, crona ani otwartych portów podczas tej fazy.
+
+**Nie wdrażać na produkcję** przed odbiorem brakujących funkcji i testem odtwarzania z GlobalNAS.
