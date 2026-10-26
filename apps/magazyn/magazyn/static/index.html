@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Magazyn — AI Platform</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <main id="login" class="auth-wrapper" hidden>
+    <form id="login-form" class="panel auth-card">
+      <span class="kicker">AI Platform · Magazyn</span>
+      <h1>Zaloguj się</h1>
+      <p class="muted">Dostęp tylko dla upoważnionych użytkowników.</p>
+      <label>Login<input required name="username" autocomplete="username" maxlength="80"></label>
+      <label>Hasło<input required type="password" name="password" autocomplete="current-password"></label>
+      <button type="submit" class="primary">Zaloguj</button>
+    </form>
+  </main>
+
+  <div id="app" hidden>
+    <header class="site-header">
+      <div class="brandmark"><span class="brandicon">▦</span><span>Magazyn <small>AI Platform</small></span></div>
+      <div class="header-right"><span class="dev-mark">DEV · wersja robocza</span>
+        <span id="current-user"></span><button id="logout" class="ghost small">Wyloguj</button></div>
+    </header>
+
+    <div class="shell">
+      <nav aria-label="Główne sekcje">
+        <button class="nav-item active" data-tab="products">Sterowniki i elektronika</button>
+        <button class="nav-item" data-tab="low">Do zamówienia</button>
+        <button class="nav-item" data-tab="history">Historia</button>
+        <button class="nav-item admin-only" data-tab="admin">Administracja</button>
+      </nav>
+      <main class="workspace">
+        <section id="page-products" class="page">
+          <div class="page-heading"><div><h1>Stany magazynowe</h1><p class="muted">Wyszukiwanie produktów i lokalizacji.</p></div>
+            <button class="primary" id="show-add">+ Dodaj produkt</button></div>
+          <div id="stats" class="stats-row"></div>
+          <div class="panel">
+            <div class="searchbar"><input id="search" type="search" placeholder="Szukaj po numerze, typie, marce, oznaczeniu..."></div>
+            <div class="filters">
+              <label>Rodzaj<select id="filter-kind"><option value="">Wszystkie</option><option value="ecu">Sterowniki</option><option value="part">Elektronika</option></select></label>
+              <label>Marka<select id="filter-brand"><option value="">Wszystkie marki</option></select></label>
+              <label>Stan produktu<select id="filter-product-state"><option value="">Dowolny</option><option value="new">Nowy</option><option value="used">Używany</option></select></label>
+              <label>Sprawność<select id="filter-tech-state"><option value="">Dowolna</option><option value="working">Sprawny</option><option value="faulty">Uszkodzony</option><option value="unknown">Nieznany</option></select></label>
+              <label>Lokalizacja<select id="filter-location"><option value="">Wszystkie</option></select></label>
+            </div>
+          </div>
+          <div id="products" class="result-list"></div>
+        </section>
+
+        <section id="page-low" class="page" hidden>
+          <div class="page-heading"><div><h1>Do zamówienia</h1><p class="muted">Pozycje, których stan jest równy minimum lub niższy.</p></div></div>
+          <div id="low-results" class="result-list"></div>
+        </section>
+
+        <section id="page-history" class="page" hidden>
+          <div class="page-heading"><div><h1>Historia operacji</h1><p class="muted">Przyjęcia, wydania, przesunięcia i korekty.</p></div></div>
+          <div id="history-results" class="panel"></div>
+        </section>
+
+        <section id="page-admin" class="page" hidden>
+          <div class="page-heading"><div><h1>Administracja</h1><p class="muted">Konta użytkowników i lokalizacje.</p></div></div>
+          <div class="admin-grid">
+            <div class="panel">
+              <h2>Użytkownicy</h2>
+              <div id="users-list"></div>
+              <form id="user-form" class="stack">
+                <h3>Nowe konto</h3>
+                <label>Login<input name="username" required pattern="[A-Za-z0-9_.-]{3,40}"></label>
+                <label>Hasło (minimum 12 znaków)<input name="password" type="password" minlength="12" required autocomplete="new-password"></label>
+                <label>Rola<select name="role"><option value="user">Użytkownik</option><option value="admin">Administrator</option></select></label>
+                <button class="primary" type="submit">Dodaj użytkownika</button>
+              </form>
+            </div>
+            <div class="panel">
+              <h2>Lokalizacje</h2>
+              <div id="locations-list"></div>
+              <form id="location-form" class="stack">
+                <h3>Nowa lokalizacja</h3>
+                <label>Kod<input name="code" required maxlength="64" placeholder="Np. A1"></label>
+                <label>Opis<input name="description" placeholder="Np. Regał A, szuflada 1"></label>
+                <button class="primary" type="submit">Dodaj lokalizację</button>
+              </form>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <dialog id="item-dialog">
+    <div class="dialog-head"><div><span class="kicker">Magazyn V1</span><h2>Nowy produkt</h2></div><button class="ghost close-dialog" type="button" aria-label="Zamknij">✕</button></div>
+    <form id="item-form" class="stack">
+      <label>Rodzaj<select name="kind" id="new-kind"><option value="ecu">Sterownik</option><option value="part">Element elektroniczny</option></select></label>
+      <div class="ecu-field"><label>Marka pojazdu<input name="brand" id="new-brand" placeholder="Np. DAF"></label></div>
+      <label>Nazwa / oznaczenie<input name="designation" required maxlength="2000" placeholder="Np. Bosch EDC7"></label>
+      <label>Główny numer katalogowy<input name="primary_number" placeholder="Np. numer Bosch lub OEM"></label>
+      <div class="two-cols">
+        <label>Producent<input name="manufacturer" placeholder="Np. Bosch"></label>
+        <label>Kategoria<input name="category" placeholder="Np. ECU silnika / MOSFET"></label>
+      </div>
+      <label>Lokalizacja<select name="location_id" id="new-location" required></select></label>
+      <div class="two-cols">
+        <label>Ilość<input name="quantity" type="number" min="0" step="1" value="1" required></label>
+        <label class="ecu-field">Stan produktu<select name="product_state"><option value="used">Używany</option><option value="new">Nowy</option></select></label>
+      </div>
+      <label class="ecu-field">Stan techniczny<select name="technical_state"><option value="unknown">Nieznany</option><option value="working">Sprawny</option><option value="faulty">Uszkodzony</option></select></label>
+      <details>
+        <summary>Więcej szczegółów (opcjonalnie)</summary>
+        <div class="stack subform">
+          <label>Typ / model<input name="model" placeholder="Np. EDC17C46"></label>
+          <label>Dodatkowe marki (oddzielone przecinkiem)<input name="brands" placeholder="Np. MAN, Scania"></label>
+          <label>Numery OEM i zamienne (po przecinku lub w osobnych wierszach)<textarea name="numbers" rows="2"></textarea></label>
+          <div class="two-cols"><label>HW<input name="hw"></label><label>SW<input name="sw"></label></div>
+          <div class="two-cols"><label>Obudowa<input name="package" placeholder="Elektronika: np. SOIC-8"></label>
+            <label>Parametry<input name="parameters" placeholder="Np. 10 kΩ 0603"></label></div>
+          <label>Uwagi<textarea name="notes" rows="2"></textarea></label>
+        </div>
+      </details>
+      <div class="dialog-actions"><button type="button" class="ghost close-dialog">Anuluj</button><button class="primary" type="submit">Zapisz w magazynie</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="detail-dialog">
+    <div class="dialog-head"><div><span class="kicker" id="detail-kind"></span><h2 id="detail-title"></h2></div><button class="ghost close-dialog" type="button" aria-label="Zamknij">✕</button></div>
+    <div id="detail-content"></div>
+    <h3>Operacja magazynowa</h3>
+    <form id="operation-form" class="stack">
+      <input type="hidden" name="item_id" id="operation-item-id">
+      <label>Operacja<select name="action" id="operation-action">
+        <option value="receive">Przyjęcie (+)</option><option value="issue">Wydanie (−)</option>
+        <option value="move">Przesunięcie</option><option class="admin-only" value="adjust">Korekta stanu (administracja)</option>
+      </select></label>
+      <label>Lokalizacja<select name="location_id" id="operation-location"></select></label>
+      <label id="destination-wrapper" hidden>Lokalizacja docelowa<select name="to_location_id" id="operation-destination"></select></label>
+      <div class="two-cols">
+        <label>Ilość<input name="quantity" type="number" min="1" step="1" value="1" required></label>
+        <label class="ecu-operation">Stan produktu<select name="product_state"><option value="used">Używany</option><option value="new">Nowy</option></select></label>
+        <label class="ecu-operation">Stan techniczny<select name="technical_state"><option value="unknown">Nieznany</option><option value="working">Sprawny</option><option value="faulty">Uszkodzony</option></select></label>
+      </div>
+      <label id="reason-wrapper" hidden>Powód wydania<select name="reason" id="operation-reason">
+        <option value="repair">Naprawa klienta</option><option value="sale">Sprzedaż</option>
+        <option value="workshop">Potrzeby warsztatu</option><option value="scrap">Uszkodzenie / utylizacja</option>
+        <option value="other">Inne</option>
+      </select></label>
+      <label id="order-wrapper" hidden>Numer zlecenia (opcjonalnie)<input name="order_ref" placeholder="Np. ZL/2026/001"></label>
+      <label>Uwagi (opcjonalnie)<textarea name="note" rows="2"></textarea></label>
+      <div id="operation-preview" class="operation-preview"></div>
+      <div class="dialog-actions"><button class="ghost close-dialog" type="button">Anuluj</button>
+        <button type="submit" class="primary" id="operation-submit">Zatwierdź</button></div>
+    </form>
+    <div id="detail-admin" class="admin-only detail-admin" hidden>
+      <h3>Administracja</h3>
+      <form id="minimum-form" class="inline-form">
+        <label>Stan minimalny<input name="minimum" type="number" value="0" min="0" step="1"></label>
+        <button type="submit">Ustaw minimum</button>
+      </form>
+      <button class="danger" id="delete-item" type="button">Usuń produkt</button>
+    </div>
+  </dialog>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
