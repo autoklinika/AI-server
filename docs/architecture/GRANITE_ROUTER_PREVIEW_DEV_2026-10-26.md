@@ -32,8 +32,8 @@ Proponowany przyszły przepływ:
   Podgląd korzysta z tej samej autoryzacji Platform API.
 
 Przełączenie flagi nie jest wystarczające do użycia GPU: potrzebny jest
-dostępny model `granite-router-v3:dev` w istniejącej Ollamie RTX.
-Tego tagu **nie utworzono w tej zmianie** — eksport i uruchomienie wyłącznie po odbiorze.
+dostępny model `granite-router-v4-fix1:dev` w istniejącej Ollamie RTX.
+Tag utworzono lokalnie w istniejącej RTX Ollama DEV. Produkcyjny Gateway nie został zmieniony; tag nie oznacza promocji do produkcji.
 Włączenie podglądu bez tagu zgłasza błąd i nie uruchamia Qwena zastępczo.
 
 ## GPU / RM / bezpieczeństwo
@@ -89,3 +89,36 @@ Wynik diagnostyczny `V3_DIAGNOSTIC_RESULTS_155.jsonl`:
 
 **Werdykt: integracja kodowa DEV / GPU eksperymentalny PASS; v3 NIE zaakceptowany
 do routingowego cutover, brak zmian w produkcji.**
+
+## Aktualizacja: Silver v4 / BF16 GGUF / rzeczywisty Gateway (26.10.2026)
+
+- Silver v4: 152 przykładów treningowych i 50 walidacyjnych (0 prawdziwych Gold); dwie epoki na RTX 5060 Ti, 60,0 s, peak 6322 MiB.
+- Z treningu wykluczono 7 błędnie lub niejednoznacznie oznaczonych przykładów telemetrii hosta/RM oraz 1 z walidacji. Nowe przykłady Silver są syntetycznymi pytaniami redakcyjnymi z konkretnymi lokalizatorami i SHA-256 rzeczywistych kontraktów WVC i Gateway; nie są rozmowami użytkowników.
+- Na zamrożonych 120 AI-referencjach HF: v3 110/120, v4 113/120; telemetria v3 14/20, v4 20/20. Jednocześnie istnieją regresje w pozostałych klasach. To diagnostyka, nie niezależny benchmark jakości.
+- LoRA v4 scalono z prywatną kopią bazowego checkpointu jako BF16. Pierwszy GGUF odrzucono: przy eksporcie Transformers zmienił nazwy 40 typów warstw z attention na full_attention. Lokalny konwerter nie rozpoznawał tych nazw i błędnie zadeklarował hybrid/SSM. Dla kopii wejściowej do konwersji przywrócono dokładnie nazwy oryginalnego config; binarne wagi pozostały te same.
+- Poprawny oddzielny GGUF: SHA256 f46b9a62362538a6619fe5a0be2cbcacbd10b761569a0d7301ae81064fc2c8d1, rozmiar 3267401216 B, architektura granite, precyzja BF16.
+- W istniejącej Ollamie RTX wybrano tag `granite-router-v4-tpl1:dev` (BF16 i zgodny z HF format wiadomości); oryginalne modele Granite, BGE-M3 oraz Qwen pozostały bez zmian. Tag DEV nie oznacza akceptacji do routingu produkcyjnego.
+- Realny test HTTP uruchomiono na tymczasowym Gateway DEV (wyłącznie localhost), przez istniejący produkcyjny RM: sześć przypadków route/clarify/fallback/no_action, 6/6 oczekiwanych decyzji, brak wykonania narzędzi, poprawne zwalnianie leases i GPU. Gateway produkcyjny nie był restartowany ani przełączony na Granite.
+- Własność produkcyjnego routingu nadal nie należy do Granite. PR pozostaje DRAFT i podgląd wyłączony domyślnie.
+## Test zgodności GGUF vs HF — wynik i decyzja
+
+Test wykonano na 24 z 120 zamrożonych AI-referencji (po 4 na każdą z 6 tras), nieużytych w treningu v4. Zestaw był już wcześniej wykorzystywany do diagnostyki, a etykiety nie są niezależnym Gold. Każde żądanie przeszło przez rzeczywisty HTTP Gateway DEV oraz rezerwację istniejącego Resource Managera RTX. Model nie wykonywał narzędzi.
+
+| Wariant | Zgodność z HF v4 | Błędy schematu / fail-closed | Mediana opóźnienia | p95 |
+|---|---:|---:|---:|---:|
+| GGUF BF16, domyślny szablon Ollama | 17/24 | 7/24 | 3974 ms | 5741 ms |
+| GGUF BF16, znaczniki ról zgodne z tokenizerem HF | 17/24 | 7/24 | 3209 ms | 3999 ms |
+| GGUF FP32, znaczniki ról zgodne z tokenizerem HF | 17/24 | 7/24 | 5077 ms | 5554 ms |
+
+W każdym wariancie ten sam rozkład względem referencji AI: graphify 4/4, knowledge_rag 4/4, reasoning 3/4, telemetry 4/4, tool 0/4, vision 2/4. W przypadku niedozwolonego/niezgodnego wyniku Gateway odmawiał routingu i narzędzi (router_invalid_output), a globalny RM przeprowadził unload i zwolnił lease. Nie stwierdzono, by wyższa precyzja FP32 rozwiązała te regresje.
+
+**Decyzja:** zachować oszczędniejszy i szybszy model `granite-router-v4-tpl1:dev` wyłącznie do DEV; w repo flaga `router_preview_enabled=False`. Brak zgody na produkcyjne wybieranie tras, wywoływanie jakichkolwiek narzędzi i automatyczne wprowadzanie kolejnych poprawek na zamrożonym benchmarku. Dalsza poprawa wymaga niezależnych, nowych przypadków i sprawdzenia wyjść Ollama vs HF.
+
+### Odtwarzalność i bezpieczeństwo
+
+- Prywatne źródła, adapter i dane Silver v4: `/srv/ai-data/staging/granite-lora-dev-20261025` (bez publikacji danych do repo).
+- Prywatne pochodne GGUF, logi, sumy SHA i porównania: `/srv/ai-data/staging/granite-router-gguf-dev-20261026`.
+- GGUF BF16: 3 267 401 216 B, SHA256 `f46b9a62362538a6619fe5a0be2cbcacbd10b761569a0d7301ae81064fc2c8d1`. FP32: 6 530 569 504 B, SHA256 `4b1f01adf3d1757c382e67aef897f88e9830ccd3691df268fb2816b842894a78`.
+- Konwersja Granite 4.0 1B wymaga w *kopii* config przywrócenia 40 nazw `layer_types=attention` (Transformers zapisuje `full_attention`) i zachowania właściwych znaczników ról `start_of_role`, `end_of_role`, `end_of_text`. Wagi oryginalne i LoRA pozostają niezmienione.
+- Po serii: tymczasowy serwer HTTP DEV zatrzymany, produkcyjny `ai-gateway` działał bez restartu, globalny RM `IDLE`, 0 leases, 0 active/queued, RTX 0 resident models / 2 MiB raportowane przez NVIDIA.
+- Wszystkie wyniki porównania mają status diagnostyczny. Brak formalnych, niezależnych Gold i brak pozytywnej bramki jakości produkcyjnej.

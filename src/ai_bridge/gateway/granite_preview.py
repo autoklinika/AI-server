@@ -22,11 +22,15 @@ class GranitePreviewBusy(Exception):
 
 
 class GranitePreviewBackend:
-    def __init__(self, scheduler, residency, *, rtx_url: str, model: str):
+    def __init__(self, scheduler, residency, *, rtx_url: str, model: str,
+                 admission_timeout: float = 0.20):
+        if not 0.05 <= admission_timeout <= 5.0:
+            raise ValueError("invalid preview admission timeout")
         self.scheduler = scheduler
         self.residency = residency
         self.rtx_url = rtx_url
         self.model = model
+        self.admission_timeout = admission_timeout
 
     async def _unload(self, client: httpx.AsyncClient) -> bool:
         """Unload *only* the preview model. Verify RTX /api/ps before RM release."""
@@ -74,7 +78,7 @@ class GranitePreviewBackend:
                                 capability="chat", domain="shared",
                             ),
                         ),
-                        timeout=0.20,
+                        timeout=self.admission_timeout,
                     )
                 except asyncio.TimeoutError:
                     raise GranitePreviewBusy() from None
