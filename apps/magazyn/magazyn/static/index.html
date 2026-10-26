@@ -78,7 +78,14 @@
         </section>
 
         <section id="page-admin" class="page" hidden>
-          <div class="page-heading"><div><h1>Administracja</h1><p class="muted">Konta użytkowników i lokalizacje.</p></div></div>
+          <div class="page-heading"><div><h1>Administracja</h1><p class="muted">Konta użytkowników, lokalizacje i kopie zapasowe.</p></div></div>
+          <div class="panel stack transfer-panel">
+            <h2>Backup do GlobalNAS</h2>
+            <p class="muted">Baza magazynowa pozostaje lokalna. Ręczna kopia tworzy szyfrowane archiwum w buforze. Przekazanie na GlobalNAS wymaga osobnego sprawdzenia montowania NAS i jeszcze nie jest automatycznie uruchomione.</p>
+            <div id="backup-status" class="muted">Brak danych o kopiach.</div>
+            <div><button id="backup-refresh" type="button">Odśwież status</button>
+              <button id="backup-manual" class="primary" type="button">Utwórz kopię lokalną</button></div>
+          </div>
           <div class="panel stack transfer-panel">
             <h2>Import i eksport katalogu</h2>
             <p class="muted">Eksport obejmuje wszystkie lokalizacje i zapisane kombinacje stanów (także zera). Nie jest plikiem importu ani kopią zapasową.</p>

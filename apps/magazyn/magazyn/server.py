@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, StrictInt
 
 from .store import Problem, Store
-from . import transfers
+from . import transfers, backup
 
 COOKIE = "magazyn_session"
 STATIC = Path(__file__).parent / "static"
@@ -265,6 +265,23 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
     def minimum(item_id: int, body: Minimum, _user: dict = Depends(require_admin_write)):
         store.set_minimum(item_id,body.minimum,body.recipient_user_id,body.provider)
         return {"ok":True}
+
+    @app.get("/api/backup/status")
+    def backup_status(_user: dict = Depends(require_admin)):
+        spool = os.environ.get("MAGAZYN_BACKUP_SPOOL", "")
+        return backup.status(spool) if spool else {"configured": False, "pending": 0}
+
+    @app.post("/api/backup/manual", status_code=201)
+    def backup_manual(_user: dict = Depends(require_admin_write)):
+        spool = os.environ.get("MAGAZYN_BACKUP_SPOOL", "")
+        key_file = os.environ.get("MAGAZYN_BACKUP_KEY_FILE", "")
+        if not spool or not key_file:
+            raise Problem(503, "Backup nie jest jeszcze skonfigurowany")
+        try:
+            paths = backup.create_local(store.path, spool, key_file, kinds=("daily",))
+            return {"ok": True, "created": len(paths), "pending": backup.status(spool)["pending"]}
+        except backup.BackupFailure as exc:
+            raise Problem(503, str(exc)) from exc
 
     @app.get("/api/users")
     def users(_user: dict = Depends(require_admin)):

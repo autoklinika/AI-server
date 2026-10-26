@@ -37,7 +37,7 @@ function showTab(tab){
   if(tab==="products") loadItems();
   if(tab==="low") loadLow();
   if(tab==="history") loadHistory();
-  if(tab==="admin") loadAdmin();
+  if(tab==="admin"){loadAdmin();loadBackupStatus();}
 }
 function option(code,label){return '<option value="'+esc(code)+'">'+esc(label)+'</option>';}
 function locationOptions(empty=false){
@@ -306,6 +306,17 @@ document.addEventListener("DOMContentLoaded",async()=>{
   catch{showLogin();}
 });
 
+async function loadBackupStatus(){
+  if(!session||session.role!=="admin")return;
+  try{
+    const info=await api("/api/backup/status");
+    byId("backup-status").textContent=!info.configured
+      ?"Backup nie jest jeszcze skonfigurowany. Brak aktywnego harmonogramu."
+      :"Kopie oczekujące lokalnie: "+(info.pending||0)+
+       ". Ostatnia lokalna: "+(info.last_local_backup||"brak")+
+       ". Ostatnia wysłana na GlobalNAS: "+(info.last_synced_at||"brak")+".";
+  }catch(e){byId("backup-status").textContent="Status niedostępny: "+e.message;}
+}
 let inventoryRows=[],inventoryLocation=null,inventoryRequest=0,importUpload=null;
 function clearInventory(){
   inventoryRequest++;inventoryRows=[];inventoryLocation=null;
@@ -338,6 +349,17 @@ async function downloadTable(path,filename){
   }catch(e){toast(e.message,true);}
 }
 document.addEventListener("DOMContentLoaded",()=>{
+  byId("backup-refresh").addEventListener("click",loadBackupStatus);
+  byId("backup-manual").addEventListener("click",async()=>{
+    if(!confirm("Utworzyć szyfrowaną kopię bazy w lokalnym buforze?"))return;
+    byId("backup-manual").disabled=true;
+    try{
+      const result=await api("/api/backup/manual",{method:"POST",body:"{}"});
+      toast("Utworzono lokalną kopię. Oczekuje na GlobalNAS: "+result.pending);
+      await loadBackupStatus();
+    }catch(e){toast(e.message,true);}
+    finally{byId("backup-manual").disabled=false;}
+  });
   byId("inventory-load").addEventListener("click",loadInventory);
   byId("inventory-location").addEventListener("change",clearInventory);
   byId("inventory-results").addEventListener("input",ev=>{

@@ -14,10 +14,11 @@
 - **Inwentaryzacja**: `GET /api/inventory?location_id=N`, `POST /api/inventory`. Pracownik może przeglądać, administrator wprowadza policzone stany. W jednej transakcji powstają korekty; parametr `expected_quantity` chroni przed nadpisaniem nowszego stanu (409 Conflict).
 - **CSV/XLSX**: eksport katalogu `GET /api/export?format=csv|xlsx&kind=ecu|part&brand=...`, szablon nowych pozycji `GET /api/import/template?format=csv|xlsx`, podgląd `POST /api/import/preview`, zatwierdzenie `POST /api/import/apply`. Wszystkie endpointy transferu wymagają administratora; POST wymagają CSRF. Import ma ograniczenie 1 MB / 1000 wierszy, walidację numerów/OEM/HW/SW, konflikty blokują całą transakcję; potwierdzenie podglądu ma krótką ważność i jest związane z plikiem i użytkownikiem. Żadnego automatycznego scalania z istniejącymi produktami.
 - Eksport w formie migawki z wszystkimi lokalizacjami i wariantami stanów, także o ilości 0. Eksport i szablon **mają celowo różne nagłówki** — migawka katalogu nie jest automatycznym importem/backupem.
+- **Backup DEV:** szyfrowane archiwa SQLite AES-256-GCM, prywatny klucz, lokalny bufor, odtwarzanie offline i zabezpieczone sprawdzanie prawdziwego GlobalNAS przed wysyłką. Panel administratora pozwala podejrzeć kolejkę oraz wykonać ręczny lokalny backup. Instrukcja: [BACKUP_DEV.md](BACKUP_DEV.md). **Nie ma jeszcze automatycznego timera ani zweryfikowanego realnego zapisu na NAS.**
 
 ## Sposób uruchamiania wyłącznie do testów
 
-Wymagany Python 3.12+, FastAPI, Pydantic 2, Uvicorn; testy wymagają pytest i httpx, XLSX wymaga **openpyxl** z [requirements-xlsx.txt](requirements-xlsx.txt). Instalować zależności tylko w osobnym wirtualnym środowisku DEV, nie w systemowym lub produkcyjnym Pythonie.
+Wymagany Python 3.12+, FastAPI, Pydantic 2, Uvicorn; testy wymagają pytest i httpx, XLSX wymaga **openpyxl** z [requirements-xlsx.txt](requirements-xlsx.txt), a backup wymaga **cryptography** z [requirements-backup.txt](requirements-backup.txt). Instalować zależności tylko w osobnym wirtualnym środowisku DEV, nie w systemowym lub produkcyjnym Pythonie.
 
 Z katalogu `apps/magazyn`:
 
@@ -25,7 +26,7 @@ Z katalogu `apps/magazyn`:
 export PYTHONPATH="$PWD"
 export MAGAZYN_DB_PATH="/prywatny/katalog/testowy/magazyn.sqlite3"
 python -m magazyn create-admin
-python -m pytest tests/test_magazyn.py tests/test_inventory_transfers.py -q
+python -m pytest tests/test_magazyn.py tests/test_inventory_transfers.py tests/test_backup.py -q
 MAGAZYN_COOKIE_SECURE=0 python -m magazyn run --host 127.0.0.1 --port 18765
 ```
 
@@ -43,12 +44,12 @@ Domyślnie cookie ma flagę Secure (wymagane HTTPS). Wartość `MAGAZYN_COOKIE_S
 
 ## Wynik testów
 
-W DEV 26.10.2026: **52 / 52 testów PASS**, wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
+W DEV 26.10.2026: **62 / 62 testy PASS**, wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
 
 ## Niezaimplementowane, wymagane przed produkcją
 
 - Powiadomienia o niskim stanie wyłącznie do wskazanego odbiorcy oraz prywatne zapytania przez Telegram i Discord, wraz z weryfikacją i powiązaniem kont.
-- **Backup do GlobalNAS**, szyfrowanie, lokalne kolejki kopii, retencja 7 dziennych / 4 tygodniowe / 3 miesięczne, odtwarzanie i testy DR.
+- **Realna synchronizacja z GlobalNAS i odbiór odtworzenia z NAS**, automatyczny dzienny timer, monitoring błędów, procedura recovery i weryfikacja uprawnień markera Stage K. Mechanizm DEV jest już dostępny do testów na syntetycznym NAS.
 - Szyfrowanie danych bazy i audyt bezpieczeństwa wdrożenia, ograniczanie prób logowania, gotowe HTTPS/reverse proxy.
 - Wygodna pełna edycja administracyjna w GUI, dodatkowe filtry historii oraz pełna walidacja ergonomii interfejsu.
 - Aplikacja Android/OCR/zdjęcia — celowo poza V1.

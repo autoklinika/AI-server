@@ -10,3 +10,6 @@
 __pycache__/
 .pytest_cache/
 *.pyc
+*.mgzb
+*.mgzb.tmp
+backup-status.json
