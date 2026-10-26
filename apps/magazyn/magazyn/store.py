@@ -122,7 +122,34 @@ CREATE TABLE IF NOT EXISTS external_accounts (
     external_user_id TEXT NOT NULL, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     verified INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(provider,external_user_id)
 );
-PRAGMA user_version=1;
+CREATE TABLE IF NOT EXISTS message_pairings (
+    code_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL CHECK(provider IN ('telegram','discord')),
+    expires_at TEXT NOT NULL, issued_at TEXT NOT NULL,
+    issued_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_pairings_expiry ON message_pairings(expires_at);
+CREATE TABLE IF NOT EXISTS stock_alert_state (
+    item_id INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
+    latched INTEGER NOT NULL DEFAULT 0 CHECK(latched IN (0,1)),
+    cycle INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS message_outbox (
+    id INTEGER PRIMARY KEY,
+    item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL CHECK(provider IN ('telegram','discord')),
+    body TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending'
+       CHECK(status IN ('pending','sending','sent','cancelled')),
+    attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at TEXT NOT NULL,
+    lease_until TEXT, created_at TEXT NOT NULL, sent_at TEXT,
+    cycle INTEGER NOT NULL,
+    UNIQUE(item_id,cycle)
+);
+CREATE INDEX IF NOT EXISTS idx_message_outbox_dispatch
+    ON message_outbox(provider,status,next_attempt_at,lease_until);
+PRAGMA user_version=2;
 """
 
 
@@ -138,7 +165,7 @@ class Store:
         os.chmod(self.path, 0o600)
         with self.connect() as con:
             version = con.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1):
+            if version not in (0, 1, 2):
                 raise RuntimeError("Nieobsługiwana wersja schematu Magazynu")
             con.executescript(SCHEMA)
             con.execute("PRAGMA journal_mode=WAL")
@@ -230,6 +257,13 @@ class Store:
                 con.execute("UPDATE users SET active=? WHERE id=?", (int(active),user_id))
                 if not active:
                     con.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))
+                    from .messaging import handle_account_deactivated
+                    handle_account_deactivated(con,user_id)
+                else:
+                    from .messaging import reconcile_alert
+                    for row in con.execute("SELECT item_id FROM minima WHERE recipient_user_id=?",
+                                           (user_id,)):
+                        reconcile_alert(con,row["item_id"])
             if password is not None:
                 con.execute("UPDATE users SET password_hash=? WHERE id=?",
                             (password_hash(password),user_id))
@@ -500,6 +534,9 @@ class Store:
                  (data.get("reason","") or "") if action=="issue" else "",
                  (data.get("order_ref","") or "") if action=="issue" else "",
                  data.get("note","") or "",now())).fetchone()[0]
+            if action != "move" and not data.get("defer_alert"):
+                from .messaging import reconcile_alert
+                reconcile_alert(con, item_id)
             return {"event_id":event_id,"before":before,"after":after,
                     "before_target":before_target,"after_target":after_target}
 
@@ -550,10 +587,29 @@ class Store:
             if recipient_user_id is not None and not con.execute(
                 "SELECT 1 FROM users WHERE id=? AND active=1",(recipient_user_id,)).fetchone():
                 raise Problem(422,"Odbiorca nie istnieje lub jest nieaktywny")
+            previous = con.execute(
+                "SELECT minimum,recipient_user_id,provider FROM minima WHERE item_id=?",
+                (item_id,)).fetchone()
             con.execute("INSERT INTO minima(item_id,minimum,recipient_user_id,provider) VALUES(?,?,?,?) "
                         "ON CONFLICT(item_id) DO UPDATE SET minimum=excluded.minimum,"
                         "recipient_user_id=excluded.recipient_user_id,provider=excluded.provider",
                         (item_id,minimum,recipient_user_id,provider))
+            # Re-evaluate only on changed settings; identical PUT must not re-notify.
+            changed = previous is None or (
+                previous["minimum"] != minimum or
+                previous["recipient_user_id"] != recipient_user_id or
+                previous["provider"] != provider)
+            from .messaging import minimum_changed
+            minimum_changed(con,item_id,reset=changed)
+
+    def minimum_settings(self, item_id):
+        with self.connect() as con:
+            self._get_item(con,item_id)
+            record=con.execute(
+                "SELECT minimum,recipient_user_id,provider FROM minima WHERE item_id=?",
+                (item_id,)).fetchone()
+            return dict(record) if record else {
+                "minimum":None,"recipient_user_id":None,"provider":""}
 
     def low_stock(self):
         with self.connect() as con:
@@ -597,6 +653,7 @@ class Store:
         seen=set()
         with self.connect(write=True) as con:
             results=[]
+            touched=set()
             for row in rows:
                 key=(row["item_id"],row["product_state"],row["technical_state"])
                 if key in seen:
@@ -606,5 +663,10 @@ class Store:
                     if type(row[field]) is not int or not 0 <= row[field] <= 2_000_000_000:
                         raise Problem(422,"Nieprawidłowa ilość")
                 results.append(self.stock_operation(dict(row,location_id=location_id,
-                    action="adjust",inventory=True,note="Inwentaryzacja"),actor,connection=con))
+                    action="adjust",inventory=True,defer_alert=True,
+                    note="Inwentaryzacja"),actor,connection=con))
+                touched.add(row["item_id"])
+            from .messaging import reconcile_alert
+            for item_id in touched:
+                reconcile_alert(con,item_id)
             return results

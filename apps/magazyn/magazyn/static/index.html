@@ -103,6 +103,23 @@
             <div id="import-results" role="status"></div>
             <button class="primary" type="button" id="import-apply" disabled>Potwierdź import nowych pozycji</button>
           </div>
+          <div class="panel stack transfer-panel">
+            <h2>Telegram i Discord — prywatne konta</h2>
+            <p class="muted">Tylko administrator tworzy kod połączenia. Pracownik wysyła w prywatnej rozmowie z botem: /polacz KOD. Kod jest jednorazowy i ważny 10 minut.</p>
+            <form id="pairing-form" class="stack">
+              <div class="two-cols">
+                <label>Użytkownik<select id="pairing-user" name="user_id" required></select></label>
+                <label>Komunikator<select id="pairing-provider" name="provider">
+                  <option value="telegram">Telegram</option><option value="discord">Discord</option>
+                </select></label>
+              </div>
+              <button type="submit">Utwórz kod połączenia</button>
+            </form>
+            <div id="pairing-result" class="operation-preview" hidden></div>
+            <h3>Powiązane konta</h3>
+            <div id="messaging-links" class="muted">Brak powiązanych kont.</div>
+            <div id="messaging-summary" class="muted"></div>
+          </div>
           <div class="admin-grid">
             <div class="panel">
               <h2>Użytkownicy</h2>
@@ -194,9 +211,20 @@
     </form>
     <div id="detail-admin" class="admin-only detail-admin" hidden>
       <h3>Administracja</h3>
-      <form id="minimum-form" class="inline-form">
-        <label>Stan minimalny<input name="minimum" type="number" value="0" min="0" step="1"></label>
-        <button type="submit">Ustaw minimum</button>
+      <form id="minimum-form" class="stack">
+        <label>Stan minimalny<input name="minimum" type="number" value="0" min="0" step="1" required></label>
+        <div class="two-cols">
+          <label>Odbiorca prywatnego alertu<select name="recipient_user_id" id="minimum-recipient">
+            <option value="">Bez powiadomienia</option>
+          </select></label>
+          <label>Komunikator<select name="provider" id="minimum-provider">
+            <option value="">Bez powiadomienia</option>
+            <option value="telegram">Telegram</option>
+            <option value="discord">Discord</option>
+          </select></label>
+        </div>
+        <p class="muted">Alerty wysyłamy tylko do tego użytkownika, jeżeli jego konto komunikatora jest powiązane. Bez wysyłki na kanały publiczne.</p>
+        <button type="submit">Zapisz minimum i odbiorcę</button>
       </form>
       <button class="danger" id="delete-item" type="button">Usuń produkt</button>
     </div>

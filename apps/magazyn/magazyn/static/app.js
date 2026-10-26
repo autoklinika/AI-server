@@ -23,6 +23,7 @@ async function api(path,opts={}){
 }
 function showLogin(){
   resetTransfers();session=null;byId("app").hidden=true;byId("login").hidden=false;
+  const pair=byId("pairing-result");if(pair){pair.hidden=true;pair.textContent="";}
 }
 function setSignedIn(user){
   session=user;byId("login").hidden=true;byId("app").hidden=false;
@@ -37,7 +38,7 @@ function showTab(tab){
   if(tab==="products") loadItems();
   if(tab==="low") loadLow();
   if(tab==="history") loadHistory();
-  if(tab==="admin"){loadAdmin();loadBackupStatus();}
+  if(tab==="admin"){loadAdmin();loadBackupStatus();loadMessagingUi();}
 }
 function option(code,label){return '<option value="'+esc(code)+'">'+esc(label)+'</option>';}
 function locationOptions(empty=false){
@@ -120,9 +121,15 @@ async function openItem(id){
     byId("operation-item-id").value=chosen.id;
     if(chosen.balances.length)byId("operation-location").value=String(chosen.balances[0].location_id);
     byId("detail-admin").hidden=session.role!=="admin";
+    const minForm=byId("minimum-form");
+    minForm.dataset.itemId="";
+    minForm.reset();
+    minForm.querySelector("button[type=submit]").disabled=true;
+    minForm.elements.recipient_user_id.innerHTML=option("","Bez powiadomienia");
     byId("delete-item").dataset.id=String(chosen.id);
     updateOperation();
     byId("detail-dialog").showModal();
+    if(session.role==="admin")loadMinimumSettings(chosen.id);
   }catch(e){toast(e.message,true);}
 }
 function updateOperation(){
@@ -243,10 +250,23 @@ async function formLocation(ev){
 }
 async function formMinimum(ev){
   ev.preventDefault();
-  if(!chosen)return;
-  const n=Number(new FormData(ev.currentTarget).get("minimum"));
-  try{await api("/api/items/"+chosen.id+"/minimum",{method:"PUT",body:JSON.stringify({minimum:n})});
-    toast("Zapisano stan minimalny");}catch(e){toast(e.message,true);}
+  if(!chosen || ev.currentTarget.dataset.itemId!==String(chosen.id)){
+    toast("Odśwież ustawienia tego produktu przed zapisem.",true);return;
+  }
+  const data=Object.fromEntries(new FormData(ev.currentTarget).entries());
+  const n=Number(data.minimum);
+  const provider=data.provider;
+  const recipient=data.recipient_user_id;
+  if(Boolean(provider)!==Boolean(recipient)){
+    toast("Wskaż odbiorcę i komunikator albo pozostaw oba pola puste.",true);return;
+  }
+  try{
+    await api("/api/items/"+chosen.id+"/minimum",{method:"PUT",
+      body:JSON.stringify({minimum:n,provider,
+        recipient_user_id:recipient?Number(recipient):null})});
+    toast("Zapisano stan minimalny i odbiorcę alertu");
+    await loadMinimumSettings(chosen.id);
+  }catch(e){toast(e.message,true);}
 }
 document.addEventListener("DOMContentLoaded",async()=>{
   byId("login-form").addEventListener("submit",async(ev)=>{
@@ -415,5 +435,80 @@ document.addEventListener("DOMContentLoaded",()=>{
       clearImport();byId("import-results").textContent='Zaimportowano '+result.count+' nowych pozycji.';
       byId("import-file").value='';loadStats();loadItems();loadBrands();clearInventory();}
     catch(e){clearImport();toast(e.message+' Wykonaj podgląd ponownie.',true);}
+  });
+});
+
+
+async function loadMinimumSettings(itemId){
+  try{
+    const [minimum,users]=await Promise.all([
+      api("/api/items/"+itemId+"/minimum"),api("/api/users")]);
+    if(!chosen||chosen.id!==itemId||!session||session.role!=="admin")return;
+    const form=byId("minimum-form");
+    form.elements.minimum.value=minimum.minimum===null?"0":String(minimum.minimum);
+    form.elements.recipient_user_id.innerHTML=option("","Bez powiadomienia")+
+      users.filter(u=>u.active).map(u=>option(u.id,u.username)).join("");
+    form.elements.provider.value=minimum.provider||"";
+    form.elements.recipient_user_id.value=minimum.recipient_user_id===null?"":String(minimum.recipient_user_id);
+    form.dataset.itemId=String(itemId);
+    form.querySelector("button[type=submit]").disabled=false;
+  }catch(e){toast("Nie można wczytać ustawień minimum: "+e.message,true);}
+}
+
+async function loadMessagingUi(){
+  if(!session||session.role!=="admin")return;
+  try{
+    const [accounts,users,status]=await Promise.all([
+      api("/api/messaging/links"),api("/api/users"),api("/api/messaging/status")]);
+    if(!session||session.role!=="admin")return;
+    const selector=byId("pairing-user");
+    const previous=selector.value;
+    selector.innerHTML=users.filter(u=>u.active).map(u=>option(u.id,u.username)).join("");
+    if(previous&&users.some(u=>String(u.id)===previous&&u.active))selector.value=previous;
+    const list=byId("messaging-links");
+    list.replaceChildren();
+    if(!accounts.length)list.textContent="Brak zweryfikowanych kont komunikatorów.";
+    for(const account of accounts){
+      const entry=document.createElement("div");
+      entry.className="list-row";
+      const label=document.createElement("span");
+      label.textContent=account.username+" · "+account.provider+" · ID "+account.external_user_id;
+      const unlinkButton=document.createElement("button");
+      unlinkButton.className="small danger";
+      unlinkButton.textContent="Odłącz";
+      unlinkButton.type="button";
+      unlinkButton.addEventListener("click",async()=>{
+        if(!confirm("Odłączyć prywatne konto "+account.provider+" użytkownika "+account.username+"?"))return;
+        try{
+          await api("/api/messaging/links/"+account.provider+"/"+account.user_id,
+                    {method:"DELETE",body:"{}"});
+          toast("Odłączono konto");
+          await loadMessagingUi();
+        }catch(e){toast(e.message,true);}
+      });
+      entry.append(label," ",unlinkButton);list.append(entry);
+    }
+    const counts=status.outbox||{};
+    byId("messaging-summary").textContent="Powiadomienia: oczekujące "+
+      (counts.pending||0)+", wysłane "+(counts.sent||0)+", anulowane "+
+      (counts.cancelled||0)+". Integracje nie są uruchamiane automatycznie przez WebGUI.";
+  }catch(e){toast(e.message,true);}
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+  byId("pairing-form").addEventListener("submit",async(e)=>{
+    e.preventDefault();
+    const data=Object.fromEntries(new FormData(e.currentTarget).entries());
+    if(!data.user_id)return;
+    const result=byId("pairing-result");
+    result.hidden=true;result.textContent="";
+    try{
+      const created=await api("/api/messaging/pairing",{method:"POST",
+         body:JSON.stringify({user_id:Number(data.user_id),provider:data.provider})});
+      result.textContent="Wyślij TYLKO w prywatnym czacie z botem "+created.provider+
+         ": /polacz "+created.code+" (kod ważny do "+created.expires_at+" UTC).";
+      result.hidden=false;
+      toast("Utworzono jednorazowy kod połączenia");
+    }catch(ex){toast(ex.message,true);}
   });
 });

@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, StrictInt
 
 from .store import Problem, Store
-from . import transfers, backup
+from . import transfers, backup, messaging
 
 COOKIE = "magazyn_session"
 STATIC = Path(__file__).parent / "static"
@@ -59,6 +59,10 @@ class Minimum(BaseModel):
     recipient_user_id: int | None = None
     provider: str = ""
 
+
+class PairingRequest(BaseModel):
+    user_id: StrictInt = Field(gt=0)
+    provider: str = Field(pattern="^(telegram|discord)$")
 
 class InventoryRow(BaseModel):
     item_id: StrictInt = Field(gt=0)
@@ -264,6 +268,34 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
     @app.put("/api/items/{item_id}/minimum")
     def minimum(item_id: int, body: Minimum, _user: dict = Depends(require_admin_write)):
         store.set_minimum(item_id,body.minimum,body.recipient_user_id,body.provider)
+        return {"ok":True}
+
+    @app.get("/api/items/{item_id}/minimum")
+    def minimum_settings(item_id: int, _user: dict = Depends(require_user)):
+        return store.minimum_settings(item_id)
+
+    @app.get("/api/messaging/links")
+    def messaging_links(_user: dict = Depends(require_admin)):
+        return messaging.list_links(store)
+
+    @app.post("/api/messaging/pairing", status_code=201)
+    def create_pairing(body: PairingRequest, actor: dict = Depends(require_admin_write)):
+        return messaging.create_pairing(store,body.user_id,body.provider,actor["id"])
+
+    @app.delete("/api/messaging/links/{provider}/{user_id}")
+    def remove_link(provider: str, user_id: int,
+                    _user: dict = Depends(require_admin_write)):
+        return {"removed":messaging.unlink(store,provider,user_id)}
+
+    @app.get("/api/messaging/status")
+    def messaging_status(_user: dict = Depends(require_admin)):
+        return {"links":len(messaging.list_links(store)),
+                "outbox":messaging.outbox_status(store),
+                "bots_activated":os.getenv("MAGAZYN_BOTS_ENABLED")=="1"}
+
+    @app.post("/api/messaging/outbox/{record_id}/cancel")
+    def cancel_notification(record_id: int, _user: dict = Depends(require_admin_write)):
+        messaging.cancel_outbox(store,record_id)
         return {"ok":True}
 
     @app.get("/api/backup/status")
