@@ -122,3 +122,8 @@ W każdym wariancie ten sam rozkład względem referencji AI: graphify 4/4, know
 - Konwersja Granite 4.0 1B wymaga w *kopii* config przywrócenia 40 nazw `layer_types=attention` (Transformers zapisuje `full_attention`) i zachowania właściwych znaczników ról `start_of_role`, `end_of_role`, `end_of_text`. Wagi oryginalne i LoRA pozostają niezmienione.
 - Po serii: tymczasowy serwer HTTP DEV zatrzymany, produkcyjny `ai-gateway` działał bez restartu, globalny RM `IDLE`, 0 leases, 0 active/queued, RTX 0 resident models / 2 MiB raportowane przez NVIDIA.
 - Wszystkie wyniki porównania mają status diagnostyczny. Brak formalnych, niezależnych Gold i brak pozytywnej bramki jakości produkcyjnej.
+
+## Diagnostyka ograniczania schematu JSON (26.10.2026, południe)
+
+- Na 8 już wcześniej analizowanych żądaniach porównano ten sam model, prompt i RTX: strukturalny format JSON schema vs generowanie bez wymuszonego formatu. Wariant wymuszony generował niespójności pól (route=tool z required_capability=other, route=reasoning z knowledge.search), których generowanie bez schema nie miało. To test diagnostyczny, nie niezależny benchmark Gold.
+- Backend DEV generuje bez parametru format, a po odpowiedzi zawsze wywołuje parse_router_decision; niespójności, niepoprawny JSON i nieautoryzowane nazwy nadal są odrzucane fail-closed. Żadne narzędzie nie jest automatycznie wykonywane.

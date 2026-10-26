@@ -28,30 +28,9 @@ SECRET_PATTERN = re.compile(
     r"BEGIN [A-Z ]*PRIVATE KEY|ssh-rsa|ssh-ed25519)"
 )
 
-# Ollama's 'format' schema is an output constraint, never an authorization layer.
-DECISION_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "decision": {"type": "string", "enum": sorted(DECISIONS)},
-        "route": {
-            "type": ["string", "null"],
-            "enum": sorted(ROUTE_TO_TOOLS) + [None],
-        },
-        "selected_tools": {
-            "type": "array",
-            "items": {"type": "string", "enum": sorted({
-                value for tools in ROUTE_TO_TOOLS.values() for value in tools
-            })},
-            "maxItems": 1,
-        },
-        "required_capability": {
-            "type": ["string", "null"],
-            "enum": sorted(FALLBACK_CAPABILITIES) + [None],
-        },
-    },
-    "required": ["decision", "route", "selected_tools", "required_capability"],
-    "additionalProperties": False,
-}
+# Keep route/tool/capability coupling in Python rather than Ollama's JSON-schema
+# constrained decoding. A production-affecting tool name must be validated by the
+# local deterministic ROUTE_TO_TOOLS allowlist, not generated from a grammar.
 
 ROUTER_PROMPT = 'You are Granite, a strict intent-and-capability router for the local AI Platform.\nThe input is the current user request only. Do not invent previous context, documents, device states, or permissions.\nReturn exactly one valid compact JSON object, no markdown, no explanation, with keys in this order:\n{"decision":"route|clarify|fallback|no_action","route":null,"selected_tools":[],"required_capability":null}\n\nRules:\n- decision=route only for a self-contained request supported by exactly one local route:\n  knowledge_rag -> ["knowledge.search"] for facts that must be looked up in internal documents.\n  reasoning -> [] for reasoning/design using facts given in the request without a missing external source.\n  telemetry -> ["telemetry.read"] for live telemetry already exposed by the platform.\n  graphify -> ["graphify.query"] only for graph relationship traversal.\n  vision -> ["vision.analyze"] only when the user requires actual image analysis.\n  tool -> ["agent.ers"] only for a clearly defined ERS-domain agent operation, NEVER for GitHub, terminal, host administration or other unsupported tools.\n  For decision=route set required_capability=null.\n- decision=clarify and route=null and selected_tools=[] and required_capability=null when a crucial referent, parameter, attachment or previous turn is missing. Do not guess what "it", "that", "the second one", or "do the same" means.\n- decision=fallback and route=null and selected_tools=[] for a request needing a capability outside the six local routes. Set required_capability to exactly one from ["web.search","github.read","github.write","host.inspect","general_llm","other"]. This is ONLY a routing recommendation, never execution or permission.\n- decision=no_action and route=null and selected_tools=[] and required_capability=null for an acknowledgement, closing remark, statement, or explicit "do nothing" with no new task.\n- If external current information is needed, use fallback/web.search, not reasoning or knowledge_rag.\n- Do not choose a tool just because the question is technical, and do not attempt to execute actions.\nClassify Polish and English equally. Output strict JSON only.\n'
 

@@ -11,7 +11,7 @@ import json
 import httpx
 
 from ai_bridge.decision_router import (
-    DECISION_SCHEMA, ROUTER_PROMPT, RouterContractError,
+    ROUTER_PROMPT, RouterContractError,
     RouterDecision, parse_router_decision, validate_input,
 )
 from .jobs import JobLifecycle, JobMetadata
@@ -86,6 +86,9 @@ class GranitePreviewBackend:
                 if self.scheduler.admission_blocked or self.residency.state != "llm":
                     raise GranitePreviewBusy()
                 # No user-supplied model tag, endpoint or tool parameters.
+                # No Ollama JSON-schema grammar: actual Granite 4 1B tests showed
+                # it can force semantically inconsistent route/tool/capability
+                # combinations. Keep full fail-closed application validation.
                 dispatched = True
                 reply = await client.post("/api/chat", json={
                     "model": self.model,
@@ -93,7 +96,6 @@ class GranitePreviewBackend:
                         {"role": "system", "content": ROUTER_PROMPT},
                         {"role": "user", "content": text},
                     ],
-                    "format": DECISION_SCHEMA,
                     "think": False,
                     "stream": False,
                     "options": {"temperature": 0, "num_ctx": 2048,

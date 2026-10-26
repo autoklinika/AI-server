@@ -136,6 +136,8 @@ def test_backend_exclusive_ticket_unload_and_no_tool_execution(monkeypatch):
             assert payload["model"]=="granite-router-v3:dev"
             assert payload["messages"][1]["content"]=="Retrieve technical information about CAN."
             assert "tools" not in payload
+            # Constrained schema was inducing mutually inconsistent field values.
+            assert "format" not in payload
             return httpx.Response(200,json={"message":{"content":json.dumps(route("knowledge_rag"))}})
         if req.url.path=="/api/generate":
             return httpx.Response(200,json={"done":True})
