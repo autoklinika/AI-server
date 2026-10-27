@@ -9,7 +9,7 @@
 ## Aktualnie działające
 
 - Konta i sesje: indywidualne loginy, scrypt+salt, ciasteczko HttpOnly, SameSite, CSRF. WebGUI ogranicza błędne logowania (5 na konto i połączenie / 5 min → 10 min przerwy; dodatkowy limit źródła 30 prób), przechowując w bazie wyłącznie skróty kluczy kontroli. Chroni przed przypadkowym usunięciem ostatniego aktywnego administratora. Administrator ma pełne uprawnienia funkcjonalne, w tym edycję/usuwanie historii. Pracownik ma operacje podstawowe.
-- Sterowniki i elektronika: jedna pozycja, wiele marek i numerów, wiele lokalizacji. ECU: Nowy/Używany oraz stan techniczny (Sprawny/Uszkodzony/Nieznany).
+- Sterowniki i elektronika: odrębne formularze, jedna pozycja, wiele marek/numerów i lokalizacji. ECU zachowuje HW/SW, Nowy/Używany oraz stan techniczny. Elektronika ma własne pola parametrów, obudowę i dokumentację techniczną PDF/PNG/JPG dołączaną do SQLite. Stan zakupu Zamówione nie zwiększa stanów towaru.
 - Przyjęcie, wydanie z obowiązkowym powodem, przesunięcie i korekta z atomowym zapisem ilości i historii.
 - Wyszukiwarka po oznaczeniach i numerach z normalizacją spacji, myślników i wielkości liter; filtrowanie.
 - Minimalne stany magazynowe i lista „Do zamówienia”. **Prywatne alerty** są atomowo zapisywane w kolejce dla konkretnie przypisanego użytkownika oraz Telegrama albo Discorda; brak dziedziczenia ustawień z kategorii i brak broadcastu. Wysyłka sieciowa jest w DEV domyślnie **wyłączona**.
@@ -47,7 +47,7 @@ Domyślnie cookie ma flagę Secure (wymagane HTTPS). Wartość `MAGAZYN_COOKIE_S
 
 ## Wynik testów
 
-W DEV 27.10.2026: **163 / 163 testy PASS** (w tym testy Stage K, offline escrow, historii, DR i mobilnego WebGUI), wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
+W DEV 27.10.2026: **171 / 171 testów PASS** (w tym testy Stage K, offline escrow, historii, DR i mobilnego WebGUI), wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
 
 ## Niezaimplementowane, wymagane przed produkcją
 
@@ -81,3 +81,12 @@ dolna nawigacja z właściwą widocznością roli, wyszukiwarka i szybkie operac
 Testy: Firefox headless + WebDriver BiDi na odrębnej syntetycznej SQLite (390×844, 320×700 i 1440×900), 4 testy kontraktu UI, pełny pytest 163/163 PASS. Realne Safari iOS wymaga jeszcze krótkiego odbioru użytkownika. Zrzuty wyłącznie syntetycznych danych trzymane są poza repozytorium.
 
 Raport: [Mobilne WebGUI DEV](docs/MAGAZYN_MOBILE_WEBGUI_DEV_2026-10-27_PL.md).
+
+
+## Elektronika — dokumenty i status zakupu (DEV, 27.10.2026)
+
+- Dwa osobne okna dodawania: ECU (marka, HW/SW, Nowy/Używany, sprawność) oraz Elektronika (kategoria, obudowa, napięcie, prąd, moc, rezystancja, pojemność, tolerancja, liczba pinów, temperatura, interfejs).
+- Załączniki elektroniki: karty katalogowe i schematy PDF/PNG/JPG, przechowywane w tym samym SQLite, atomowo uwzględniane w zaszyfrowanych kopiach. Limit 8 MiB pliku, 6 dokumentów/element, 256 MiB magazynu.
+- Status „Zamówione” z ilością i notatką, bez zwiększania stanu magazynu, widoczny przy produkcie i na liście „Do zamówienia”. Zmianę statusu wykonuje administrator.
+- Addytywny schemat v3, istniejące produkty pozostają nienaruszone. Raport: [Elektronika / Dokumenty / Zamówione](docs/MAGAZYN_ELECTRONICS_DOCS_ORDER_DEV_2026-10-27_PL.md).
+- Testy całej aplikacji: **171/171 PASS** na syntetycznych bazach. Firefox mobile 390 px: rzeczywiste utworzenie elementu z parametrami, załącznikiem i statusem Zamówione oraz sprawdzenie listy zakupów PASS. Nie wprowadzono syntetycznych produktów do rzeczywistego magazynu.

@@ -1,12 +1,16 @@
 """HTTP API and WebGUI for the isolated Magazyn application."""
 from __future__ import annotations
 
+import base64
+import binascii
 import hmac
+import json
 import os
 import secrets
 from datetime import date
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, Header, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -69,6 +73,7 @@ class ReceiveNewItem(BaseModel):
     package: str = ""
     parameters: str = ""
     notes: str = ""
+    specs: dict[str,str] = Field(default_factory=dict)
     brands: list[str] = Field(default_factory=list)
     numbers: list[dict[str, str]] = Field(default_factory=list)
     location_id: StrictInt = Field(gt=0)
@@ -82,6 +87,18 @@ class Minimum(BaseModel):
     minimum: int
     recipient_user_id: int | None = None
     provider: str = ""
+
+
+class OrderStatusUpdate(BaseModel):
+    status: str = Field(pattern="^(none|ordered)$")
+    quantity: StrictInt = Field(ge=0, le=2_000_000_000)
+    note: str = Field(default="", max_length=300)
+
+
+class DocumentUpload(BaseModel):
+    filename: str = Field(min_length=5, max_length=140)
+    doc_type: str = Field(pattern="^(datasheet|schematic|other)$")
+    content_base64: str = Field(min_length=1, max_length=11_184_812)
 
 
 class PairingRequest(BaseModel):
@@ -130,14 +147,19 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
-        if request.url.path.startswith(("/api/import/", "/api/inventory")) and request.method == "POST":
-            # Bound the actual streamed body, including requests without Content-Length.
-            body = bytearray()
-            async for chunk in request.stream():
-                body.extend(chunk)
-                if len(body) > transfers.MAX_BODY:
-                    return JSONResponse(status_code=413, content={"detail":"Zbyt duże żądanie"})
-            request._body = bytes(body)
+        if request.method == "POST":
+            is_document = (request.url.path.startswith("/api/items/")
+                           and request.url.path.endswith("/documents"))
+            is_small_upload = request.url.path.startswith(("/api/import/", "/api/inventory"))
+            if is_document or is_small_upload:
+                # Bound streamed uploads even without Content-Length; no multipart dependency.
+                limit = 12 * 1024 * 1024 if is_document else transfers.MAX_BODY
+                body = bytearray()
+                async for chunk in request.stream():
+                    body.extend(chunk)
+                    if len(body) > limit:
+                        return JSONResponse(status_code=413, content={"detail":"Zbyt duże żądanie"})
+                request._body = bytes(body)
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
@@ -236,12 +258,22 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
                       manufacturer: str = "", model: str = "", primary_number: str = "",
                       hw: str = "", sw: str = "", package: str = "",
                       parameters: str = "", category: str = "",
+                      specs_json: str = "",
                       _user: dict = Depends(require_user)):
+        specs = None
+        if specs_json:
+            if len(specs_json) > 1700:
+                raise Problem(422, "Zbyt długie parametry elektroniki")
+            try:
+                specs = json.loads(specs_json)
+            except (ValueError, TypeError) as exc:
+                raise Problem(422, "Nieprawidłowe parametry elektroniki") from exc
         return store.similar_items({
             "kind":kind, "designation":designation, "brand":brand,
             "manufacturer":manufacturer, "model":model,
             "primary_number":primary_number, "hw":hw, "sw":sw,
-            "package":package, "parameters":parameters, "category":category})
+            "package":package, "parameters":parameters, "category":category,
+            "specs":specs})
 
     @app.post("/api/items/receive", status_code=201)
     def new_item_with_receipt(body: ReceiveNewItem, actor: dict = Depends(require_write)):
@@ -265,6 +297,42 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
     def delete_item(item_id: int, _user: dict = Depends(require_admin_write)):
         store.delete_item(item_id)
         return {"ok":True}
+
+    @app.post("/api/items/{item_id}/documents", status_code=201)
+    def upload_document(item_id: int, body: DocumentUpload,
+                        actor: dict = Depends(require_write)):
+        try:
+            content = base64.b64decode(body.content_base64, validate=True)
+        except (ValueError, binascii.Error) as exc:
+            raise Problem(422, "Niepoprawne dane załącznika") from exc
+        return store.add_document(item_id, body.filename, body.doc_type, content, actor)
+
+    @app.get("/api/items/{item_id}/documents")
+    def item_documents(item_id: int, _user: dict = Depends(require_user)):
+        return store.list_documents(item_id)
+
+    @app.get("/api/items/{item_id}/documents/{document_id}")
+    def download_document(item_id: int, document_id: int, _user: dict = Depends(require_user)):
+        record=store.read_document(item_id, document_id)
+        return Response(
+            record["content"], media_type=record["mime"],
+            headers={"Content-Disposition":"attachment; filename*=UTF-8''" + quote(record["filename"]),
+                     "X-Content-Type-Options":"nosniff"})
+
+    @app.delete("/api/items/{item_id}/documents/{document_id}")
+    def remove_document(item_id: int, document_id: int,
+                        _user: dict = Depends(require_admin_write)):
+        store.delete_document(item_id, document_id)
+        return {"ok":True}
+
+    @app.get("/api/items/{item_id}/order-status")
+    def get_order_status(item_id: int, _user: dict = Depends(require_user)):
+        return store.get_order_status(item_id)
+
+    @app.put("/api/items/{item_id}/order-status")
+    def put_order_status(item_id: int, body: OrderStatusUpdate,
+                         actor: dict = Depends(require_admin_write)):
+        return store.set_order_status(item_id, body.status, body.quantity, body.note, actor)
 
     @app.post("/api/stock",status_code=201)
     def stock(body: StockOperation,actor: dict = Depends(require_write)):

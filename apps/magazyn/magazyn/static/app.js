@@ -98,6 +98,7 @@ async function loadLocations(){
   setOptions("filter-location",locationOptions(true));
   setOptions("inventory-location",locationOptions());
   setOptions("new-location",locationOptions());
+  setOptions("part-location",locationOptions());
   setOptions("operation-location",locationOptions());
   setOptions("operation-destination",locationOptions());
   clearInventory();
@@ -177,6 +178,7 @@ async function loadItems(){
       const unique=[...new Set(extra)];
       const pills=[item.kind==="ecu"?"Sterownik":"Elektronika"];
       if(item.brand&&item.kind==="ecu")pills.push(item.brand);
+      if(item.order_status==="ordered")pills.push("Zamówione: "+fmt(item.ordered_quantity)+" szt.");
       const row=document.createElement("article");row.className="result-card";
       row.innerHTML=
         '<div class="product-core"><span class="product-glyph '+(item.kind==="part"?"electronics":"")+'">'+
@@ -216,9 +218,15 @@ async function loadLow(){
         '<div class="product-text"><strong class="product-title">'+esc(row.designation)+'</strong>'+
         '<div class="product-sub">'+esc(row.brand||"Elektronika")+'</div>'+
         '<div class="product-pills"><span class="pill warning-pill">Osiągnięto minimum</span>'+
+        (row.order_status==="ordered"?'<span class="pill">Zamówione: '+fmt(row.ordered_quantity)+' szt.</span>':"")+
         (row.recipient_user_id?'<span class="pill secondary-pill">Alert: '+esc(row.provider)+'</span>':"")+'</div></div></div>'+
         '<div class="product-aside"><div class="result-total">'+fmt(row.total)+' <span>/ '+fmt(row.minimum)+' szt.</span></div>'+
-        '<button type="button" class="small open-item" data-id="'+row.item_id+'">Zobacz produkt '+icon("arrow")+'</button></div></article>').join("");
+        '<div class="action-row"><button type="button" class="small open-item" data-id="'+row.item_id+'">Szczegóły '+icon("arrow")+'</button>'+
+        (session.role==="admin"?
+           (row.order_status==="ordered"?
+             '<button type="button" class="small clear-ordered" data-id="'+row.item_id+'">Cofnij Zamówione</button>':
+             '<button type="button" class="small mark-ordered" data-id="'+row.item_id+'">Oznacz Zamówione</button>'):"")+
+        '</div></div></article>').join("");
   }catch(e){toast(e.message,true);}
 }
 async function loadHistory(){
@@ -350,7 +358,8 @@ async function openItem(id, preferredAction="receive"){
       ["Typ / model",details.model],["Numery dodatkowe",numberList.join(", ")],
       ["Marki",(details.brands||[]).join(", ")],
       ["HW / SW",[details.hw,details.sw].filter(Boolean).join(" / ")],
-      ["Obudowa / parametry",[details.package,details.parameters].filter(Boolean).join(" / ")],
+      ["Obudowa / parametry",details.kind==="ecu"?
+        [details.package,details.parameters].filter(Boolean).join(" / "):""],
       ["Łącznie",fmt(details.total)+" szt."],
     ];
     const chips=details.balances.map((b,index)=>
@@ -361,6 +370,7 @@ async function openItem(id, preferredAction="receive"){
       '</button>').join("");
     byId("detail-content").innerHTML=lines.map(([a,b])=>detailLine(a,b)).join("")+
       '<div class="balance-mini">'+(chips||'<span class="subtle-note">Brak sztuk na stanie</span>')+'</div>';
+    renderElectronicDetails(details);
     const f=byId("operation-form");
     f.reset();
     f.elements.item_id.value=String(details.id);

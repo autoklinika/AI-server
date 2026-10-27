@@ -8,6 +8,7 @@
   <title>Magazyn · AI Platform</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/app.js" defer></script>
+  <script src="/static/electronics.js" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -91,7 +92,10 @@
                 <h1>Produkty <span class="heading-accent">w jednym miejscu.</span></h1>
                 <p class="muted">Znajdź sterownik lub element, sprawdź stan i wykonaj operację.</p>
               </div>
-              <button class="primary add-main" id="show-add"><svg class="icon"><use href="#i-plus"/></svg> Dodaj produkt</button>
+              <div class="add-actions">
+                <button class="primary add-main" id="show-add" type="button"><svg class="icon"><use href="#i-truck"/></svg> Dodaj sterownik</button>
+                <button class="secondary add-main" id="show-add-part" type="button"><svg class="icon"><use href="#i-cpu"/></svg> Dodaj elektronikę</button>
+              </div>
             </div>
 
             <div id="stats" class="stats-row" aria-label="Podsumowanie stanów"></div>
@@ -263,16 +267,16 @@
 
   <dialog id="item-dialog" class="sheet-dialog">
     <div class="dialog-head">
-      <div><p class="kicker">Nowy wpis</p><h2>Dodaj produkt</h2><p class="muted">Tylko niezbędne pola. Resztę uzupełnisz w razie potrzeby.</p></div>
+      <div><p class="kicker">Sterowniki samochodowe</p><h2>Dodaj sterownik</h2><p class="muted">Marka pojazdu, numery, HW/SW oraz stan techniczny.</p></div>
       <button class="icon-button close-dialog" type="button" aria-label="Zamknij okno">×</button>
     </div>
     <form id="item-form" class="stack">
       <div class="form-section">
-        <label>Co dodajesz?<select name="kind" id="new-kind"><option value="ecu">Sterownik samochodowy</option><option value="part">Element elektroniczny</option></select></label>
+        <input type="hidden" name="kind" id="new-kind" value="ecu">
         <label class="ecu-field">Marka pojazdu<input name="brand" id="new-brand" list="brand-suggestions" placeholder="Np. DAF, MAN, Scania"></label>
         <datalist id="brand-suggestions"><option value="DAF"><option value="MAN"><option value="Scania"><option value="Volvo"><option value="Mercedes-Benz"><option value="Iveco"><option value="BMW"><option value="Volkswagen"></datalist>
         <label>Numer katalogowy / OEM<input name="primary_number" id="new-primary-number" maxlength="160" placeholder="Np. 02810120067" autocomplete="off" spellcheck="false"></label>
-        <label>Nazwa lub oznaczenie produktu<input name="designation" required maxlength="2000" placeholder="Np. Bosch EDC7 lub IRF3205"></label>
+        <label>Nazwa lub oznaczenie produktu<input name="designation" required maxlength="2000" placeholder="Np. Bosch EDC7"></label>
       </div>
       <div id="similar-box" class="similar-box" hidden>
         <div class="similar-top"><strong>Sprawdź istniejące produkty</strong><span id="similar-spinner" class="muted"></span></div>
@@ -303,16 +307,98 @@
       <details class="form-extra">
         <summary>Więcej szczegółów <span class="muted">(opcjonalnie)</span><svg class="icon"><use href="#i-chevrondown"/></svg></summary>
         <div class="stack subform">
-          <div class="two-cols"><label>Producent<input name="manufacturer" placeholder="Np. Bosch"></label><label>Kategoria<input name="category" placeholder="Np. ECU silnika / MOSFET"></label></div>
+          <div class="two-cols"><label>Producent sterownika<input name="manufacturer" placeholder="Np. Bosch"></label><label>Zastosowanie<input name="category" placeholder="Np. ECU silnika, EBS, EGR"></label></div>
           <label>Typ / model<input name="model" placeholder="Np. EDC17C46"></label>
           <label>Inne marki (po przecinku)<input name="brands" placeholder="Np. Volvo, MAN"></label>
           <label>Dodatkowe numery OEM / zamienne<textarea name="numbers" rows="2" placeholder="Jeden numer w wierszu"></textarea></label>
           <div class="two-cols"><label>Wersja HW<input name="hw"></label><label>Wersja SW<input name="sw"></label></div>
-          <div class="two-cols"><label>Obudowa<input name="package" placeholder="Np. SOIC-8"></label><label>Parametry<input name="parameters" placeholder="Np. 10k 0603"></label></div>
+
           <label>Uwagi<textarea name="notes" rows="2" placeholder="Dodatkowe informacje..."></textarea></label>
         </div>
       </details>
       <div class="dialog-actions sticky-actions"><button class="secondary close-dialog" type="button">Anuluj</button><button type="submit" id="item-submit" class="primary"><svg class="icon"><use href="#i-check"/></svg> Dodaj do magazynu</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="part-dialog" class="sheet-dialog part-sheet">
+    <div class="dialog-head">
+      <div><p class="kicker">Elementy elektroniczne</p><h2>Dodaj element elektroniczny</h2>
+        <p class="muted">Oznaczenie, obudowa, parametry elektryczne i dokumentacja.</p></div>
+      <button class="icon-button close-dialog" type="button" aria-label="Zamknij okno">×</button>
+    </div>
+    <form id="part-form" class="stack">
+      <input type="hidden" name="kind" value="part">
+      <div class="form-section">
+        <label>Oznaczenie elementu<input name="designation" required maxlength="2000" placeholder="Np. IRF3205, AT24C64, 10k 0603"></label>
+        <div class="two-cols">
+          <label>Numer katalogowy producenta<input name="primary_number" maxlength="160" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Np. IRF3205"></label>
+          <label>Producent<input name="manufacturer" maxlength="200" placeholder="Np. Infineon, STMicroelectronics"></label>
+        </div>
+        <label>Kategoria elementu<input name="category" list="part-category-list" required maxlength="200" placeholder="Np. Tranzystory i MOSFET-y"></label>
+        <datalist id="part-category-list">
+          <option value="Mikrokontrolery i pamięci"><option value="Układy scalone">
+          <option value="Tranzystory i MOSFET-y"><option value="Rezystory i kondensatory">
+          <option value="Diody"><option value="Złącza"><option value="Pozostałe elementy">
+        </datalist>
+      </div>
+      <div id="part-similar-box" class="similar-box" hidden>
+        <div class="similar-top"><strong>Sprawdź istniejące elementy</strong><span id="part-similar-spinner"></span></div>
+        <p class="subtle-note">Jeśli to ten sam podzespół, zwiększ ilość w istniejącym wpisie. Różnych wariantów nie łączymy automatycznie.</p>
+        <div id="part-similar-list" class="similar-list"></div>
+        <label id="part-allow-variant-label" class="check-line" hidden>
+          <input id="part-allow-variant" type="checkbox"> To inny wariant — dodaj osobny produkt
+        </label>
+      </div>
+      <div class="form-section form-section-tinted">
+        <div class="two-cols">
+          <label>Ilość na stanie<div class="quantity-stepper">
+            <button type="button" class="stepper-btn" data-qty-target="part-quantity" data-step="-1" aria-label="Zmniejsz ilość">−</button>
+            <input name="quantity" id="part-quantity" type="number" inputmode="numeric" min="0" max="2000000000" step="1" value="1" required>
+            <button type="button" class="stepper-btn" data-qty-target="part-quantity" data-step="1" aria-label="Zwiększ ilość">+</button>
+          </div></label>
+          <label>Lokalizacja<select name="location_id" id="part-location" required></select></label>
+        </div>
+        <button type="button" class="text-button admin-only" id="part-location-toggle">+ Dodaj miejsce składowania</button>
+        <div id="part-location-panel" class="inline-location" hidden>
+          <label>Kod miejsca<input id="part-location-code" maxlength="64" placeholder="Np. C2"></label>
+          <label>Opis<input id="part-location-description" placeholder="Np. szuflada C2"></label>
+          <button type="button" id="part-location-save" class="secondary">Zapisz miejsce</button>
+        </div>
+      </div>
+      <div class="form-section">
+        <h3>Parametry techniczne elementu</h3>
+        <div class="two-cols">
+          <label>Obudowa<input name="package" maxlength="120" placeholder="Np. TO-220, SOIC-8, 0603"></label>
+          <label>Napięcie<input name="spec_voltage" maxlength="120" placeholder="Np. 55 V"></label>
+          <label>Prąd<input name="spec_current" maxlength="120" placeholder="Np. 110 A"></label>
+          <label>Moc<input name="spec_power" maxlength="120" placeholder="Np. 80 W"></label>
+          <label>Rezystancja<input name="spec_resistance" maxlength="120" placeholder="Np. 10 kΩ"></label>
+          <label>Pojemność<input name="spec_capacitance" maxlength="120" placeholder="Np. 100 nF"></label>
+          <label>Tolerancja<input name="spec_tolerance" maxlength="120" placeholder="Np. ±5%"></label>
+          <label>Liczba pinów<input name="spec_pin_count" maxlength="120" placeholder="Np. 8"></label>
+          <label>Temperatura pracy<input name="spec_temperature" maxlength="120" placeholder="Np. -40…125°C"></label>
+          <label>Interfejs / rodzina<input name="spec_interface" maxlength="120" placeholder="Np. SPI, I²C, N-MOSFET"></label>
+        </div>
+        <label>Dodatkowe parametry<input name="parameters" maxlength="2000" placeholder="Np. RDS(on), częstotliwość, wariant"></label>
+        <label>Numery alternatywne<textarea name="numbers" rows="2" maxlength="2000" placeholder="Jeden numer w wierszu"></textarea></label>
+        <label>Uwagi<textarea name="notes" rows="2" maxlength="2000"></textarea></label>
+      </div>
+      <div class="form-section form-section-tinted">
+        <h3>Dokumentacja techniczna (opcjonalnie)</h3>
+        <p class="subtle-note">Dodaj kartę katalogową PDF, schemat PNG albo zdjęcie JPG, maksymalnie 8 MB na plik. Plik będzie zaszyfrowany w backupie bazy.</p>
+        <div class="two-cols">
+          <label>Typ dokumentu<select name="doc_type"><option value="datasheet">Karta katalogowa / datasheet</option><option value="schematic">Schemat</option><option value="other">Inna dokumentacja</option></select></label>
+          <label>Wybierz plik<input name="document" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"></label>
+        </div>
+        <div class="admin-only" id="part-order-create-panel">
+          <label class="check-line"><input id="part-order-on-create" type="checkbox"> Status: Zamówione</label>
+          <label id="part-order-create-quantity-label" hidden>Liczba zamówionych sztuk (nie zwiększa stanu)<input id="part-order-create-quantity" type="number" inputmode="numeric" min="1" max="2000000000" value="1"></label>
+        </div>
+      </div>
+      <div class="dialog-actions sticky-actions">
+        <button type="button" class="secondary close-dialog">Anuluj</button>
+        <button type="submit" id="part-submit" class="primary"><svg class="icon"><use href="#i-check"/></svg> Dodaj element</button>
+      </div>
     </form>
   </dialog>
 
@@ -322,6 +408,19 @@
       <button class="icon-button close-dialog" type="button" aria-label="Zamknij okno">×</button>
     </div>
     <div id="detail-content" class="detail-content"></div>
+
+    <section id="part-docs" class="detail-section" hidden>
+      <div class="section-header"><h3>Dokumentacja techniczna</h3><span class="muted">PDF / PNG / JPG</span></div>
+      <div id="part-doc-list" class="doc-list"></div>
+      <form id="part-doc-upload" class="stack divided">
+        <div class="two-cols">
+          <label>Rodzaj dokumentu<select name="doc_type"><option value="datasheet">Karta katalogowa</option><option value="schematic">Schemat</option><option value="other">Inna dokumentacja</option></select></label>
+          <label>Plik PDF, JPG lub PNG<input name="document" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required></label>
+        </div>
+        <button class="secondary" type="submit">Dodaj dokumentację do elementu</button>
+        <p class="subtle-note">Do 6 dokumentów po 8 MB. Pliki są chronione logowaniem i zawarte w szyfrowanych kopiach Magazynu.</p>
+      </form>
+    </section>
 
     <div class="detail-section">
       <div class="section-header"><h3>Operacja magazynowa</h3><span class="muted">Wybierz działanie</span></div>
@@ -363,6 +462,41 @@
     </div>
 
     <div id="detail-admin" class="admin-only detail-admin" hidden>
+      <div class="section-header"><h3>Status zamówienia</h3><span class="tag">Administrator</span></div>
+      <form id="order-status-form" class="stack">
+        <div class="two-cols">
+          <label>Status<select name="status"><option value="none">Nie zamówiono</option><option value="ordered">Zamówione</option></select></label>
+          <label id="order-quantity-wrap">Liczba zamówionych sztuk<input name="quantity" type="number" inputmode="numeric" min="1" max="2000000000" value="1"></label>
+        </div>
+        <label>Notatka do zamówienia (opcjonalnie)<input name="note" maxlength="300" placeholder="Np. nazwa dostawcy, numer zamówienia"></label>
+        <p class="subtle-note">Zamówione sztuki nie są zaliczane do magazynu. Przyjmij je dopiero po dostawie.</p>
+        <button class="secondary" type="submit">Zapisz status zamówienia</button>
+      </form>
+      <details id="part-edit-details" class="form-extra divided" hidden>
+        <summary>Edytuj parametry elektroniki</summary>
+        <form id="part-edit-form" class="stack subform">
+          <div class="two-cols">
+            <label>Nazwa<input name="designation" maxlength="2000" required></label>
+            <label>Numer katalogowy<input name="primary_number" maxlength="160"></label>
+            <label>Kategoria<input name="category" list="part-category-list" required maxlength="200"></label>
+            <label>Producent<input name="manufacturer" maxlength="200"></label>
+            <label>Obudowa<input name="package" maxlength="120"></label>
+            <label>Napięcie<input name="spec_voltage" maxlength="120"></label>
+            <label>Prąd<input name="spec_current" maxlength="120"></label>
+            <label>Moc<input name="spec_power" maxlength="120"></label>
+            <label>Rezystancja<input name="spec_resistance" maxlength="120"></label>
+            <label>Pojemność<input name="spec_capacitance" maxlength="120"></label>
+            <label>Tolerancja<input name="spec_tolerance" maxlength="120"></label>
+            <label>Liczba pinów<input name="spec_pin_count" maxlength="120"></label>
+            <label>Temperatura pracy<input name="spec_temperature" maxlength="120"></label>
+            <label>Interfejs / rodzina<input name="spec_interface" maxlength="120"></label>
+          </div>
+          <label>Pozostałe parametry<input name="parameters" maxlength="2000"></label>
+          <label>Uwagi<textarea name="notes" rows="2" maxlength="2000"></textarea></label>
+          <button class="secondary" type="submit">Zapisz parametry elektroniki</button>
+        </form>
+      </details>
+      <div class="divider-line"></div>
       <div class="section-header"><h3>Minimalny stan i powiadomienia</h3><span class="tag">Administrator</span></div>
       <p class="muted small-text">Gdy zapas spadnie do minimum, produkt pojawi się na liście „Do zamówienia”.</p>
       <form id="minimum-form" class="stack">

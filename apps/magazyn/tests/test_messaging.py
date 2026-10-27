@@ -256,7 +256,7 @@ def test_admin_api_and_migration_upgrade(configured,tmp_path):
     assert c.get(f"/api/items/{item}/minimum").json()["minimum"] is None
     assert c.get("/api/messaging/status").json()["links"]==0
     with s.connect() as con:
-        assert con.execute("PRAGMA user_version").fetchone()[0]==2
+        assert con.execute("PRAGMA user_version").fetchone()[0]==3
     assert c.get("/api/messaging/links").status_code==200
     db=tmp_path/"pre_v1.sqlite3"
     old=Store(str(db))
@@ -269,7 +269,7 @@ def test_admin_api_and_migration_upgrade(configured,tmp_path):
     restored=Store(str(db))
     assert restored.users()[0]["username"]=="migrated"
     with restored.connect() as con:
-        assert con.execute("PRAGMA user_version").fetchone()[0]==2
+        assert con.execute("PRAGMA user_version").fetchone()[0]==3
 
 
 def test_bots_cannot_start_without_opt_in(tmp_path,monkeypatch):

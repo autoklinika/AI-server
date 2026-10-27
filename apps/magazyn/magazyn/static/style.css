@@ -662,3 +662,49 @@ dialog::-webkit-scrollbar-thumb { border-radius: 10px; background:#D5D7DA; }
   .product-actions button, .product-actions button:not(:first-child) { font-size: .67rem !important; }
   .kind-choice .icon { display: none; }
 }
+
+
+/* Separate electronics catalogue and technical documents; original colour contract. */
+.add-actions { display: flex; align-items: center; gap: 9px; margin-left: auto; }
+.add-actions > button { min-height: 45px; white-space: nowrap; }
+.part-sheet .form-section > h3 { color: var(--graphite); }
+.part-sheet .form-section .subtle-note { margin-bottom: 3px; }
+.part-sheet .check-line { margin: 10px 0; }
+.part-sheet .check-line input { min-width: 20px; }
+.doc-list { display: grid; gap: 9px; }
+.doc-entry {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 11px 12px; border: 1px solid var(--line);
+  border-radius: 11px; background: #FAFAF9;
+}
+.doc-filename { min-width: 0; font-weight: 690; font-size: .85rem; overflow-wrap: anywhere; }
+.doc-filename small { color: var(--muted); font-weight: 550; }
+.doc-controls { display: flex; gap: 7px; align-items: center; flex: none; }
+a.doc-download {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 43px; padding: 9px 13px; border: 1px solid var(--line-strong);
+  background: white; color: var(--orange-dark); border-radius: 10px;
+  text-decoration: none; font-size: .81rem; font-weight: 690;
+}
+a.doc-download:hover { background: var(--orange-soft); border-color: #E3B38F; }
+#part-edit-details > summary { font-weight: 740; }
+#part-doc-upload > button { justify-self: start; }
+#order-status-form { margin-bottom: 18px; }
+#part-order-create-panel { display: grid; gap: 9px; margin-top: 7px; }
+
+@media (max-width:650px) {
+  .add-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); width: 100%; gap: 8px; margin: 0; }
+  .add-actions > button { min-width: 0; width: 100%; min-height: 52px; white-space: normal; padding: 10px 7px; font-size: .82rem; }
+  .add-actions .icon { width: 16px; height: 16px; }
+  .doc-entry { display: grid; gap: 10px; }
+  .doc-controls { display: flex; gap: 8px; }
+  .doc-controls > * { min-height: 44px; }
+  #part-doc-upload > button { justify-self: stretch; }
+  #part-order-create-panel { padding-top: 9px; }
+  #part-edit-details { padding-left: 0; padding-right: 0; }
+  #order-status-form button[type="submit"] { width: 100%; min-height: 48px; }
+  /* In a long electronics form the sticky footer must not obscure file inputs
+     or the purchase-status checkbox when Safari scrolls the focused control. */
+  .part-sheet .sticky-actions { position: relative; bottom: auto; }
+  .part-sheet #part-order-on-create { scroll-margin-bottom: 110px; }
+}

@@ -18,6 +18,14 @@ PRODUCT_STATES = {"new", "used"}
 TECH_STATES = {"working", "faulty", "unknown"}
 REASONS = {"repair", "sale", "workshop", "scrap", "other"}
 OPERATIONS = {"receive", "issue", "move", "adjust"}
+ELECTRONIC_SPEC_FIELDS = ("voltage", "current", "power", "resistance", "capacitance",
+                          "tolerance", "pin_count", "temperature", "interface")
+DOC_MIME = {"pdf": "application/pdf", "png": "image/png",
+            "jpg": "image/jpeg", "jpeg": "image/jpeg"}
+DOC_TYPES = {"datasheet", "schematic", "other"}
+MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
+MAX_DOCUMENTS_PER_ITEM = 6
+MAX_TOTAL_DOCUMENT_BYTES = 256 * 1024 * 1024
 
 
 class Problem(Exception):
@@ -192,7 +200,38 @@ CREATE TABLE IF NOT EXISTS message_outbox (
 );
 CREATE INDEX IF NOT EXISTS idx_message_outbox_dispatch
     ON message_outbox(provider,status,next_attempt_at,lease_until);
-PRAGMA user_version=2;
+CREATE TABLE IF NOT EXISTS electronic_specs (
+    item_id INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
+    voltage TEXT NOT NULL DEFAULT '',
+    current TEXT NOT NULL DEFAULT '',
+    power TEXT NOT NULL DEFAULT '',
+    resistance TEXT NOT NULL DEFAULT '',
+    capacitance TEXT NOT NULL DEFAULT '',
+    tolerance TEXT NOT NULL DEFAULT '',
+    pin_count TEXT NOT NULL DEFAULT '',
+    temperature TEXT NOT NULL DEFAULT '',
+    interface TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS item_documents (
+    id INTEGER PRIMARY KEY,
+    item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    filename TEXT NOT NULL COLLATE NOCASE,
+    doc_type TEXT NOT NULL CHECK(doc_type IN ('datasheet','schematic','other')),
+    mime TEXT NOT NULL, bytes INTEGER NOT NULL CHECK(bytes > 0),
+    sha256 TEXT NOT NULL, content BLOB NOT NULL,
+    uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL, UNIQUE(item_id,filename)
+);
+CREATE INDEX IF NOT EXISTS ix_item_documents_item ON item_documents(item_id);
+CREATE TABLE IF NOT EXISTS purchase_state (
+    item_id INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
+    status TEXT NOT NULL CHECK(status IN ('none','ordered')),
+    quantity INTEGER NOT NULL DEFAULT 0 CHECK(quantity>=0),
+    note TEXT NOT NULL DEFAULT '',
+    updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    updated_at TEXT NOT NULL
+);
+PRAGMA user_version=3;
 """
 
 
@@ -208,7 +247,7 @@ class Store:
         os.chmod(self.path, 0o600)
         with self.connect() as con:
             version = con.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1, 2):
+            if version not in (0, 1, 2, 3):
                 raise RuntimeError("Nieobsługiwana wersja schematu Magazynu")
             con.executescript(SCHEMA)
             con.execute("PRAGMA journal_mode=WAL")
@@ -513,11 +552,20 @@ class Store:
                         own_sw == normalize(item["sw"]) and brand_match
                     )
                 else:
+                    incoming_specs = data.get("specs")
+                    specs_match = True
+                    if incoming_specs is not None:
+                        wanted = self._validated_specs(incoming_specs)
+                        present = con.execute(
+                            "SELECT * FROM electronic_specs WHERE item_id=?", (item_id,)).fetchone()
+                        specs_match = all(
+                            normalize(wanted[field]) == normalize(present[field] if present else "")
+                            for field in ELECTRONIC_SPEC_FIELDS)
                     same_variant = (
                         exact_identifier and
                         own_package == normalize(item["package"]) and
                         own_parameters == normalize(item["parameters"]) and
-                        own_category == normalize(item["category"])
+                        own_category == normalize(item["category"]) and specs_match
                     )
                 existing_qty = con.execute(
                     "SELECT COALESCE(SUM(quantity),0) FROM balances WHERE item_id=?",
@@ -574,6 +622,31 @@ class Store:
                 event_id = received["event_id"]
             return {"id": item_id, "quantity": quantity, "event_id": event_id}
 
+    @staticmethod
+    def _validated_specs(raw):
+        if raw is None:
+            return {name: "" for name in ELECTRONIC_SPEC_FIELDS}
+        if not isinstance(raw, dict) or set(raw) - set(ELECTRONIC_SPEC_FIELDS):
+            raise Problem(422, "Nieprawidłowe pola parametrów elektroniki")
+        values = {}
+        for name in ELECTRONIC_SPEC_FIELDS:
+            value = raw.get(name, "")
+            if not isinstance(value, str) or len(value.strip()) > 120 or any(
+                    ord(ch) < 32 for ch in value):
+                raise Problem(422, "Nieprawidłowa wartość parametru elektroniki")
+            values[name] = value.strip()
+        return values
+
+    @classmethod
+    def _upsert_specs(cls, con, item_id, raw):
+        values = cls._validated_specs(raw)
+        fields = ELECTRONIC_SPEC_FIELDS
+        con.execute(
+            "INSERT INTO electronic_specs(item_id," + ",".join(fields) + ") VALUES(" +
+            ",".join(["?"]*(len(fields)+1)) + ") ON CONFLICT(item_id) DO UPDATE SET " +
+            ",".join(f"{f}=excluded.{f}" for f in fields),
+            (item_id, *(values[name] for name in fields)))
+
     def add_item(self, data, actor, *, connection=None):
         kind = data.get("kind")
         if kind not in KINDS or not data.get("designation","").strip():
@@ -599,6 +672,10 @@ class Store:
             numbers.extend((r.get("number",""),r.get("number_type","other"))
                            for r in data.get("numbers",[]))
             self._add_numbers(con,item_id,numbers)
+            if kind == "part":
+                self._upsert_specs(con, item_id, data.get("specs"))
+            elif data.get("specs"):
+                raise Problem(422, "Parametry elektroniczne dotyczą tylko elektroniki")
         return item_id
 
     @staticmethod
@@ -622,6 +699,8 @@ class Store:
             original = con.execute("SELECT * FROM items WHERE id=?", (item_id,)).fetchone()
             if original is None:
                 raise Problem(404,"Brak produktu")
+            if "specs" in data and original["kind"] != "part":
+                raise Problem(422, "Parametry elektroniki nie dotyczą sterowników")
             values = {key: str(val or "").strip() for key,val in data.items() if key in fields}
             if any(len(v)>2000 for v in values.values()):
                 raise Problem(422,"Zbyt długie dane")
@@ -632,6 +711,8 @@ class Store:
             if values:
                 con.execute("UPDATE items SET " + ",".join(k+"=?" for k in values) +
                             ",updated_at=? WHERE id=?",(*values.values(),now(),item_id))
+            if "specs" in data:
+                self._upsert_specs(con, item_id, data["specs"])
             if "brands" in data or "brand" in data:
                 brand = values.get("brand",original["brand"])
                 brands = {brand} if brand else set()
@@ -661,6 +742,108 @@ class Store:
             if not con.execute("DELETE FROM items WHERE id=? RETURNING id",(item_id,)).fetchone():
                 raise Problem(404,"Brak produktu")
 
+    def add_document(self, item_id: int, filename: str, doc_type: str,
+                     content: bytes, actor: dict) -> dict:
+        filename = filename.strip() if isinstance(filename,str) else ""
+        if (not filename or len(filename) > 140 or filename.startswith(".")
+            or "/" in filename or "\\" in filename or
+            any(ord(c)<32 or ord(c)==127 for c in filename)):
+            raise Problem(422, "Nieprawidłowa nazwa dokumentu")
+        if doc_type not in DOC_TYPES:
+            raise Problem(422, "Wybierz typ dokumentacji")
+        extension = filename.rsplit(".", 1)[-1].casefold() if "." in filename else ""
+        if extension not in DOC_MIME:
+            raise Problem(422, "Dokumentacja: obsługujemy PDF, PNG i JPG")
+        if not isinstance(content, bytes) or not 0 < len(content) <= MAX_DOCUMENT_BYTES:
+            raise Problem(413, "Plik dokumentacji nie może przekraczać 8 MB")
+        if (extension == "pdf" and
+            (not content.startswith(b"%PDF-") or b"%%EOF" not in content[-2048:])):
+            raise Problem(422, "Plik nie jest prawidłowym PDF")
+        if extension == "png" and not content.startswith(b"\x89PNG\r\n\x1a\n"):
+            raise Problem(422, "Plik nie jest prawidłowym PNG")
+        if extension in ("jpg","jpeg") and not (content.startswith(b"\xff\xd8\xff")
+                                               and content.endswith(b"\xff\xd9")):
+            raise Problem(422, "Plik nie jest prawidłowym JPG")
+        with self.connect(write=True) as con:
+            item = self._get_item(con,item_id)
+            if item["kind"] != "part":
+                raise Problem(422, "Dokumentacja techniczna dotyczy elementów elektronicznych")
+            count, used = con.execute(
+                "SELECT COUNT(*),COALESCE(SUM(bytes),0) FROM item_documents WHERE item_id=?",
+                (item_id,)).fetchone()
+            if count >= MAX_DOCUMENTS_PER_ITEM:
+                raise Problem(409, "Maksymalnie 6 dokumentów dla elementu")
+            overall = con.execute("SELECT COALESCE(SUM(bytes),0) FROM item_documents").fetchone()[0]
+            if overall + len(content) > MAX_TOTAL_DOCUMENT_BYTES:
+                raise Problem(413, "Osiągnięto bezpieczny limit dokumentacji Magazynu")
+            try:
+                row = con.execute(
+                    "INSERT INTO item_documents(item_id,filename,doc_type,mime,bytes,sha256,"
+                    "content,uploaded_by,created_at) VALUES(?,?,?,?,?,?,?,?,?) RETURNING id",
+                    (item_id,filename,doc_type,DOC_MIME[extension],len(content),
+                     hashlib.sha256(content).hexdigest(),sqlite3.Binary(content),
+                     actor["id"],now())).fetchone()
+            except sqlite3.IntegrityError as exc:
+                raise Problem(409, "Dokument o tej nazwie już istnieje") from exc
+            return {"id":row["id"],"filename":filename,"bytes":len(content),
+                    "doc_type":doc_type}
+
+    def list_documents(self, item_id: int) -> list[dict]:
+        with self.connect() as con:
+            item = self._get_item(con,item_id)
+            if item["kind"] != "part":
+                raise Problem(422, "Dokumenty techniczne dotyczą elektroniki")
+            return [dict(row) for row in con.execute(
+                "SELECT id,filename,doc_type,mime,bytes,sha256,created_at FROM item_documents "
+                "WHERE item_id=? ORDER BY id DESC", (item_id,))]
+
+    def read_document(self, item_id: int, document_id: int) -> dict:
+        with self.connect() as con:
+            self._get_item(con,item_id)
+            row=con.execute("SELECT * FROM item_documents WHERE item_id=? AND id=?",
+                            (item_id,document_id)).fetchone()
+            if row is None:
+                raise Problem(404, "Brak dokumentu")
+            document=dict(row)
+            if hashlib.sha256(document["content"]).hexdigest()!=document["sha256"]:
+                raise Problem(503, "Błąd integralności dokumentu")
+            return document
+
+    def delete_document(self, item_id: int, document_id: int) -> None:
+        with self.connect(write=True) as con:
+            self._get_item(con,item_id)
+            removed=con.execute("DELETE FROM item_documents WHERE item_id=? AND id=? RETURNING id",
+                                (item_id,document_id)).fetchone()
+            if removed is None:
+                raise Problem(404, "Brak dokumentu")
+
+    def set_order_status(self, item_id: int, status: str, quantity: int,
+                         note: str, actor: dict) -> dict:
+        if status not in ("none","ordered") or type(quantity) is not int:
+            raise Problem(422, "Nieprawidłowy status zamówienia")
+        if not isinstance(note,str) or len(note.strip()) > 300:
+            raise Problem(422, "Za długa notatka o zamówieniu")
+        if (status=="ordered" and not 1<=quantity<=2_000_000_000) or (
+                status=="none" and quantity!=0):
+            raise Problem(422, "Podaj prawidłową liczbę zamówionych sztuk")
+        with self.connect(write=True) as con:
+            self._get_item(con,item_id)
+            con.execute(
+                "INSERT INTO purchase_state(item_id,status,quantity,note,updated_by,updated_at) "
+                "VALUES(?,?,?,?,?,?) ON CONFLICT(item_id) DO UPDATE SET "
+                "status=excluded.status,quantity=excluded.quantity,note=excluded.note,"
+                "updated_by=excluded.updated_by,updated_at=excluded.updated_at",
+                (item_id,status,quantity,note.strip(),actor["id"],now()))
+        return self.get_order_status(item_id)
+
+    def get_order_status(self,item_id: int) -> dict:
+        with self.connect() as con:
+            self._get_item(con,item_id)
+            row=con.execute("SELECT status,quantity,note,updated_at FROM purchase_state WHERE item_id=?",
+                            (item_id,)).fetchone()
+            return dict(row) if row else {
+                "status":"none","quantity":0,"note":"","updated_at":None}
+
     def _get_item(self, con, item_id):
         row = con.execute("SELECT * FROM items WHERE id=?",(item_id,)).fetchone()
         if row is None:
@@ -679,6 +862,17 @@ class Store:
                 "FROM balances b JOIN locations l ON l.id=b.location_id WHERE item_id=? AND quantity>0 "
                 "ORDER BY l.code, b.product_state,b.technical_state",(item_id,))]
             item["total"]=sum(r["quantity"] for r in item["balances"])
+            status = con.execute("SELECT status,quantity,note,updated_at FROM purchase_state WHERE item_id=?",
+                                 (item_id,)).fetchone()
+            item["order_status"] = dict(status) if status else {
+                "status":"none","quantity":0,"note":"","updated_at":None}
+            if item["kind"] == "part":
+                spec = con.execute("SELECT * FROM electronic_specs WHERE item_id=?",
+                                   (item_id,)).fetchone()
+                item["specs"] = {field:spec[field] if spec else "" for field in ELECTRONIC_SPEC_FIELDS}
+                item["documents"] = [dict(r) for r in con.execute(
+                    "SELECT id, filename, doc_type, mime, bytes, sha256, created_at "
+                    "FROM item_documents WHERE item_id=? ORDER BY id DESC", (item_id,))]
             return item
 
     def items(self, query="", kind=None, brand=None, manufacturer=None,
@@ -702,6 +896,11 @@ class Store:
                 numbers=[r[0] for r in con.execute("SELECT number FROM item_numbers WHERE item_id=?",(item["id"],))]
                 haystack=[item[k] for k in ("brand","designation","manufacturer","category",
                           "model","primary_number","hw","sw","package","parameters","notes")]
+                if q and item["kind"]=="part":
+                    spec = con.execute("SELECT * FROM electronic_specs WHERE item_id=?",
+                                       (item["id"],)).fetchone()
+                    if spec:
+                        haystack.extend(spec[field] for field in ELECTRONIC_SPEC_FIELDS)
                 if q and not any(q in normalize(str(v)) for v in [*haystack,*brands,*numbers]):
                     continue
                 balances=[dict(r) for r in con.execute(
@@ -721,6 +920,10 @@ class Store:
                 item["total"]=total
                 item["filtered_total"]=sum(b["quantity"] for b in filtered)
                 item["brands"]=brands
+                status=con.execute("SELECT status,quantity FROM purchase_state WHERE item_id=?",
+                                   (item["id"],)).fetchone()
+                item["order_status"]=status["status"] if status else "none"
+                item["ordered_quantity"]=status["quantity"] if status else 0
                 result.append(item)
                 if len(result)>=limit:
                     break
@@ -888,8 +1091,11 @@ class Store:
         with self.connect() as con:
             return [dict(r) for r in con.execute(
                 "SELECT m.item_id,i.designation,i.brand,m.minimum,m.recipient_user_id,m.provider,"
+                "COALESCE(p.status,'none') AS order_status,"
+                "COALESCE(p.quantity,0) AS ordered_quantity,p.updated_at AS ordered_at,"
                 "COALESCE((SELECT SUM(quantity) FROM balances WHERE item_id=m.item_id),0) AS total "
                 "FROM minima m JOIN items i ON i.id=m.item_id "
+                "LEFT JOIN purchase_state p ON p.item_id=m.item_id "
                 "WHERE COALESCE((SELECT SUM(quantity) FROM balances WHERE item_id=m.item_id),0)<=m.minimum "
                 "ORDER BY i.designation")]
 

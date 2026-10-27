@@ -8,7 +8,7 @@
 - Archiwum jest szyfrowane AES-256-GCM, klucz ma 32 losowe bajty. Zależność: requirements-backup.txt (cryptography).
 - Archiwa nie zawierają jawnych informacji o produktach, pracownikach ani ilościach; nazwy zawierają datę UTC i poziom retencji.
 - Jawny AES key pozostaje prywatny (0600), katalog klucza i bufora ma 0700. Zaszyfrowana przez publiczny YubiKey PIV kopia klucza znajduje się na NAS w Magazyn/recovery. **Fizyczny decrypt drill z YubiKey i PIN-em przeszedł 27.10.2026 (PASS)**. Nadal niezbędna jest niezależna ścieżka odzyskiwania na wypadek utraty jedynego YubiKeya.
-- Obecnie kopia obejmuje całą bazę danych (produkty, użytkownicy, role, sesje, historia, minima). Załączniki nie istnieją jeszcze w Magazynie V1; po ich dodaniu wymagane będzie rozszerzenie backupu.
+- Kopia obejmuje całą lokalną bazę danych, w tym produkty, użytkowników, role, sesje, historię, minima, statusy zamówień, parametry elektroniki oraz załączniki PDF/PNG/JPG przechowywane jako BLOB w SQLite (schemat v3). Szyfrowany snapshot SQLite Backup API obejmuje te dane spójnie, bez dodatkowego katalogu na NAS.
 
 ## Wywołania CLI po utworzeniu prywatnych katalogów
 
