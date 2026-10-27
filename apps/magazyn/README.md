@@ -8,7 +8,7 @@
 
 ## Aktualnie działające
 
-- Konta i sesje: indywidualne loginy, scrypt+salt, ciasteczko HttpOnly, SameSite, CSRF. Administrator ma pełne funkcje administracyjne, w tym edycję/usuwanie historii. Pracownik ma operacje podstawowe.
+- Konta i sesje: indywidualne loginy, scrypt+salt, ciasteczko HttpOnly, SameSite, CSRF. WebGUI ogranicza błędne logowania (5 na konto i połączenie / 5 min → 10 min przerwy; dodatkowy limit źródła 30 prób), przechowując w bazie wyłącznie skróty kluczy kontroli. Chroni przed przypadkowym usunięciem ostatniego aktywnego administratora. Administrator ma pełne uprawnienia funkcjonalne, w tym edycję/usuwanie historii. Pracownik ma operacje podstawowe.
 - Sterowniki i elektronika: jedna pozycja, wiele marek i numerów, wiele lokalizacji. ECU: Nowy/Używany oraz stan techniczny (Sprawny/Uszkodzony/Nieznany).
 - Przyjęcie, wydanie z obowiązkowym powodem, przesunięcie i korekta z atomowym zapisem ilości i historii.
 - Wyszukiwarka po oznaczeniach i numerach z normalizacją spacji, myślników i wielkości liter; filtrowanie.
@@ -16,7 +16,7 @@
 - **Inwentaryzacja**: `GET /api/inventory?location_id=N`, `POST /api/inventory`. Pracownik może przeglądać, administrator wprowadza policzone stany. W jednej transakcji powstają korekty; parametr `expected_quantity` chroni przed nadpisaniem nowszego stanu (409 Conflict).
 - **CSV/XLSX**: eksport katalogu `GET /api/export?format=csv|xlsx&kind=ecu|part&brand=...`, szablon nowych pozycji `GET /api/import/template?format=csv|xlsx`, podgląd `POST /api/import/preview`, zatwierdzenie `POST /api/import/apply`. Wszystkie endpointy transferu wymagają administratora; POST wymagają CSRF. Import ma ograniczenie 1 MB / 1000 wierszy, walidację numerów/OEM/HW/SW, konflikty blokują całą transakcję; potwierdzenie podglądu ma krótką ważność i jest związane z plikiem i użytkownikiem. Żadnego automatycznego scalania z istniejącymi produktami.
 - Eksport w formie migawki z wszystkimi lokalizacjami i wariantami stanów, także o ilości 0. Eksport i szablon **mają celowo różne nagłówki** — migawka katalogu nie jest automatycznym importem/backupem.
-- **Backup DEV:** szyfrowane archiwa SQLite AES-256-GCM, prywatny klucz, lokalny bufor, odtwarzanie offline i zabezpieczone sprawdzanie prawdziwego GlobalNAS przed wysyłką. Panel administratora pozwala podejrzeć kolejkę oraz wykonać ręczny lokalny backup. Instrukcja: [BACKUP_DEV.md](BACKUP_DEV.md). **Nie ma jeszcze automatycznego timera ani zweryfikowanego realnego zapisu na NAS.**
+- **Backup DEV:** szyfrowane archiwa SQLite AES-256-GCM, prywatny klucz, lokalny bufor, odtwarzanie offline i zabezpieczone sprawdzanie prawdziwego GlobalNAS przed wysyłką. Panel administratora pozwala podejrzeć kolejkę oraz wykonać ręczny lokalny backup. Instrukcja: [BACKUP_DEV.md](BACKUP_DEV.md). **27.10.2026: rzeczywisty zapis zaszyfrowanego archiwum na GlobalNAS i pełne odtworzenie z NAS do RAM PASS. Nie instalowano żadnego nowego timera; kopia klucza poza serwerem nadal wymagana.**
 - **Komunikatory DEV:** osobne, domyślnie wyłączone adaptery Telegram polling i Discord Gateway, tylko prywatne wiadomości i tylko odczyt. Administrator generuje 10-minutowe, jednorazowe kody powiązania kont; powiązania można odwołać. Potwierdzone konta otrzymują powiadomienia z trwałej kolejki (retry po błędzie), bez wpływu na pracę magazynu. Instrukcja: [BOTS_DEV.md](BOTS_DEV.md). **Dedykowany Telegram DEV został już skonfigurowany, uruchomiony i odebrany w teście rzeczywistej wysyłki prywatnego alertu; nadal nie jest wdrożeniem produkcyjnym.** Bezpieczny instalator: [TELEGRAM_SETUP_DEV.md](TELEGRAM_SETUP_DEV.md).
 
 ## Sposób uruchamiania wyłącznie do testów
@@ -29,7 +29,7 @@ Z katalogu `apps/magazyn`:
 export PYTHONPATH="$PWD"
 export MAGAZYN_DB_PATH="/prywatny/katalog/testowy/magazyn.sqlite3"
 python -m magazyn create-admin
-python -m pytest tests/test_magazyn.py tests/test_inventory_transfers.py tests/test_backup.py tests/test_messaging.py -q
+python -m pytest tests -q
 MAGAZYN_COOKIE_SECURE=0 python -m magazyn run --host 127.0.0.1 --port 18765
 ```
 
@@ -47,18 +47,18 @@ Domyślnie cookie ma flagę Secure (wymagane HTTPS). Wartość `MAGAZYN_COOKIE_S
 
 ## Wynik testów
 
-W DEV 27.10.2026: **119 / 119 testów PASS**, wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
+W DEV 27.10.2026: **132 / 132 testy PASS**, wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
 
 ## Niezaimplementowane, wymagane przed produkcją
 
-- **Rzeczywisty odbiór Telegram:** konto i token do utworzenia przez właściciela w BotFather, potem konfigurator lokalny, prywatne DM, odmowa dostępu, test błędów połączenia i odwołania dostępu. Usługa DEV pozostaje disabled/inactive aż do uruchomienia po wpisaniu tokenu. Discord pozostaje osobnym etapem. Prawdziwych wiadomości dotąd nie wysyłano.
-- **Realna synchronizacja z GlobalNAS i odbiór odtworzenia z NAS**, automatyczny dzienny timer, monitoring błędów, procedura recovery i weryfikacja uprawnień markera Stage K. Mechanizm DEV jest już dostępny do testów na syntetycznym NAS.
-- Szyfrowanie danych bazy i audyt bezpieczeństwa wdrożenia, ograniczanie prób logowania, gotowe HTTPS/reverse proxy.
+- **Telegram:** zakończono funkcjonalny test rzeczywistej wysyłki alertu do powiązanego konta, odbiór potwierdzony przez użytkownika. Zostaje odbiór operacyjny i zabezpieczenie danych przed produkcją. Discord jest odrębnym, opcjonalnym etapem.
+- **Backup/DR:** rzeczywisty zapis, odczyt i restore z GlobalNAS zakończony PASS. Brakuje bezpiecznej kopii klucza poza serwerem, cyklicznej realizacji kopii przez istniejący mechanizm Stage K (bez nowego schedulera), monitoringu i procedury DR na produkcję.
+- Ocena szyfrowania działającej bazy, przegląd bezpieczeństwa wdrożenia (w tym polityki loginów, sesji, sekretów), gotowe HTTPS/reverse proxy i dostęp do aplikacji dla pracowników. Ograniczanie prób logowania w DEV już działa.
 - Wygodna pełna edycja administracyjna w GUI, dodatkowe filtry historii oraz pełna walidacja ergonomii interfejsu.
 - Aplikacja Android/OCR/zdjęcia — celowo poza V1.
 
 ## Niezmienniki bezpieczeństwa i integracji
 
-Nie można wydać ani przesunąć większej ilości niż dostępna. Operacje ilościowe i historia są zapisywane atomowo. Jeden produkt widoczny pod kilkoma markami nie jest podwójnie liczony. Admin ma pełne możliwości; użytkownik nie ma dostępu do endpointów administracyjnych. Import i eksport nie ujawniają kont, sesji ani haseł. Magazyn pozostaje niezależny od usług AI Platform, nie tworzy unitów systemd, timerów, crona ani otwartych portów podczas tej fazy.
+Nie można wydać ani przesunąć większej ilości niż dostępna. Operacje ilościowe i historia są zapisywane atomowo. Jeden produkt widoczny pod kilkoma markami nie jest podwójnie liczony. Admin ma pełne możliwości; użytkownik nie ma dostępu do endpointów administracyjnych. Import i eksport nie ujawniają kont, sesji ani haseł. Magazyn pozostaje niezależny od RM i modeli AI. W DEV istnieją dwie odrębne jednostki użytkownika systemd (WebGUI localhost i Telegram), bez autostartu i bez nowych timerów/crona. WebGUI nasłuchuje wyłącznie na 127.0.0.1:18765, dostęp przez tunel SSH.
 
-**Nie wdrażać na produkcję** przed odbiorem brakujących funkcji i testem odtwarzania z GlobalNAS.
+**Nie wdrażać na produkcję** przed ukończeniem odbioru bezpieczeństwa, niezależnej kopii klucza szyfrowania, polityki harmonogramu przez Stage K i HTTPS. Sam test odtwarzania z GlobalNAS już zakończono PASS.

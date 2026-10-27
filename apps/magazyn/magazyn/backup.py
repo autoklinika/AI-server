@@ -321,9 +321,17 @@ def _nas_target(mount_path: str | Path) -> Path:
     if mount.is_symlink() or not os.path.ismount(mount):
         raise BackupFailure("GlobalNAS nie jest zamontowany — kopie pozostają lokalnie")
     try:
-        result = subprocess.run(["findmnt","-n","-T",str(mount),"-o","FSTYPE,SOURCE"],
+        result = subprocess.run(["findmnt","-n","-M",str(mount),"-o","FSTYPE,SOURCE"],
                                 capture_output=True,text=True,timeout=4,check=True)
-        fs_type, source = result.stdout.strip().split(None, 1)
+        # Linux systemd automount can show *both* layers at this exact mount
+        # point: "autofs systemd-1" and "cifs //globalnas...". Require the
+        # topmost (last) layer to be the correct CIFS share, not merely an
+        # autofs placeholder or a hidden CIFS below a different overlay.
+        mounts = [line.strip().split(None, 1) for line in result.stdout.splitlines()
+                  if line.strip()]
+        if not mounts or len(mounts[-1]) != 2:
+            raise BackupFailure("Nie można potwierdzić zamontowanego udziału CIFS")
+        fs_type, source = mounts[-1]
         marker = json.loads((mount/".ai-platform-backup-target.json").read_text("utf-8"))
         if (fs_type.lower()!="cifs"
             or source.lower()!="//globalnas.local/ai_platform"

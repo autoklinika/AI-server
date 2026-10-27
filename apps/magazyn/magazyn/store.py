@@ -8,6 +8,7 @@ import os
 import re
 import secrets
 import sqlite3
+import time
 from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -20,10 +21,11 @@ OPERATIONS = {"receive", "issue", "move", "adjust"}
 
 
 class Problem(Exception):
-    def __init__(self, status: int, detail: str):
+    def __init__(self, status: int, detail: str, *, retry_after: int | None = None):
         super().__init__(detail)
         self.status = status
         self.detail = detail
+        self.retry_after = retry_after
 
 
 def now() -> str:
@@ -54,6 +56,39 @@ def password_verify(password: str, encoded: str) -> bool:
         return False
 
 
+# HTTP login controls are intentionally separate from the CLI password check.
+# Failed attempts are persisted in SQLite (not per-process RAM), so restarts
+# cannot reset brute-force counters. Keys are SHA-256 digests: no raw login,
+# source address, or password is stored in the throttle table.
+AUTH_WINDOW_SECONDS = 5 * 60
+AUTH_BLOCK_SECONDS = 10 * 60
+AUTH_ACCOUNT_FAILURES = 5
+AUTH_CLIENT_FAILURES = 30
+_DUMMY_AUTH_HASH = password_hash("magazyn-invalid-account-timing-placeholder")
+
+
+def _auth_digest(scope: str, value: str) -> str:
+    return hashlib.sha256((scope + "\0" + value).encode("utf-8")).hexdigest()
+
+
+def _auth_throttle_keys(username: str, client: str) -> tuple[tuple[str, int], tuple[str, int]]:
+    account_key = _auth_digest("login-account-client", username.casefold() + "\0" + client)
+    client_key = _auth_digest("login-client", client)
+    return ((account_key, AUTH_ACCOUNT_FAILURES),
+            (client_key, AUTH_CLIENT_FAILURES))
+
+
+def _blocked_for(con, keys: tuple[tuple[str, int], ...], current: float) -> int:
+    """Return whole seconds of remaining block time (zero means allowed)."""
+    remaining = 0.0
+    for key, _max_failures in keys:
+        row = con.execute("SELECT blocked_until FROM auth_login_throttles WHERE key_hash=?",
+                          (key,)).fetchone()
+        if row and row["blocked_until"] > current:
+            remaining = max(remaining, row["blocked_until"] - current)
+    return max(1, int(remaining + .999)) if remaining else 0
+
+
 SCHEMA = """
 PRAGMA foreign_keys=ON;
 CREATE TABLE IF NOT EXISTS users (
@@ -65,6 +100,14 @@ CREATE TABLE IF NOT EXISTS sessions (
     token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     csrf TEXT NOT NULL, expires_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS auth_login_throttles (
+    key_hash TEXT PRIMARY KEY,
+    failures INTEGER NOT NULL DEFAULT 0,
+    window_started_at REAL NOT NULL,
+    blocked_until REAL NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_auth_login_throttles_expiry
+    ON auth_login_throttles(blocked_until,window_started_at);
 CREATE TABLE IF NOT EXISTS items (
     id INTEGER PRIMARY KEY, kind TEXT NOT NULL CHECK(kind IN ('ecu','part')),
     brand TEXT NOT NULL DEFAULT '', designation TEXT NOT NULL, manufacturer TEXT NOT NULL DEFAULT '',
@@ -212,6 +255,86 @@ class Store:
             raise Problem(401, "Nieprawidłowe dane logowania")
         return dict(user)
 
+    def authenticate_login(self, username: str, password: str, client: str,
+                           *, current_time: float | None = None) -> dict:
+        """Web login: persistent per-account+client and per-client rate limits.
+
+        Only the socket peer is trusted as client identity. Never use a
+        user-supplied X-Forwarded-For header without an audited reverse proxy.
+        The local CLI authenticate() remains unrestricted for offline recovery.
+        """
+        username = (username or "").strip()
+        client = (client or "unknown")[:256]
+        instant = time.time() if current_time is None else float(current_time)
+        keys = _auth_throttle_keys(username, client)
+        generic_error = "Nieprawidłowe dane logowania"
+        slow_down_error = "Zbyt wiele prób logowania. Spróbuj ponownie później."
+
+        with self.connect() as con:
+            wait = _blocked_for(con, keys, instant)
+            if wait:
+                raise Problem(429, slow_down_error, retry_after=wait)
+            found = con.execute("SELECT * FROM users WHERE username=? AND active=1",
+                                (username,)).fetchone()
+
+        # Equalize the expensive password verification for unknown users, so
+        # unsuccessful requests do not trivially reveal which login exists.
+        candidate_hash = found["password_hash"] if found else _DUMMY_AUTH_HASH
+        verified = password_verify(password, candidate_hash)
+        accepted = None
+        wait = 0
+
+        with self.connect(write=True) as con:
+            # Recheck under BEGIN IMMEDIATE: concurrent attempts are serialized
+            # at the point where failures become authoritative.
+            wait = _blocked_for(con, keys, instant)
+            if not wait and verified and found:
+                current = con.execute(
+                    "SELECT * FROM users WHERE id=? AND active=1", (found["id"],)
+                ).fetchone()
+                if current and hmac.compare_digest(
+                        current["password_hash"], found["password_hash"]):
+                    accepted = dict(current)
+                    # Clear only the successful account's failures. Other
+                    # attempted usernames still contribute to the client cap.
+                    con.execute("DELETE FROM auth_login_throttles WHERE key_hash=?",
+                                (keys[0][0],))
+            elif not wait:
+                # Bound growth; entries with an expired window and ban have no
+                # enforcement value. This never removes an active penalty.
+                con.execute(
+                    "DELETE FROM auth_login_throttles "
+                    "WHERE window_started_at<? AND blocked_until<=?",
+                    (instant - AUTH_WINDOW_SECONDS - AUTH_BLOCK_SECONDS, instant)
+                )
+                for key, threshold in keys:
+                    row = con.execute(
+                        "SELECT failures,window_started_at FROM auth_login_throttles "
+                        "WHERE key_hash=?", (key,)
+                    ).fetchone()
+                    if not row or instant - row["window_started_at"] >= AUTH_WINDOW_SECONDS:
+                        count, started_at = 1, instant
+                    else:
+                        count, started_at = row["failures"] + 1, row["window_started_at"]
+                    until = instant + AUTH_BLOCK_SECONDS if count >= threshold else 0
+                    con.execute(
+                        "INSERT INTO auth_login_throttles "
+                        "(key_hash,failures,window_started_at,blocked_until) "
+                        "VALUES(?,?,?,?) ON CONFLICT(key_hash) DO UPDATE SET "
+                        "failures=excluded.failures, "
+                        "window_started_at=excluded.window_started_at, "
+                        "blocked_until=excluded.blocked_until",
+                        (key, count, started_at, until),
+                    )
+                    if until > instant:
+                        wait = max(wait, AUTH_BLOCK_SECONDS)
+
+        if accepted is not None:
+            return accepted
+        if wait:
+            raise Problem(429, slow_down_error, retry_after=wait)
+        raise Problem(401, generic_error)
+
     def create_session(self, user_id):
         token, csrf = secrets.token_urlsafe(40), secrets.token_urlsafe(32)
         expiry = (datetime.now(timezone.utc) + timedelta(hours=8)).isoformat()
@@ -247,8 +370,17 @@ class Store:
 
     def change_user(self, user_id, role=None, active=None, password=None, username=None):
         with self.connect(write=True) as con:
-            if con.execute("SELECT 1 FROM users WHERE id=?", (user_id,)).fetchone() is None:
+            existing_user = con.execute("SELECT role,active FROM users WHERE id=?",
+                                        (user_id,)).fetchone()
+            if existing_user is None:
                 raise Problem(404, "Brak użytkownika")
+            if (existing_user["role"] == "admin" and existing_user["active"]
+                    and (role == "user" or active is False)):
+                admins = con.execute(
+                    "SELECT COUNT(*) FROM users WHERE role='admin' AND active=1"
+                ).fetchone()[0]
+                if admins <= 1:
+                    raise Problem(409, "Musi pozostać co najmniej jeden aktywny administrator")
             if username is not None:
                 username = username.strip()
                 if not re.fullmatch(r"[a-zA-Z0-9_.-]{3,40}", username):
@@ -281,8 +413,17 @@ class Store:
 
     def delete_user(self, user_id):
         with self.connect(write=True) as con:
-            if not con.execute("DELETE FROM users WHERE id=? RETURNING id", (user_id,)).fetchone():
+            existing_user = con.execute("SELECT role,active FROM users WHERE id=?",
+                                        (user_id,)).fetchone()
+            if existing_user is None:
                 raise Problem(404, "Brak użytkownika")
+            if existing_user["role"] == "admin" and existing_user["active"]:
+                admins = con.execute(
+                    "SELECT COUNT(*) FROM users WHERE role='admin' AND active=1"
+                ).fetchone()[0]
+                if admins <= 1:
+                    raise Problem(409, "Nie można usunąć ostatniego aktywnego administratora")
+            con.execute("DELETE FROM users WHERE id=?", (user_id,))
 
     def locations(self):
         with self.connect() as con:

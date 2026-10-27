@@ -1,6 +1,6 @@
 # Magazyn V1 — instrukcja backupu DEV
 
-**Status: kod i testy syntetyczne, bez realnego zapisu na GlobalNAS, bez timera i bez wdrożenia.**
+**Status 27.10.2026: rzeczywisty szyfrowany backup Magazynu DEV zapisano na GlobalNAS i pomyślnie odtworzono z NAS do tymczasowego katalogu w RAM (PASS). Brak automatycznego timera, bez wdrożenia produkcyjnego.**
 
 ## Zasada działania
 
@@ -29,7 +29,7 @@ Weryfikacja przed kopiowaniem wymaga prawdziwego udziału CIFS AI_Platform i ist
 
 Procedura dzienna tworzy jedną kopię daily. W niedzielę UTC powstaje również weekly, pierwszego dnia miesiąca UTC również monthly. Retencja na GlobalNAS: 7 daily, 4 weekly, 3 monthly. Usuwane są tylko najstarsze poprawne pliki w podkatalogu Magazyn, po pozytywnym kopiowaniu. Lokalny bufor ma domyślny limit 2 GB; przekroczenie limitu nie wpływa na pracę aplikacji.
 
-**Automatyczny timer raz dziennie nie został jeszcze zainstalowany**, bo to środowisko DEV. Będzie wymagał osobnego wdrożenia, monitoringu niesynchronizowanych backupów i potwierdzenia uprawnień do markera Stage K.
+**Automatyczny timer nie został zainstalowany.** Zgodnie z architekturą AI Platform nie dodajemy drugiego schedulera bez decyzji o integracji z istniejącym mechanizmem Stage K. Jednorazowy zapis na NAS i odczyt/restore zakończył się sukcesem; nie oznacza to jeszcze automatycznego wykonywania kopii ani kompletnej procedury DR.
 
 ## Odtworzenie
 
@@ -43,8 +43,17 @@ GET /api/backup/status zwraca lokalny stan bufora i daty kopii; POST /api/backup
 
 ## Nadal brak
 
-- Weryfikacji rzeczywistego GlobalNAS i realnego testu odtworzenia z NAS.
-- Instalacji dziennego timera, monitorowania błędów i powiadomień o zaległościach.
-- Obsługi przyszłych zdjęć/załączników, polityki przechowywania klucza i zweryfikowanego dostępu do markera Stage K.
+- Osobnej, bezpiecznej kopii klucza AES-256 poza serwerem i NAS. **Bez klucza nie ma możliwości odszyfrowania archiwum.** Nie wolno wysyłać klucza do GitHub ani w czacie.
+- Powtarzalnego uruchamiania kopii w zgodzie z Stage K, bez nowego niezależnego schedulera, oraz monitorowania zaległości i błędów.
+- Obsługi przyszłych zdjęć/załączników i końcowego odbioru uprawnień DR. Rzeczywisty marker Stage K, CIFS GlobalNAS, zapis i odtworzenie z NAS były pozytywnie sprawdzone 27.10.2026.
+
+### Potwierdzony test DEV z 27.10.2026
+
+- Prywatny klucz istnieje tylko lokalnie: `/srv/ai-data/staging/magazyn-telegram-dev-20261027/private/backup-keys/magazyn-dev.key`, prawa 0600, katalog 0700. Wymaga niezależnej kopii offline przed produkcją.
+- Lokalny bufor kopii: `/srv/ai-data/staging/magazyn-telegram-dev-20261027/private/backup-spool` (0700).
+- Tożsamość montowania CIFS i znacznik `.ai-platform-backup-target.json` sprawdzono bez zmiany Stage K. Na tym hoście systemd automount ujawnia **dwie warstwy**, `autofs` oraz faktyczny `cifs`: weryfikator wymaga ostatniej poprawnej warstwy CIFS, nie ufa samemu `autofs`.
+- Wysłano **jedno** zaszyfrowane archiwum do `/mnt/AI_Platform/Magazyn/daily/`, ponownie odczytano, odszyfrowano i zweryfikowano (PASS).
+- Wykonano pełny **restore bezpośrednio z archiwum na NAS** do prywatnego katalogu w `/dev/shm` (RAM), `PRAGMA integrity_check=ok`, a katalog po teście został usunięty (PASS).
+- Nie zmieniano backupów Stage K, nie kopiowano klucza na NAS, nie instalowano systemd timer ani cron. Mimo testu pozostaje **DEV**, bez zapewnionej kopii klucza offsite.
 
 Nie umieszczać danych magazynowych, archiwów, kluczy ani kont pracowników w publicznym repozytorium GitHub.

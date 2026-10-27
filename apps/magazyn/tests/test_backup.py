@@ -181,3 +181,40 @@ def test_invalid_database_snapshot_rejected(tmp_path):
     con.close()
     with pytest.raises(backup.BackupFailure,match="nie jest bazą"):
         backup.create_local(foreign,root/"spool",key)
+
+
+
+def test_systemd_automount_and_cifs_stack_is_accepted(backup_context, tmp_path, monkeypatch):
+    c, s, h, admin, worker, item, private, spool, key = backup_context
+    archive=Path(backup.create_local(s.path,spool,key)[0])
+    mount=fake_globalnas(tmp_path,monkeypatch)
+    monkeypatch.setattr(backup.subprocess,"run",lambda *args,**kwargs:SimpleNamespace(
+        stdout="autofs systemd-1\ncifs //globalnas.local/AI_Platform\n"))
+    result=backup.flush_to_nas(spool,mount,key)
+    assert result=={"uploaded":1,"pending":0}
+    assert not archive.exists()
+    assert len(list((mount/"Magazyn"/"daily").glob("*.mgzb")))==1
+
+
+def test_systemd_automount_alone_does_not_allow_nas_write(backup_context,tmp_path,monkeypatch):
+    c, s, h, admin, worker, item, private, spool, key = backup_context
+    archive=Path(backup.create_local(s.path,spool,key)[0])
+    mount=fake_globalnas(tmp_path,monkeypatch)
+    monkeypatch.setattr(backup.subprocess,"run",lambda *args,**kwargs:SimpleNamespace(
+        stdout="autofs systemd-1\n"))
+    with pytest.raises(backup.BackupFailure,match="nieoczekiwany"):
+        backup.flush_to_nas(spool,mount,key)
+    assert archive.exists()
+    assert not (mount/"Magazyn").exists()
+
+
+def test_unexpected_top_layer_blocks_even_if_cifs_underneath(backup_context,tmp_path,monkeypatch):
+    c, s, h, admin, worker, item, private, spool, key = backup_context
+    archive=Path(backup.create_local(s.path,spool,key)[0])
+    mount=fake_globalnas(tmp_path,monkeypatch)
+    monkeypatch.setattr(backup.subprocess,"run",lambda *args,**kwargs:SimpleNamespace(
+        stdout="cifs //globalnas.local/AI_Platform\nfuse.sshfs unexpected\n"))
+    with pytest.raises(backup.BackupFailure,match="nieoczekiwany"):
+        backup.flush_to_nas(spool,mount,key)
+    assert archive.exists()
+    assert not (mount/"Magazyn").exists()

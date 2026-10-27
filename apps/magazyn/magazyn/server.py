@@ -117,7 +117,9 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
 
     @app.exception_handler(Problem)
     async def known_error(_request: Request, exc: Problem):
-        return JSONResponse(status_code=exc.status, content={"detail": exc.detail})
+        headers = {"Retry-After": str(exc.retry_after)} if exc.retry_after else {}
+        return JSONResponse(status_code=exc.status, content={"detail": exc.detail},
+                            headers=headers)
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
@@ -163,8 +165,11 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
         return {"status": "ok", "service": "magazyn-dev"}
 
     @app.post("/api/auth/login")
-    def login(body: Login):
-        user = store.authenticate(body.username,body.password)
+    def login(body: Login, request: Request):
+        # Only the actual TCP peer is used. Forwarded headers are untrusted.
+        user = store.authenticate_login(
+            body.username, body.password,
+            request.client.host if request.client else "unknown")
         token,csrf = store.create_session(user["id"])
         response = JSONResponse({"id":user["id"],"username":user["username"],
                                  "role":user["role"],"csrf":csrf})
