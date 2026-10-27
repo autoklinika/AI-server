@@ -52,7 +52,7 @@ W DEV 27.10.2026: **138 / 138 testów PASS**, wraz z XLSX w izolowanym środowis
 ## Niezaimplementowane, wymagane przed produkcją
 
 - **Telegram:** zakończono funkcjonalny test rzeczywistej wysyłki alertu do powiązanego konta, odbiór potwierdzony przez użytkownika. Zostaje odbiór operacyjny i zabezpieczenie danych przed produkcją. Discord jest odrębnym, opcjonalnym etapem.
-- **Backup/DR:** rzeczywisty zapis, odczyt i restore z GlobalNAS zakończony PASS. Zaszyfrowana publicznym kluczem istniejącego YubiKeya 5C kopia AES key została zapisana na NAS (PASS); test odzyskania za pomocą fizycznego urządzenia i PIN-u nadal oczekuje. Brakuje cyklicznej realizacji kopii przez istniejący mechanizm Stage K (bez nowego schedulera), monitoringu i pełnej procedury DR. [Raport YubiKey](docs/MAGAZYN_YUBIKEY_RECOVERY_2026-10-27_PL.md).
+- **Backup/DR:** rzeczywisty zapis, odczyt i restore z GlobalNAS zakończony PASS. Zaszyfrowana publicznym kluczem istniejącego YubiKeya 5C kopia AES key jest na NAS; **fizyczne odszyfrowanie YubiKey/PIN, weryfikacja klucza i ponowny restore z backupu — PASS 27.10.2026**. Brakuje cyklicznej realizacji kopii przez istniejący mechanizm Stage K (bez nowego schedulera), monitoringu i niezależnego klucza awaryjnego. [Raport YubiKey](docs/MAGAZYN_YUBIKEY_RECOVERY_2026-10-27_PL.md).
 - Ocena szyfrowania działającej bazy, przegląd bezpieczeństwa wdrożenia (w tym polityki loginów, sesji, sekretów), gotowe HTTPS/reverse proxy i dostęp do aplikacji dla pracowników. Ograniczanie prób logowania w DEV już działa.
 - Wygodna pełna edycja administracyjna w GUI, dodatkowe filtry historii oraz pełna walidacja ergonomii interfejsu.
 - Aplikacja Android/OCR/zdjęcia — celowo poza V1.
@@ -61,4 +61,4 @@ W DEV 27.10.2026: **138 / 138 testów PASS**, wraz z XLSX w izolowanym środowis
 
 Nie można wydać ani przesunąć większej ilości niż dostępna. Operacje ilościowe i historia są zapisywane atomowo. Jeden produkt widoczny pod kilkoma markami nie jest podwójnie liczony. Admin ma pełne możliwości; użytkownik nie ma dostępu do endpointów administracyjnych. Import i eksport nie ujawniają kont, sesji ani haseł. Magazyn pozostaje niezależny od RM i modeli AI. W DEV istnieją dwie odrębne jednostki użytkownika systemd (WebGUI localhost i Telegram), bez autostartu i bez nowych timerów/crona. WebGUI nasłuchuje wyłącznie na 127.0.0.1:18765, dostęp przez tunel SSH.
 
-**Nie wdrażać na produkcję** przed ukończeniem odbioru bezpieczeństwa, fizycznego testu odzyskania klucza za pomocą YubiKeya, niezależnej strategii na utratę urządzenia, automatycznego backupu przez Stage K i HTTPS. Test odtwarzania bazy z GlobalNAS już zakończono PASS.
+**Nie wdrażać na produkcję** przed ukończeniem odbioru bezpieczeństwa, niezależnej strategii na utratę jedynego YubiKeya, automatycznego backupu przez Stage K i HTTPS. Testy fizycznego odzyskania klucza przez YubiKey i odtworzenia bazy z GlobalNAS już zakończono PASS.

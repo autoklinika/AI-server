@@ -1,13 +1,13 @@
 # Magazyn V1 — instrukcja backupu DEV
 
-**Status 27.10.2026: rzeczywisty szyfrowany backup Magazynu DEV zapisano i odtworzono z GlobalNAS (PASS). Dodatkowo kopię klucza odzyskiwania AES zaszyfrowano publicznym recipientem istniejącego YubiKeya 5C Stage K i zapisano na NAS (PASS). Odszyfrowanie nowego pliku przy użyciu fizycznego YubiKeya czeka na osobny test; brak automatycznego timera i wdrożenia produkcyjnego.**
+**Status 27.10.2026: rzeczywisty szyfrowany backup Magazynu DEV zapisano i odtworzono z GlobalNAS (PASS). Kopię klucza AES zaszyfrowano dla istniejącego YubiKeya 5C i zapisano na NAS. Fizyczne odszyfrowanie tego pliku z YubiKey/PIN, weryfikacja klucza, archiwum i restore bazy w RAM oraz usunięcie danych tymczasowych: PASS. Brak automatycznego harmonogramu i wdrożenia produkcyjnego.**
 
 ## Zasada działania
 
 - SQLite Backup API wykonuje spójny snapshot do pamięci, bez kopiowania aktywnego pliku SQLite/WAL.
 - Archiwum jest szyfrowane AES-256-GCM, klucz ma 32 losowe bajty. Zależność: requirements-backup.txt (cryptography).
 - Archiwa nie zawierają jawnych informacji o produktach, pracownikach ani ilościach; nazwy zawierają datę UTC i poziom retencji.
-- Jawny AES key pozostaje prywatny (0600), katalog klucza i bufora ma 0700. Zaszyfrowana przez publiczny YubiKey PIV kopia klucza znajduje się na NAS w Magazyn/recovery. Do odszyfrowania po awarii serwera niezbędne są fizyczny YubiKey i PIN. Wymagany pozostaje fizyczny decrypt drill oraz niezależna polityka recovery na wypadek utraty jedynego YubiKeya.
+- Jawny AES key pozostaje prywatny (0600), katalog klucza i bufora ma 0700. Zaszyfrowana przez publiczny YubiKey PIV kopia klucza znajduje się na NAS w Magazyn/recovery. **Fizyczny decrypt drill z YubiKey i PIN-em przeszedł 27.10.2026 (PASS)**. Nadal niezbędna jest niezależna ścieżka odzyskiwania na wypadek utraty jedynego YubiKeya.
 - Obecnie kopia obejmuje całą bazę danych (produkty, użytkownicy, role, sesje, historia, minima). Załączniki nie istnieją jeszcze w Magazynie V1; po ich dodaniu wymagane będzie rozszerzenie backupu.
 
 ## Wywołania CLI po utworzeniu prywatnych katalogów
@@ -43,13 +43,13 @@ GET /api/backup/status zwraca lokalny stan bufora i daty kopii; POST /api/backup
 
 ## Nadal brak
 
-- Fizycznego testu odszyfrowania nowej kopii recovery kluczem YubiKey. Kopia zaszyfrowana już znajduje się na GlobalNAS. Potrzebny jest również niezależny wariant odzyskania na wypadek utraty jedynego YubiKeya.
+- **Drugiego niezależnego sposobu odzyskania** po jednoczesnej utracie hosta i obecnego YubiKeya; fizyczny test odszyfrowania kopii recovery z istniejącym YubiKeyiem został już zaliczony 27.10.2026.
 - Powtarzalnego uruchamiania kopii w zgodzie z Stage K, bez nowego niezależnego schedulera, oraz monitorowania zaległości i błędów.
 - Obsługi przyszłych zdjęć/załączników i końcowego odbioru uprawnień DR. Rzeczywisty marker Stage K, CIFS GlobalNAS, zapis i odtworzenie z NAS były pozytywnie sprawdzone 27.10.2026.
 
 ### Potwierdzony test DEV z 27.10.2026
 
-- Jawny klucz AES pozostaje wyłącznie lokalnie, w prywatnym pliku 0600. Jego zaszyfrowana kopia YubiKey/age jest na GlobalNAS w Magazyn/recovery. Do fizycznego odszyfrowania trzeba podłączyć YubiKey i podać PIN.
+- Jawny klucz AES pozostaje wyłącznie lokalnie, w prywatnym pliku 0600. Jego zaszyfrowana kopia YubiKey/age jest na GlobalNAS w Magazyn/recovery. Odszyfrowanie wymaga YubiKeya i PIN-u; fizyczny test odzyskania i użycia klucza do restore zakończył się PASS.
 - Lokalny bufor kopii: `/srv/ai-data/staging/magazyn-telegram-dev-20261027/private/backup-spool` (0700).
 - Tożsamość montowania CIFS i znacznik `.ai-platform-backup-target.json` sprawdzono bez zmiany Stage K. Na tym hoście systemd automount ujawnia **dwie warstwy**, `autofs` oraz faktyczny `cifs`: weryfikator wymaga ostatniej poprawnej warstwy CIFS, nie ufa samemu `autofs`.
 - Wysłano **jedno** zaszyfrowane archiwum do `/mnt/AI_Platform/Magazyn/daily/`, ponownie odczytano, odszyfrowano i zweryfikowano (PASS).
