@@ -47,7 +47,7 @@ Domyślnie cookie ma flagę Secure (wymagane HTTPS). Wartość `MAGAZYN_COOKIE_S
 
 ## Wynik testów
 
-W DEV 27.10.2026: **171 / 171 testów PASS** (w tym testy Stage K, offline escrow, historii, DR i mobilnego WebGUI), wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
+W DEV 27.10.2026: **180 / 180 testów PASS** (w tym testy Stage K, offline escrow, historii, DR i mobilnego WebGUI), wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
 
 ## Niezaimplementowane, wymagane przed produkcją
 
@@ -89,4 +89,8 @@ Raport: [Mobilne WebGUI DEV](docs/MAGAZYN_MOBILE_WEBGUI_DEV_2026-10-27_PL.md).
 - Załączniki elektroniki: karty katalogowe i schematy PDF/PNG/JPG, przechowywane w tym samym SQLite, atomowo uwzględniane w zaszyfrowanych kopiach. Limit 8 MiB pliku, 6 dokumentów/element, 256 MiB magazynu.
 - Status „Zamówione” z ilością i notatką, bez zwiększania stanu magazynu, widoczny przy produkcie i na liście „Do zamówienia”. Zmianę statusu wykonuje administrator.
 - Addytywny schemat v3, istniejące produkty pozostają nienaruszone. Raport: [Elektronika / Dokumenty / Zamówione](docs/MAGAZYN_ELECTRONICS_DOCS_ORDER_DEV_2026-10-27_PL.md).
-- Testy całej aplikacji: **171/171 PASS** na syntetycznych bazach. Firefox mobile 390 px: rzeczywiste utworzenie elementu z parametrami, załącznikiem i statusem Zamówione oraz sprawdzenie listy zakupów PASS. Nie wprowadzono syntetycznych produktów do rzeczywistego magazynu.
+- Testy całej aplikacji: **180/180 PASS** na syntetycznych bazach. Firefox mobile 390 px: rzeczywiste utworzenie elementu z parametrami, załącznikiem i statusem Zamówione oraz sprawdzenie listy zakupów PASS. Nie wprowadzono syntetycznych produktów do rzeczywistego magazynu.
+
+## Poprawka pierwszego przyjęcia (DEV, 27.10.2026)
+
+W pustym magazynie przycisk zapisu był niedostępny, ponieważ nie istniała lokalizacja. Administrator może obecnie podać kod pierwszego miejsca (np. A1) bezpośrednio w formularzu ECU lub elektroniki, a kliknięcie **Dodaj** tworzy miejsce, produkt i przyjęcie w jednej transakcji. Nie powstaje automatycznie wymyślona lokalizacja. Użytkownik bez roli administratora nadal nie tworzy miejsc. Przypadki błędne nie pozostawiają osieroconych lokalizacji. Testy Magazynu 180/180 PASS, browser Firefox mobile 390 px PASS. [Raport poprawki](docs/MAGAZYN_FIRST_LOCATION_RECEIPT_FIX_2026-10-27_PL.md).

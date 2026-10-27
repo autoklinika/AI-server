@@ -293,6 +293,10 @@
             </div></label>
           <label>Gdzie odłożyć?<select name="location_id" id="new-location" required></select></label>
         </div>
+        <p id="ecu-first-location-help" class="subtle-note" hidden>
+          Brak lokalizacji w magazynie. Wpisz kod pierwszego miejsca poniżej (np. A1).
+          Zostanie utworzone razem ze sterownikiem po naciśnięciu „Dodaj do magazynu”.
+        </p>
         <button class="text-button admin-only" id="new-location-toggle" type="button">+ Dodaj nowe miejsce</button>
         <div id="quick-location-panel" class="inline-location" hidden>
           <label>Kod miejsca<input id="quick-location-code" placeholder="Np. B2" maxlength="64"></label>
@@ -358,6 +362,10 @@
           </div></label>
           <label>Lokalizacja<select name="location_id" id="part-location" required></select></label>
         </div>
+        <p id="part-first-location-help" class="subtle-note" hidden>
+          Nie masz jeszcze lokalizacji. Wpisz kod pierwszego miejsca (np. A1) poniżej.
+          Zapiszemy lokalizację i przyjmiemy element na stan jednym przyciskiem.
+        </p>
         <button type="button" class="text-button admin-only" id="part-location-toggle">+ Dodaj miejsce składowania</button>
         <div id="part-location-panel" class="inline-location" hidden>
           <label>Kod miejsca<input id="part-location-code" maxlength="64" placeholder="Np. C2"></label>

@@ -495,13 +495,21 @@ function openAddDialog(){
   form.reset();
   byId("new-quantity").value="1";
   byId("new-location").innerHTML=locationOptions();
-  byId("quick-location-panel").hidden=true;
+  const firstLocation=!locations.length;
+  byId("new-location").required=!firstLocation;
+  byId("new-location").disabled=firstLocation;
+  byId("quick-location-panel").hidden=!firstLocation;
+  byId("ecu-first-location-help").hidden=!firstLocation;
+  byId("new-location-toggle").hidden=firstLocation;
+  byId("quick-location-code").required=firstLocation;
+  byId("quick-location-save").hidden=firstLocation;
   byId("allow-variant").checked=false;
   similarCandidates=[];
   similarRevision++;
   clearTimeout(similarTimer);
   byId("similar-box").hidden=true;
-  byId("item-submit").disabled=!locations.length;
+  // When empty, an administrator can create the first location on submit.
+  byId("item-submit").disabled=false;
   setCreateKind();
   byId("item-dialog").showModal();
   const nameInput=form.elements.primary_number;
@@ -523,7 +531,9 @@ function getNewItemData(){
     notes:(values.notes||"").trim(),
     brands:values.kind==="ecu"?splitNumbers(values.brands):[],
     numbers:splitNumbers(values.numbers).map(number=>({number,number_type:"other"})),
-    location_id:Number(values.location_id)||0,
+    location_id:Number(values.location_id)||null,
+    new_location_code:!locations.length?byId("quick-location-code").value.trim():"",
+    new_location_description:!locations.length?byId("quick-location-description").value.trim():"",
     quantity:Number(values.quantity),
     product_state:values.kind==="ecu"?values.product_state:"na",
     technical_state:values.kind==="ecu"?values.technical_state:"na",
@@ -540,7 +550,8 @@ function scheduleSimilarCheck(){
   if(!byId("item-dialog").open || (number.length<4&&name.length<3)){
     similarCandidates=[];
     byId("similar-box").hidden=true;
-    byId("item-submit").disabled=!locations.length;
+    // When empty, an administrator can create the first location on submit.
+  byId("item-submit").disabled=false;
     return;
   }
   similarTimer=setTimeout(checkSimilar,370);
@@ -567,7 +578,8 @@ function renderSimilar(){
   if(!similarCandidates.length){
     box.hidden=true;
     checkbox.checked=false;
-    byId("item-submit").disabled=!locations.length;
+    // When empty, an administrator can create the first location on submit.
+  byId("item-submit").disabled=false;
     return;
   }
   box.hidden=false;
@@ -580,7 +592,7 @@ function renderSimilar(){
     '<button type="button" class="small select-existing" data-id="'+item.id+'">Dodaj sztuki '+icon("arrow")+'</button></div>').join("");
   byId("allow-variant-label").hidden=exact;
   if(exact)checkbox.checked=false;
-  byId("item-submit").disabled=!locations.length || exact || !checkbox.checked;
+  byId("item-submit").disabled=exact || !checkbox.checked;
 }
 async function submitItem(event){
   event.preventDefault();
@@ -589,7 +601,12 @@ async function submitItem(event){
      data.quantity>2_000_000_000){
     toast("Wpisz prawidłową ilość sztuk.",true);return;
   }
-  if(!data.location_id)return toast("Wybierz lokalizację lub utwórz nową.",true);
+  if(!data.location_id&&!data.new_location_code){
+    toast("Wpisz kod pierwszej lokalizacji magazynowej, np. A1.",true);
+    byId("quick-location-panel").hidden=false;
+    byId("quick-location-code").focus();
+    return;
+  }
   if(!data.designation)return toast("Uzupełnij nazwę produktu.",true);
   if(data.kind==="ecu"&&!data.brand)return toast("Wybierz markę pojazdu.",true);
   if(similarCandidates.some(x=>x.same_variant)){
@@ -606,6 +623,7 @@ async function submitItem(event){
     const created=await api("/api/items/receive",{method:"POST",body:JSON.stringify(data)});
     byId("item-dialog").close();
     toast("Dodano produkt i "+fmt(created.quantity)+" szt. w jednej operacji.");
+    if(data.new_location_code)await loadLocations();
     await Promise.all([loadItems(),loadStats(),loadBrands()]);
   }catch(e){
     toast(e.message,true);
@@ -1067,7 +1085,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
       scheduleSimilarCheck();
     }
     if(name==="quantity"||name==="location_id"){
-      byId("item-submit").disabled=!locations.length || similarCandidates.some(x=>x.same_variant)||
+      byId("item-submit").disabled=similarCandidates.some(x=>x.same_variant)||
         (similarCandidates.length&&!byId("allow-variant").checked);
     }
   });

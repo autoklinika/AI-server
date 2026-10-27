@@ -76,7 +76,11 @@ class ReceiveNewItem(BaseModel):
     specs: dict[str,str] = Field(default_factory=dict)
     brands: list[str] = Field(default_factory=list)
     numbers: list[dict[str, str]] = Field(default_factory=list)
-    location_id: StrictInt = Field(gt=0)
+    # The first location can be created atomically with the first item.
+    # Only administrators may supply a new location.
+    location_id: StrictInt | None = Field(default=None, gt=0)
+    new_location_code: str = Field(default="", max_length=64)
+    new_location_description: str = Field(default="", max_length=300)
     quantity: StrictInt = Field(ge=0, le=2_000_000_000)
     product_state: str = "used"
     technical_state: str = "unknown"

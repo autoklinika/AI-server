@@ -25,7 +25,9 @@ function partData(form){
     notes:(values.notes||"").trim(),
     specs,model:"",brand:"",hw:"",sw:"",
     numbers:splitNumbers(values.numbers).map(number=>({number,number_type:"other"})),
-    location_id:Number(values.location_id)||0,
+    location_id:Number(values.location_id)||null,
+    new_location_code:!locations.length?byId("part-location-code").value.trim():"",
+    new_location_description:!locations.length?byId("part-location-description").value.trim():"",
     quantity:Number(values.quantity),product_state:"na",technical_state:"na",
     allow_distinct_variant:byId("part-allow-variant").checked,
   };
@@ -38,12 +40,20 @@ function openPartDialog(){
   form.reset();
   byId("part-quantity").value="1";
   byId("part-location").innerHTML=locationOptions();
-  byId("part-location-panel").hidden=true;
+  const firstLocation=!locations.length;
+  byId("part-location").required=!firstLocation;
+  byId("part-location").disabled=firstLocation;
+  byId("part-location-panel").hidden=!firstLocation;
+  byId("part-first-location-help").hidden=!firstLocation;
+  byId("part-location-toggle").hidden=firstLocation;
+  byId("part-location-code").required=firstLocation;
+  byId("part-location-save").hidden=firstLocation;
   byId("part-similar-box").hidden=true;
   byId("part-allow-variant").checked=false;
   byId("part-order-create-quantity-label").hidden=true;
   electronicCandidates=[];electronicRevision++;clearTimeout(electronicTimer);
-  byId("part-submit").disabled=!locations.length;
+  // One submit can create the first location and the product atomically.
+  byId("part-submit").disabled=false;
   byId("part-dialog").showModal();
   requestAnimationFrame(()=>form.elements.designation.focus());
 }
@@ -76,7 +86,8 @@ function renderPartSimilar(){
   const checkbox=byId("part-allow-variant");
   if(!electronicCandidates.length){
     checkbox.checked=false;box.hidden=true;
-    byId("part-submit").disabled=!locations.length;
+    // One submit can create the first location and the product atomically.
+  byId("part-submit").disabled=false;
     return;
   }
   box.hidden=false;
@@ -89,7 +100,7 @@ function renderPartSimilar(){
     '">Otwórz istniejący</button></div>').join("");
   byId("part-allow-variant-label").hidden=exact;
   if(exact)checkbox.checked=false;
-  byId("part-submit").disabled=!locations.length||exact||!checkbox.checked;
+  byId("part-submit").disabled=exact||!checkbox.checked;
 }
 async function fileToBase64(file){
   if(!file)return null;
@@ -121,7 +132,12 @@ async function savePart(event){
   if(!data.designation||!data.category)return toast("Podaj oznaczenie i kategorię elementu.",true);
   if(!Number.isSafeInteger(data.quantity)||data.quantity<0||data.quantity>2_000_000_000)
     return toast("Nieprawidłowa liczba sztuk.",true);
-  if(!data.location_id)return toast("Wybierz lokalizację.",true);
+  if(!data.location_id&&!data.new_location_code){
+    toast("Wpisz kod pierwszej lokalizacji, np. A1.",true);
+    byId("part-location-panel").hidden=false;
+    byId("part-location-code").focus();
+    return;
+  }
   if(electronicCandidates.some(p=>p.same_variant))
     return toast("Taki wariant istnieje. Otwórz produkt i zwiększ jego stan.",true);
   if(electronicCandidates.length&&!data.allow_distinct_variant)
@@ -156,6 +172,7 @@ async function savePart(event){
     catch(e){problems.push("status zamówienia: "+e.message);}
   }
   byId("part-dialog").close();
+  if(data.new_location_code)await loadLocations();
   await Promise.all([loadItems(),loadStats(),loadBrands()]);
   if(problems.length){
     toast("Element zapisany, ale nie udało się zapisać: "+problems.join("; ")+

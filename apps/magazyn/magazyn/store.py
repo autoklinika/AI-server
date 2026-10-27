@@ -588,15 +588,38 @@ class Store:
         """One transaction covers duplicate guard, catalog and initial receipt."""
         quantity = data.get("quantity")
         location_id = data.get("location_id")
+        location_code = data.get("new_location_code") or ""
+        location_description = data.get("new_location_description") or ""
         if type(quantity) is not int or not 0 <= quantity <= 2_000_000_000:
             raise Problem(422, "Ilość musi być liczbą całkowitą od 0 do 2000000000")
-        if type(location_id) is not int or location_id < 1:
-            raise Problem(422, "Wybierz lokalizację")
+        if not isinstance(location_code, str) or not isinstance(location_description, str):
+            raise Problem(422, "Nieprawidłowe dane lokalizacji")
+        location_code = location_code.strip()
+        location_description = location_description.strip()
+        if location_code:
+            if actor["role"] != "admin":
+                raise Problem(403, "Nową lokalizację może utworzyć tylko administrator")
+            if location_id is not None:
+                raise Problem(422, "Wybierz istniejącą lokalizację albo utwórz nową")
+            if (len(location_code) > 64 or len(location_description) > 300
+                    or any(ord(char) < 32 or ord(char) == 127 for char in location_code)):
+                raise Problem(422, "Nieprawidłowy kod lokalizacji")
+        elif type(location_id) is not int or location_id < 1:
+            raise Problem(422, "Wskaż lokalizację lub podaj kod nowego miejsca")
         kind = data.get("kind")
         if kind not in KINDS:
             raise Problem(422, "Nieprawidłowy rodzaj produktu")
         with self.connect(write=True) as con:
-            if con.execute("SELECT 1 FROM locations WHERE id=?", (location_id,)).fetchone() is None:
+            if location_code:
+                # Creation, duplicate detection and initial stock receipt share
+                # one transaction. Any later validation error rolls this back.
+                try:
+                    location_id = con.execute(
+                        "INSERT INTO locations(code,description) VALUES (?,?) RETURNING id",
+                        (location_code, location_description)).fetchone()[0]
+                except sqlite3.IntegrityError as exc:
+                    raise Problem(409, "Ta lokalizacja już istnieje; odśwież listę") from exc
+            elif con.execute("SELECT 1 FROM locations WHERE id=?", (location_id,)).fetchone() is None:
                 raise Problem(404, "Nie ma podanej lokalizacji")
             similar = self.similar_items(data, connection=con)
             if any(s["same_variant"] for s in similar):
