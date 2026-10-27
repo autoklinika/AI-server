@@ -10,6 +10,7 @@ import os
 import sys
 import time
 
+from .telegram_setup import load_token
 from .store import Store
 from . import messaging
 
@@ -229,6 +230,8 @@ def main(argv=None):
     parser=argparse.ArgumentParser(description="Magazyn V1 DM-only bot (explicit activation)")
     parser.add_argument("provider",choices=messaging.PROVIDERS)
     parser.add_argument("--db",default=os.environ.get("MAGAZYN_DB_PATH"))
+    parser.add_argument("--token-file",default=os.environ.get("MAGAZYN_TELEGRAM_TOKEN_FILE"),
+                        help="Prywatny plik tokenu Telegram (0600), preferowany zamiast env")
     args=parser.parse_args(argv)
     if os.environ.get("MAGAZYN_BOTS_ENABLED")!="1":
         parser.error("Boty są wyłączone. Wymagane MAGAZYN_BOTS_ENABLED=1 po odbiorze.")
@@ -238,7 +241,14 @@ def main(argv=None):
     if not any(u["active"] and u["role"]=="admin" for u in store.users()):
         parser.error("Wymagany istniejący administrator")
     if args.provider=="telegram":
-        run_telegram(store,os.environ.get("MAGAZYN_TELEGRAM_BOT_TOKEN",""))
+        if args.token_file:
+            try:
+                token=load_token(args.token_file)
+            except ValueError as exc:
+                parser.error(str(exc))
+        else:
+            token=os.environ.get("MAGAZYN_TELEGRAM_BOT_TOKEN","")
+        run_telegram(store,token)
     else:
         run_discord(store,os.environ.get("MAGAZYN_DISCORD_BOT_TOKEN",""))
 

@@ -15,7 +15,7 @@
 - **CSV/XLSX**: eksport katalogu `GET /api/export?format=csv|xlsx&kind=ecu|part&brand=...`, szablon nowych pozycji `GET /api/import/template?format=csv|xlsx`, podgląd `POST /api/import/preview`, zatwierdzenie `POST /api/import/apply`. Wszystkie endpointy transferu wymagają administratora; POST wymagają CSRF. Import ma ograniczenie 1 MB / 1000 wierszy, walidację numerów/OEM/HW/SW, konflikty blokują całą transakcję; potwierdzenie podglądu ma krótką ważność i jest związane z plikiem i użytkownikiem. Żadnego automatycznego scalania z istniejącymi produktami.
 - Eksport w formie migawki z wszystkimi lokalizacjami i wariantami stanów, także o ilości 0. Eksport i szablon **mają celowo różne nagłówki** — migawka katalogu nie jest automatycznym importem/backupem.
 - **Backup DEV:** szyfrowane archiwa SQLite AES-256-GCM, prywatny klucz, lokalny bufor, odtwarzanie offline i zabezpieczone sprawdzanie prawdziwego GlobalNAS przed wysyłką. Panel administratora pozwala podejrzeć kolejkę oraz wykonać ręczny lokalny backup. Instrukcja: [BACKUP_DEV.md](BACKUP_DEV.md). **Nie ma jeszcze automatycznego timera ani zweryfikowanego realnego zapisu na NAS.**
-- **Komunikatory DEV:** osobne, domyślnie wyłączone adaptery Telegram polling i Discord Gateway, tylko prywatne wiadomości i tylko odczyt. Administrator generuje 10-minutowe, jednorazowe kody powiązania kont; powiązania można odwołać. Potwierdzone konta otrzymują powiadomienia z trwałej kolejki (retry po błędzie), bez wpływu na pracę magazynu. Instrukcja: [BOTS_DEV.md](BOTS_DEV.md). **Prawdziwe boty i tokeny nie zostały jeszcze skonfigurowane ani uruchomione.**
+- **Komunikatory DEV:** osobne, domyślnie wyłączone adaptery Telegram polling i Discord Gateway, tylko prywatne wiadomości i tylko odczyt. Administrator generuje 10-minutowe, jednorazowe kody powiązania kont; powiązania można odwołać. Potwierdzone konta otrzymują powiadomienia z trwałej kolejki (retry po błędzie), bez wpływu na pracę magazynu. Instrukcja: [BOTS_DEV.md](BOTS_DEV.md). **Telegram ma przygotowane osobne środowisko i wyłączoną usługę DEV, ale prawdziwy bot i token nie zostały jeszcze skonfigurowane.** Bezpieczny instalator: [TELEGRAM_SETUP_DEV.md](TELEGRAM_SETUP_DEV.md).
 
 ## Sposób uruchamiania wyłącznie do testów
 
@@ -45,11 +45,11 @@ Domyślnie cookie ma flagę Secure (wymagane HTTPS). Wartość `MAGAZYN_COOKIE_S
 
 ## Wynik testów
 
-W DEV 26.10.2026: **83 / 83 testy PASS**, wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
+W DEV 27.10.2026: **98 / 98 testów PASS**, wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
 
 ## Niezaimplementowane, wymagane przed produkcją
 
-- **Rzeczywisty odbiór komunikatorów:** założenie i skonfigurowanie dwóch osobnych botów, zabezpieczone tokeny poza repozytorium, testy prywatnych DM, błędów połączenia i odwołania dostępu. Logika powiązań i kolejek działa w DEV, ale prawdziwych wiadomości jeszcze nie wysyłano.
+- **Rzeczywisty odbiór Telegram:** konto i token do utworzenia przez właściciela w BotFather, potem konfigurator lokalny, prywatne DM, odmowa dostępu, test błędów połączenia i odwołania dostępu. Usługa DEV pozostaje disabled/inactive aż do uruchomienia po wpisaniu tokenu. Discord pozostaje osobnym etapem. Prawdziwych wiadomości dotąd nie wysyłano.
 - **Realna synchronizacja z GlobalNAS i odbiór odtworzenia z NAS**, automatyczny dzienny timer, monitoring błędów, procedura recovery i weryfikacja uprawnień markera Stage K. Mechanizm DEV jest już dostępny do testów na syntetycznym NAS.
 - Szyfrowanie danych bazy i audyt bezpieczeństwa wdrożenia, ograniczanie prób logowania, gotowe HTTPS/reverse proxy.
 - Wygodna pełna edycja administracyjna w GUI, dodatkowe filtry historii oraz pełna walidacja ergonomii interfejsu.

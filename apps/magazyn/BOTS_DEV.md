@@ -26,18 +26,9 @@ Hasz kodu zapisany jest w bazie; jawny kod zwracamy w panelu administratora tylk
 
 ## Uruchomienie tylko po osobnym odbiorze DEV
 
-Boty są domyślnie wyłączone. Zmienne i komendy (przykład koncepcyjny, nie oznacza skonfigurowania prawdziwych tokenów):
+**Telegram ma osobne przygotowane środowisko DEV i jednostkę systemd, lecz pozostaje wyłączony.** Szczegóły i jedno bezpieczne polecenie do wykonania na serwerze: [TELEGRAM_SETUP_DEV.md](TELEGRAM_SETUP_DEV.md). Tokenu nie wklejamy do czatu ani do argumentów poleceń — konfigurator pyta o niego w ukrytym polu, weryfikuje przez Telegram API i zapisuje w prywatnym pliku 0600. Usługa ładuje token przez opcję --token-file.
 
-    export MAGAZYN_DB_PATH="/PRIVATE/DATA/magazyn.sqlite3"
-    export MAGAZYN_BOTS_ENABLED=1
-    export MAGAZYN_TELEGRAM_BOT_TOKEN="TOKEN_Z_OSOBNEGO_BOTA"
-    python -m magazyn.bots telegram --db "$MAGAZYN_DB_PATH"
-
-Dla Discorda należy zastosować **inny token bota** w `MAGAZYN_DISCORD_BOT_TOKEN` i osobny proces:
-
-    python -m magazyn.bots discord --db "$MAGAZYN_DB_PATH"
-
-Pakiety klienta komunikatora są opcjonalne, wskazane w `requirements-bots.txt`. Tokenów nie umieszcza się w GitHub, logach, argumentach procesów ani wiadomościach. Przed produkcją umieścić je w odpowiednio chronionym środowisku usługi. Nie wykorzystywać tokenów Hermesa.
+Discord zostaje odłożony do osobnego etapu. Użyje innego bota i osobnego tokenu. Pakiety opcjonalne są wymienione w `requirements-bots.txt`. Nie korzystamy z tokenów Hermesa.
 
 ### Transport
 
@@ -47,9 +38,9 @@ Pakiety klienta komunikatora są opcjonalne, wskazane w `requirements-bots.txt`.
 
 ### Braki operacyjne
 
-- Nie ma jeszcze prawdziwych, zatwierdzonych kont botów Magazynu ani ich tokenów.
-- Nie utworzono usług systemd, harmonogramów, otwartego portu czy webhooka.
-- Nie przeprowadzono testu prawdziwej wysyłki i odbioru przez Telegram/Discord ani odbioru bezpieczeństwa kont.
+- Nie ma jeszcze potwierdzonego nowego bota Magazynu ani jego tokenu. Do utworzenia przez użytkownika w @BotFather.
+- **Jednostka systemd Telegram DEV istnieje, ale jest disabled/inactive**; nie stworzono harmonogramów, otwartego portu ani webhooka. Discord nie ma jednostki.
+- Nie przeprowadzono testu rzeczywistej wysyłki i odbioru przez Telegram/Discord ani odbioru bezpieczeństwa kont.
 - Przed uruchomieniem trzeba przetestować zawieszenie/odnowienie sesji, utratę połączenia, uprawnienia konta bota, logi, limit zapytań i instrukcję odwołania dostępu.
 
 ## Testy
