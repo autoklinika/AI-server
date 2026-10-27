@@ -46,7 +46,7 @@ def test_offline_wrap_real_encryption_and_private_identity_not_copied(tmp_path, 
     mount, original_run = mock_nas(tmp_path, monkeypatch)
     result = offline_escrow.wrap_offline(aes_file, recipient, mount)
     assert result["status"] == "OFFLINE_RECOVERY_CIPHERTEXT_PASS"
-    assert result["private_identity_was_on_server"] is False
+    assert result["private_identity_not_required_or_used"] is True
     archive = mount / "Magazyn" / "recovery" / offline_escrow.ARCHIVE_NAME
     ciphertext = archive.read_bytes()
     assert ciphertext.startswith(offline_escrow.AGE_HEADER)
