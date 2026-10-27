@@ -1,7 +1,7 @@
 # Magazyn V1 — rzeczywisty test powiadomienia Telegram (DEV)
 
 **Data:** 27.10.2026, AI Platform `harrypotter-AI-Series`.
-**Wynik:** **PASS** — wysyłka jednego alertu do pojedynczego, zweryfikowanego odbiorcy i brak duplikacji; testowe dane zostały usunięte.
+**Wynik:** **PASS END-TO-END** — wysyłka jednego alertu do pojedynczego, zweryfikowanego odbiorcy, brak duplikacji, usunięcie danych testowych oraz potwierdzony przez użytkownika odbiór wiadomości na urządzeniu.
 **Zakres:** oddzielna baza DEV Magazynu i aktywny bot Telegram, bez ingerencji w Hermes, RM i produkcję.
 
 ## Warunki wejściowe
@@ -28,6 +28,7 @@
 | Pojedynczy odbiorca / przypisany produkt | PASS |
 | Jedno powiadomienie o osiągnięciu minimum | PASS |
 | Telegram API przyjął wiadomość / status sent | PASS |
+| Użytkownik potwierdził wyświetlenie testowego alertu w prywatnym czacie | **PASS — potwierdzenie użytkownika 27.10.2026** |
 | Brak duplikatu przy dalszym spadku | PASS |
 | Usunięcie danych testowych | PASS |
 | Produkty / sztuki / lokalizacje po teście | **0 / 0 / 0** |
@@ -35,7 +36,7 @@
 | Usługa Telegram po teście | **active/running**, 0 restartów |
 | Produkcja, Hermes, RM, inne aplikacje | **bez zmian** |
 
-**Granica weryfikacji:** `sent` potwierdza pozytywną odpowiedź Telegram API i zapis po stronie bota, ale nie oznacza automatycznie, że odbiorca zobaczył wiadomość. Potwierdzenie w prywatnym czacie użytkownika jest ostatnim krokiem odbioru.
+**Weryfikacja po stronie odbiorcy:** sam status `sent` oznaczał tylko przyjęcie przez Telegram API. Użytkownik dodatkowo potwierdził w rozmowie 27.10.2026, że otrzymał na swoim urządzeniu wiadomość zaczynającą się od „Magazyn — niski stan” z oznaczeniem `TEST`. Tym samym odbiór jednej wiadomości w prywatnym czacie został potwierdzony. Nie jest to osobna weryfikacja dostarczenia na inne konta ani test wszystkich możliwych awarii.
 
 ## Stan projektu
 
