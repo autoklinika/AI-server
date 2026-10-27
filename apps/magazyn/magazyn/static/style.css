@@ -437,3 +437,228 @@ dialog::-webkit-scrollbar-thumb { border-radius: 10px; background:#D5D7DA; }
 }
 /* Graphite sidebar: visible keyboard focus on dark background */
 .sidebar button:focus-visible { outline-color: #FFB56F; }
+
+
+/* Magazyn V1 mobile ergonomics — same palette and desktop layout, no new assets.
+   Real iOS Safari: safe-area navigation, 44px+ targets and native forms. */
+.nav-label-compact { display: none; }
+
+@media (max-width: 650px) {
+  :root { font-size: 16px; }
+  html { scroll-padding-top: 70px; scroll-padding-bottom: calc(101px + env(safe-area-inset-bottom,0px)); }
+  body { overflow-x: hidden; }
+  .shell { min-height: 100dvh; }
+  .main-column { min-width: 0; }
+
+  /* Reuse the existing navigation; no duplicate interactive buttons. */
+  .sidebar {
+    position: fixed; inset: auto 0 0; z-index: 50;
+    display: flex; flex-direction: row; align-items: stretch; gap: 0;
+    height: auto; min-height: 0;
+    margin: 0; padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    background: var(--graphite);
+    border-top: 1px solid rgba(255,255,255,.16);
+    box-shadow: 0 -8px 25px rgba(20,23,27,.13);
+  }
+  .sidebar nav {
+    display: grid; grid-template-columns: repeat(4, minmax(0,1fr));
+    flex: 4 1 0; min-width: 0; gap: 0; overflow: visible;
+  }
+  .sidebar nav.admin-only {
+    display: grid; grid-template-columns: minmax(0,1fr);
+    flex: 1 1 0; min-width: 0;
+  }
+  .sidebar .nav-item {
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    gap: 4px; width: 100%; min-width: 0; min-height: 58px;
+    padding: 5px 2px; border-radius: 11px; white-space: normal;
+    font-size: .70rem; font-weight: 675; line-height: 1.15;
+    text-align: center; position: relative;
+  }
+  .sidebar .nav-item .icon { width: 23px; height: 23px; }
+  .sidebar .nav-item.active {
+    border-color: rgba(255,181,114,.3);
+    background: #383E46; box-shadow: inset 0 3px 0 #FFAD5C;
+  }
+  .sidebar .nav-label {
+    display: block; max-width: 100%; white-space: nowrap;
+    overflow: hidden; text-overflow: clip;
+  }
+  .sidebar .nav-label-full { display: none; }
+  .sidebar .nav-label-compact { display: block; }
+  .sidebar .nav-count {
+    position: absolute; top: 2px; right: 2px; margin: 0;
+    min-width: 15px; padding: 1px 3px;
+    font-size: .56rem; line-height: 1.4;
+  }
+  .site-header {
+    position: sticky; top: 0; z-index: 20; height: 56px;
+    padding: 0 12px; box-shadow: 0 2px 12px rgba(40,45,51,.04);
+  }
+  .site-header .header-location { min-width: 0; }
+  .site-header .header-location strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .site-header .header-right { flex-shrink: 0; gap: 7px; }
+  .site-header #logout { width: 44px; height: 44px; }
+  .workspace {
+    padding: 20px 12px calc(100px + env(safe-area-inset-bottom, 0px));
+  }
+  .page-heading { gap: 13px; margin-bottom: 17px; }
+  .page-heading h1 { font-size: clamp(1.6rem, 7vw, 2rem); overflow-wrap: anywhere; }
+  .page-heading .muted { font-size: .84rem; }
+  .page-heading .add-main { min-height: 49px !important; }
+  /* On a phone the primary task is searching/handling goods, not dashboards. */
+  #page-products { display: flex; flex-direction: column; }
+  #page-products > .page-heading { order: 0; }
+  #page-products > .catalog-panel { order: 1; }
+  #page-products > .result-list { order: 2; }
+  #page-products > .stats-row { order: 3; margin: 18px 0 0; }
+  .stat-card { padding: 13px 12px; min-width: 0; }
+  .stat-card strong { font-size: 1.7rem; }
+  .catalog-top { margin-bottom: 12px; }
+  .catalog-top .kind-switch { min-width: 0; }
+  .catalog-top .kind-choice { min-width: 0; min-height: 44px; padding: 8px 3px; }
+  .catalog-search-row { gap: 8px; }
+  .searchbar { padding: 0 10px; gap: 6px; }
+  .searchbar .icon { width: 19px; height: 19px; }
+  .searchbar input { min-width: 0; min-height: 49px; font-size: 16px; }
+  .filter-button { min-height: 49px; padding: 0 10px; }
+  .filters select, .filters input { min-height: 45px; }
+  .filters > #clear-filters { grid-column: 1 / -1; justify-self: start; min-height: 44px; }
+  .result-list { gap: 11px; margin-top: 14px; }
+  .result-card { grid-template-columns: minmax(0,1fr); gap: 11px; padding: 14px; }
+  .product-core { align-items: flex-start; min-width: 0; }
+  .product-glyph { width: 39px; height: 39px; }
+  .product-title { font-size: .98rem; }
+  .product-sub { font-size: .78rem; overflow-wrap: anywhere; }
+  .product-aside {
+    display: grid; grid-template-columns: minmax(0,1fr); gap: 9px;
+    align-items: stretch; justify-content: normal; padding: 0;
+  }
+  .product-aside .result-total { justify-self: end; font-size: 1.25rem; }
+  .product-aside .subtle-note { justify-self: end; }
+  .product-actions {
+    width: 100%; display: grid; gap: 6px;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+  }
+  .product-actions button, .product-actions button:not(:first-child) {
+    display: flex; align-items: center; justify-content: center;
+    min-width: 0; width: 100%; min-height: 44px !important;
+    font-size: .73rem !important; padding: 8px 3px !important;
+    white-space: nowrap; gap: 2px;
+  }
+  .product-actions button .icon { width: 13px; height: 13px; }
+  .product-actions button { scroll-margin-bottom: calc(101px + env(safe-area-inset-bottom,0px)); }
+  .panel { padding: 15px; }
+  .panel-title { flex-wrap: wrap; overflow-wrap: anywhere; }
+  .action-row { gap: 8px; }
+  .action-row > button { min-height: 44px; max-width: 100%; }
+  .inventory-controls > button, #inventory-apply { width: 100%; min-height: 49px; }
+  .inline-panel button { width: 100%; }
+  .list-row { align-items: flex-start; }
+  .list-row > * { min-width: 0; overflow-wrap: anywhere; }
+  .list-row button { min-height: 44px; }
+  .collapsible-panel > summary { gap: 7px; min-height: 44px; }
+
+  /* Phone keyboard must not trigger Safari's automatic input zoom. */
+  input, select, textarea { font-size: 16px; min-height: 46px; }
+  input[type="checkbox"] { min-height: auto; }
+  .auth-wrapper { display: flex; flex-direction: column; min-height: 100dvh; }
+  .auth-intro { flex: none; padding: 28px 23px 24px; min-height: 0; }
+  .auth-intro .auth-mark { display: none; }
+  .auth-intro h1 { font-size: clamp(1.8rem, 8vw, 2.35rem); margin: 7px 0 0; }
+  .auth-intro p:not(.kicker) { display: none; }
+  .auth-card { width: min(400px, calc(100% - 44px)); margin: auto; padding: 30px 0 42px; }
+  .auth-card input { font-size: 16px; }
+  .auth-card button.primary { min-height: 52px !important; }
+
+  /* Dialogs remain genuine native dialog elements above the bottom nav. */
+  dialog {
+    width: 100%; max-width: 100vw; max-height: calc(100dvh - 6px);
+    margin: auto auto 0; border-radius: 20px 20px 0 0;
+    overflow-y: auto; overscroll-behavior: contain;
+  }
+  dialog .dialog-head {
+    position: sticky; top: 0; z-index: 3; background: white;
+    padding: 15px 16px; align-items: center;
+  }
+  dialog .dialog-head .icon-button { min-width: 44px; width: 44px; height: 44px; }
+  .form-section, .form-extra, .similar-box { padding-left: 16px; padding-right: 16px; }
+  .detail-section { padding: 18px 16px; }
+  .detail-content { margin: 16px 16px 0; }
+  .detail-admin { margin: 0 16px 18px; }
+  .action-tabs { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px; }
+  .action-choice { min-height: 46px; font-size: .82rem; }
+  .quantity-stepper { height: 52px; }
+  .quantity-stepper .stepper-btn {
+    width: 54px; min-width: 54px; min-height: 50px;
+    font-size: 1.4rem; touch-action: manipulation;
+  }
+  .quantity-stepper input { font-size: 18px; }
+  .balance-chip { min-height: 44px; font-size: .75rem; }
+  .similar-item { flex-wrap: wrap; gap: 9px; }
+  .similar-item button { min-height: 44px !important; }
+  .sticky-actions { padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px)); }
+  .dialog-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+  .dialog-actions > button {
+    width: 100%; min-width: 0; min-height: 49px;
+    padding: 10px 6px; white-space: normal;
+  }
+  #operation-form .dialog-actions {
+    position: sticky; bottom: 0; z-index: 2;
+    background: white; padding: 12px 0 calc(12px + env(safe-area-inset-bottom,0px));
+  }
+
+  /* Responsive cards, not horizontally scrolling six/eight-column tables. */
+  #inventory-results { max-height: none; overflow: visible; }
+  #inventory-results table, #inventory-results tbody,
+  .history-table, .history-table tbody { display: block; width: 100%; }
+  #inventory-results thead, .history-table thead {
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+  }
+  #inventory-results tr, .history-table tr {
+    display: grid; grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 11px; padding: 13px; margin-bottom: 10px;
+    background: white; border: 1px solid var(--line);
+    border-radius: 13px;
+  }
+  #inventory-results td, .history-table td {
+    display: flex; flex-direction: column; align-items: flex-start;
+    gap: 5px; min-width: 0; padding: 0; border: none;
+    font-size: .81rem; overflow-wrap: anywhere;
+  }
+  #inventory-results td::before, .history-table td::before {
+    content: attr(data-label); display: block;
+    color: var(--muted); font-size: .7rem; font-weight: 720;
+  }
+  #inventory-results td:first-child, .history-table td:nth-child(4) {
+    grid-column: 1 / -1; padding-bottom: 8px;
+    border-bottom: 1px solid var(--line); font-weight: 730;
+  }
+  #inventory-results td:first-child::before { display: none; }
+  #inventory-results .inventory-count {
+    width: 100%; min-width: 0; max-width: 100%; min-height: 48px;
+  }
+  #history-results .table-wrap { overflow: visible; }
+  .history-table td:last-child {
+    grid-column: 1 / -1; display: flex; flex-direction: row;
+    align-items: center; flex-wrap: wrap; gap: 8px;
+  }
+  .history-table td:last-child:empty { display: none; }
+  .history-table td:last-child::before { display: none; }
+  .history-table td:last-child button { min-height: 44px !important; }
+  #toast {
+    left: 12px; right: 12px; max-width: none;
+    bottom: calc(89px + env(safe-area-inset-bottom,0px));
+    padding: 13px 15px; font-size: .84rem;
+  }
+}
+
+@media (max-width: 370px) {
+  #current-user, .header-avatar { display: none; }
+  .header-location > span:first-of-type, .header-location .breadcrumb-sep { display: none; }
+  .sidebar .nav-item { font-size: .68rem; }
+  .product-actions button, .product-actions button:not(:first-child) { font-size: .67rem !important; }
+  .kind-choice .icon { display: none; }
+}

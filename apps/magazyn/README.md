@@ -47,7 +47,7 @@ Domyślnie cookie ma flagę Secure (wymagane HTTPS). Wartość `MAGAZYN_COOKIE_S
 
 ## Wynik testów
 
-W DEV 27.10.2026: **159 / 159 testów PASS** (w tym testy Stage K, offline escrow, historii i DR), wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
+W DEV 27.10.2026: **163 / 163 testy PASS** (w tym testy Stage K, offline escrow, historii, DR i mobilnego WebGUI), wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
 
 ## Niezaimplementowane, wymagane przed produkcją
 
@@ -71,3 +71,13 @@ Nie można wydać ani przesunąć większej ilości niż dostępna. Operacje ilo
 - Panel administratora obsługuje filtry i edycję historii oraz test odtworzenia archiwum z NAS w RAM, bez nadpisywania działającej bazy.
 - Zaimplementowano szyfrowanie kopii AES key do **zewnętrznego publicznego recipienta age X25519**; odbiór kryptograficzny na syntetycznych danych PASS. Faktyczny test niezależnego urządzenia wymaga dostarczenia publicznego odbiorcy z tego urządzenia — prywatnego klucza nie wprowadzamy na AI Server.
 - Raport i rollback: [DEV release readiness 27.10.2026](docs/MAGAZYN_DEV_RELEASE_READINESS_2026-10-27_PL.md).
+
+
+## Mobilne WebGUI — etap DEV 27.10.2026
+
+Dotychczasowy WebGUI jest responsywny pod telefon (bez osobnej aplikacji):
+dolna nawigacja z właściwą widocznością roli, wyszukiwarka i szybkie operacje dostępne przed statystykami, widoczne przyciski „+ Przyjmij” i „− Wydaj”, większe kontrolki iOS, mobilne karty historii i inwentaryzacji, bez poziomego przewijania. Formularz wydania nadal wymaga powodu, a zmiana użytkownika czyści dane wcześniejszego logowania. Kolorystyka i układ desktop pozostały bez zmian.
+
+Testy: Firefox headless + WebDriver BiDi na odrębnej syntetycznej SQLite (390×844, 320×700 i 1440×900), 4 testy kontraktu UI, pełny pytest 163/163 PASS. Realne Safari iOS wymaga jeszcze krótkiego odbioru użytkownika. Zrzuty wyłącznie syntetycznych danych trzymane są poza repozytorium.
+
+Raport: [Mobilne WebGUI DEV](docs/MAGAZYN_MOBILE_WEBGUI_DEV_2026-10-27_PL.md).

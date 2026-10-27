@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#282D33">
   <title>Magazyn · AI Platform</title>
@@ -42,7 +42,7 @@
       <h2>Witaj ponownie</h2>
       <p class="muted">Zaloguj się na swoje konto.</p>
       <label>Login<input required name="username" autocomplete="username" maxlength="80" placeholder="Twój login"></label>
-      <label>Hasło<input required type="password" name="password" autocomplete="current-password" placeholder="••••••••••••"></label>
+      <label>Hasło<input required type="password" name="password" autocomplete="current-password" placeholder="Wpisz hasło"></label>
       <button type="submit" class="primary wide">Zaloguj się <svg class="icon"><use href="#i-arrow"/></svg></button>
       <p class="auth-footnote"><svg class="icon"><use href="#i-lock"/></svg> Dostęp wyłącznie dla uprawnionych pracowników</p>
     </form>
@@ -57,14 +57,14 @@
         </div>
         <p class="nav-heading">PRZESTRZEŃ ROBOCZA</p>
         <nav aria-label="Główne sekcje">
-          <button class="nav-item active" data-tab="products" aria-current="page"><svg class="icon"><use href="#i-grid"/></svg> Produkty</button>
-          <button class="nav-item" data-tab="low"><svg class="icon"><use href="#i-bell"/></svg> Do zamówienia <span id="low-nav-count" class="nav-count" hidden>0</span></button>
-          <button class="nav-item" data-tab="inventory"><svg class="icon"><use href="#i-count"/></svg> Inwentaryzacja</button>
-          <button class="nav-item" data-tab="history"><svg class="icon"><use href="#i-history"/></svg> Historia</button>
+          <button class="nav-item active" type="button" data-tab="products" aria-current="page"><svg class="icon"><use href="#i-grid"/></svg><span class="nav-label">Produkty</span></button>
+          <button class="nav-item" type="button" data-tab="low" aria-label="Do zamówienia"><svg class="icon"><use href="#i-bell"/></svg><span class="nav-label nav-label-full">Do zamówienia</span><span class="nav-label nav-label-compact">Zamów.</span><span id="low-nav-count" class="nav-count" hidden>0</span></button>
+          <button class="nav-item" type="button" data-tab="inventory" aria-label="Inwentaryzacja"><svg class="icon"><use href="#i-count"/></svg><span class="nav-label nav-label-full">Inwentaryzacja</span><span class="nav-label nav-label-compact">Inwent.</span></button>
+          <button class="nav-item" type="button" data-tab="history"><svg class="icon"><use href="#i-history"/></svg><span class="nav-label">Historia</span></button>
         </nav>
         <p class="nav-heading admin-only">SYSTEM</p>
         <nav class="admin-only" aria-label="Administracja">
-          <button class="nav-item admin-only" data-tab="admin"><svg class="icon"><use href="#i-settings"/></svg> Ustawienia</button>
+          <button class="nav-item admin-only" type="button" data-tab="admin" aria-label="Ustawienia"><svg class="icon"><use href="#i-settings"/></svg><span class="nav-label nav-label-full">Ustawienia</span><span class="nav-label nav-label-compact">Ustaw.</span></button>
         </nav>
         <div class="sidebar-bottom">
           <div class="sidebar-help"><span class="status-dot"></span><div><strong>Lokalny magazyn</strong><span>Twoje dane, Twoja kontrola</span></div></div>
@@ -109,6 +109,7 @@
                 <div class="searchbar">
                   <svg class="icon"><use href="#i-search"/></svg>
                   <input id="search" type="search" autocomplete="off" spellcheck="false"
+                         autocapitalize="off" enterkeyhint="search"
                          placeholder="Numer Bosch, OEM, nazwa, producent..." aria-label="Szukaj produktu">
                   <span class="search-hint">/</span>
                 </div>

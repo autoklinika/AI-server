@@ -52,6 +52,8 @@ function showLogin(){
   resetTransfers();
   session=null;chosen=null;
   document.querySelectorAll("dialog[open]").forEach(dialog=>dialog.close());
+  // Shared phones must not retain the previous employee's login or password.
+  byId("login-form").reset();
   byId("app").hidden=true;byId("login").hidden=false;
   const result=byId("pairing-result");result.hidden=true;result.textContent="";
 }
@@ -252,12 +254,12 @@ async function loadHistory(){
       return;
     }
     const entries=rows.map(row=>
-      '<tr><td>'+esc((row.created_at||"").replace("T"," ").substring(0,19))+'</td>'+
-      '<td>'+esc(row.actor_name)+'</td><td><span class="pill secondary-pill">'+esc(actionLabels[row.action]||row.action)+'</span></td>'+
-      '<td>'+esc(row.item_label)+'</td><td>'+fmt(row.quantity)+' szt.</td>'+
-      '<td>'+esc(row.location_code+(row.to_location_code?" → "+row.to_location_code:""))+'</td>'+
-      '<td>'+esc(reasonLabels[row.reason]||row.reason||"—")+'</td>'+
-      '<td>'+(session.role==="admin"?'<button class="small edit-history" type="button" data-id="'+row.id+'">Edytuj</button> '+
+      '<tr><td data-label="Data (UTC)">'+esc((row.created_at||"").replace("T"," ").substring(0,19))+'</td>'+
+      '<td data-label="Użytkownik">'+esc(row.actor_name)+'</td><td data-label="Operacja"><span class="pill secondary-pill">'+esc(actionLabels[row.action]||row.action)+'</span></td>'+
+      '<td data-label="Produkt">'+esc(row.item_label)+'</td><td data-label="Ilość">'+fmt(row.quantity)+' szt.</td>'+
+      '<td data-label="Lokalizacja">'+esc(row.location_code+(row.to_location_code?" → "+row.to_location_code:""))+'</td>'+
+      '<td data-label="Powód">'+esc(reasonLabels[row.reason]||row.reason||"—")+'</td>'+
+      '<td data-label="Akcje">'+(session.role==="admin"?'<button class="small edit-history" type="button" data-id="'+row.id+'">Edytuj</button> '+
       '<button class="small danger delete-history" type="button" data-id="'+row.id+'">Usuń</button>':"")+'</td></tr>').join("");
     container.innerHTML='<div class="table-wrap"><table class="history-table"><thead><tr>'+
       '<th>Data (UTC)</th><th>Użytkownik</th><th>Operacja</th><th>Produkt</th>'+
@@ -872,13 +874,13 @@ async function loadInventory(){
     container.innerHTML='<table><thead><tr><th>Produkt</th><th>Stan</th><th>Sprawność</th>'+
       '<th>Oczekiwane</th><th>Policzone</th><th>Różnica</th></tr></thead><tbody>'+
       rows.map((row,index)=>
-        '<tr><td><strong>'+esc(row.designation)+'</strong></td><td>'+
-        esc(stateLabels[row.product_state]||row.product_state)+'</td><td>'+
-        esc(stateLabels[row.technical_state]||row.technical_state)+'</td><td>'+
-        fmt(row.expected_quantity)+'</td><td><input class="inventory-count" type="number" '+
-        'min="0" step="1" max="2000000000" data-index="'+index+'" placeholder="Bez zmian" '+
+        '<tr><td data-label="Produkt"><strong>'+esc(row.designation)+'</strong></td><td data-label="Stan">'+
+        esc(stateLabels[row.product_state]||row.product_state)+'</td><td data-label="Sprawność">'+
+        esc(stateLabels[row.technical_state]||row.technical_state)+'</td><td data-label="Oczekiwane">'+
+        fmt(row.expected_quantity)+'</td><td data-label="Policzone"><input class="inventory-count" type="number" '+
+        'min="0" step="1" max="2000000000" inputmode="numeric" enterkeyhint="done" data-index="'+index+'" placeholder="Bez zmian" '+
         'aria-label="Policzone sztuki: '+esc(row.designation)+'" '+(session.role==="admin"?"":"disabled")+
-        '></td><td class="inventory-delta">—</td></tr>').join("")+'</tbody></table>';
+        '></td><td data-label="Różnica" class="inventory-delta">—</td></tr>').join("")+'</tbody></table>';
     byId("inventory-apply").disabled=session.role!=="admin";
   }catch(e){toast(e.message,true);}
 }
