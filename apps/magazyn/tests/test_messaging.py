@@ -461,3 +461,12 @@ def test_discord_queue_recovers_after_transient_db_failure(configured,monkeypatc
         await asyncio.wait_for(client._magazyn_queue_task,timeout=.5)
     asyncio.run(exercise())
     assert len(iterations)==2
+
+
+def test_unpaired_bare_polacz_explains_pairing_format(configured):
+    c,s,h,a,u,loc,item=configured
+    message=bots.reply_for_telegram(s,telegram_message(881144,"/polacz"))
+    assert message is not None and "wyślij /polacz KOD" in message[1]
+    assert "10 minut" in message[1]
+    assert "Bosch" not in message[1]
+    assert messaging.linked_user(s,"telegram",881144) is None

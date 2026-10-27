@@ -291,6 +291,8 @@ def process_private_message(store, provider: str, external_user_id: str | int,
     content=content.strip()
     if not content:
         return "Użyj /stan NUMER albo /pomoc."
+    if content.lower() in {"/polacz", "/polacz@magazyn"}:
+        return "Aby połączyć konto, wyślij /polacz KOD. Jednorazowy kod otrzymasz od administratora Magazynu i jest ważny 10 minut."
     if content.lower().startswith("/polacz "):
         code=content.split(maxsplit=1)[1].strip()
         if redeem_pairing(store,provider,external_user_id,code):
