@@ -206,3 +206,40 @@ def test_same_electronics_label_separate_packages_can_be_confirmed(scenario):
     other["allow_distinct_variant"]=True
     assert post(c,"/api/items/receive",other,h).status_code==201
     assert s.statistics()["items"]==2
+
+
+def test_orange_graphite_theme_has_accessible_primary_colors():
+    """Theme-only regression: change no behavior and preserve readable key controls."""
+    from pathlib import Path
+
+    app_dir=Path(__file__).resolve().parents[1]
+    css=(app_dir/"magazyn"/"static"/"style.css").read_text(encoding="utf-8")
+    html=(app_dir/"magazyn"/"static"/"index.html").read_text(encoding="utf-8")
+
+    assert "--orange: #B74B0D;" in css
+    assert "--orange-dark: #913807;" in css
+    assert "--orange-soft: #FFF0E4;" in css
+    assert "--graphite: #282D33;" in css
+    assert "--page: #F5F5F4;" in css
+    assert '<meta name="theme-color" content="#282D33">' in html
+    assert "var(--graphite)" in css and "var(--orange)" in css
+    assert ".nav-item.active" in css and ".kind-choice.active" in css
+    assert ".sidebar button:focus-visible" in css
+    assert "--teal" not in css and "--forest" not in css
+
+    def luminance(color):
+        channels=[int(color[offset:offset+2],16)/255 for offset in (1,3,5)]
+        linear=[c/12.92 if c<=.04045 else ((c+.055)/1.055)**2.4 for c in channels]
+        return .2126*linear[0]+.7152*linear[1]+.0722*linear[2]
+
+    def contrast(color_a,color_b):
+        light,dark=sorted((luminance(color_a),luminance(color_b)),reverse=True)
+        return (light+.05)/(dark+.05)
+
+    # WCAG AA for normal-size text on primary buttons and labels.
+    assert contrast("#FFFFFF","#B74B0D")>=4.5
+    assert contrast("#FFFFFF","#913807")>=4.5
+    assert contrast("#68717B","#FFFFFF")>=4.5
+    assert contrast("#68717B","#F5F5F4")>=4.5
+    assert contrast("#D0D3D7","#282D33")>=4.5
+    assert contrast("#FFFFFF","#3B4149")>=4.5

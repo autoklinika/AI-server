@@ -4,6 +4,8 @@
 
 Źródło wymagań: [Raport Magazyn V1](../../docs/reports/MAGAZYN_V1_RAPORT_USTALEN_2026-10-25_PL.md).
 
+**Motyw WebGUI (27.10.2026):** pomarańczowy akcent `#B74B0D`, grafitowa nawigacja `#282D33` i neutralne szarości. Zmiana dotyczy wyłącznie stylów CSS oraz `theme-color`; układ, dane, konta i logika magazynu pozostają bez zmian. Kolory istotnych kontrolek mają test kontrastu WCAG AA.
+
 ## Aktualnie działające
 
 - Konta i sesje: indywidualne loginy, scrypt+salt, ciasteczko HttpOnly, SameSite, CSRF. Administrator ma pełne funkcje administracyjne, w tym edycję/usuwanie historii. Pracownik ma operacje podstawowe.
@@ -15,7 +17,7 @@
 - **CSV/XLSX**: eksport katalogu `GET /api/export?format=csv|xlsx&kind=ecu|part&brand=...`, szablon nowych pozycji `GET /api/import/template?format=csv|xlsx`, podgląd `POST /api/import/preview`, zatwierdzenie `POST /api/import/apply`. Wszystkie endpointy transferu wymagają administratora; POST wymagają CSRF. Import ma ograniczenie 1 MB / 1000 wierszy, walidację numerów/OEM/HW/SW, konflikty blokują całą transakcję; potwierdzenie podglądu ma krótką ważność i jest związane z plikiem i użytkownikiem. Żadnego automatycznego scalania z istniejącymi produktami.
 - Eksport w formie migawki z wszystkimi lokalizacjami i wariantami stanów, także o ilości 0. Eksport i szablon **mają celowo różne nagłówki** — migawka katalogu nie jest automatycznym importem/backupem.
 - **Backup DEV:** szyfrowane archiwa SQLite AES-256-GCM, prywatny klucz, lokalny bufor, odtwarzanie offline i zabezpieczone sprawdzanie prawdziwego GlobalNAS przed wysyłką. Panel administratora pozwala podejrzeć kolejkę oraz wykonać ręczny lokalny backup. Instrukcja: [BACKUP_DEV.md](BACKUP_DEV.md). **Nie ma jeszcze automatycznego timera ani zweryfikowanego realnego zapisu na NAS.**
-- **Komunikatory DEV:** osobne, domyślnie wyłączone adaptery Telegram polling i Discord Gateway, tylko prywatne wiadomości i tylko odczyt. Administrator generuje 10-minutowe, jednorazowe kody powiązania kont; powiązania można odwołać. Potwierdzone konta otrzymują powiadomienia z trwałej kolejki (retry po błędzie), bez wpływu na pracę magazynu. Instrukcja: [BOTS_DEV.md](BOTS_DEV.md). **Telegram ma przygotowane osobne środowisko i wyłączoną usługę DEV, ale prawdziwy bot i token nie zostały jeszcze skonfigurowane.** Bezpieczny instalator: [TELEGRAM_SETUP_DEV.md](TELEGRAM_SETUP_DEV.md).
+- **Komunikatory DEV:** osobne, domyślnie wyłączone adaptery Telegram polling i Discord Gateway, tylko prywatne wiadomości i tylko odczyt. Administrator generuje 10-minutowe, jednorazowe kody powiązania kont; powiązania można odwołać. Potwierdzone konta otrzymują powiadomienia z trwałej kolejki (retry po błędzie), bez wpływu na pracę magazynu. Instrukcja: [BOTS_DEV.md](BOTS_DEV.md). **Dedykowany Telegram DEV został już skonfigurowany, uruchomiony i odebrany w teście rzeczywistej wysyłki prywatnego alertu; nadal nie jest wdrożeniem produkcyjnym.** Bezpieczny instalator: [TELEGRAM_SETUP_DEV.md](TELEGRAM_SETUP_DEV.md).
 
 ## Sposób uruchamiania wyłącznie do testów
 
@@ -45,7 +47,7 @@ Domyślnie cookie ma flagę Secure (wymagane HTTPS). Wartość `MAGAZYN_COOKIE_S
 
 ## Wynik testów
 
-W DEV 27.10.2026: **98 / 98 testów PASS**, wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
+W DEV 27.10.2026: **119 / 119 testów PASS**, wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
 
 ## Niezaimplementowane, wymagane przed produkcją
 
