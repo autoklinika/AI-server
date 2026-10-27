@@ -39,3 +39,18 @@ Przed cofnięciem aplikacji po zmianach w bazie v3 wykonać i zweryfikować back
 ## Dostęp
 
 Po odbiorze DEV: https://ai-server.tail759e12.ts.net:8443/ (Tailscale, konto Magazynu). Produkcyjne wdrożenie i merge do main wymagają odrębnej zgody. Nie dodano fikcyjnych produktów do rzeczywistej bazy Magazynu.
+
+
+## Odbiór rzeczywistego DEV po wdrożeniu — 27.10.2026
+
+- Weryfikacja schematu v2 i przedmigracyjnego backupu na prawdziwym GlobalNAS + restore do /dev/shm: PASS.
+- Restart **wyłącznie** magazyn-webgui-dev.service, uruchomienie migracji do v3: PASS. Początkowe sprawdzenie tuż po starcie procesu trafiło przed zakończeniem inicjalizacji; ponowna kontrola po uzyskaniu zdrowego serwera potwierdziła user_version=3, nowe tabele oraz integrity_check=ok.
+- Po migracji porównano z archiwum v2 z NAS **liczby rekordów w dziewięciu istniejących tabelach** (użytkownicy, produkty, stany, operacje, lokalizacje, minima, powiązania, sesje, kolejka komunikatora): IDENTYCZNE, PASS.
+- Nowe tabele electronic_specs, item_documents, purchase_state istnieją, ale są puste: **żadnego fikcyjnego produktu ani dokumentu w realnym magazynie**.
+- Prawdziwe WebGUI i Telegram DEV: active/active. HTTPS Tailscale certyfikat poprawny, HTTP 200; zasoby oddzielnego formularza elektroniki i nowego JavaScript są serwowane. Dostęp niezalogowany do nowych i dotychczasowych danych: HTTP 401.
+- Integracja trzech istniejących jednostek Stage K: bez zmian. Backup danych i metadanych z v2 na GlobalNAS nadal zweryfikowany.
+- Kod jest zapisany wyłącznie na gałęzi DEV. Fizyczna akceptacja Safari iPhone'a z prawdziwymi produktami pozostaje osobnym testem użytkownika.
+
+**Stan końcowy etapu: nowe funkcje URUCHOMIONE w Magazynie DEV; nie wdrożone na produkcję.**
+
+Dodatkowo po migracji wykonano zaszyfrowany backup prawdziwej bazy **v3**, wysłano go na GlobalNAS, zweryfikowano archiwum i odtworzono do RAM. Schemat v3, tabele dokumentacji i stanów zamówień, integralność SQLite i foreign-key-check: **PASS**. Lokalny backlog archiwów: 0.
