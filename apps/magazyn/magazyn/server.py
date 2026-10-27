@@ -99,6 +99,13 @@ class OrderStatusUpdate(BaseModel):
     note: str = Field(default="", max_length=300)
 
 
+class OrderedDelivery(BaseModel):
+    location_id: StrictInt = Field(gt=0)
+    quantity: StrictInt = Field(ge=1, le=2_000_000_000)
+    product_state: str | None = None
+    technical_state: str | None = None
+
+
 class DocumentUpload(BaseModel):
     filename: str = Field(min_length=5, max_length=140)
     doc_type: str = Field(pattern="^(datasheet|schematic|other)$")
@@ -337,6 +344,13 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
     def put_order_status(item_id: int, body: OrderStatusUpdate,
                          actor: dict = Depends(require_admin_write)):
         return store.set_order_status(item_id, body.status, body.quantity, body.note, actor)
+
+    @app.post("/api/items/{item_id}/order-delivery", status_code=201)
+    def order_delivery(item_id: int, body: OrderedDelivery,
+                       actor: dict = Depends(require_admin_write)):
+        return store.receive_order_delivery(
+            item_id, body.location_id, body.quantity, actor,
+            product_state=body.product_state, technical_state=body.technical_state)
 
     @app.post("/api/stock",status_code=201)
     def stock(body: StockOperation,actor: dict = Depends(require_write)):

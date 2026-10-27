@@ -859,6 +859,54 @@ class Store:
                 (item_id,status,quantity,note.strip(),actor["id"],now()))
         return self.get_order_status(item_id)
 
+    def receive_order_delivery(self, item_id: int, location_id: int, quantity: int,
+                               actor: dict, *, product_state: str | None = None,
+                               technical_state: str | None = None) -> dict:
+        """Atomically receive actual delivered goods and reduce pending order units.
+
+        Separate from ordinary receipt: only a confirmed delivery changes
+        purchase_state. SQLite BEGIN IMMEDIATE protects concurrent deliveries.
+        """
+        if actor.get("role") != "admin":
+            raise Problem(403, "Przyjęcie zamówienia wymaga administratora")
+        if (type(item_id) is not int or item_id < 1 or type(location_id) is not int
+                or location_id < 1 or type(quantity) is not int
+                or not 1 <= quantity <= 2_000_000_000):
+            raise Problem(422, "Nieprawidłowe dane dostawy")
+        with self.connect(write=True) as con:
+            product = self._get_item(con, item_id)
+            row = con.execute(
+                "SELECT status, quantity, note FROM purchase_state WHERE item_id=?",
+                (item_id,)).fetchone()
+            if row is None or row["status"] != "ordered" or row["quantity"] < quantity:
+                raise Problem(409, "Brak aktywnego zamówienia lub dostawa przekracza oczekującą ilość")
+            if product["kind"] == "ecu":
+                ps = product_state if product_state is not None else "new"
+                ts = technical_state if technical_state is not None else "unknown"
+                if ps not in PRODUCT_STATES or ts not in TECH_STATES:
+                    raise Problem(422, "Wybierz stan i sprawność dostarczonego sterownika")
+            else:
+                ps, ts = "na", "na"
+                if product_state not in (None, "na") or technical_state not in (None, "na"):
+                    raise Problem(422, "Elektronika nie używa stanów ECU")
+            receipt = self.stock_operation({
+                "action": "receive", "item_id": item_id, "location_id": location_id,
+                "quantity": quantity, "product_state": ps, "technical_state": ts,
+                "note": "Przyjęcie dostawy zamówionego produktu",
+            }, actor, connection=con)
+            remaining = row["quantity"] - quantity
+            status = "ordered" if remaining else "none"
+            con.execute(
+                "UPDATE purchase_state SET status=?, quantity=?, note=?, "
+                "updated_by=?, updated_at=? WHERE item_id=?",
+                (status, remaining, row["note"] if remaining else "",
+                 actor["id"], now(), item_id))
+            return {
+                "status": "PASS", "receipt_event_id": receipt["event_id"],
+                "received": quantity, "remaining_ordered": remaining,
+                "order_status": status, "stock_after_location": receipt["after"],
+            }
+
     def get_order_status(self,item_id: int) -> dict:
         with self.connect() as con:
             self._get_item(con,item_id)
@@ -1004,6 +1052,8 @@ class Store:
                 after=before-qty
             if after<0:
                 raise Problem(409,"Niewystarczająca ilość w wybranej lokalizacji i stanie")
+            if after>2_000_000_000 or (after_target is not None and after_target>2_000_000_000):
+                raise Problem(422,"Przekroczono maksymalny stan w lokalizacji")
             def put(loc,amount):
                 con.execute("INSERT INTO balances(item_id,location_id,product_state,technical_state,quantity) "
                             "VALUES (?,?,?,?,?) ON CONFLICT(item_id,location_id,product_state,technical_state) "

@@ -47,7 +47,7 @@ Domyślnie cookie ma flagę Secure (wymagane HTTPS). Wartość `MAGAZYN_COOKIE_S
 
 ## Wynik testów
 
-W DEV 27.10.2026: **183 / 183 testy PASS** (w tym testy Stage K, offline escrow, historii, DR i mobilnego WebGUI), wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
+W DEV 27.10.2026, po odbiorze Etapów 1–4: **198 / 198 testów PASS** (w tym testy Stage K, offline escrow, historii, DR i mobilnego WebGUI), wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
 
 ## Niezaimplementowane, wymagane przed produkcją
 
@@ -98,3 +98,9 @@ W pustym magazynie przycisk zapisu był niedostępny, ponieważ nie istniała lo
 ## Podgląd dokumentów w modalu (DEV, 27.10.2026)
 
 W szczegółach elektroniki można kliknąć **Podgląd** przy dokumentacji PDF/PNG/JPG bez opuszczania Magazynu. Natywna przeglądarka PDF działa wewnątrz modalu, a obrazy można powiększać; **Pobierz** jest nadal dostępne. Plik jest odczytywany przez zabezpieczone API do tymczasowego blob: przeglądarki, usuwanego po zamknięciu okna. Brak zmian bazy, Telegrama i backupów. Testy całego Magazynu: **183/183 PASS**; Firefox mobile PDF + PNG i zwolnienie zasobów: PASS. Safari iPhone do odbioru użytkownika. [Szczegóły i rollback](docs/MAGAZYN_DOCUMENT_MODAL_PREVIEW_DEV_2026-10-27_PL.md).
+
+## UAT operacji, zamówień, DR i bramka produkcyjna — 27.10.2026
+
+Magazyn DEV ma zweryfikowany pełny obieg operacji magazynowych oraz **atomowe częściowe i pełne przyjęcie zamówionej dostawy** z poziomu panelu administratora (stan magazynowy, historia i zamówienie w jednej transakcji). Testy backendu, uprawnień, prywatnych alertów i przeglądarki mobilnej PASS, łącznie **198/198 testów PASS**. Rzeczywisty szyfrowany backup danych i załączników z GlobalNAS odtworzono w RAM i porównano ze źródłem (PASS).
+
+**Produkcja: NO-GO do zamknięcia warunków**: tygodniowy Stage K backup+restore PASS (ostatni błąd 25.10), drugi fizyczny niezależny klucz odzyskiwania, potwierdzenie nowego automatycznego wywołania daily po instalacji integracji oraz sprawdzenie Tailscale ACL pracowników. Automatyczny audyt bez możliwości wykonania wdrożenia: `python -m magazyn.release_gate`. Rozdział szczegółowy: [Etapy 1–4: testy, bramki produkcyjne i rollback](docs/MAGAZYN_V1_STAGE_1_4_RELEASE_UAT_2026-10-27_PL.md).

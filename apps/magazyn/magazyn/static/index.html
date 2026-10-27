@@ -480,6 +480,25 @@
         <p class="subtle-note">Zamówione sztuki nie są zaliczane do magazynu. Przyjmij je dopiero po dostawie.</p>
         <button class="secondary" type="submit">Zapisz status zamówienia</button>
       </form>
+      <form id="order-delivery-form" class="stack order-delivery-panel" hidden>
+        <h3>Przyjmij zamówioną dostawę</h3>
+        <p class="subtle-note">Zapisz fizycznie otrzymane sztuki. Częściowa dostawa zmniejszy ilość oczekującą, a pełna zamknie zamówienie.</p>
+        <div class="two-cols">
+          <label>Lokalizacja odbioru<select name="location_id" required></select></label>
+          <label>Liczba otrzymanych sztuk<input name="quantity" type="number" inputmode="numeric"
+               min="1" max="2000000000" step="1" value="1" required></label>
+        </div>
+        <div id="order-delivery-ecu-fields" class="two-cols" hidden>
+          <label>Stan sterownika<select name="product_state">
+            <option value="new">Nowy</option><option value="used">Używany</option>
+          </select></label>
+          <label>Sprawność<select name="technical_state">
+            <option value="unknown">Nieznana</option><option value="working">Sprawny</option>
+            <option value="faulty">Uszkodzony</option>
+          </select></label>
+        </div>
+        <button class="primary" type="submit">Potwierdź przyjęcie dostawy</button>
+      </form>
       <details id="part-edit-details" class="form-extra divided" hidden>
         <summary>Edytuj parametry elektroniki</summary>
         <form id="part-edit-form" class="stack subform">

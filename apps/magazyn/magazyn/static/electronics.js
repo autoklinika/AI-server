@@ -205,6 +205,13 @@ function renderPurchaseStatus(details){
   form.elements.status.value=value.status;
   form.elements.quantity.value=String(value.quantity||1);
   form.elements.note.value=value.note||"";
+  const delivery=byId("order-delivery-form");
+  delivery.hidden=value.status!=="ordered";
+  delivery.dataset.itemId=String(details.id);
+  delivery.elements.location_id.innerHTML=locationOptions();
+  delivery.elements.quantity.max=String(value.quantity||1);
+  delivery.elements.quantity.value=String(value.quantity||1);
+  byId("order-delivery-ecu-fields").hidden=details.kind!=="ecu";
   updatePurchaseInputs();
 }
 function updatePurchaseInputs(){
@@ -213,6 +220,40 @@ function updatePurchaseInputs(){
   form.elements.quantity.required=ordered;
   form.elements.note.disabled=!ordered;
 }
+async function receiveOrderedDelivery(event){
+  event.preventDefault();
+  const form=event.currentTarget;
+  if(session?.role!=="admin"||!chosen||form.dataset.itemId!==String(chosen.id))
+    return toast("Odśwież dane zamówienia.",true);
+  const itemId=chosen.id;
+  const qty=Number(form.elements.quantity.value);
+  const locationId=Number(form.elements.location_id.value);
+  const remaining=chosen.order_status?.quantity||0;
+  if(!Number.isSafeInteger(qty)||qty<1||qty>remaining||!locationId)
+    return toast("Podaj lokalizację i ilość nie większą od zamówionej.",true);
+  if(!confirm("Potwierdzasz fizyczne przyjęcie "+fmt(qty)+" szt. na stan magazynu?"))
+    return;
+  const body={location_id:locationId,quantity:qty};
+  if(chosen.kind==="ecu"){
+    body.product_state=form.elements.product_state.value;
+    body.technical_state=form.elements.technical_state.value;
+  }
+  const button=form.querySelector('button[type="submit"]');
+  button.disabled=true;
+  try{
+    const response=await api("/api/items/"+itemId+"/order-delivery",{
+      method:"POST",body:JSON.stringify(body),
+    });
+    await Promise.all([loadItems(),loadStats(),loadLow()]);
+    await openItem(itemId,"receive");
+    toast("Przyjęto "+fmt(response.received)+" szt. "+(
+      response.remaining_ordered?
+        "Do odbioru pozostało "+fmt(response.remaining_ordered)+" szt.":
+        "Zamówienie zakończone."));
+  }catch(e){toast(e.message,true);}
+  finally{button.disabled=false;}
+}
+
 async function savePurchaseStatus(event){
   event.preventDefault();
   const form=event.currentTarget;
@@ -501,6 +542,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   byId("doc-zoom-fit").addEventListener("click",()=>updateDocumentPreviewZoom(1));
   byId("part-edit-form").addEventListener("submit",saveElectronicsSpecs);
   byId("order-status-form").addEventListener("submit",savePurchaseStatus);
+  byId("order-delivery-form").addEventListener("submit",receiveOrderedDelivery);
   byId("order-status-form").elements.status.addEventListener("change",updatePurchaseInputs);
   document.addEventListener("click",event=>{
     const existing=event.target.closest(".select-existing-part");
