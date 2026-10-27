@@ -1,13 +1,13 @@
 # Magazyn V1 — instrukcja backupu DEV
 
-**Status 27.10.2026: rzeczywisty szyfrowany backup Magazynu DEV zapisano na GlobalNAS i pomyślnie odtworzono z NAS do tymczasowego katalogu w RAM (PASS). Brak automatycznego timera, bez wdrożenia produkcyjnego.**
+**Status 27.10.2026: rzeczywisty szyfrowany backup Magazynu DEV zapisano i odtworzono z GlobalNAS (PASS). Dodatkowo kopię klucza odzyskiwania AES zaszyfrowano publicznym recipientem istniejącego YubiKeya 5C Stage K i zapisano na NAS (PASS). Odszyfrowanie nowego pliku przy użyciu fizycznego YubiKeya czeka na osobny test; brak automatycznego timera i wdrożenia produkcyjnego.**
 
 ## Zasada działania
 
 - SQLite Backup API wykonuje spójny snapshot do pamięci, bez kopiowania aktywnego pliku SQLite/WAL.
 - Archiwum jest szyfrowane AES-256-GCM, klucz ma 32 losowe bajty. Zależność: requirements-backup.txt (cryptography).
 - Archiwa nie zawierają jawnych informacji o produktach, pracownikach ani ilościach; nazwy zawierają datę UTC i poziom retencji.
-- Klucz musi być prywatny (0600), a katalog klucza i bufora musi mieć tryb 0700. Trzeba zrobić osobną, bezpieczną kopię klucza poza NAS: jego utrata uniemożliwia odzyskanie danych.
+- Jawny AES key pozostaje prywatny (0600), katalog klucza i bufora ma 0700. Zaszyfrowana przez publiczny YubiKey PIV kopia klucza znajduje się na NAS w Magazyn/recovery. Do odszyfrowania po awarii serwera niezbędne są fizyczny YubiKey i PIN. Wymagany pozostaje fizyczny decrypt drill oraz niezależna polityka recovery na wypadek utraty jedynego YubiKeya.
 - Obecnie kopia obejmuje całą bazę danych (produkty, użytkownicy, role, sesje, historia, minima). Załączniki nie istnieją jeszcze w Magazynie V1; po ich dodaniu wymagane będzie rozszerzenie backupu.
 
 ## Wywołania CLI po utworzeniu prywatnych katalogów
@@ -43,17 +43,17 @@ GET /api/backup/status zwraca lokalny stan bufora i daty kopii; POST /api/backup
 
 ## Nadal brak
 
-- Osobnej, bezpiecznej kopii klucza AES-256 poza serwerem i NAS. **Bez klucza nie ma możliwości odszyfrowania archiwum.** Nie wolno wysyłać klucza do GitHub ani w czacie.
+- Fizycznego testu odszyfrowania nowej kopii recovery kluczem YubiKey. Kopia zaszyfrowana już znajduje się na GlobalNAS. Potrzebny jest również niezależny wariant odzyskania na wypadek utraty jedynego YubiKeya.
 - Powtarzalnego uruchamiania kopii w zgodzie z Stage K, bez nowego niezależnego schedulera, oraz monitorowania zaległości i błędów.
 - Obsługi przyszłych zdjęć/załączników i końcowego odbioru uprawnień DR. Rzeczywisty marker Stage K, CIFS GlobalNAS, zapis i odtworzenie z NAS były pozytywnie sprawdzone 27.10.2026.
 
 ### Potwierdzony test DEV z 27.10.2026
 
-- Prywatny klucz istnieje tylko lokalnie: `/srv/ai-data/staging/magazyn-telegram-dev-20261027/private/backup-keys/magazyn-dev.key`, prawa 0600, katalog 0700. Wymaga niezależnej kopii offline przed produkcją.
+- Jawny klucz AES pozostaje wyłącznie lokalnie, w prywatnym pliku 0600. Jego zaszyfrowana kopia YubiKey/age jest na GlobalNAS w Magazyn/recovery. Do fizycznego odszyfrowania trzeba podłączyć YubiKey i podać PIN.
 - Lokalny bufor kopii: `/srv/ai-data/staging/magazyn-telegram-dev-20261027/private/backup-spool` (0700).
 - Tożsamość montowania CIFS i znacznik `.ai-platform-backup-target.json` sprawdzono bez zmiany Stage K. Na tym hoście systemd automount ujawnia **dwie warstwy**, `autofs` oraz faktyczny `cifs`: weryfikator wymaga ostatniej poprawnej warstwy CIFS, nie ufa samemu `autofs`.
 - Wysłano **jedno** zaszyfrowane archiwum do `/mnt/AI_Platform/Magazyn/daily/`, ponownie odczytano, odszyfrowano i zweryfikowano (PASS).
 - Wykonano pełny **restore bezpośrednio z archiwum na NAS** do prywatnego katalogu w `/dev/shm` (RAM), `PRAGMA integrity_check=ok`, a katalog po teście został usunięty (PASS).
-- Nie zmieniano backupów Stage K, nie kopiowano klucza na NAS, nie instalowano systemd timer ani cron. Mimo testu pozostaje **DEV**, bez zapewnionej kopii klucza offsite.
+- Nie zmieniano backupów Stage K ani konfiguracji YubiKey PIV. Na NAS trafiła wyłącznie zaszyfrowana, 242-bajtowa kopia klucza odzyskiwania AES; nigdy jawny klucz. Nie instalowano nowych timerów ani crona. Magazyn pozostaje **DEV**. Szczegóły: [YubiKey recovery](docs/MAGAZYN_YUBIKEY_RECOVERY_2026-10-27_PL.md).
 
 Nie umieszczać danych magazynowych, archiwów, kluczy ani kont pracowników w publicznym repozytorium GitHub.
