@@ -34,6 +34,7 @@ class AccountUpdate(BaseModel):
     role: str | None = None
     active: bool | None = None
     password: str | None = None
+    username: str | None = None
 
 
 class Location(BaseModel):

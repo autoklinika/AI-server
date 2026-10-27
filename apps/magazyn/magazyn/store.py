@@ -245,10 +245,20 @@ class Store:
             return [dict(r) for r in con.execute(
                 "SELECT id,username,role,active,created_at FROM users ORDER BY username")]
 
-    def change_user(self, user_id, role=None, active=None, password=None):
+    def change_user(self, user_id, role=None, active=None, password=None, username=None):
         with self.connect(write=True) as con:
             if con.execute("SELECT 1 FROM users WHERE id=?", (user_id,)).fetchone() is None:
                 raise Problem(404, "Brak użytkownika")
+            if username is not None:
+                username = username.strip()
+                if not re.fullmatch(r"[a-zA-Z0-9_.-]{3,40}", username):
+                    raise Problem(422, "Login: 3–40 znaków A-Z, 0-9, _, ., -")
+                exists = con.execute(
+                    "SELECT 1 FROM users WHERE username=? COLLATE NOCASE AND id<>?",
+                    (username, user_id)).fetchone()
+                if exists:
+                    raise Problem(409, "Login jest już zajęty")
+                con.execute("UPDATE users SET username=? WHERE id=?", (username, user_id))
             if role is not None:
                 if role not in ("admin", "user"):
                     raise Problem(422, "Nieprawidłowa rola")

@@ -156,6 +156,27 @@ def run_pair(*, db: str, provider: str="telegram", admin_username: str | None=No
     return messaging.create_pairing(store,found[0]["id"],provider,admin["id"])
 
 
+def run_rename_admin(*, db: str, admin_username: str | None=None,
+                     new_username: str | None=None) -> dict:
+    """Change the admin login in place, preserving user ID and Telegram pairing."""
+    store=Store(db)
+    admin=_authorize_admin(store,admin_username,create_if_missing=False)
+    desired=(new_username if new_username is not None
+             else input("Nowy login administratora: ")).strip()
+    confirmation=input("Powtórz nowy login: ").strip()
+    if desired != confirmation:
+        raise SetupFailure("Nowe loginy są różne — nie wprowadzono zmian")
+    if desired == admin["username"]:
+        raise SetupFailure("Nowy login jest taki sam jak obecny")
+    store.change_user(admin["id"],username=desired)
+    # Stable FK user id is used by Telegram links, minima and outbox.
+    updated=next((u for u in store.users() if u["id"]==admin["id"]),None)
+    if not updated or updated["username"]!=desired or updated["role"]!="admin":
+        raise SetupFailure("Nie udało się potwierdzić nowego loginu")
+    return {"old_username":admin["username"],"username":desired,
+            "id_preserved":True,"role_preserved":True}
+
+
 def main(argv=None) -> int:
     parser=argparse.ArgumentParser(description="Telegram Magazyn DEV — bezpieczny konfigurator")
     commands=parser.add_subparsers(dest="command",required=True)
@@ -166,6 +187,8 @@ def main(argv=None) -> int:
     init.add_argument("--token-file",required=True)
     pair=commands.add_parser("pair",parents=[common])
     pair.add_argument("--user",default=None,help="Powiąż wskazanego użytkownika; domyślnie administrator")
+    commands.add_parser("rename-admin",parents=[common],
+                        help="Zmienia login bez tworzenia nowego konta i bez utraty Telegram")
     status=commands.add_parser("status")
     status.add_argument("--db",required=True)
     status.add_argument("--token-file",required=True)
@@ -187,6 +210,13 @@ def main(argv=None) -> int:
             print("PAIRING_USER="+result["username"])
             print("PAIRING_EXPIRES_AT="+result["expires_at"])
             print("SEND_IN_PRIVATE_DM=/polacz "+result["code"])
+        elif arguments.command=="rename-admin":
+            result=run_rename_admin(db=arguments.db,admin_username=arguments.admin_username)
+            print("ADMIN_LOGIN_UPDATED=PASS")
+            print("OLD_LOGIN="+result["old_username"])
+            print("NEW_LOGIN="+result["username"])
+            print("ACCOUNT_ID_PRESERVED=PASS")
+            print("TELEGRAM_PAIRING_PRESERVED=PASS")
         else:
             store=Store(arguments.db)
             active_admins=[u for u in store.users() if u["role"]=="admin" and u["active"]]

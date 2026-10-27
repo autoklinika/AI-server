@@ -43,6 +43,16 @@ Wygeneruj nowy kod przez panel administratora albo w lokalnym terminalu:
 
 Terminal poprosi o hasło administratora i pokaże nowy kod. Dla innego pracownika administrator może dodać opcję --user LOGIN_PRACOWNIKA po założeniu mu indywidualnego konta Magazynu.
 
+### Zmiana loginu istniejącego administratora
+
+W interaktywnym terminalu serwera (użytkownik harrypotter, **bez sudo**) uruchom:
+
+    bash /srv/ai-data/staging/magazyn-telegram-dev-20261027/change-admin-login.sh
+
+Skrypt pyta o **obecny login administratora**, aktualne hasło (ukryte) i **nowy login dwa razy**. Nie pyta o token Telegram ani kod parowania. Aktualizuje jeden rekord użytkownika w transakcji SQLite, zachowując identyfikator użytkownika, hasło, rolę, wszystkie uprawnienia, minima i powiązanie Telegram. Nie wymaga restartu bota ani ponownego wysyłania /polacz KOD. Poprzedni login przestaje służyć do logowania; stare wpisy historii mogą nadal pokazywać historyczną nazwę wykonawcy.
+
+Jeśli konfigurator Telegrama zostanie uruchomiony ponownie później, przy pytaniu o login administratora należy podać **nowy login** (stara wartość domyślna admin może już nie działać). Nie należy tworzyć kolejnego konta.
+
 ### Status i zatrzymanie
 
     XDG_RUNTIME_DIR=/run/user/$(id -u) systemctl --user is-active magazyn-telegram-dev.service
