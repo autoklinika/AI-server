@@ -66,3 +66,11 @@ Nie można ominąć statusu FAIL tygodniowego Stage K tymi trzema przełącznika
 - Nie uruchamiać dwóch instancji Telegram z tym samym tokenem. Nie wykonywać tailscale serve reset ani nie usuwać oryginalnych timerów Stage K; rollback harmonogramu Magazynu polega na odwróceniu jego własnych trzech drop-in.
 
 **Stan wydania: funkcje i testy DEV gotowe; produkcyjne GO wyłącznie po niezależnych bramkach.**
+
+## Ostateczny odbiór uruchomionego DEV i ślad wydania
+
+- Commit funkcjonalny: ad67831 na gałęzi feature/magazyn-v1-dev-20261026, push GitHub potwierdzony, main bez zmian.
+- Pełny pytest/JUnit po implementacji: **198/198 PASS**; JS syntax, Python compile, git diff check PASS. Raport JUnit zachowany tylko w prywatnym katalogu staging na serwerze.
+- Ponowny ręczny test bramki produkcyjnej: **NO_GO**. PASS: SQLite v3, szyfrowany backup GlobalNAS, aktualny Stage K daily, HTTPS/TLS, pytest. BLOCKED: Stage K weekly+restore, drugi fizyczny klucz poza YubiKeyem, rzeczywisty daily timer po dołączeniu Magazynu oraz odbiór Tailscale ACL pracowników.
+- Po wdrożeniu zmian wyłącznie w magazyn-webgui-dev.service: HTTPS i nowe zasoby HTML/JS PASS, nieautoryzowane API 401, integralność SQLite/dokumentów i liczby rekordów dziesięciu tabel przed/po restarcie IDENTYCZNE PASS. WebGUI DEV i Telegram DEV aktywne. Produkcyjnych usług ani kopii Stage K nie modyfikowano.
+- Właściciel może korzystać z nowej funkcji w DEV po odświeżeniu strony: Produkty → Szczegóły → Status zamówienia → Przyjmij zamówioną dostawę.
