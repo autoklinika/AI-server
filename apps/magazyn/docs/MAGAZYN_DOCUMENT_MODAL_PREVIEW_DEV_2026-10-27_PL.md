@@ -34,3 +34,9 @@ Statyczne pliki WebGUI są podawane przez istniejącą usługę magazyn-webgui-d
 W razie problemów można cofnąć wyłącznie commit WebGUI/CSP i zrestartować magazyn-webgui-dev.service. Nie ma migracji bazy ani dodatkowej konfiguracji sieci do wycofania. Repozytorium main i produkcja AI Platform pozostają bez zmian.
 
 **Adres:** https://ai-server.tail759e12.ts.net:8443/ — z włączonym Tailscale.
+
+## Wynik aktywacji na rzeczywistym Magazynie DEV
+
+Po zapisaniu commitu d3b7f53 w GitHub uruchomiono nowe WebGUI przez restart wyłącznie magazyn-webgui-dev.service. Weryfikacja rzeczywistego HTTPS Tailscale (healthz, aktualny HTML, nowy JS i nagłówek CSP z blob:) zakończyła się PASS. Endpointy bez logowania nadal zwracają HTTP 401. Integralność SQLite v3, klucze obce i liczby rekordów siedmiu tabel przed/po restarcie pozostają bez zmian. WebGUI i Telegram DEV są aktywne. Nie modyfikowano istniejących załączników i stanów magazynu.
+
+**Status: PODGLĄD URUCHOMIONY W DEV; nie scalono do main i nie wdrożono Magazynu na produkcję.** Rzeczywisty test obsługi wielostronicowego PDF w Safari iPhone pozostaje do potwierdzenia przez użytkownika.
