@@ -4,231 +4,369 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>Magazyn — AI Platform</title>
+  <meta name="theme-color" content="#172f38">
+  <title>Magazyn · AI Platform</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/app.js" defer></script>
 </head>
 <body>
+  <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M3 7 12 3l9 4v10l-9 4-9-4Z"/><path d="M3 7l9 4 9-4M12 11v10"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 10h18c0-2-3-3-3-10ZM10 21h4"/></symbol>
+    <symbol id="i-count" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="m7 13 2 2 4-4M14 14h4M7 19h11"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M10 2h4l.7 2.6 2 .8 2.3-1.4 2.8 2.8-1.4 2.3.8 2L24 12l-2.8 1-.8 2 1.4 2.3-2.8 2.8-2.3-1.4-2 .8L14 22h-4l-.7-2.5-2-.8-2.3 1.4-2.8-2.8 1.4-2.3-.8-2L0 12l2.8-1 .8-2-1.4-2.3L5 3.9l2.3 1.4 2-.8Z" transform="translate(1,0) scale(.91,1)"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="7.5"/><path d="m16.1 16.1 5 5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-7-7 7 7-7 7"/></symbol>
+    <symbol id="i-location" viewBox="0 0 24 24"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24"><path d="M2 5h13v12H2zM15 9h4l3 4v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+    <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/><rect x="10" y="10" width="4" height="4" rx=".5"/></symbol>
+    <symbol id="i-chevrondown" viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4 7h16m-5-4 5 4-5 4M20 17H4m5-4-5 4 5 4"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="12" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-log-out" viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+  </svg>
+
   <main id="login" class="auth-wrapper" hidden>
-    <form id="login-form" class="panel auth-card">
-      <span class="kicker">AI Platform · Magazyn</span>
-      <h1>Zaloguj się</h1>
-      <p class="muted">Dostęp tylko dla upoważnionych użytkowników.</p>
-      <label>Login<input required name="username" autocomplete="username" maxlength="80"></label>
-      <label>Hasło<input required type="password" name="password" autocomplete="current-password"></label>
-      <button type="submit" class="primary">Zaloguj</button>
+    <div class="auth-intro">
+      <div class="auth-mark"><svg class="icon"><use href="#i-box"/></svg></div>
+      <p class="kicker light">AI Platform / Aplikacje</p>
+      <h1>Wszystko<br>na swoim miejscu<span class="accent">.</span></h1>
+      <p>Wspólny magazyn sterowników i elektroniki, zawsze pod ręką.</p>
+    </div>
+    <form id="login-form" class="auth-card">
+      <div class="auth-card-top"><span class="live-dot"></span> Bezpieczny dostęp do magazynu</div>
+      <h2>Witaj ponownie</h2>
+      <p class="muted">Zaloguj się na swoje konto.</p>
+      <label>Login<input required name="username" autocomplete="username" maxlength="80" placeholder="Twój login"></label>
+      <label>Hasło<input required type="password" name="password" autocomplete="current-password" placeholder="••••••••••••"></label>
+      <button type="submit" class="primary wide">Zaloguj się <svg class="icon"><use href="#i-arrow"/></svg></button>
+      <p class="auth-footnote"><svg class="icon"><use href="#i-lock"/></svg> Dostęp wyłącznie dla uprawnionych pracowników</p>
     </form>
   </main>
 
   <div id="app" hidden>
-    <header class="site-header">
-      <div class="brandmark"><span class="brandicon">▦</span><span>Magazyn <small>AI Platform</small></span></div>
-      <div class="header-right"><span class="dev-mark">DEV · wersja robocza</span>
-        <span id="current-user"></span><button id="logout" class="ghost small">Wyloguj</button></div>
-    </header>
-
     <div class="shell">
-      <nav aria-label="Główne sekcje">
-        <button class="nav-item active" data-tab="products">Sterowniki i elektronika</button>
-        <button class="nav-item" data-tab="low">Do zamówienia</button>
-        <button class="nav-item" data-tab="inventory">Inwentaryzacja</button>
-        <button class="nav-item" data-tab="history">Historia</button>
-        <button class="nav-item admin-only" data-tab="admin">Administracja</button>
-      </nav>
-      <main class="workspace">
-        <section id="page-products" class="page">
-          <div class="page-heading"><div><h1>Stany magazynowe</h1><p class="muted">Wyszukiwanie produktów i lokalizacji.</p></div>
-            <button class="primary" id="show-add">+ Dodaj produkt</button></div>
-          <div id="stats" class="stats-row"></div>
-          <div class="panel">
-            <div class="searchbar"><input id="search" type="search" placeholder="Szukaj po numerze, typie, marce, oznaczeniu..."></div>
-            <div class="filters">
-              <label>Rodzaj<select id="filter-kind"><option value="">Wszystkie</option><option value="ecu">Sterowniki</option><option value="part">Elektronika</option></select></label>
-              <label>Marka<select id="filter-brand"><option value="">Wszystkie marki</option></select></label>
-              <label>Stan produktu<select id="filter-product-state"><option value="">Dowolny</option><option value="new">Nowy</option><option value="used">Używany</option></select></label>
-              <label>Sprawność<select id="filter-tech-state"><option value="">Dowolna</option><option value="working">Sprawny</option><option value="faulty">Uszkodzony</option><option value="unknown">Nieznany</option></select></label>
-              <label>Lokalizacja<select id="filter-location"><option value="">Wszystkie</option></select></label>
-            </div>
-          </div>
-          <div id="products" class="result-list"></div>
-        </section>
+      <aside class="sidebar" aria-label="Nawigacja Magazynu">
+        <div class="sidebar-brand">
+          <div class="brand-symbol"><svg class="icon"><use href="#i-box"/></svg></div>
+          <div><strong>Magazyn</strong><small>AI Platform</small></div>
+        </div>
+        <p class="nav-heading">PRZESTRZEŃ ROBOCZA</p>
+        <nav aria-label="Główne sekcje">
+          <button class="nav-item active" data-tab="products" aria-current="page"><svg class="icon"><use href="#i-grid"/></svg> Produkty</button>
+          <button class="nav-item" data-tab="low"><svg class="icon"><use href="#i-bell"/></svg> Do zamówienia <span id="low-nav-count" class="nav-count" hidden>0</span></button>
+          <button class="nav-item" data-tab="inventory"><svg class="icon"><use href="#i-count"/></svg> Inwentaryzacja</button>
+          <button class="nav-item" data-tab="history"><svg class="icon"><use href="#i-history"/></svg> Historia</button>
+        </nav>
+        <p class="nav-heading admin-only">SYSTEM</p>
+        <nav class="admin-only" aria-label="Administracja">
+          <button class="nav-item admin-only" data-tab="admin"><svg class="icon"><use href="#i-settings"/></svg> Ustawienia</button>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="sidebar-help"><span class="status-dot"></span><div><strong>Lokalny magazyn</strong><span>Twoje dane, Twoja kontrola</span></div></div>
+          <span class="sidebar-version">MAGAZYN V1 · ŚRODOWISKO DEV</span>
+        </div>
+      </aside>
 
-        <section id="page-low" class="page" hidden>
-          <div class="page-heading"><div><h1>Do zamówienia</h1><p class="muted">Pozycje, których stan jest równy minimum lub niższy.</p></div></div>
-          <div id="low-results" class="result-list"></div>
-        </section>
-
-        <section id="page-history" class="page" hidden>
-          <div class="page-heading"><div><h1>Historia operacji</h1><p class="muted">Przyjęcia, wydania, przesunięcia i korekty.</p></div></div>
-          <div id="history-results" class="panel"></div>
-        </section>
-
-        <section id="page-inventory" class="page" hidden>
-          <div class="page-heading"><div><h1>Inwentaryzacja</h1>
-            <p class="muted">Wpisz policzone ilości. Puste pola pozostają bez zmian. Korektę zatwierdza administrator.</p></div></div>
-          <div class="panel stack">
-            <label>Lokalizacja<select id="inventory-location"></select></label>
-            <button id="inventory-load" type="button">Odczytaj / odśwież stany</button>
-            <p class="muted">Lista obejmuje także zerowe i dotąd nieutworzone kombinacje stanów. Limit jednego zapisu: 1000 wierszy.</p>
-            <form id="inventory-form" class="stack">
-              <div id="inventory-results" class="table-wrap"></div>
-              <button class="primary admin-only" id="inventory-apply" type="submit" disabled>Zastosuj policzone ilości</button>
-            </form>
+      <div class="main-column">
+        <header class="site-header">
+          <div class="header-location"><svg class="icon"><use href="#i-box"/></svg> <span>Magazyn</span><span class="breadcrumb-sep">/</span><strong id="current-section">Produkty</strong></div>
+          <div class="header-right">
+            <span class="dev-mark">DEV</span>
+            <span class="header-avatar" id="user-avatar" aria-hidden="true">M</span>
+            <span id="current-user"></span>
+            <button id="logout" type="button" class="icon-button" aria-label="Wyloguj się" title="Wyloguj się"><svg class="icon"><use href="#i-log-out"/></svg></button>
           </div>
-        </section>
+        </header>
 
-        <section id="page-admin" class="page" hidden>
-          <div class="page-heading"><div><h1>Administracja</h1><p class="muted">Konta użytkowników, lokalizacje i kopie zapasowe.</p></div></div>
-          <div class="panel stack transfer-panel">
-            <h2>Backup do GlobalNAS</h2>
-            <p class="muted">Baza magazynowa pozostaje lokalna. Ręczna kopia tworzy szyfrowane archiwum w buforze. Przekazanie na GlobalNAS wymaga osobnego sprawdzenia montowania NAS i jeszcze nie jest automatycznie uruchomione.</p>
-            <div id="backup-status" class="muted">Brak danych o kopiach.</div>
-            <div><button id="backup-refresh" type="button">Odśwież status</button>
-              <button id="backup-manual" class="primary" type="button">Utwórz kopię lokalną</button></div>
-          </div>
-          <div class="panel stack transfer-panel">
-            <h2>Import i eksport katalogu</h2>
-            <p class="muted">Eksport obejmuje wszystkie lokalizacje i zapisane kombinacje stanów (także zera). Nie jest plikiem importu ani kopią zapasową.</p>
-            <div class="two-cols">
-              <label>Rodzaj eksportu<select id="export-kind"><option value="">Cały katalog</option><option value="ecu">Sterowniki</option><option value="part">Elektronika</option></select></label>
-              <label>Marka eksportu (puste = wszystkie)<input id="export-brand"></label>
-            </div>
-            <div><button type="button" id="export-csv">Eksport CSV</button> <button type="button" id="export-xlsx">Eksport XLSX</button></div>
-            <h3>Import nowych pozycji</h3>
-            <p class="muted">Maks. 1 MB / 1000 wierszy. Jeden wiersz = nowy produkt, jedna istniejąca lokalizacja i stan. Konflikty numerów, nazw/modeli lub HW/SW blokują cały import. XLSX wymaga opcjonalnej biblioteki na serwerze.</p>
-            <p class="muted">W szablonie: format = magazyn-new-v1, kind = ecu/part, quantity = całkowita ≥ 0. ECU: new/used oraz working/faulty/unknown; elektronika: na/na. brands_json i numbers_json: tablice JSON lub puste. Szczegóły w README.</p>
-            <div><button type="button" id="template-csv">Szablon CSV</button> <button type="button" id="template-xlsx">Szablon XLSX</button></div>
-            <label>Plik CSV UTF-8 lub XLSX<input id="import-file" type="file" accept=".csv,.xlsx"></label>
-            <button type="button" id="import-preview">Sprawdź plik (bez zapisu)</button>
-            <div id="import-results" role="status"></div>
-            <button class="primary" type="button" id="import-apply" disabled>Potwierdź import nowych pozycji</button>
-          </div>
-          <div class="panel stack transfer-panel">
-            <h2>Telegram i Discord — prywatne konta</h2>
-            <p class="muted">Tylko administrator tworzy kod połączenia. Pracownik wysyła w prywatnej rozmowie z botem: /polacz KOD. Kod jest jednorazowy i ważny 10 minut.</p>
-            <form id="pairing-form" class="stack">
-              <div class="two-cols">
-                <label>Użytkownik<select id="pairing-user" name="user_id" required></select></label>
-                <label>Komunikator<select id="pairing-provider" name="provider">
-                  <option value="telegram">Telegram</option><option value="discord">Discord</option>
-                </select></label>
+        <main class="workspace">
+          <section id="page-products" class="page">
+            <div class="page-heading">
+              <div>
+                <p class="kicker">Przegląd magazynu</p>
+                <h1>Produkty <span class="heading-accent">w jednym miejscu.</span></h1>
+                <p class="muted">Znajdź sterownik lub element, sprawdź stan i wykonaj operację.</p>
               </div>
-              <button type="submit">Utwórz kod połączenia</button>
-            </form>
-            <div id="pairing-result" class="operation-preview" hidden></div>
-            <h3>Powiązane konta</h3>
-            <div id="messaging-links" class="muted">Brak powiązanych kont.</div>
-            <div id="messaging-summary" class="muted"></div>
-          </div>
-          <div class="admin-grid">
-            <div class="panel">
-              <h2>Użytkownicy</h2>
-              <div id="users-list"></div>
-              <form id="user-form" class="stack">
-                <h3>Nowe konto</h3>
-                <label>Login<input name="username" required pattern="[A-Za-z0-9_.-]{3,40}"></label>
-                <label>Hasło (minimum 12 znaków)<input name="password" type="password" minlength="12" required autocomplete="new-password"></label>
-                <label>Rola<select name="role"><option value="user">Użytkownik</option><option value="admin">Administrator</option></select></label>
-                <button class="primary" type="submit">Dodaj użytkownika</button>
+              <button class="primary add-main" id="show-add"><svg class="icon"><use href="#i-plus"/></svg> Dodaj produkt</button>
+            </div>
+
+            <div id="stats" class="stats-row" aria-label="Podsumowanie stanów"></div>
+
+            <div class="panel catalog-panel">
+              <div class="catalog-top">
+                <div class="kind-switch" role="group" aria-label="Rodzaj produktów">
+                  <button class="kind-choice active" type="button" data-kind="" aria-pressed="true">Wszystkie</button>
+                  <button class="kind-choice" type="button" data-kind="ecu" aria-pressed="false"><svg class="icon"><use href="#i-truck"/></svg> Sterowniki</button>
+                  <button class="kind-choice" type="button" data-kind="part" aria-pressed="false"><svg class="icon"><use href="#i-cpu"/></svg> Elektronika</button>
+                </div>
+                <span id="results-count" class="muted results-count">Produkty</span>
+              </div>
+              <div class="catalog-search-row">
+                <div class="searchbar">
+                  <svg class="icon"><use href="#i-search"/></svg>
+                  <input id="search" type="search" autocomplete="off" spellcheck="false"
+                         placeholder="Numer Bosch, OEM, nazwa, producent..." aria-label="Szukaj produktu">
+                  <span class="search-hint">/</span>
+                </div>
+                <button class="filter-button" id="filter-toggle" type="button" aria-expanded="false">
+                  Filtry <svg class="icon"><use href="#i-chevrondown"/></svg>
+                </button>
+              </div>
+              <div id="advanced-filters" class="filters" hidden>
+                <label>Rodzaj<select id="filter-kind"><option value="">Wszystkie</option><option value="ecu">Sterowniki</option><option value="part">Elektronika</option></select></label>
+                <label>Marka pojazdu<select id="filter-brand"><option value="">Wszystkie marki</option></select></label>
+                <label>Stan<select id="filter-product-state"><option value="">Dowolny</option><option value="new">Nowy</option><option value="used">Używany</option></select></label>
+                <label>Sprawność<select id="filter-tech-state"><option value="">Dowolna</option><option value="working">Sprawny</option><option value="faulty">Uszkodzony</option><option value="unknown">Nieznany</option></select></label>
+                <label>Lokalizacja<select id="filter-location"><option value="">Wszystkie</option></select></label>
+                <button id="clear-filters" type="button" class="text-button">Wyczyść filtry</button>
+              </div>
+            </div>
+            <div id="products" class="result-list" aria-live="polite"></div>
+          </section>
+
+          <section id="page-low" class="page" hidden>
+            <div class="page-heading">
+              <div><p class="kicker">Kontrola zapasów</p><h1>Do zamówienia<span class="heading-accent">.</span></h1>
+                <p class="muted">Produkty, których stan osiągnął ustawione minimum.</p></div>
+              <button class="secondary" type="button" id="low-refresh">Odśwież listę</button>
+            </div>
+            <div id="low-results" class="result-list"></div>
+          </section>
+
+          <section id="page-inventory" class="page" hidden>
+            <div class="page-heading">
+              <div><p class="kicker">Porządek w magazynie</p><h1>Inwentaryzacja<span class="heading-accent">.</span></h1>
+                <p class="muted">Wybierz miejsce, wpisz faktyczne ilości i sprawdź różnice.</p></div>
+            </div>
+            <div class="panel stack">
+              <div class="inventory-controls">
+                <label>Lokalizacja<select id="inventory-location"></select></label>
+                <button id="inventory-load" type="button" class="secondary">Pokaż produkty</button>
+              </div>
+              <p class="subtle-note">Puste pola nie zmieniają stanu. Korekty zatwierdza administrator. Do 1000 wierszy na zapis.</p>
+              <form id="inventory-form" class="stack">
+                <div id="inventory-results" class="table-wrap"></div>
+                <button class="primary admin-only" id="inventory-apply" type="submit" disabled>Zapisz policzone stany</button>
               </form>
             </div>
-            <div class="panel">
-              <h2>Lokalizacje</h2>
-              <div id="locations-list"></div>
-              <form id="location-form" class="stack">
-                <h3>Nowa lokalizacja</h3>
-                <label>Kod<input name="code" required maxlength="64" placeholder="Np. A1"></label>
-                <label>Opis<input name="description" placeholder="Np. Regał A, szuflada 1"></label>
-                <button class="primary" type="submit">Dodaj lokalizację</button>
-              </form>
+          </section>
+
+          <section id="page-history" class="page" hidden>
+            <div class="page-heading">
+              <div><p class="kicker">Pełna kontrola</p><h1>Historia operacji<span class="heading-accent">.</span></h1>
+                <p class="muted">Kto, kiedy i co zmienił w magazynie.</p></div>
             </div>
-          </div>
-        </section>
-      </main>
+            <div id="history-results" class="panel"></div>
+          </section>
+
+          <section id="page-admin" class="page" hidden>
+            <div class="page-heading"><div><p class="kicker">Ustawienia</p><h1>Zarządzanie<span class="heading-accent">.</span></h1>
+              <p class="muted">Konta pracowników, miejsca składowania i powiadomienia.</p></div></div>
+            <div class="admin-grid">
+              <div class="panel">
+                <div class="panel-title"><svg class="icon"><use href="#i-location"/></svg><h2>Lokalizacje</h2></div>
+                <p class="muted">Regały, szuflady i pojemniki.</p>
+                <div id="locations-list" class="admin-list"></div>
+                <form id="location-form" class="stack divided">
+                  <h3>Dodaj lokalizację</h3>
+                  <label>Oznaczenie<input name="code" required maxlength="64" placeholder="Np. A1, REGAŁ-2"></label>
+                  <label>Opis (opcjonalnie)<input name="description" placeholder="Np. regał A, szuflada 1"></label>
+                  <button class="secondary" type="submit"><svg class="icon"><use href="#i-plus"/></svg> Dodaj lokalizację</button>
+                </form>
+              </div>
+              <div class="panel">
+                <div class="panel-title"><svg class="icon"><use href="#i-settings"/></svg><h2>Użytkownicy</h2></div>
+                <p class="muted">Każdy pracownik ma własny dostęp.</p>
+                <div id="users-list" class="admin-list"></div>
+                <form id="user-form" class="stack divided">
+                  <h3>Nowe konto</h3>
+                  <label>Login<input name="username" required pattern="[A-Za-z0-9_.-]{3,40}" placeholder="Np. pracownik01"></label>
+                  <label>Hasło<input name="password" type="password" minlength="12" required autocomplete="new-password" placeholder="Minimum 12 znaków"></label>
+                  <label>Uprawnienia<select name="role"><option value="user">Użytkownik</option><option value="admin">Administrator</option></select></label>
+                  <button class="secondary" type="submit"><svg class="icon"><use href="#i-plus"/></svg> Utwórz konto</button>
+                </form>
+              </div>
+            </div>
+
+            <div class="panel transfer-panel">
+              <div class="panel-title"><svg class="icon"><use href="#i-bell"/></svg><h2>Telegram i Discord</h2><span class="tag">Prywatne wiadomości</span></div>
+              <p class="muted">Powiąż pracownika z komunikatorem. Alerty wysyłamy wyłącznie osobie wskazanej przy produkcie.</p>
+              <div id="messaging-links" class="admin-list"></div>
+              <form id="pairing-form" class="inline-panel">
+                <div class="two-cols">
+                  <label>Użytkownik<select id="pairing-user" name="user_id" required></select></label>
+                  <label>Komunikator<select id="pairing-provider" name="provider"><option value="telegram">Telegram</option><option value="discord">Discord</option></select></label>
+                </div>
+                <button class="secondary" type="submit">Utwórz kod powiązania</button>
+              </form>
+              <div id="pairing-result" class="operation-preview" hidden></div>
+              <p class="subtle-note">Pracownik wysyła prywatnie <code>/polacz KOD</code>. Kod jest ważny przez 10 minut.</p>
+              <div id="messaging-summary" class="muted small-text"></div>
+            </div>
+
+            <details class="panel collapsible-panel">
+              <summary><span class="panel-title"><svg class="icon"><use href="#i-box"/></svg><span>Import i eksport danych</span></span><svg class="icon"><use href="#i-chevrondown"/></svg></summary>
+              <div class="stack divided">
+                <p class="muted">Eksportuj katalog do Excel/CSV lub dodaj wiele nowych pozycji. Najpierw sprawdzimy plik — import nie nadpisze istniejących produktów.</p>
+                <div class="two-cols">
+                  <label>Zakres eksportu<select id="export-kind"><option value="">Cały katalog</option><option value="ecu">Sterowniki</option><option value="part">Elektronika</option></select></label>
+                  <label>Marka (opcjonalnie)<input id="export-brand" placeholder="Wszystkie marki"></label>
+                </div>
+                <div class="action-row"><button type="button" id="export-csv" class="secondary">Eksport CSV</button><button type="button" id="export-xlsx" class="secondary">Eksport Excel</button></div>
+                <div class="divider-line"></div>
+                <h3>Import nowych produktów</h3>
+                <p class="subtle-note">Maksymalnie 1 MB i 1000 wierszy. Użyj szablonu, uzupełnij dane i sprawdź plik przed zatwierdzeniem. Import i eksport mają odrębne formaty.</p>
+                <div class="action-row"><button type="button" id="template-csv">Szablon CSV</button><button type="button" id="template-xlsx">Szablon Excel</button></div>
+                <label>Wybierz plik<input id="import-file" type="file" accept=".csv,.xlsx"></label>
+                <div class="action-row"><button type="button" id="import-preview" class="secondary">Sprawdź plik</button><button type="button" id="import-apply" class="primary" disabled>Potwierdź import</button></div>
+                <div id="import-results" role="status" aria-live="polite"></div>
+              </div>
+            </details>
+            <details class="panel collapsible-panel">
+              <summary><span class="panel-title"><svg class="icon"><use href="#i-lock"/></svg><span>Backup GlobalNAS</span></span><svg class="icon"><use href="#i-chevrondown"/></svg></summary>
+              <div class="stack divided">
+                <p class="muted">Główna baza pozostaje lokalnie. Ręczna kopia trafia najpierw do zaszyfrowanego bufora; wysłanie na GlobalNAS wymaga osobnej synchronizacji.</p>
+                <div id="backup-status" class="muted"></div>
+                <div class="action-row"><button id="backup-refresh" type="button">Odśwież status</button><button id="backup-manual" class="secondary" type="button">Utwórz kopię lokalną</button></div>
+              </div>
+            </details>
+          </section>
+        </main>
+      </div>
     </div>
   </div>
 
-  <dialog id="item-dialog">
-    <div class="dialog-head"><div><span class="kicker">Magazyn V1</span><h2>Nowy produkt</h2></div><button class="ghost close-dialog" type="button" aria-label="Zamknij">✕</button></div>
+  <dialog id="item-dialog" class="sheet-dialog">
+    <div class="dialog-head">
+      <div><p class="kicker">Nowy wpis</p><h2>Dodaj produkt</h2><p class="muted">Tylko niezbędne pola. Resztę uzupełnisz w razie potrzeby.</p></div>
+      <button class="icon-button close-dialog" type="button" aria-label="Zamknij okno">×</button>
+    </div>
     <form id="item-form" class="stack">
-      <label>Rodzaj<select name="kind" id="new-kind"><option value="ecu">Sterownik</option><option value="part">Element elektroniczny</option></select></label>
-      <div class="ecu-field"><label>Marka pojazdu<input name="brand" id="new-brand" placeholder="Np. DAF"></label></div>
-      <label>Nazwa / oznaczenie<input name="designation" required maxlength="2000" placeholder="Np. Bosch EDC7"></label>
-      <label>Główny numer katalogowy<input name="primary_number" placeholder="Np. numer Bosch lub OEM"></label>
-      <div class="two-cols">
-        <label>Producent<input name="manufacturer" placeholder="Np. Bosch"></label>
-        <label>Kategoria<input name="category" placeholder="Np. ECU silnika / MOSFET"></label>
+      <div class="form-section">
+        <label>Co dodajesz?<select name="kind" id="new-kind"><option value="ecu">Sterownik samochodowy</option><option value="part">Element elektroniczny</option></select></label>
+        <label class="ecu-field">Marka pojazdu<input name="brand" id="new-brand" list="brand-suggestions" placeholder="Np. DAF, MAN, Scania"></label>
+        <datalist id="brand-suggestions"><option value="DAF"><option value="MAN"><option value="Scania"><option value="Volvo"><option value="Mercedes-Benz"><option value="Iveco"><option value="BMW"><option value="Volkswagen"></datalist>
+        <label>Numer katalogowy / OEM<input name="primary_number" id="new-primary-number" maxlength="160" placeholder="Np. 02810120067" autocomplete="off" spellcheck="false"></label>
+        <label>Nazwa lub oznaczenie produktu<input name="designation" required maxlength="2000" placeholder="Np. Bosch EDC7 lub IRF3205"></label>
       </div>
-      <label>Lokalizacja<select name="location_id" id="new-location" required></select></label>
-      <div class="two-cols">
-        <label>Ilość<input name="quantity" type="number" min="0" step="1" value="1" required></label>
-        <label class="ecu-field">Stan produktu<select name="product_state"><option value="used">Używany</option><option value="new">Nowy</option></select></label>
+      <div id="similar-box" class="similar-box" hidden>
+        <div class="similar-top"><strong>Sprawdź istniejące produkty</strong><span id="similar-spinner" class="muted"></span></div>
+        <p class="subtle-note">Znaleźliśmy zbliżone oznaczenia. Jeśli to ta sama część, zwiększ jej stan zamiast tworzyć duplikat.</p>
+        <div id="similar-list" class="similar-list"></div>
+        <label id="allow-variant-label" class="check-line" hidden><input id="allow-variant" name="allow_distinct_variant" type="checkbox"> To inny wariant HW/SW — dodaj jako osobny produkt</label>
       </div>
-      <label class="ecu-field">Stan techniczny<select name="technical_state"><option value="unknown">Nieznany</option><option value="working">Sprawny</option><option value="faulty">Uszkodzony</option></select></label>
-      <details>
-        <summary>Więcej szczegółów (opcjonalnie)</summary>
+      <div class="form-section form-section-tinted">
+        <div class="two-cols">
+          <label>Ile sztuk?<div class="quantity-stepper">
+              <button type="button" class="stepper-btn" data-qty-target="new-quantity" data-step="-1" aria-label="Zmniejsz ilość">−</button>
+              <input id="new-quantity" name="quantity" type="number" min="0" max="2000000000" step="1" value="1" required>
+              <button type="button" class="stepper-btn" data-qty-target="new-quantity" data-step="1" aria-label="Zwiększ ilość">+</button>
+            </div></label>
+          <label>Gdzie odłożyć?<select name="location_id" id="new-location" required></select></label>
+        </div>
+        <button class="text-button admin-only" id="new-location-toggle" type="button">+ Dodaj nowe miejsce</button>
+        <div id="quick-location-panel" class="inline-location" hidden>
+          <label>Kod miejsca<input id="quick-location-code" placeholder="Np. B2" maxlength="64"></label>
+          <label>Opis (opcjonalnie)<input id="quick-location-description" placeholder="Np. szuflada 2"></label>
+          <button type="button" id="quick-location-save" class="secondary">Dodaj miejsce</button>
+        </div>
+        <div class="two-cols ecu-field">
+          <label>Stan produktu<select name="product_state"><option value="used">Używany</option><option value="new">Nowy</option></select></label>
+          <label>Sprawność<select name="technical_state"><option value="unknown">Nieznany</option><option value="working">Sprawny</option><option value="faulty">Uszkodzony</option></select></label>
+        </div>
+      </div>
+      <details class="form-extra">
+        <summary>Więcej szczegółów <span class="muted">(opcjonalnie)</span><svg class="icon"><use href="#i-chevrondown"/></svg></summary>
         <div class="stack subform">
+          <div class="two-cols"><label>Producent<input name="manufacturer" placeholder="Np. Bosch"></label><label>Kategoria<input name="category" placeholder="Np. ECU silnika / MOSFET"></label></div>
           <label>Typ / model<input name="model" placeholder="Np. EDC17C46"></label>
-          <label>Dodatkowe marki (oddzielone przecinkiem)<input name="brands" placeholder="Np. MAN, Scania"></label>
-          <label>Numery OEM i zamienne (po przecinku lub w osobnych wierszach)<textarea name="numbers" rows="2"></textarea></label>
-          <div class="two-cols"><label>HW<input name="hw"></label><label>SW<input name="sw"></label></div>
-          <div class="two-cols"><label>Obudowa<input name="package" placeholder="Elektronika: np. SOIC-8"></label>
-            <label>Parametry<input name="parameters" placeholder="Np. 10 kΩ 0603"></label></div>
-          <label>Uwagi<textarea name="notes" rows="2"></textarea></label>
+          <label>Inne marki (po przecinku)<input name="brands" placeholder="Np. Volvo, MAN"></label>
+          <label>Dodatkowe numery OEM / zamienne<textarea name="numbers" rows="2" placeholder="Jeden numer w wierszu"></textarea></label>
+          <div class="two-cols"><label>Wersja HW<input name="hw"></label><label>Wersja SW<input name="sw"></label></div>
+          <div class="two-cols"><label>Obudowa<input name="package" placeholder="Np. SOIC-8"></label><label>Parametry<input name="parameters" placeholder="Np. 10k 0603"></label></div>
+          <label>Uwagi<textarea name="notes" rows="2" placeholder="Dodatkowe informacje..."></textarea></label>
         </div>
       </details>
-      <div class="dialog-actions"><button type="button" class="ghost close-dialog">Anuluj</button><button class="primary" type="submit">Zapisz w magazynie</button></div>
+      <div class="dialog-actions sticky-actions"><button class="secondary close-dialog" type="button">Anuluj</button><button type="submit" id="item-submit" class="primary"><svg class="icon"><use href="#i-check"/></svg> Dodaj do magazynu</button></div>
     </form>
   </dialog>
 
-  <dialog id="detail-dialog">
-    <div class="dialog-head"><div><span class="kicker" id="detail-kind"></span><h2 id="detail-title"></h2></div><button class="ghost close-dialog" type="button" aria-label="Zamknij">✕</button></div>
-    <div id="detail-content"></div>
-    <h3>Operacja magazynowa</h3>
-    <form id="operation-form" class="stack">
-      <input type="hidden" name="item_id" id="operation-item-id">
-      <label>Operacja<select name="action" id="operation-action">
-        <option value="receive">Przyjęcie (+)</option><option value="issue">Wydanie (−)</option>
-        <option value="move">Przesunięcie</option><option class="admin-only" value="adjust">Korekta stanu (administracja)</option>
-      </select></label>
-      <label>Lokalizacja<select name="location_id" id="operation-location"></select></label>
-      <label id="destination-wrapper" hidden>Lokalizacja docelowa<select name="to_location_id" id="operation-destination"></select></label>
-      <div class="two-cols">
-        <label>Ilość<input name="quantity" type="number" min="1" step="1" value="1" required></label>
-        <label class="ecu-operation">Stan produktu<select name="product_state"><option value="used">Używany</option><option value="new">Nowy</option></select></label>
-        <label class="ecu-operation">Stan techniczny<select name="technical_state"><option value="unknown">Nieznany</option><option value="working">Sprawny</option><option value="faulty">Uszkodzony</option></select></label>
+  <dialog id="detail-dialog" class="sheet-dialog detail-sheet">
+    <div class="dialog-head">
+      <div><p id="detail-kind" class="kicker">Produkt</p><h2 id="detail-title"></h2><div id="detail-subtitle" class="muted"></div></div>
+      <button class="icon-button close-dialog" type="button" aria-label="Zamknij okno">×</button>
+    </div>
+    <div id="detail-content" class="detail-content"></div>
+
+    <div class="detail-section">
+      <div class="section-header"><h3>Operacja magazynowa</h3><span class="muted">Wybierz działanie</span></div>
+      <div class="action-tabs" role="group" aria-label="Rodzaj operacji">
+        <button type="button" class="action-choice active" data-operation="receive" aria-pressed="true">+ Przyjmij</button>
+        <button type="button" class="action-choice" data-operation="issue" aria-pressed="false">− Wydaj</button>
+        <button type="button" class="action-choice" data-operation="move" aria-pressed="false"><svg class="icon"><use href="#i-swap"/></svg> Przenieś</button>
+        <button type="button" class="action-choice admin-only" data-operation="adjust" aria-pressed="false">Korekta</button>
       </div>
-      <label id="reason-wrapper" hidden>Powód wydania<select name="reason" id="operation-reason">
-        <option value="repair">Naprawa klienta</option><option value="sale">Sprzedaż</option>
-        <option value="workshop">Potrzeby warsztatu</option><option value="scrap">Uszkodzenie / utylizacja</option>
-        <option value="other">Inne</option>
-      </select></label>
-      <label id="order-wrapper" hidden>Numer zlecenia (opcjonalnie)<input name="order_ref" placeholder="Np. ZL/2026/001"></label>
-      <label>Uwagi (opcjonalnie)<textarea name="note" rows="2"></textarea></label>
-      <div id="operation-preview" class="operation-preview"></div>
-      <div class="dialog-actions"><button class="ghost close-dialog" type="button">Anuluj</button>
-        <button type="submit" class="primary" id="operation-submit">Zatwierdź</button></div>
-    </form>
-    <div id="detail-admin" class="admin-only detail-admin" hidden>
-      <h3>Administracja</h3>
-      <form id="minimum-form" class="stack">
-        <label>Stan minimalny<input name="minimum" type="number" value="0" min="0" step="1" required></label>
+      <form id="operation-form" class="stack">
+        <input type="hidden" name="item_id" id="operation-item-id">
+        <label class="visually-hidden">Operacja<select name="action" id="operation-action">
+          <option value="receive">Przyjęcie</option><option value="issue">Wydanie</option>
+          <option value="move">Przesunięcie</option><option value="adjust">Korekta stanu</option>
+        </select></label>
         <div class="two-cols">
-          <label>Odbiorca prywatnego alertu<select name="recipient_user_id" id="minimum-recipient">
-            <option value="">Bez powiadomienia</option>
-          </select></label>
-          <label>Komunikator<select name="provider" id="minimum-provider">
-            <option value="">Bez powiadomienia</option>
-            <option value="telegram">Telegram</option>
-            <option value="discord">Discord</option>
-          </select></label>
+          <label>Lokalizacja<select name="location_id" id="operation-location"></select></label>
+          <label id="destination-wrapper" hidden>Do lokalizacji<select name="to_location_id" id="operation-destination"></select></label>
+          <label>Ilość<div class="quantity-stepper">
+              <button type="button" class="stepper-btn" data-qty-target="operation-quantity" data-step="-1" aria-label="Zmniejsz ilość">−</button>
+              <input id="operation-quantity" name="quantity" type="number" min="1" max="2000000000" step="1" value="1" required>
+              <button type="button" class="stepper-btn" data-qty-target="operation-quantity" data-step="1" aria-label="Zwiększ ilość">+</button>
+            </div></label>
         </div>
-        <p class="muted">Alerty wysyłamy tylko do tego użytkownika, jeżeli jego konto komunikatora jest powiązane. Bez wysyłki na kanały publiczne.</p>
-        <button type="submit">Zapisz minimum i odbiorcę</button>
+        <div class="two-cols ecu-operation">
+          <label>Stan<select name="product_state"><option value="used">Używany</option><option value="new">Nowy</option></select></label>
+          <label>Sprawność<select name="technical_state"><option value="unknown">Nieznany</option><option value="working">Sprawny</option><option value="faulty">Uszkodzony</option></select></label>
+        </div>
+        <label id="reason-wrapper" hidden>Powód wydania <span class="required-star">*</span><select name="reason" id="operation-reason">
+          <option value="">Wybierz powód</option><option value="repair">Naprawa klienta</option><option value="sale">Sprzedaż</option>
+          <option value="workshop">Potrzeby warsztatu</option><option value="scrap">Uszkodzenie / utylizacja</option>
+          <option value="other">Inne</option>
+        </select></label>
+        <label id="order-wrapper" hidden>Numer zlecenia (opcjonalnie)<input name="order_ref" placeholder="Np. ZL/2026/001"></label>
+        <label class="subtle-field">Uwagi (opcjonalnie)<input name="note" placeholder="Krótka informacja do historii"></label>
+        <div id="operation-preview" class="operation-preview" role="status"></div>
+        <div class="dialog-actions"><button class="secondary close-dialog" type="button">Anuluj</button><button type="submit" class="primary" id="operation-submit">Zatwierdź operację</button></div>
       </form>
-      <button class="danger" id="delete-item" type="button">Usuń produkt</button>
+    </div>
+
+    <div id="detail-admin" class="admin-only detail-admin" hidden>
+      <div class="section-header"><h3>Minimalny stan i powiadomienia</h3><span class="tag">Administrator</span></div>
+      <p class="muted small-text">Gdy zapas spadnie do minimum, produkt pojawi się na liście „Do zamówienia”.</p>
+      <form id="minimum-form" class="stack">
+        <label>Powiadom, gdy ilość spadnie do<div class="field-with-suffix"><input name="minimum" type="number" value="0" min="0" step="1" required><span>szt.</span></div></label>
+        <label class="switch-line">
+          <input id="minimum-notify" type="checkbox">
+          <span class="switch-toggle" aria-hidden="true"></span>
+          <span><strong>Wyślij prywatny alert</strong><small>Wyłącznie do wybranej osoby</small></span>
+        </label>
+        <div id="notify-details" class="notify-details" hidden>
+          <div class="two-cols">
+            <label>Komunikator<select name="provider" id="minimum-provider"><option value="">Wybierz komunikator</option><option value="telegram">Telegram</option><option value="discord">Discord</option></select></label>
+            <label>Odbiorca<select name="recipient_user_id" id="minimum-recipient"><option value="">Wybierz użytkownika</option></select></label>
+          </div>
+          <p id="notify-help" class="subtle-note">Konto musi być zweryfikowane i powiązane w Ustawieniach.</p>
+        </div>
+        <button type="submit" class="secondary">Zapisz ustawienia</button>
+      </form>
+      <details class="danger-details">
+        <summary>Zaawansowane działania administratora</summary>
+        <button class="danger" id="delete-item" type="button">Usuń produkt z magazynu</button>
+      </details>
     </div>
   </dialog>
+
   <div id="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>

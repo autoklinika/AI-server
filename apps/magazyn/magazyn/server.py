@@ -55,6 +55,28 @@ class StockOperation(BaseModel):
     note: str = ""
 
 
+class ReceiveNewItem(BaseModel):
+    kind: str
+    designation: str
+    brand: str = ""
+    manufacturer: str = ""
+    category: str = ""
+    model: str = ""
+    primary_number: str = ""
+    hw: str = ""
+    sw: str = ""
+    package: str = ""
+    parameters: str = ""
+    notes: str = ""
+    brands: list[str] = Field(default_factory=list)
+    numbers: list[dict[str, str]] = Field(default_factory=list)
+    location_id: StrictInt = Field(gt=0)
+    quantity: StrictInt = Field(ge=0, le=2_000_000_000)
+    product_state: str = "used"
+    technical_state: str = "unknown"
+    allow_distinct_variant: bool = False
+
+
 class Minimum(BaseModel):
     minimum: int
     recipient_user_id: int | None = None
@@ -192,6 +214,23 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
               _user: dict = Depends(require_user)):
         return store.items(q,kind,brand,manufacturer,product_state,
                            technical_state,location_id,available,limit)
+
+    @app.get("/api/items/similar")
+    def similar_items(kind: str, designation: str = "", brand: str = "",
+                      manufacturer: str = "", model: str = "", primary_number: str = "",
+                      hw: str = "", sw: str = "", package: str = "",
+                      parameters: str = "", category: str = "",
+                      _user: dict = Depends(require_user)):
+        return store.similar_items({
+            "kind":kind, "designation":designation, "brand":brand,
+            "manufacturer":manufacturer, "model":model,
+            "primary_number":primary_number, "hw":hw, "sw":sw,
+            "package":package, "parameters":parameters, "category":category})
+
+    @app.post("/api/items/receive", status_code=201)
+    def new_item_with_receipt(body: ReceiveNewItem, actor: dict = Depends(require_write)):
+        return store.add_item_with_stock(body.model_dump(), actor,
+            allow_distinct_variant=body.allow_distinct_variant)
 
     @app.get("/api/items/{item_id}")
     def item(item_id: int, _user: dict = Depends(require_user)):

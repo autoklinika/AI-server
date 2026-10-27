@@ -321,6 +321,118 @@ class Store:
             con.execute("DELETE FROM balances WHERE location_id=?",(location_id,))
             con.execute("DELETE FROM locations WHERE id=?",(location_id,))
 
+    def similar_items(self, data, *, connection=None, limit=8):
+        """Potential duplicate positions, including cross-reference numbers.
+
+        A matching identifier on a different HW/SW variant is a warning, not
+        permission to silently merge or block a genuinely distinct controller.
+        """
+        kind = data.get("kind")
+        if kind not in KINDS:
+            raise Problem(422, "Nieprawidłowy rodzaj produktu")
+        numbers = {normalize(str(data.get("primary_number") or ""))}
+        for entry in data.get("numbers", []):
+            if not isinstance(entry, dict):
+                raise Problem(422, "Nieprawidłowe numery dodatkowe")
+            numbers.add(normalize(str(entry.get("number") or "")))
+        numbers.discard("")
+        name = normalize(str(data.get("designation") or ""))
+        brand = normalize(str(data.get("brand") or ""))
+        manufacturer = normalize(str(data.get("manufacturer") or ""))
+        model = normalize(str(data.get("model") or ""))
+        own_hw = normalize(str(data.get("hw") or ""))
+        own_sw = normalize(str(data.get("sw") or ""))
+        own_package = normalize(str(data.get("package") or ""))
+        own_parameters = normalize(str(data.get("parameters") or ""))
+        own_category = normalize(str(data.get("category") or ""))
+        context = nullcontext(connection) if connection is not None else self.connect()
+        with context as con:
+            matches = []
+            for item in con.execute("SELECT * FROM items WHERE kind=? ORDER BY id DESC", (kind,)):
+                item_id = item["id"]
+                item_numbers = {row[0] for row in con.execute(
+                    "SELECT normalized FROM item_numbers WHERE item_id=?", (item_id,))}
+                number_match = bool(numbers & item_numbers)
+                item_brands = [row[0] for row in con.execute(
+                    "SELECT brand FROM item_brands WHERE item_id=?", (item_id,))]
+                brand_match = not brand or any(normalize(b) == brand for b in item_brands)
+                name_match = bool(name) and name == normalize(item["designation"])
+                maker_match = not manufacturer or manufacturer == normalize(item["manufacturer"])
+                model_match = not model or model == normalize(item["model"])
+                if not (number_match or (name_match and maker_match and model_match and brand_match)):
+                    continue
+                # Identical name alone does not prove identical hardware.
+                # Different primary numbers without a shared alias must be
+                # allowed as a distinct variant after explicit confirmation.
+                exact_identifier = number_match or (not numbers and not item_numbers)
+                if kind == "ecu":
+                    same_variant = (
+                        exact_identifier and
+                        own_hw == normalize(item["hw"]) and
+                        own_sw == normalize(item["sw"]) and brand_match
+                    )
+                else:
+                    same_variant = (
+                        exact_identifier and
+                        own_package == normalize(item["package"]) and
+                        own_parameters == normalize(item["parameters"]) and
+                        own_category == normalize(item["category"])
+                    )
+                existing_qty = con.execute(
+                    "SELECT COALESCE(SUM(quantity),0) FROM balances WHERE item_id=?",
+                    (item_id,)).fetchone()[0]
+                matches.append({
+                    "id": item_id,
+                    "designation": item["designation"],
+                    "brand": item["brand"],
+                    "primary_number": item["primary_number"],
+                    "hw": item["hw"], "sw": item["sw"],
+                    "quantity": existing_qty,
+                    "reason": "Ten sam numer / numer zamienny" if number_match else "Podobne oznaczenie",
+                    "same_variant": same_variant,
+                })
+                if len(matches) >= limit:
+                    break
+            return matches
+
+    def add_item_with_stock(self, data, actor, *, allow_distinct_variant=False):
+        """One transaction covers duplicate guard, catalog and initial receipt."""
+        quantity = data.get("quantity")
+        location_id = data.get("location_id")
+        if type(quantity) is not int or not 0 <= quantity <= 2_000_000_000:
+            raise Problem(422, "Ilość musi być liczbą całkowitą od 0 do 2000000000")
+        if type(location_id) is not int or location_id < 1:
+            raise Problem(422, "Wybierz lokalizację")
+        kind = data.get("kind")
+        if kind not in KINDS:
+            raise Problem(422, "Nieprawidłowy rodzaj produktu")
+        with self.connect(write=True) as con:
+            if con.execute("SELECT 1 FROM locations WHERE id=?", (location_id,)).fetchone() is None:
+                raise Problem(404, "Nie ma podanej lokalizacji")
+            similar = self.similar_items(data, connection=con)
+            if any(s["same_variant"] for s in similar):
+                raise Problem(409, "Pozycja o tym oznaczeniu i wariancie już istnieje. Otwórz istniejący produkt i przyjmij sztuki.")
+            if similar and not allow_distinct_variant:
+                raise Problem(409, "Znaleziono podobny produkt lub numer zamienny. Sprawdź wariant HW/SW i potwierdź świadome dodanie nowego wpisu.")
+            if kind == "ecu":
+                ps = data.get("product_state")
+                ts = data.get("technical_state")
+                if ps not in PRODUCT_STATES or ts not in TECH_STATES:
+                    raise Problem(422, "Wybierz stan produktu i sprawność sterownika")
+            else:
+                ps, ts = "na", "na"
+            item_id = self.add_item(data, actor, connection=con)
+            event_id = None
+            if quantity:
+                received = self.stock_operation({
+                    "action": "receive", "item_id": item_id,
+                    "location_id": location_id, "quantity": quantity,
+                    "product_state": ps, "technical_state": ts,
+                    "note": "Przyjęcie przy tworzeniu nowej pozycji",
+                }, actor, connection=con)
+                event_id = received["event_id"]
+            return {"id": item_id, "quantity": quantity, "event_id": event_id}
+
     def add_item(self, data, actor, *, connection=None):
         kind = data.get("kind")
         if kind not in KINDS or not data.get("designation","").strip():
