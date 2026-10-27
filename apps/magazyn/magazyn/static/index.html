@@ -160,7 +160,21 @@
               <div><p class="kicker">Pełna kontrola</p><h1>Historia operacji<span class="heading-accent">.</span></h1>
                 <p class="muted">Kto, kiedy i co zmienił w magazynie.</p></div>
             </div>
-            <div id="history-results" class="panel"></div>
+            <div class="panel stack">
+              <form id="history-filters" class="stack" role="search">
+                <div class="two-cols">
+                  <label>Produkt / oznaczenie<input id="history-query" placeholder="Szukaj w historii produktów" maxlength="120"></label>
+                  <label>Użytkownik<select id="history-actor"><option value="">Wszyscy użytkownicy</option></select></label>
+                  <label>Data od (UTC)<input id="history-from" type="date"></label>
+                  <label>Data do (UTC)<input id="history-to" type="date"></label>
+                </div>
+                <div class="action-row">
+                  <button class="primary" type="submit">Filtruj historię</button>
+                  <button id="history-clear" class="secondary" type="button">Wyczyść</button>
+                </div>
+              </form>
+              <div id="history-results"></div>
+            </div>
           </section>
 
           <section id="page-admin" class="page" hidden>
@@ -232,6 +246,12 @@
                 <p class="muted">Główna baza pozostaje lokalnie. Ręczna kopia trafia najpierw do zaszyfrowanego bufora; wysłanie na GlobalNAS wymaga osobnej synchronizacji.</p>
                 <div id="backup-status" class="muted"></div>
                 <div class="action-row"><button id="backup-refresh" type="button">Odśwież status</button><button id="backup-manual" class="secondary" type="button">Utwórz kopię lokalną</button></div>
+                <div class="divider-line"></div>
+                <h3>Sprawdzenie możliwości odtworzenia</h3>
+                <p class="subtle-note">Odtwarzamy wskazaną kopię tylko do tymczasowej bazy w RAM, weryfikujemy integralność i usuwamy ją. Działająca baza magazynu nie zostaje zastąpiona.</p>
+                <label>Archiwum do sprawdzenia<select id="backup-archive-select"><option value="">Wybierz kopię</option></select></label>
+                <div class="action-row"><button id="backup-archives-refresh" type="button">Odśwież kopie</button><button id="backup-restore-test" class="secondary" type="button">Testuj odtworzenie</button></div>
+                <div id="backup-restore-result" class="muted" role="status" aria-live="polite"></div>
               </div>
             </details>
           </section>
@@ -365,6 +385,31 @@
         <button class="danger" id="delete-item" type="button">Usuń produkt z magazynu</button>
       </details>
     </div>
+  </dialog>
+
+  <dialog id="history-edit-dialog" class="sheet-dialog">
+    <div class="dialog-head">
+      <div><p class="kicker">Administrator</p><h2>Edytuj wpis historii</h2>
+        <p class="muted">Zmiana tego wpisu nie zmienia bieżącego stanu magazynowego.</p></div>
+      <button class="icon-button close-dialog" type="button" aria-label="Zamknij okno">×</button>
+    </div>
+    <form id="history-edit-form" class="stack">
+      <input name="event_id" type="hidden">
+      <div class="two-cols">
+        <label>Użytkownik<input name="actor_name" maxlength="160" required></label>
+        <label>Produkt<input name="item_label" maxlength="2000" required></label>
+        <label>Rodzaj operacji<select name="action"><option value="receive">Przyjęcie</option><option value="issue">Wydanie</option><option value="move">Przesunięcie</option><option value="adjust">Korekta</option></select></label>
+        <label>Ilość<input name="quantity" type="number" min="0" max="2000000000" step="1" required></label>
+        <label>Lokalizacja<input name="location_code" maxlength="100"></label>
+        <label>Data i godzina (UTC)<input name="created_at" maxlength="50" required></label>
+        <label>Stan przed<input name="before_source" type="number" step="1" min="0" max="2000000000" required></label>
+        <label>Stan po<input name="after_source" type="number" step="1" min="0" max="2000000000" required></label>
+        <label>Powód wydania<select name="reason"><option value="">Brak</option><option value="repair">Naprawa klienta</option><option value="sale">Sprzedaż</option><option value="workshop">Potrzeby warsztatu</option><option value="scrap">Utylizacja</option><option value="other">Inne</option></select></label>
+        <label>Numer zlecenia<input name="order_ref" maxlength="160"></label>
+      </div>
+      <label>Uwagi<textarea name="note" maxlength="2000" rows="2"></textarea></label>
+      <div class="dialog-actions"><button class="secondary close-dialog" type="button">Anuluj</button><button class="primary" type="submit">Zapisz zmianę historii</button></div>
+    </form>
   </dialog>
 
   <div id="toast" role="status" aria-live="polite" hidden></div>

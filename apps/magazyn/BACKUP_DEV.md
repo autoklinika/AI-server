@@ -1,6 +1,6 @@
 # Magazyn V1 — instrukcja backupu DEV
 
-**Status 27.10.2026: rzeczywisty szyfrowany backup Magazynu DEV zapisano i odtworzono z GlobalNAS (PASS). Kopię klucza AES zaszyfrowano dla istniejącego YubiKeya 5C i zapisano na NAS. Fizyczne odszyfrowanie tego pliku z YubiKey/PIN, weryfikacja klucza, archiwum i restore bazy w RAM oraz usunięcie danych tymczasowych: PASS. Brak automatycznego harmonogramu i wdrożenia produkcyjnego.**
+**Status 27.10.2026: rzeczywisty szyfrowany backup Magazynu DEV zapisano i odtworzono z GlobalNAS (PASS). Kopię AES key zabezpieczono istniejącym YubiKey 5C, a fizyczne odzyskanie i restore PASS. Integracja z istniejącymi timerami Stage K została AKTYWOWANA wyłącznie dla bazy DEV, bez nowego schedulera; monitora Stage K uruchomiono pomyślnie. Sam Magazyn pozostaje DEV, bez wdrożenia produkcyjnego i bez merge do main.**
 
 ## Zasada działania
 
@@ -29,7 +29,7 @@ Weryfikacja przed kopiowaniem wymaga prawdziwego udziału CIFS AI_Platform i ist
 
 Procedura dzienna tworzy jedną kopię daily. W niedzielę UTC powstaje również weekly, pierwszego dnia miesiąca UTC również monthly. Retencja na GlobalNAS: 7 daily, 4 weekly, 3 monthly. Usuwane są tylko najstarsze poprawne pliki w podkatalogu Magazyn, po pozytywnym kopiowaniu. Lokalny bufor ma domyślny limit 2 GB; przekroczenie limitu nie wpływa na pracę aplikacji.
 
-**Automatyczny timer nie został zainstalowany.** Zgodnie z architekturą AI Platform nie dodajemy drugiego schedulera bez decyzji o integracji z istniejącym mechanizmem Stage K. Jednorazowy zapis na NAS i odczyt/restore zakończył się sukcesem; nie oznacza to jeszcze automatycznego wykonywania kopii ani kompletnej procedury DR.
+**Nie zainstalowano nowego timera.** Magazyn DEV korzysta z istniejących timerów Stage K przez trzy odwracalne drop-in systemd; najbliższe wykonania daily/weekly wymagają jeszcze osobnego potwierdzenia w logach. Ręczny zapis i odtworzenie z NAS są PASS. Pełne DR po utracie jedynego YubiKeya pozostaje PENDING.
 
 ## Odtworzenie
 
@@ -44,7 +44,7 @@ GET /api/backup/status zwraca lokalny stan bufora i daty kopii; POST /api/backup
 ## Nadal brak
 
 - **Drugiego niezależnego sposobu odzyskania** po jednoczesnej utracie hosta i obecnego YubiKeya; fizyczny test odszyfrowania kopii recovery z istniejącym YubiKeyiem został już zaliczony 27.10.2026.
-- Powtarzalnego uruchamiania kopii w zgodzie z Stage K, bez nowego niezależnego schedulera, oraz monitorowania zaległości i błędów.
+- Powtarzalne uruchamianie przez istniejący Stage K jest aktywne dla DEV; odbiór automatycznych daily/weekly pozostaje do potwierdzenia. Monitoring zaległości jest widoczny administratorowi w WebGUI.
 - Obsługi przyszłych zdjęć/załączników i końcowego odbioru uprawnień DR. Rzeczywisty marker Stage K, CIFS GlobalNAS, zapis i odtworzenie z NAS były pozytywnie sprawdzone 27.10.2026.
 
 ### Potwierdzony test DEV z 27.10.2026
@@ -61,7 +61,7 @@ Nie umieszczać danych magazynowych, archiwów, kluczy ani kont pracowników w p
 
 ## Integracja Stage K — dodatkowy etap DEV 27.10.2026
 
-Na istniejącym worktree DEV przygotowano moduł magazyn.stage_k_bridge. Wykorzystuje istniejące usługi daily, weekly i hourly-monitor Stage K poprzez opcjonalne drop-in ExecStartPre, bez zmiany kodu Stage K, nowych timerów i usług. Szablony drop-in **nie zostały zainstalowane**. Wymagane jest osobne zatwierdzenie uruchomienia automatycznego harmonogramu.
+Na istniejącym worktree DEV przygotowano moduł magazyn.stage_k_bridge. Wykorzystuje istniejące usługi daily, weekly i hourly-monitor Stage K poprzez opcjonalne drop-in ExecStartPre, bez zmiany kodu Stage K, nowych timerów i usług. Szablony zostały zastosowane jako trzy minimalne drop-in w istniejących user-service Stage K, wyłącznie dla bazy DEV. Monitor systemd wywołał adapter i zakończył się PASS; najbliższe daily/weekly wymagają obserwacji. Nie utworzono nowych timerów.
 
 Rzeczywisty ręczny cykl DEV na istniejącej bazie i GlobalNAS: snapshot + wysyłka + weryfikacja + restore w RAM = **PASS**. Ponowne uruchomienie tego samego dnia i retry nie tworzą duplikatów; backlog = 0. Status health oraz ostatni błąd są dostępne administratorowi w WebGUI. Pełny opis wdrożenia i rollback: [Magazyn Stage K DEV](docs/MAGAZYN_STAGE_K_BACKUP_INTEGRATION_DEV_2026-10-27_PL.md).
 

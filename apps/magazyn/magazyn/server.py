@@ -4,6 +4,7 @@ from __future__ import annotations
 import hmac
 import os
 import secrets
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, StrictInt
 
 from .store import Problem, Store
-from . import transfers, backup, messaging
+from . import transfers, backup, messaging, restore_checks
 
 COOKIE = "magazyn_session"
 STATIC = Path(__file__).parent / "static"
@@ -106,6 +107,12 @@ class Upload(BaseModel):
     token: str = Field(default="", max_length=100, pattern=r"^(?:|[0-9]{1,12}\.[a-f0-9]{64})$")
 
 
+class RestoreCheckRequest(BaseModel):
+    source: str = Field(pattern="^(nas|local)$")
+    tier: str = Field(pattern="^(daily|weekly|monthly)$")
+    name: str = Field(min_length=20, max_length=50)
+
+
 def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> FastAPI:
     path = db_path or os.environ.get("MAGAZYN_DB_PATH")
     if not path:
@@ -173,8 +180,12 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
         token,csrf = store.create_session(user["id"])
         response = JSONResponse({"id":user["id"],"username":user["username"],
                                  "role":user["role"],"csrf":csrf})
-        response.set_cookie(COOKIE,token,httponly=True,secure=secure_cookie,
-                            samesite="strict",max_age=8*3600,path="/")
+        # When the DEV loopback HTTP fallback remains enabled, the existing
+        # Tailscale Serve HTTPS endpoint must still set the Secure cookie flag.
+        # Production enforces Secure on every request via secure_cookie=True.
+        response.set_cookie(COOKIE, token, httponly=True,
+                            secure=secure_cookie or request.url.scheme == "https",
+                            samesite="strict", max_age=8*3600, path="/")
         return response
 
     @app.get("/api/auth/me")
@@ -293,8 +304,12 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
 
     @app.get("/api/history")
     def history(item_id: int | None=None, actor_id: int | None=None,
+                q: str="", date_from: date | None=None, date_to: date | None=None,
                 limit: int=100, _user: dict = Depends(require_user)):
-        return store.history(item_id,actor_id,limit)
+        if (len(q) > 120 or (date_from and date_to and date_from > date_to)):
+            raise Problem(422, "Nieprawidłowe filtry historii")
+        return store.history(item_id, actor_id, limit, query=q,
+                             date_from=date_from, date_to=date_to)
 
     @app.patch("/api/history/{event_id}")
     def edit_history(event_id: int,data: dict[str,Any],_user: dict = Depends(require_admin_write)):
@@ -359,6 +374,32 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
             return {"ok": True, "created": len(paths), "pending": backup.status(spool)["pending"]}
         except backup.BackupFailure as exc:
             raise Problem(503, str(exc)) from exc
+
+    @app.get("/api/backup/archives")
+    def backup_archives(_user: dict = Depends(require_admin)):
+        spool = os.environ.get("MAGAZYN_BACKUP_SPOOL", "")
+        if not spool:
+            raise Problem(503, "Backup nie jest skonfigurowany")
+        try:
+            return restore_checks.list_archives(
+                spool, os.environ.get("MAGAZYN_BACKUP_MOUNT", "/mnt/AI_Platform"))
+        except (backup.BackupFailure, OSError) as exc:
+            raise Problem(503, "Nie można odczytać archiwów Magazynu") from exc
+
+    @app.post("/api/backup/restore-check")
+    def backup_restore_check(body: RestoreCheckRequest,
+                             _user: dict = Depends(require_admin_write)):
+        spool = os.environ.get("MAGAZYN_BACKUP_SPOOL", "")
+        key_file = os.environ.get("MAGAZYN_BACKUP_KEY_FILE", "")
+        if not spool or not key_file:
+            raise Problem(503, "Backup nie jest skonfigurowany")
+        try:
+            return restore_checks.test_restore(
+                body.source, body.tier, body.name, spool,
+                os.environ.get("MAGAZYN_BACKUP_MOUNT", "/mnt/AI_Platform"),
+                key_file)
+        except (backup.BackupFailure, OSError) as exc:
+            raise Problem(503, "Próba odtworzenia nie powiodła się") from exc
 
     @app.get("/api/users")
     def users(_user: dict = Depends(require_admin)):

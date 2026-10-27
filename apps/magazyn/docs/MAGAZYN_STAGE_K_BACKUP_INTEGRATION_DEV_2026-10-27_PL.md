@@ -1,7 +1,7 @@
 # Magazyn V1 — integracja backupu z istniejącym Stage K (DEV)
 
 **Data:** 2026-10-27
-**Status:** kod i rzeczywisty ręczny cykl DEV przetestowane; **NIE ZAINSTALOWANO** integracji w aktywnych jednostkach Stage K. Brak wdrożenia Magazynu na produkcję.
+**Aktualizacja 27.10.2026:** trzy drop-in zostały aktywowane dla bazy Magazynu DEV w istniejących user-service Stage K; rzeczywisty start monitora PASS. Brak nowego timera, brak wdrożenia Magazynu na produkcję.
 
 ## Założenia i granica zmian
 
@@ -29,13 +29,13 @@ Tryb **retry**: python -m magazyn.stage_k_bridge retry --config PRIVATE_CONFIG
 
 Dostęp do prywatnego pliku konfiguracji JSON ma wyłącznie właściciel (0600). Pola: db, spool, key_file, mount — wszystkie jako ścieżki bezwzględne; plik **nie zawiera klucza AES**, tokenu Telegrama ani PIN-u. Baza, spool i klucz muszą być lokalne.
 
-## Podłączenie do Stage K — wyłącznie po oddzielnej zgodzie produkcyjnej
+## Podłączenie do Stage K — wykonane dla Magazynu DEV, bez wdrożenia produkcyjnej aplikacji
 
 Szablony: apps/magazyn/deploy/stage-k/.
 
 - magazyn-cycle.conf.in: do *obu* istniejących ai-platform-stage-k-daily.service i ai-platform-stage-k-weekly.service.
 - magazyn-retry.conf.in: do ai-platform-stage-k-monitor.service.
-- Zastąp @MAGAZYN_PACKAGE_ROOT@, @MAGAZYN_PYTHON@ i @MAGAZYN_PRIVATE_CONFIG@ sprawdzonymi ścieżkami **stabilnego wdrożenia Magazynu**, nie gałęzi DEV.
+- Na potrzeby bieżącego testu automatyzacji zastosowano sprawdzone ścieżki aktywnego Magazynu DEV; docelowa produkcja będzie wymagać oddzielnego pakietu stabilnego, poza worktree DEV. Tokeny szablonów @MAGAZYN_PACKAGE_ROOT@, @MAGAZYN_PYTHON@ i @MAGAZYN_PRIVATE_CONFIG@ należy w produkcji zastąpić ścieżkami zatwierdzonej instalacji.
 - Zachowaj pliki systemd Stage K bez zmian. Nową konfigurację umieść tylko jako osobne, nazwane magazyn.conf w drop-in tych trzech jednostek user-systemd.
 - Dyrektywy ExecStartPre=-... wykonują Magazyn **przed** Stage K, nawet jeśli zadanie Stage K później się nie powiedzie. Prefiks - każe systemd nie przerywać Stage K przy błędzie Magazynu. Timeout ogranicza czas do 90 s dla cyklu i 45 s dla retry.
 - Przed aktywacją: weryfikacja podstawień, uprawnień, sprawności DB/key, systemd-analyze verify, kontrola systemctl --user cat, daemon-reload, izolowany test Magazynu i obserwacja następnego realnego harmonogramu.
@@ -59,7 +59,7 @@ Szablony: apps/magazyn/deploy/stage-k/.
 - Powtórzenie cycle w tym samym dniu: utworzono **0** nowych kopii, wysłano **0** ponownie: **PASS**.
 - Następne ręczne retry: backlog **0**, wynik **PASS**.
 - Nie zmieniano danych produktów, kont, bota, YubiKeya, kodu produkcyjnego Stage K, harmonogramów ani istniejących kopii Stage K.
-- **Nie wykonano testu automatycznego wyzwolenia na aktywnym timerze**: wdrożenie drop-in wymaga późniejszej zgody.
+- Uruchomienie usługi Stage K monitor z nowym drop-in: PASS. Automatyczny daily/weekly pozostaje do odbioru po faktycznym uruchomieniu z timera.
 
 ## Otwarte warunki produkcyjne
 

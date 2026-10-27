@@ -4,6 +4,7 @@
 let session=null, locations=[], chosen=null, allItems=[], usersCache=[], linkedAccounts=[];
 let searchRevision=0, itemRevision=0, similarRevision=0, similarTimer=null, toastTimer=null;
 let similarCandidates=[], inventoryRows=[], inventoryLocation=null, inventoryRequest=0, importUpload=null;
+let historyRows=[], backupArchiveRows=[];
 
 const byId=id=>document.getElementById(id);
 const esc=value=>String(value===null||value===undefined?"":value)
@@ -77,7 +78,7 @@ function showTab(tab){
   if(tab==="products")loadItems();
   else if(tab==="low")loadLow();
   else if(tab==="history")loadHistory();
-  else if(tab==="admin"){loadAdmin();loadBackupStatus();loadMessagingUi();}
+  else if(tab==="admin"){loadAdmin();loadBackupStatus();loadBackupArchives();loadMessagingUi();}
   if(window.scrollY>130)window.scrollTo({top:0,behavior:"smooth"});
 }
 function locationOptions(empty=false){
@@ -221,11 +222,33 @@ async function loadLow(){
 async function loadHistory(){
   if(!session)return;
   try{
-    const rows=await api("/api/history?limit=200");
+    const params=new URLSearchParams({limit:"200"});
+    for(const [field,key] of [["history-query","q"],["history-actor","actor_id"],
+                               ["history-from","date_from"],["history-to","date_to"]]){
+      const value=byId(field).value.trim();
+      if(value)params.set(key,value);
+    }
+    if(byId("history-from").value && byId("history-to").value &&
+       byId("history-from").value>byId("history-to").value){
+      throw new Error("Data końcowa nie może być wcześniejsza niż początkowa.");
+    }
+    const rows=await api("/api/history?"+params.toString());
+    historyRows=rows;
     const container=byId("history-results");
+    const actors=new Map();
+    if(session.role==="admin"){
+      try{
+        const accounts=await api("/api/users");
+        for(const u of accounts)actors.set(u.id,u.username);
+      }catch(e){/* Historia nadal działa bez listy kont. */}
+    }
+    for(const row of rows)if(!actors.has(row.actor_id))actors.set(row.actor_id,row.actor_name);
+    setOptions("history-actor",option("","Wszyscy użytkownicy")+
+      [...actors.entries()].sort((a,b)=>String(a[1]).localeCompare(String(b[1]),"pl"))
+        .map(([userId,userName])=>option(userId,userName)).join(""));
     if(!rows.length){
       container.innerHTML='<div class="empty borderless"><span class="empty-mark">'+icon("history")+'</span>'+
-        '<h3>Historia jest pusta</h3><p>Gdy wykonasz pierwszą operację, pojawi się tutaj.</p></div>';
+        '<h3>Brak wyników historii</h3><p>Zmień filtry albo poczekaj na kolejną operację magazynową.</p></div>';
       return;
     }
     const entries=rows.map(row=>
@@ -234,12 +257,53 @@ async function loadHistory(){
       '<td>'+esc(row.item_label)+'</td><td>'+fmt(row.quantity)+' szt.</td>'+
       '<td>'+esc(row.location_code+(row.to_location_code?" → "+row.to_location_code:""))+'</td>'+
       '<td>'+esc(reasonLabels[row.reason]||row.reason||"—")+'</td>'+
-      '<td>'+(session.role==="admin"?'<button class="small danger delete-history" type="button" data-id="'+row.id+'">Usuń</button>':"")+'</td></tr>').join("");
+      '<td>'+(session.role==="admin"?'<button class="small edit-history" type="button" data-id="'+row.id+'">Edytuj</button> '+
+      '<button class="small danger delete-history" type="button" data-id="'+row.id+'">Usuń</button>':"")+'</td></tr>').join("");
     container.innerHTML='<div class="table-wrap"><table class="history-table"><thead><tr>'+
       '<th>Data (UTC)</th><th>Użytkownik</th><th>Operacja</th><th>Produkt</th>'+
-      '<th>Ilość</th><th>Lokalizacja</th><th>Powód</th><th></th>'+
+      '<th>Ilość</th><th>Lokalizacja</th><th>Powód</th><th>Administracja</th>'+
       '</tr></thead><tbody>'+entries+'</tbody></table></div>';
   }catch(e){toast(e.message,true);}
+}
+
+function openHistoryEditor(eventId){
+  if(session?.role!=="admin")return;
+  const row=historyRows.find(x=>x.id===eventId);
+  if(!row){toast("Nie znaleziono wpisu historii.",true);return;}
+  const form=byId("history-edit-form");
+  for(const field of ["actor_name","item_label","action","quantity","location_code",
+                      "created_at","before_source","after_source","reason","order_ref","note"]){
+    form.elements.namedItem(field).value=row[field]??"";
+  }
+  form.elements.namedItem("event_id").value=String(eventId);
+  byId("history-edit-dialog").showModal();
+}
+
+async function submitHistoryEditor(event){
+  event.preventDefault();
+  if(session?.role!=="admin")return;
+  const form=event.currentTarget;
+  if(!form.reportValidity())return;
+  const values=Object.fromEntries(new FormData(form).entries());
+  const id=Number(values.event_id);
+  delete values.event_id;
+  for(const name of ["quantity","before_source","after_source"]){
+    values[name]=Number(values[name]);
+    if(!Number.isSafeInteger(values[name])||values[name]<0||values[name]>2000000000){
+      toast("Nieprawidłowa ilość w historii.",true);return;
+    }
+  }
+  if(Number.isNaN(Date.parse(values.created_at))){
+    toast("Nieprawidłowa data zdarzenia.",true);return;
+  }
+  const submit=form.querySelector('button[type="submit"]');submit.disabled=true;
+  try{
+    await api("/api/history/"+id,{method:"PATCH",body:JSON.stringify(values)});
+    byId("history-edit-dialog").close();
+    toast("Zmieniono wpis historii. Bieżący stan magazynu bez zmian.");
+    await loadHistory();
+  }catch(e){toast(e.message,true);}
+  finally{submit.disabled=false;}
 }
 
 
@@ -753,6 +817,37 @@ async function loadBackupStatus(){
       (status.last_error?" Problem backupu: "+status.last_error:"");
   }catch(e){byId("backup-status").textContent="Nie można pobrać statusu: "+e.message;}
 }
+async function loadBackupArchives(){
+  if(session?.role!=="admin")return;
+  try{
+    const result=await api("/api/backup/archives");
+    backupArchiveRows=result.archives||[];
+    const options=backupArchiveRows.map((row,i)=>option(
+      i,(row.source==="nas"?"GlobalNAS":"Bufor lokalny")+" / "+
+        row.tier+" / "+row.name.substring(0,15))).join("");
+    setOptions("backup-archive-select",option("","Wybierz kopię") + options,false);
+    byId("backup-restore-result").textContent=result.nas_online?
+      "GlobalNAS dostępny. Znaleziono archiwów: "+backupArchiveRows.length+".":
+      "GlobalNAS niedostępny. Można sprawdzać kopie pozostawione w lokalnym buforze.";
+  }catch(e){byId("backup-restore-result").textContent="Nie można odczytać listy: "+e.message;}
+}
+async function runBackupRestoreTest(){
+  if(session?.role!=="admin")return;
+  const index=byId("backup-archive-select").value;
+  if(index===""){toast("Wybierz kopię do kontroli.",true);return;}
+  const row=backupArchiveRows[Number(index)];
+  if(!row)return;
+  if(!confirm("Sprawdzić odtworzenie archiwum w RAM? Baza robocza pozostanie bez zmian."))return;
+  const button=byId("backup-restore-test");button.disabled=true;
+  try{
+    const result=await api("/api/backup/restore-check",{
+      method:"POST",body:JSON.stringify({source:row.source,tier:row.tier,name:row.name})});
+    byId("backup-restore-result").textContent=
+      "PASS: archiwum "+result.name+" odtworzono w RAM, integralność "+result.integrity+
+      ". Kopia tymczasowa usunięta; działająca baza bez zmian.";
+  }catch(e){byId("backup-restore-result").textContent="FAIL: "+e.message;toast(e.message,true);}
+  finally{button.disabled=false;}
+}
 
 /* Inventory counting by location */
 function clearInventory(){
@@ -1033,7 +1128,17 @@ document.addEventListener("DOMContentLoaded",async()=>{
   byId("location-form").addEventListener("submit",formLocation);
   byId("user-form").addEventListener("submit",formUser);
   byId("pairing-form").addEventListener("submit",formPairing);
+  byId("history-filters").addEventListener("submit",event=>{
+    event.preventDefault();loadHistory();
+  });
+  byId("history-clear").addEventListener("click",()=>{
+    for(const field of ["history-query","history-actor","history-from","history-to"])byId(field).value="";
+    loadHistory();
+  });
+  byId("history-edit-form").addEventListener("submit",submitHistoryEditor);
   byId("backup-refresh").addEventListener("click",loadBackupStatus);
+  byId("backup-archives-refresh").addEventListener("click",loadBackupArchives);
+  byId("backup-restore-test").addEventListener("click",runBackupRestoreTest);
   byId("backup-manual").addEventListener("click",async()=>{
     if(!confirm("Utworzyć zaszyfrowaną kopię w lokalnym buforze?"))return;
     const button=byId("backup-manual");button.disabled=true;
@@ -1075,6 +1180,10 @@ document.addEventListener("DOMContentLoaded",async()=>{
     if(elem.classList.contains("open-item"))return openItem(id);
     if(elem.classList.contains("quick-receive"))return openItem(id,"receive");
     if(elem.classList.contains("quick-issue"))return openItem(id,"issue");
+    if(elem.classList.contains("edit-history")){
+      openHistoryEditor(id);
+      return;
+    }
     if(elem.classList.contains("delete-history")){
       if(session.role!=="admin"||!confirm("Usunąć ten wpis historii?"))return;
       try{

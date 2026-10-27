@@ -803,7 +803,8 @@ class Store:
             return {"event_id":event_id,"before":before,"after":after,
                     "before_target":before_target,"after_target":after_target}
 
-    def history(self, item_id=None, actor_id=None, limit=100):
+    def history(self, item_id=None, actor_id=None, limit=100, *,
+                query="", date_from=None, date_to=None):
         if limit<1 or limit>500:
             raise Problem(422,"Nieprawidłowy limit")
         sql="SELECT * FROM events WHERE 1=1"
@@ -814,7 +815,16 @@ class Store:
         if actor_id is not None:
             sql+=" AND actor_id=?"
             args.append(actor_id)
-        sql+=" ORDER BY id DESC LIMIT ?"
+        if query.strip():
+            sql+=" AND instr(lower(item_label),lower(?))>0"
+            args.append(query.strip())
+        if date_from is not None:
+            sql+=" AND substr(created_at,1,10)>=?"
+            args.append(date_from.isoformat())
+        if date_to is not None:
+            sql+=" AND substr(created_at,1,10)<=?"
+            args.append(date_to.isoformat())
+        sql+=" ORDER BY created_at DESC,id DESC LIMIT ?"
         args.append(limit)
         with self.connect() as con:
             return [dict(r) for r in con.execute(sql,args)]
