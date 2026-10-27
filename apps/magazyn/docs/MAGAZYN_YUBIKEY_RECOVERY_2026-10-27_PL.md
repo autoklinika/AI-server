@@ -42,7 +42,19 @@ Zawiera jednego recipienta age-plugin-yubikey; zgadza się z plikiem age-recipie
 4. Zweryfikuj długość odzyskanego klucza (32 bajty), wykonaj verify zaszyfrowanego archiwum .mgzb z NAS i restore do **nowej**, pustej bazy.
 5. Po zakończeniu testu usuń tymczasowy jawny klucz z RAM. Zarchiwizuj wynik operacji bez danych poufnych.
 
-**Status procedury:** brak osobnego testu odszyfrowania nowego pliku .age Magazynu — 27.10.2026 YubiKey nie został wykryty. Wcześniejszy decrypt drill Stage K nie jest dowodem, że nowy plik Magazynu został już odszyfrowany.
+**Status procedury:** 27.10.2026 YubiKey został następnie **podłączony i poprawnie wykryty**, PIV slot 0x82 ECC P-256, licznik PIN 3/3. Plugin zwrócił jedną pasującą identity, a publiczny recipient jest identyczny z tym użytym do szyfrowania. Niezmienna konfiguracja YubiKey i preflight `YUBIKEY_RECOVERY_PREFLIGHT=PASS`. **Fizyczny decrypt tego pliku nadal oczekuje na lokalne podanie PIN-u.** Wcześniejszy decrypt drill Stage K nie zastępuje tego sprawdzenia.
+
+### Bezpieczny test jedną komendą na serwerze
+
+Po podłączeniu YubiKeya uruchom jako użytkownik `harrypotter`, **bez sudo**, w interaktywnym terminalu SSH:
+
+    bash /srv/ai-data/staging/magazyn-telegram-dev-20261027/verify-yubikey-recovery.sh --run
+
+Skrypt ma wcześniej zaliczony preflight `--check` i sprawdza prawdziwy YubiKey 5C, PIV RETIRED1/0x82 oraz zgodność publicznego odbiorcy Stage K. **Parametr pluginu `--slot 1` oznacza PIV RETIRED1/0x82; nie należy używać `--slot 82`**, ponieważ plugin wymaga numeru slotu 1–20.
+
+Jeżeli pojawi się prośba o PIN PIV, wpisz go **bezpośrednio w tym terminalu**, nigdy w ChatGPT ani argumentach poleceń. Przy błędnym PIN-ie przerwij test zamiast ponawiać próbę wielokrotnie. Po odszyfrowaniu skrypt porówna odzyskany AES key bez jego ujawniania, zweryfikuje rzeczywisty zaszyfrowany backup Magazynu z GlobalNAS i wykona próbny restore do katalogu RAM `/dev/shm`. Katalog tymczasowy zostanie usunięty przy wyjściu. Nie nadpisuje bazy, nie zmienia Stage K, nie restartuje WebGUI/Telegrama.
+
+Wynik pozytywny to wyświetlenie `MAGAZYN_REAL_YUBIKEY_RECOVERY_DRILL=PASS` wraz z `TEMPORARY_RAM_SECRETS_REMOVED=PASS`. **Nie ogłaszamy pełnego PASS przed faktycznym wynikiem tej operacji.**
 
 ## Ryzyka przed produkcją
 
