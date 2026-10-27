@@ -68,3 +68,10 @@ Wykonano test szyfrowania i odszyfrowania przez age z syntetycznym kluczem i rec
 - Dostęp Tailscale i uprawnienia pracowników (tailnet ACL) do potwierdzenia. Brak publicznego wystawienia.
 - Nie uruchamiano GPU, ComfyUI, Ollamy ani RM.
 - Pozostaje: drugi fizyczny recovery drill, najbliższe automatyczne daily/weekly, odrębny błąd Stage K weekly, akceptacja sposobu dostępu pracowników i końcowy rollout/rollback produkcji.
+
+
+### Aktualizacja 27.10.2026, 23:52 CET — Stage K weekly naprawiony
+
+Nieaktualny jest powyższy historyczny wpis o tygodniowym Stage K FAIL z 25.10. Bez nowych timerów dodano dwa drop-in: do usługi weekly maksymalnie trzy próby z odstępem 5 min, do tygodniowego timera niedzielną godzinę 03:30 odporną na zmianę czasu. Persistent=true sam wywołał zaległe wykonanie. Nowy pełny weekly zakończył się PASS po 420,711 s, w tym restore Knowledge, Domains, Adapters — wszystkie PASS. Monitor Stage K po ponownym sprawdzeniu PASS i issues=[]. Retencja niczego nie usunęła.
+
+Bramka magazyn.release_gate obecnie potwierdza Stage K daily i weekly PASS. Produkcja Magazynu nadal NO_GO tylko przez trzy niezależne warunki: faktyczne regularne wywołanie daily Magazynu 28.10 o 02:30, niezależny klucz odzyskiwania poza YubiKeyem oraz odbiór ACL Tailscale pracowników. Szczegóły i rollback w [raporcie naprawy Stage K](MAGAZYN_STAGE_K_SCHEDULE_REPAIR_2026-10-27_PL.md).

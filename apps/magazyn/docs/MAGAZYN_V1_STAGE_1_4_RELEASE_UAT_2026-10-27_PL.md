@@ -74,3 +74,10 @@ Nie można ominąć statusu FAIL tygodniowego Stage K tymi trzema przełącznika
 - Ponowny ręczny test bramki produkcyjnej: **NO_GO**. PASS: SQLite v3, szyfrowany backup GlobalNAS, aktualny Stage K daily, HTTPS/TLS, pytest. BLOCKED: Stage K weekly+restore, drugi fizyczny klucz poza YubiKeyem, rzeczywisty daily timer po dołączeniu Magazynu oraz odbiór Tailscale ACL pracowników.
 - Po wdrożeniu zmian wyłącznie w magazyn-webgui-dev.service: HTTPS i nowe zasoby HTML/JS PASS, nieautoryzowane API 401, integralność SQLite/dokumentów i liczby rekordów dziesięciu tabel przed/po restarcie IDENTYCZNE PASS. WebGUI DEV i Telegram DEV aktywne. Produkcyjnych usług ani kopii Stage K nie modyfikowano.
 - Właściciel może korzystać z nowej funkcji w DEV po odświeżeniu strony: Produkty → Szczegóły → Status zamówienia → Przyjmij zamówioną dostawę.
+
+
+### Aktualizacja 27.10.2026, 23:52 CET — Stage K weekly naprawiony
+
+Nieaktualny jest powyższy historyczny wpis o tygodniowym Stage K FAIL z 25.10. Bez nowych timerów dodano dwa drop-in: do usługi weekly maksymalnie trzy próby z odstępem 5 min, do tygodniowego timera niedzielną godzinę 03:30 odporną na zmianę czasu. Persistent=true sam wywołał zaległe wykonanie. Nowy pełny weekly zakończył się PASS po 420,711 s, w tym restore Knowledge, Domains, Adapters — wszystkie PASS. Monitor Stage K po ponownym sprawdzeniu PASS i issues=[]. Retencja niczego nie usunęła.
+
+Bramka magazyn.release_gate obecnie potwierdza Stage K daily i weekly PASS. Produkcja Magazynu nadal NO_GO tylko przez trzy niezależne warunki: faktyczne regularne wywołanie daily Magazynu 28.10 o 02:30, niezależny klucz odzyskiwania poza YubiKeyem oraz odbiór ACL Tailscale pracowników. Szczegóły i rollback w [raporcie naprawy Stage K](MAGAZYN_STAGE_K_SCHEDULE_REPAIR_2026-10-27_PL.md).
