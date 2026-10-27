@@ -555,6 +555,37 @@
     </form>
   </dialog>
 
+  <dialog id="document-preview-dialog" class="document-preview-dialog"
+          aria-labelledby="doc-preview-title">
+    <div class="doc-preview-header">
+      <div class="doc-preview-heading">
+        <p class="kicker">Dokumentacja techniczna</p>
+        <h2 id="doc-preview-title">Podgląd dokumentu</h2>
+        <p id="doc-preview-filename" class="muted"></p>
+      </div>
+      <button id="doc-preview-close" class="icon-button" type="button"
+              aria-label="Zamknij podgląd dokumentu">×</button>
+    </div>
+    <div id="doc-preview-content" class="doc-preview-content">
+      <p id="doc-preview-status" class="doc-preview-status" role="status" aria-live="polite">Wczytywanie dokumentu…</p>
+      <img id="doc-preview-image" alt="Podgląd załączonego obrazu" hidden>
+      <iframe id="doc-preview-pdf" title="Podgląd dokumentu PDF"
+              sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer" hidden></iframe>
+    </div>
+    <div class="doc-preview-footer">
+      <div id="doc-preview-image-tools" class="doc-preview-zoom-tools" hidden>
+        <button type="button" id="doc-zoom-out" aria-label="Pomniejsz obraz">−</button>
+        <output id="doc-zoom-label" aria-live="polite">100%</output>
+        <button type="button" id="doc-zoom-in" aria-label="Powiększ obraz">+</button>
+        <button type="button" id="doc-zoom-fit">Dopasuj</button>
+      </div>
+      <div class="doc-preview-footer-actions">
+        <a id="doc-preview-download" class="doc-download secondary" href="#" download>Pobierz plik</a>
+        <button id="doc-preview-dismiss" class="primary" type="button">Zamknij</button>
+      </div>
+    </div>
+  </dialog>
+
   <div id="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>

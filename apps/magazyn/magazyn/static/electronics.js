@@ -268,7 +268,8 @@ function renderElectronicDocs(details){
     documents.map(doc=>'<div class="doc-entry"><span class="doc-filename">'+
       esc(doc.filename)+'<small> · '+esc(electronicDocumentLabels[doc.doc_type]||doc.doc_type)+
       ' · '+fmt(doc.bytes)+' B</small></span>'+
-      '<span class="doc-controls"><a class="secondary doc-download" download href="/api/items/'+
+      '<span class="doc-controls"><button type="button" class="small doc-preview" data-document-id="'+
+        doc.id+'">Podgląd</button><a class="secondary doc-download" download href="/api/items/'+
       details.id+'/documents/'+doc.id+'">Pobierz</a>'+
       (session?.role==="admin"?'<button class="small danger remove-part-doc" type="button" data-document-id="'+
         doc.id+'">Usuń</button>':"")+'</span></div>').join(""):
@@ -340,6 +341,118 @@ async function quickPurchaseStatus(id,mark){
   }catch(e){toast(e.message,true);}
 }
 
+/* Authenticated, short-lived document preview inside a second native modal.
+   The original attachment endpoint and download workflow stay unchanged. */
+let documentPreviewUrl=null;
+let documentPreviewController=null;
+let documentPreviewGeneration=0;
+let documentPreviewZoom=1;
+
+function cleanupDocumentPreview(){
+  documentPreviewGeneration++;
+  if(documentPreviewController){
+    documentPreviewController.abort();
+    documentPreviewController=null;
+  }
+  const frame=byId("doc-preview-pdf"),image=byId("doc-preview-image");
+  frame.hidden=true;
+  image.hidden=true;
+  frame.removeAttribute("src");
+  image.removeAttribute("src");
+  if(documentPreviewUrl){
+    URL.revokeObjectURL(documentPreviewUrl);
+    documentPreviewUrl=null;
+  }
+  byId("doc-preview-image-tools").hidden=true;
+  documentPreviewZoom=1;
+}
+
+function closeElectronicDocumentPreview(){
+  const dialog=byId("document-preview-dialog");
+  if(dialog.open)dialog.close();
+  else cleanupDocumentPreview();
+}
+
+function updateDocumentPreviewZoom(next){
+  if(!byId("document-preview-dialog").open||byId("doc-preview-image").hidden)return;
+  documentPreviewZoom=Math.max(1,Math.min(4,next));
+  byId("doc-preview-image").style.width=(100*documentPreviewZoom)+"%";
+  byId("doc-zoom-label").textContent=Math.round(100*documentPreviewZoom)+"%";
+  byId("doc-zoom-in").disabled=documentPreviewZoom>=4;
+  byId("doc-zoom-out").disabled=documentPreviewZoom<=1;
+}
+
+async function openElectronicDocumentPreview(documentId){
+  const item=chosen;
+  if(!session||!item||item.kind!=="part"||!byId("detail-dialog").open)return;
+  const doc=(item.documents||[]).find(row=>Number(row.id)===documentId);
+  if(!doc){
+    toast("Nie znaleziono tego dokumentu w produkcie.",true);
+    return;
+  }
+  const mime=doc.mime;
+  if(!["application/pdf","image/png","image/jpeg"].includes(mime)){
+    toast("Podgląd nie obsługuje tego formatu. Użyj Pobierz.",true);
+    return;
+  }
+  cleanupDocumentPreview();
+  const generation=documentPreviewGeneration;
+  const dialog=byId("document-preview-dialog");
+  const status=byId("doc-preview-status");
+  const pdf=byId("doc-preview-pdf");
+  const image=byId("doc-preview-image");
+  const url="/api/items/"+item.id+"/documents/"+doc.id;
+  byId("doc-preview-title").textContent=mime==="application/pdf"?"Podgląd PDF":"Podgląd obrazu";
+  byId("doc-preview-filename").textContent=doc.filename;
+  byId("doc-preview-download").href=url;
+  byId("doc-preview-download").download=doc.filename;
+  status.hidden=false;
+  status.textContent="Wczytywanie dokumentu…";
+  byId("doc-preview-content").scrollTop=0;
+  dialog.showModal();
+  const controller=new AbortController();
+  documentPreviewController=controller;
+  try{
+    const response=await fetch(url,{credentials:"same-origin",cache:"no-store",signal:controller.signal});
+    if(!response.ok){
+      if(response.status===401){
+        showLogin();
+        throw new Error("Sesja wygasła. Zaloguj się ponownie.");
+      }
+      throw new Error("Nie można pobrać dokumentu (HTTP "+response.status+").");
+    }
+    const receivedType=(response.headers.get("Content-Type")||"").split(";")[0].trim().toLowerCase();
+    if(receivedType!==mime)
+      throw new Error("Nieprawidłowy format pobranego dokumentu.");
+    const contents=await response.blob();
+    if(!contents.size||contents.size>8*1024*1024)
+      throw new Error("Nieprawidłowy rozmiar pobranego dokumentu.");
+    if(controller.signal.aborted||generation!==documentPreviewGeneration||!dialog.open)
+      return;
+    documentPreviewUrl=URL.createObjectURL(new Blob([contents],{type:mime}));
+    if(mime==="application/pdf"){
+      pdf.hidden=false;
+      pdf.src=documentPreviewUrl;
+      status.hidden=false;
+      status.textContent="Jeśli przeglądarka nie wyświetla PDF, użyj „Pobierz plik” poniżej.";
+    }else{
+      image.alt="Podgląd: "+doc.filename;
+      image.hidden=false;
+      byId("doc-preview-image-tools").hidden=false;
+      image.style.width="100%";
+      image.src=documentPreviewUrl;
+      updateDocumentPreviewZoom(1);
+    }
+  }catch(e){
+    if(controller.signal.aborted||generation!==documentPreviewGeneration||!dialog.open)
+      return;
+    status.hidden=false;
+    status.textContent="Nie udało się otworzyć podglądu. "+e.message+" Możesz pobrać plik.";
+  }finally{
+    if(documentPreviewController===controller)documentPreviewController=null;
+  }
+}
+
 /* Defer keeps both scripts in the same global scope; handlers reuse auth & CSRF. */
 document.addEventListener("DOMContentLoaded",()=>{
   byId("show-add-part").addEventListener("click",openPartDialog);
@@ -365,6 +478,27 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
   byId("part-location-save").addEventListener("click",savePartLocation);
   byId("part-doc-upload").addEventListener("submit",uploadDetailDocument);
+  const preview=byId("document-preview-dialog");
+  preview.addEventListener("close",cleanupDocumentPreview);
+  byId("doc-preview-close").addEventListener("click",closeElectronicDocumentPreview);
+  byId("doc-preview-dismiss").addEventListener("click",closeElectronicDocumentPreview);
+  byId("detail-dialog").addEventListener("close",()=>{
+    if(preview.open)closeElectronicDocumentPreview();
+  });
+  byId("doc-preview-image").addEventListener("load",()=>{
+    if(preview.open&&!byId("doc-preview-image").hidden)
+      byId("doc-preview-status").hidden=true;
+  });
+  byId("doc-preview-image").addEventListener("error",()=>{
+    if(preview.open&&!byId("doc-preview-image").hidden){
+      byId("doc-preview-status").hidden=false;
+      byId("doc-preview-status").textContent=
+        "Nie można wyświetlić tego obrazu. Pobierz plik, aby otworzyć go poza Magazynem.";
+    }
+  });
+  byId("doc-zoom-in").addEventListener("click",()=>updateDocumentPreviewZoom(documentPreviewZoom+.5));
+  byId("doc-zoom-out").addEventListener("click",()=>updateDocumentPreviewZoom(documentPreviewZoom-.5));
+  byId("doc-zoom-fit").addEventListener("click",()=>updateDocumentPreviewZoom(1));
   byId("part-edit-form").addEventListener("submit",saveElectronicsSpecs);
   byId("order-status-form").addEventListener("submit",savePurchaseStatus);
   byId("order-status-form").elements.status.addEventListener("change",updatePurchaseInputs);
@@ -373,6 +507,11 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(existing){
       byId("part-dialog").close();
       openItem(Number(existing.dataset.id),"receive");
+      return;
+    }
+    const view=event.target.closest(".doc-preview");
+    if(view){
+      openElectronicDocumentPreview(Number(view.dataset.documentId));
       return;
     }
     const del=event.target.closest(".remove-part-doc");

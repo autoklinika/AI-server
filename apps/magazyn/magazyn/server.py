@@ -170,7 +170,7 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Cache-Control"] = "no-store"
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; frame-src blob:; "
             "connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
         return response
 

@@ -708,3 +708,74 @@ a.doc-download:hover { background: var(--orange-soft); border-color: #E3B38F; }
   .part-sheet .sticky-actions { position: relative; bottom: auto; }
   .part-sheet #part-order-on-create { scroll-margin-bottom: 110px; }
 }
+
+
+/* Authenticated documentation viewer. Reuses the palette; no external PDF service. */
+dialog.document-preview-dialog:not([open]) { display: none; }
+dialog.document-preview-dialog[open] {
+  display: flex; flex-direction: column; padding: 0; overflow: hidden;
+  width: min(1120px, calc(100vw - 24px));
+  height: min(900px, calc(100dvh - 24px));
+  max-width: 100vw; max-height: 100dvh;
+  margin: auto; border-radius: 20px;
+}
+.doc-preview-header {
+  display: flex; flex: none; align-items: center; justify-content: space-between;
+  gap: 15px; padding: 17px 20px; border-bottom: 1px solid var(--line);
+  background: var(--white);
+}
+.doc-preview-heading { min-width: 0; }
+.doc-preview-heading .kicker { margin-bottom: 5px; }
+.doc-preview-heading h2 { font-size: 1.3rem; }
+.doc-preview-heading .muted {
+  font-size: .79rem; overflow-wrap: anywhere; margin-top: 4px;
+}
+.doc-preview-header .icon-button { min-width: 44px; width: 44px; height: 44px; flex: none; }
+.doc-preview-content {
+  flex: 1 1 auto; min-height: 0; min-width: 0; overflow: auto;
+  background: var(--page); text-align: center;
+  -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+}
+.doc-preview-content #doc-preview-image {
+  width: 100%; max-width: none; height: auto; object-fit: contain;
+  display: block; margin: 0 auto;
+}
+.doc-preview-content #doc-preview-pdf {
+  display: block; width: 100%; height: 100%; min-height: 100%;
+  border: none; background: white;
+}
+.doc-preview-status {
+  padding: 17px; color: var(--muted); font-size: .86rem;
+  line-height: 1.5; overflow-wrap: anywhere;
+}
+.doc-preview-footer {
+  flex: none; display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 12px 20px; background: white;
+  border-top: 1px solid var(--line);
+}
+.doc-preview-zoom-tools,
+.doc-preview-footer-actions {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 7px;
+}
+.doc-preview-zoom-tools button { min-width: 44px; min-height: 44px; }
+.doc-preview-zoom-tools output { color: var(--muted); min-width: 49px; text-align: center; font-size: .81rem; }
+.doc-preview-footer-actions a,
+.doc-preview-footer-actions button { min-height: 44px; white-space: nowrap; }
+@media (max-width: 650px) {
+  dialog.document-preview-dialog[open] {
+    width: 100vw; max-width: 100vw; height: calc(100dvh - 6px);
+    max-height: 100dvh; border-radius: 18px 18px 0 0;
+    margin: auto auto 0;
+  }
+  .doc-preview-header { padding: 12px 14px; }
+  .doc-preview-heading h2 { font-size: 1.12rem; }
+  .doc-preview-footer {
+    flex-direction: column; align-items: stretch; gap: 9px;
+    padding: 9px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  .doc-preview-footer-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .doc-preview-footer-actions a,
+  .doc-preview-footer-actions button { width: 100%; padding: 11px 8px; }
+  .doc-preview-zoom-tools { justify-content: center; }
+  .doc-preview-zoom-tools button { flex: 1 1 auto; }
+}
