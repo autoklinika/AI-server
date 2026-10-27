@@ -1,0 +1,4 @@
+# Template ONLY. Not installed in DEV or production.
+# Apply to existing ai-platform-stage-k-monitor.service (user-systemd).
+[Service]
+ExecStartPre=-/usr/bin/timeout --signal=TERM --kill-after=5s 45s /usr/bin/env PYTHONPATH=@MAGAZYN_PACKAGE_ROOT@ @MAGAZYN_PYTHON@ -m magazyn.stage_k_bridge retry --config @MAGAZYN_PRIVATE_CONFIG@

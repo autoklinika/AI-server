@@ -1,0 +1,5 @@
+# Template ONLY. Not installed in DEV or production.
+# Apply after approved Magazyn release paths have been substituted.
+# Intended for BOTH existing user services: stage-k-daily and stage-k-weekly.
+[Service]
+ExecStartPre=-/usr/bin/timeout --signal=TERM --kill-after=5s 90s /usr/bin/env PYTHONPATH=@MAGAZYN_PACKAGE_ROOT@ @MAGAZYN_PYTHON@ -m magazyn.stage_k_bridge cycle --config @MAGAZYN_PRIVATE_CONFIG@

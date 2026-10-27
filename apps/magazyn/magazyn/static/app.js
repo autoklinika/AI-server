@@ -745,7 +745,12 @@ async function loadBackupStatus(){
       "Backup nie jest jeszcze skonfigurowany. Brak aktywnego harmonogramu.":
       "Kopie w lokalnym buforze: "+(status.pending||0)+
       ". Ostatnia lokalna: "+(status.last_local_backup||"brak")+
-      ". Ostatnia wysłana do GlobalNAS: "+(status.last_synced_at||"brak")+".";
+      ". Ostatnia wysłana do GlobalNAS: "+(status.last_synced_at||"brak")+"."+
+      (status.bridge_health?" Ostatnia kontrola kopii Magazynu: "+status.bridge_health+
+        " ("+(status.bridge_last_check_at||"brak daty")+").":"")+
+      (status.pending&&status.bridge_oldest_pending_hours!=null?
+        " Najstarsza zaległa kopia: "+status.bridge_oldest_pending_hours+" h.":"")+
+      (status.last_error?" Problem backupu: "+status.last_error:"");
   }catch(e){byId("backup-status").textContent="Nie można pobrać statusu: "+e.message;}
 }
 

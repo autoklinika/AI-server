@@ -57,3 +57,12 @@ GET /api/backup/status zwraca lokalny stan bufora i daty kopii; POST /api/backup
 - Nie zmieniano backupów Stage K ani konfiguracji YubiKey PIV. Na NAS trafiła wyłącznie zaszyfrowana, 242-bajtowa kopia klucza odzyskiwania AES; nigdy jawny klucz. Nie instalowano nowych timerów ani crona. Magazyn pozostaje **DEV**. Szczegóły: [YubiKey recovery](docs/MAGAZYN_YUBIKEY_RECOVERY_2026-10-27_PL.md).
 
 Nie umieszczać danych magazynowych, archiwów, kluczy ani kont pracowników w publicznym repozytorium GitHub.
+
+
+## Integracja Stage K — dodatkowy etap DEV 27.10.2026
+
+Na istniejącym worktree DEV przygotowano moduł magazyn.stage_k_bridge. Wykorzystuje istniejące usługi daily, weekly i hourly-monitor Stage K poprzez opcjonalne drop-in ExecStartPre, bez zmiany kodu Stage K, nowych timerów i usług. Szablony drop-in **nie zostały zainstalowane**. Wymagane jest osobne zatwierdzenie uruchomienia automatycznego harmonogramu.
+
+Rzeczywisty ręczny cykl DEV na istniejącej bazie i GlobalNAS: snapshot + wysyłka + weryfikacja + restore w RAM = **PASS**. Ponowne uruchomienie tego samego dnia i retry nie tworzą duplikatów; backlog = 0. Status health oraz ostatni błąd są dostępne administratorowi w WebGUI. Pełny opis wdrożenia i rollback: [Magazyn Stage K DEV](docs/MAGAZYN_STAGE_K_BACKUP_INTEGRATION_DEV_2026-10-27_PL.md).
+
+Ostatni weekly Stage K z 25.10 ma odrębny, wcześniejszy wynik FAIL (knowledge_backup). Nie zmieniano tego mechanizmu ani archiwów Stage K.
