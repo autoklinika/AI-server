@@ -40,3 +40,18 @@ Role Magazynu zabezpieczają /api/users i /api/backup, lecz to nie dowodzi sieci
 ## Rollback
 
 Kod zmienia endpoint sesji, funkcję sklepu i formularze WebGUI. Nie ma nowej migracji bazy. Można przywrócić poprzedni commit DEV i zrestartować jedynie magazyn-webgui-dev.service. Zmienionych przez użytkowników haseł NIE cofamy automatycznie; pozostają zapisane w SQLite. Wszystkie rzeczywiste konta i stany pozostają zachowane.
+
+
+## Aktywacja i test rzeczywistej instancji DEV
+
+Commit funkcjonalny: 9b79c3e na gałęzi feature/magazyn-v1-dev-20261026. Po wykonaniu 216/216 testów PASS wykonano restart **wyłącznie** magazyn-webgui-dev.service, bez restartu Telegrama.
+
+- HTTPS Tailscale Serve /healthz: HTTP 200, SSL verify 0.
+- Rzeczywisty HTML: przycisk change-own-password, modale own-password-dialog i staff-password-dialog, defer script /static/account.js obecne.
+- Rzeczywisty JS: nowy endpoint change-password, obsługa resetu administratora obecna.
+- Anonimowe GET /api/users i GET /api/auth/me nadal dają HTTP 401; CSP same-origin zachowany.
+- Baza realnego Magazynu DEV: schema 3, PRAGMA integrity_check=ok, foreign_key_check 0, SHA-256 dokumentów PASS.
+- Istnieje jeden aktywny administrator i jeden aktywny pracownik; 2 produkty, 4 operacje, 2 rekordy stanów, 1 załącznik, 1 lokalizacja. Testy syntetyczne nie dopisały nic do realnego Magazynu. Realnego hasła pracownika ani administratora nie modyfikowano.
+- Obie usługi WebGUI DEV i Telegram DEV aktywne; kod i dane produkcyjne niezmienione.
+
+**PENDING / Windows 11:** fizyczne zalogowanie pracownika w Edge/Chrome, zmiana jego rzeczywistego hasła, ponowne logowanie i odczyt HTTP 403 dla API administratora. Nie oznaczać tego testu jako PASS na podstawie wyniku Firefox na serwerze.
