@@ -83,3 +83,9 @@ Rollback skrypt przeszedł kontrolę składni i preflight, **nie uruchamiano fak
 Pracownik i administrator ponownie logują się przez dotychczasowy adres HTTPS (dotychczasowe hasła nie uległy zmianie). Sprawdzić pierwszy zwykły automatyczny backup produkcyjny z 29.10 o 02:30 CET. Po dostawie drugiego YubiKeya dopisać go jako niezależny klucz recovery i wykonać fizyczny test; zamknąć formalny audyt polityki Tailscale.
 
 Nie scalono niepowiązanych zmian do main; zamrożona produkcja ma precyzyjny commit 529af02029e1 i nie zależy od ruchomego DEV.
+
+## Audyt Tailscale z 28.10.2026 — ważna zmiana oceny ryzyka
+
+Po wdrożeniu produkcji wykonano bezpieczny audyt rzeczywistej mapy ACL dostarczanej przez Tailscale do serwera. Wynik: **FAIL / HIGH**. Efektywny PacketFilter serwera dopuszcza szerokie zakresy adresowe tailnetu (w tym jedno udostępnione urządzenie) do wszystkich portów 0–65535 TCP/UDP/ICMP; nie dowiedziono ograniczenia pracownika wyłącznie do 8443. OpenSSH słucha na 22, Cockpit na 9090, AI Control Center na 443. UFW active, ale reguł nie można odczytać bez sudo. Nie stwierdzono publicznego Funnel.
+
+Test użytkownika, w którym Magazyn :8443 działał, a AI Control Center :443 nie otwierał się, nadal jest ważny jako obserwacja z urządzenia, ale **nie pozwala uznać centralnej polityki ACL za bezpieczną**. Nie potwierdzono prób ani udanego dostępu pracownika do pozostałych usług. Żadnych reguł nie zmieniano. Formalny etap employee_access pozostaje BLOCKED. Raport: [Audyt Tailscale 28.10.2026](MAGAZYN_TAILSCALE_SECURITY_AUDIT_2026-10-28_PL.md).
