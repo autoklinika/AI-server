@@ -61,3 +61,22 @@ Commit funkcjonalny: 9b79c3e na gałęzi feature/magazyn-v1-dev-20261026. Po wyk
 Po udostępnieniu zmiany hasła i testów ról w Magazynie DEV użytkownik potwierdził w rozmowie: **„działa jak należy :)”**. Oznaczamy więc odbiór funkcjonalny WebGUI dla konta pracownika na Windows 11 jako **PASS — potwierdzenie użytkownika**. Wcześniej automatyczne testy backendu i Firefox były PASS (216/216).
 
 To potwierdzenie **nie jest samodzielnym dowodem**, że wykonano wszystkie podtesty HTTP 403, sprawdzono wygaśnięcie wszystkich aktywnych sesji w różnych przeglądarkach ani że Tailscale ACL/Grants ograniczają użytkownika do portu 8443. Sieciowe ACL i formalny odbiór izolacji od AI Platform pozostają **PENDING**. Nie wymagamy ani nie odczytujemy w tym celu hasła pracownika, nie wykonujemy kolejnej rotacji hasła na serwerze.
+
+
+## Odbiór rzeczywistego telefonu pracownika — 28.10.2026, wieczór
+
+Właściciel potwierdził rzeczywisty test na telefonie pracownika zalogowanym do własnego konta Tailscale pracownika, nie do konta właściciela:
+
+- HTTPS Magazynu V1, port 8443: **DZIAŁA** na urządzeniu pracownika.
+- Próba otwarcia AI Platform pod /control, port 443: **NIE OTWIERA SIĘ** na urządzeniu pracownika.
+- Osobne konto Magazynu i jego funkcje przeszły wcześniej odbiór na Windows 11 oraz testy syntetyczne uprawnień backendu.
+
+**Wynik: potwierdzono PASS praktycznego testu dostępu pracownika i odmowy otwarcia panelu AI Platform.** Test nie identyfikuje mechanizmu odmowy (ACL/Grants, routing, uwierzytelnianie lub inna warstwa) i nie zastępuje niezależnego przeglądu rzeczywistej centralnej polityki Tailscale Grants/ACL oraz pozostałych portów serwera. Formalny audyt polityki nadal osobny; nie oznaczamy go jako niezależnie potwierdzonego.
+
+Nie zmieniano konfiguracji Tailscale ani uprawnień, nie otwierano Funnel, nie przeprowadzano testów destrukcyjnych.
+
+## Automatyczny dzienny cykl Magazynu — potwierdzenie z 28.10.2026
+
+Rzeczywisty istniejący systemd user-timer wywołał ai-platform-stage-k-daily.service 28.10 o 02:30 CET, a jednostka zakończyła się o 02:31:26 CET: **Result=success, ExecMainStatus=0**. W dzienniku adapter Magazynu wykonał mode=cycle, created=1, uploaded=1, pending=0, status=PASS. Na GlobalNAS obecne jest archiwum dzienne Magazynu z 28.10. Bieżące statusy Stage K daily, weekly, monitor: **PASS**. Bramka rzeczywistego automatycznego uruchomienia daily Magazynu jest zatem zamknięta.
+
+Przed produkcją pozostaje niezależne odzyskiwanie klucza po dostawie drugiego YubiKey 5C (wersja pendrive/age X25519 została odrzucona) i formalny audyt docelowej polityki Tailscale, jeżeli wymagana jest udowodniona izolacja wszystkich portów. Stare wpisy o przyszłym cyklu dziennym są historyczne.

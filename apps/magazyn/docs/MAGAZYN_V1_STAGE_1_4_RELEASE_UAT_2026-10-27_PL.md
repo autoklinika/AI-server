@@ -81,3 +81,11 @@ Nie można ominąć statusu FAIL tygodniowego Stage K tymi trzema przełącznika
 Nieaktualny jest powyższy historyczny wpis o tygodniowym Stage K FAIL z 25.10. Bez nowych timerów dodano dwa drop-in: do usługi weekly maksymalnie trzy próby z odstępem 5 min, do tygodniowego timera niedzielną godzinę 03:30 odporną na zmianę czasu. Persistent=true sam wywołał zaległe wykonanie. Nowy pełny weekly zakończył się PASS po 420,711 s, w tym restore Knowledge, Domains, Adapters — wszystkie PASS. Monitor Stage K po ponownym sprawdzeniu PASS i issues=[]. Retencja niczego nie usunęła.
 
 Bramka magazyn.release_gate obecnie potwierdza Stage K daily i weekly PASS. Produkcja Magazynu nadal NO_GO tylko przez trzy niezależne warunki: faktyczne regularne wywołanie daily Magazynu 28.10 o 02:30, niezależny klucz odzyskiwania poza YubiKeyem oraz odbiór ACL Tailscale pracowników. Szczegóły i rollback w [raporcie naprawy Stage K](MAGAZYN_STAGE_K_SCHEDULE_REPAIR_2026-10-27_PL.md).
+
+
+### Aktualizacja 28.10.2026 — odbiór automatycznego harmonogramu i telefonu pracownika
+
+- Pierwszy **rzeczywisty automatyczny dzienny** Stage K po integracji Magazynu: 28.10 o 02:30 CET. Systemd Result=success/ExecMainStatus=0; Magazyn bridge cycle created=1, uploaded=1, pending=0, status=PASS; zaszyfrowany backup 28.10 na GlobalNAS. **Warunek regularnego timera daily: PASS.**
+- Pracownik z własnego konta Tailscale na swoim telefonie otwiera Magazyn :8443, natomiast AI Platform /control na :443 mu się nie otwiera — **PASS praktycznego testu**, potwierdzone przez właściciela. Nie rozstrzygnięto jeszcze jednoznacznie, czy mechanizmem odmowy jest centralna ACL/Grants; pełny audyt pozostałych portów i polityki nie został wykonany.
+- Konto pracownika i jego zmiana hasła przeszły wcześniej odbiór Windows 11.
+- Pozostaje rzeczywiste odzyskiwanie przez **drugi YubiKey 5C** po dostawie; wariant pendrive/age X25519 został porzucony. Przed produkcją bramkę software trzeba dostosować do formalnego odbioru drugiego sprzętowego klucza i udokumentowanej polityki Tailscale. Nie twierdzimy, że produkcja jest już GO.
