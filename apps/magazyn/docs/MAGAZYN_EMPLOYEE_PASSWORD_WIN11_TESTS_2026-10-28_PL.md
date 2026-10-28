@@ -55,3 +55,9 @@ Commit funkcjonalny: 9b79c3e na gałęzi feature/magazyn-v1-dev-20261026. Po wyk
 - Obie usługi WebGUI DEV i Telegram DEV aktywne; kod i dane produkcyjne niezmienione.
 
 **PENDING / Windows 11:** fizyczne zalogowanie pracownika w Edge/Chrome, zmiana jego rzeczywistego hasła, ponowne logowanie i odczyt HTTP 403 dla API administratora. Nie oznaczać tego testu jako PASS na podstawie wyniku Firefox na serwerze.
+
+## Odbiór użytkownika — Windows 11, 28.10.2026
+
+Po udostępnieniu zmiany hasła i testów ról w Magazynie DEV użytkownik potwierdził w rozmowie: **„działa jak należy :)”**. Oznaczamy więc odbiór funkcjonalny WebGUI dla konta pracownika na Windows 11 jako **PASS — potwierdzenie użytkownika**. Wcześniej automatyczne testy backendu i Firefox były PASS (216/216).
+
+To potwierdzenie **nie jest samodzielnym dowodem**, że wykonano wszystkie podtesty HTTP 403, sprawdzono wygaśnięcie wszystkich aktywnych sesji w różnych przeglądarkach ani że Tailscale ACL/Grants ograniczają użytkownika do portu 8443. Sieciowe ACL i formalny odbiór izolacji od AI Platform pozostają **PENDING**. Nie wymagamy ani nie odczytujemy w tym celu hasła pracownika, nie wykonujemy kolejnej rotacji hasła na serwerze.
