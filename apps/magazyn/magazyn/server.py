@@ -13,7 +13,7 @@ from typing import Any
 from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, Header, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, StrictInt
 
@@ -150,8 +150,14 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
     path = db_path or os.environ.get("MAGAZYN_DB_PATH")
     if not path:
         raise RuntimeError("Ustaw MAGAZYN_DB_PATH (lokalna baza izolowanej aplikacji)")
+    environment = os.environ.get("MAGAZYN_ENV", "dev").strip().lower()
+    if environment not in ("dev", "production"):
+        raise RuntimeError("MAGAZYN_ENV musi wynosić dev albo production")
+    if environment == "production" and not secure_cookie:
+        raise RuntimeError("Produkcja wymaga ciasteczek Secure")
     store = Store(path)
-    app = FastAPI(title="Magazyn V1 DEV", docs_url=None, redoc_url=None, openapi_url=None)
+    app = FastAPI(title="Magazyn V1" + (" DEV" if environment == "dev" else ""),
+                  docs_url=None, redoc_url=None, openapi_url=None)
     app.state.store = store
     preview_secret = secrets.token_bytes(32)
 
@@ -207,7 +213,9 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
 
     @app.get("/healthz")
     def healthz():
-        return {"status": "ok", "service": "magazyn-dev"}
+        return {"status": "ok",
+                "service": "magazyn" if environment == "production" else "magazyn-dev",
+                "environment": environment}
 
     @app.post("/api/auth/login")
     def login(body: Login, request: Request):
@@ -533,7 +541,13 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
 
     @app.get("/")
     def index():
-        return FileResponse(STATIC/"index.html",media_type="text/html")
+        if environment == "dev":
+            return FileResponse(STATIC/"index.html",media_type="text/html")
+        markup = (STATIC/"index.html").read_text("utf-8")
+        markup = markup.replace("MAGAZYN V1 · ŚRODOWISKO DEV",
+                                "MAGAZYN V1 · PRODUKCJA")
+        markup = markup.replace('<span class="dev-mark">DEV</span>', "")
+        return HTMLResponse(markup)
 
     app.mount("/static",StaticFiles(directory=STATIC),name="static")
     return app
