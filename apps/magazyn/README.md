@@ -47,7 +47,7 @@ Domyślnie cookie ma flagę Secure (wymagane HTTPS). Wartość `MAGAZYN_COOKIE_S
 
 ## Wynik testów
 
-W DEV 27.10.2026, po przygotowaniu offline USB recovery: **208 / 208 testów PASS** (w tym testy Stage K, offline escrow, historii, DR i mobilnego WebGUI), wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
+W DEV 27.10.2026, po wdrożeniu obsługi drugiego pracownika: **210 / 210 testów PASS** (w tym testy Stage K, offline escrow, historii, DR i mobilnego WebGUI), wraz z XLSX w izolowanym środowisku testowym z `openpyxl 3.1.5` i backupem AES-GCM z `cryptography 47.0.0`. Testy tworzą wyłącznie syntetyczne pliki i bazy w katalogach tymczasowych, nie używają rzeczywistych stanów użytkownika. Dodatkowo wykonano kontrolę składni JS i kompilację Pythona.
 
 ## Niezaimplementowane, wymagane przed produkcją
 
@@ -107,4 +107,10 @@ Magazyn DEV ma zweryfikowany pełny obieg operacji magazynowych oraz **atomowe c
 
 ## Niezależne odzyskiwanie przez szyfrowany USB — pakiet Windows (2026-10-28)
 
-Przygotowano jeden pakiet [MAGAZYN_RECOVERY_USB_WINDOWS.zip](recovery/windows/MAGAZYN_RECOVERY_USB_WINDOWS.zip) do wykonania na komputerze Windows Pro/Enterprise/Education: BitLocker To Go, generowanie nowego age X25519 wyłącznie na fizycznym pendrivie, kopiowanie zaszyfrowanych archiwów .mgzb i escrow .age z GlobalNAS, niezależny test i opcjonalne odtworzenie SQLite na USB. [Instrukcja krok po kroku](recovery/windows/README_PL.md). Pełna regresja Magazynu i narzędzi: **208/208 PASS**, w tym 10 nowych testów offline kit (syntetyczny AES, prawdziwe age CLI, restore SQLite z dokumentacją). **Fizyczny pendrive: PENDING**, Windows/BitLocker nie testowano jeszcze na komputerze użytkownika. Dotychczasowy YubiKey 5C i automatyczny backup pozostają niezmienione; drugi YubiKey 5C zostanie dodany osobno po dostawie.
+Przygotowano jeden pakiet [MAGAZYN_RECOVERY_USB_WINDOWS.zip](recovery/windows/MAGAZYN_RECOVERY_USB_WINDOWS.zip) do wykonania na komputerze Windows Pro/Enterprise/Education: BitLocker To Go, generowanie nowego age X25519 wyłącznie na fizycznym pendrivie, kopiowanie zaszyfrowanych archiwów .mgzb i escrow .age z GlobalNAS, niezależny test i opcjonalne odtworzenie SQLite na USB. [Instrukcja krok po kroku](recovery/windows/README_PL.md). Pełna regresja Magazynu i narzędzi: **210/210 PASS**, w tym 10 testów offline kit (syntetyczny AES, prawdziwe age CLI, restore SQLite z dokumentacją). **Fizyczny pendrive: PENDING**, Windows/BitLocker nie testowano jeszcze na komputerze użytkownika. Dotychczasowy YubiKey 5C i automatyczny backup pozostają niezmienione; drugi YubiKey 5C zostanie dodany osobno po dostawie.
+
+## Drugie konto pracownika — DEV 28.10.2026
+
+Panel administracyjny Ustawienia → Użytkownicy → **Dodaj pracownika** tworzy oddzielne konto z rolą `user` i własnym hasłem. Nie ma przypadkowego wyboru roli administratora. Pracownik widzi Produkty, Do zamówienia, Inwentaryzację i Historię; może przyjmować, wydawać i przesuwać towar, ale backend odrzuca operacje administracyjne, backupy i zmianę kont. Historia zapisuje login pracownika. Administrator może zablokować/reaktywować konto i zmienić login; blokada natychmiast unieważnia sesję.
+
+Testy: **210/210 PASS**, w tym rzeczywisty Firefox 390×844 i 1440×900 (admin tworzy pracownika → pracownik loguje się → wykonuje wydanie → admin blokuje). Bez zmian schematu SQLite ani usług Telegram. Nie dodano prawdziwego pracownika, bo jego login i hasło należy utworzyć bezpośrednio w WebGUI administratora. Dostęp pracownika przez własne urządzenie Tailscale/ACL pozostaje do odbioru. [Raport i instrukcja](docs/MAGAZYN_SECOND_EMPLOYEE_DEV_2026-10-28_PL.md).

@@ -54,6 +54,7 @@ function showLogin(){
   document.querySelectorAll("dialog[open]").forEach(dialog=>dialog.close());
   // Shared phones must not retain the previous employee's login or password.
   byId("login-form").reset();
+  byId("user-form").reset();
   byId("app").hidden=true;byId("login").hidden=false;
   const result=byId("pairing-result");result.hidden=true;result.textContent="";
 }
@@ -733,7 +734,7 @@ async function loadAdmin(){
     usersCache=users;
     byId("users-list").innerHTML=users.map(u=>
       '<div class="list-row"><div><strong>'+esc(u.username)+'</strong> <span class="tag">'+
-      (u.role==="admin"?"Administrator":"Użytkownik")+'</span>'+
+      (u.role==="admin"?"Administrator":"Pracownik")+'</span>'+
       (u.active?"":'<span class="pill warning-pill">Zablokowany</span>')+'</div>'+
       '<div class="action-row"><button class="small rename-user" type="button" data-id="'+u.id+'">Zmień login</button>'+
       '<button class="small toggle-user" type="button" data-id="'+u.id+'" data-active="'+u.active+'">'+
@@ -753,7 +754,7 @@ async function formUser(event){
   try{
     await api("/api/users",{method:"POST",body:JSON.stringify(data)});
     form.reset();
-    toast("Utworzono konto użytkownika.");
+    toast("Utworzono konto pracownika. Przekaż mu dane logowania prywatnie.");
     await Promise.all([loadAdmin(),loadMessagingUi()]);
   }catch(e){toast(e.message,true);}
   finally{button.disabled=false;}

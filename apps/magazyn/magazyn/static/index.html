@@ -199,14 +199,20 @@
               </div>
               <div class="panel">
                 <div class="panel-title"><svg class="icon"><use href="#i-settings"/></svg><h2>Użytkownicy</h2></div>
-                <p class="muted">Każdy pracownik ma własny dostęp.</p>
+                <p class="muted">Każdy pracownik ma własny login i hasło. Konto pracownika nie daje uprawnień administratora.</p>
                 <div id="users-list" class="admin-list"></div>
                 <form id="user-form" class="stack divided">
-                  <h3>Nowe konto</h3>
-                  <label>Login<input name="username" required pattern="[A-Za-z0-9_.-]{3,40}" placeholder="Np. pracownik01"></label>
-                  <label>Hasło<input name="password" type="password" minlength="12" required autocomplete="new-password" placeholder="Minimum 12 znaków"></label>
-                  <label>Uprawnienia<select name="role"><option value="user">Użytkownik</option><option value="admin">Administrator</option></select></label>
-                  <button class="secondary" type="submit"><svg class="icon"><use href="#i-plus"/></svg> Utwórz konto</button>
+                  <h3>Dodaj pracownika</h3>
+                  <input name="role" type="hidden" value="user">
+                  <label>Login pracownika<input name="username" required
+                       pattern="[A-Za-z0-9_.-]{3,40}" minlength="3" maxlength="40"
+                       autocomplete="off" autocapitalize="off" spellcheck="false"
+                       placeholder="Np. pracownik01"></label>
+                  <label>Hasło pracownika<input name="password" type="password"
+                       minlength="12" maxlength="200" required autocomplete="new-password"
+                       placeholder="Minimum 12 znaków"></label>
+                  <p class="subtle-note">Przekaż hasło wyłącznie wskazanemu pracownikowi. Każdy loguje się na własne konto, a jego operacje zapisują się w historii.</p>
+                  <button class="secondary" type="submit"><svg class="icon"><use href="#i-plus"/></svg> Utwórz konto pracownika</button>
                 </form>
               </div>
             </div>
