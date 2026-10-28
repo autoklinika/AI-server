@@ -407,6 +407,24 @@ class Store:
             return [dict(r) for r in con.execute(
                 "SELECT id,username,role,active,created_at FROM users ORDER BY username")]
 
+    def change_password_self(self, user_id: int, current_password: str,
+                             new_password: str) -> None:
+        """Confirm old password and revoke all sessions in one SQLite transaction."""
+        if current_password == new_password:
+            raise Problem(422, "Nowe hasło musi być inne niż dotychczasowe")
+        with self.connect(write=True) as con:
+            record = con.execute(
+                "SELECT password_hash FROM users WHERE id=? AND active=1",
+                (user_id,)).fetchone()
+            if not record:
+                raise Problem(401, "Konto nieaktywne")
+            if not password_verify(current_password, record["password_hash"]):
+                raise Problem(403, "Nieprawidłowe obecne hasło")
+            replacement_hash = password_hash(new_password)
+            con.execute("UPDATE users SET password_hash=? WHERE id=?",
+                        (replacement_hash, user_id))
+            con.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))
+
     def change_user(self, user_id, role=None, active=None, password=None, username=None):
         with self.connect(write=True) as con:
             existing_user = con.execute("SELECT role,active FROM users WHERE id=?",

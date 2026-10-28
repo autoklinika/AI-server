@@ -779,3 +779,21 @@ dialog.document-preview-dialog[open] {
   .doc-preview-zoom-tools { justify-content: center; }
   .doc-preview-zoom-tools button { flex: 1 1 auto; }
 }
+
+
+/* Account security controls: mobile header remains usable with a separate lock action. */
+#change-own-password .icon { width:17px; height:17px; }
+@media (max-width:650px) {
+  .site-header .header-right { gap:5px; }
+  .site-header .header-avatar { display:none; }
+  .site-header #current-user { max-width:88px; min-width:0; }
+  .site-header #change-own-password { width:44px; height:44px; flex:none; }
+}
+@media (max-width:360px) {
+  .site-header .dev-mark { display:none; }
+  .site-header #current-user { max-width:74px; }
+}
+@media (max-width:650px) {
+  .site-header .header-location > span { display:none; }
+  .site-header .header-location strong { max-width:94px; }
+}

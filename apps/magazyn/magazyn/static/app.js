@@ -737,6 +737,7 @@ async function loadAdmin(){
       (u.role==="admin"?"Administrator":"Pracownik")+'</span>'+
       (u.active?"":'<span class="pill warning-pill">Zablokowany</span>')+'</div>'+
       '<div class="action-row"><button class="small rename-user" type="button" data-id="'+u.id+'">Zmień login</button>'+
+      (u.role==="user"?'<button class="small reset-staff-password" type="button" data-id="'+u.id+'">Resetuj hasło</button>':"")+
       '<button class="small toggle-user" type="button" data-id="'+u.id+'" data-active="'+u.active+'">'+
       (u.active?"Zablokuj":"Aktywuj")+'</button></div></div>').join("");
     byId("locations-list").innerHTML=locations.length?locations.map(x=>

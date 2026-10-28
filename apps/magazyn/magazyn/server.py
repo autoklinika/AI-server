@@ -35,6 +35,11 @@ class Account(BaseModel):
     role: str = "user"
 
 
+class PasswordUpdate(BaseModel):
+    current_password: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=12, max_length=200)
+
+
 class AccountUpdate(BaseModel):
     role: str | None = None
     active: bool | None = None
@@ -224,6 +229,27 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
     @app.get("/api/auth/me")
     def me(user: dict = Depends(require_user)):
         return {k:user[k] for k in ("id","username","role","csrf")}
+
+    @app.post("/api/auth/change-password")
+    def change_own_password(body: PasswordUpdate, request: Request,
+                            user: dict = Depends(require_write)):
+        if body.current_password == body.new_password:
+            raise Problem(422, "Nowe hasło musi być inne niż dotychczasowe")
+        try:
+            verified = store.authenticate_login(
+                user["username"], body.current_password,
+                request.client.host if request.client else "unknown")
+        except Problem as exc:
+            if exc.status == 401:
+                raise Problem(403, "Nieprawidłowe obecne hasło") from exc
+            raise
+        if verified["id"] != user["id"]:
+            raise Problem(403, "Nieprawidłowa sesja")
+        store.change_password_self(
+            user["id"], body.current_password, body.new_password)
+        result = JSONResponse({"ok": True, "reauth_required": True})
+        result.delete_cookie(COOKIE, path="/")
+        return result
 
     @app.post("/api/auth/logout")
     def logout(request: Request, _user: dict = Depends(require_write)):

@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/app.js" defer></script>
   <script src="/static/electronics.js" defer></script>
+  <script src="/static/account.js" defer></script>
 </head>
 <body>
   <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -80,6 +81,8 @@
             <span class="dev-mark">DEV</span>
             <span class="header-avatar" id="user-avatar" aria-hidden="true">M</span>
             <span id="current-user"></span>
+            <button id="change-own-password" type="button" class="icon-button" aria-label="Zmień moje hasło"
+                    title="Zmień moje hasło"><svg class="icon"><use href="#i-lock"/></svg></button>
             <button id="logout" type="button" class="icon-button" aria-label="Wyloguj się" title="Wyloguj się"><svg class="icon"><use href="#i-log-out"/></svg></button>
           </div>
         </header>
@@ -553,6 +556,52 @@
         <button class="danger" id="delete-item" type="button">Usuń produkt z magazynu</button>
       </details>
     </div>
+  </dialog>
+
+  <dialog id="own-password-dialog" class="sheet-dialog" aria-labelledby="own-password-title">
+    <div class="dialog-head">
+      <div>
+        <p class="kicker">Moje konto</p>
+        <h2 id="own-password-title">Zmień swoje hasło</h2>
+        <p class="muted">Po zmianie hasła zostaniesz wylogowany ze wszystkich urządzeń.</p>
+      </div>
+      <button type="button" class="icon-button close-dialog" aria-label="Zamknij">×</button>
+    </div>
+    <form id="own-password-form" class="stack">
+      <label>Obecne hasło<input type="password" name="current_password" autocomplete="current-password"
+             maxlength="200" required></label>
+      <label>Nowe hasło<input type="password" name="new_password" minlength="12" maxlength="200"
+             autocomplete="new-password" placeholder="Minimum 12 znaków" required></label>
+      <label>Powtórz nowe hasło<input type="password" name="confirm_password" minlength="12"
+             maxlength="200" autocomplete="new-password" required></label>
+      <div class="dialog-actions">
+        <button type="button" class="secondary close-dialog">Anuluj</button>
+        <button type="submit" class="primary">Zmień hasło</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="staff-password-dialog" class="sheet-dialog" aria-labelledby="staff-password-title">
+    <div class="dialog-head">
+      <div>
+        <p class="kicker">Administrator</p>
+        <h2 id="staff-password-title">Reset hasła pracownika</h2>
+        <p class="muted">Konto: <strong id="staff-password-username"></strong></p>
+      </div>
+      <button type="button" class="icon-button close-dialog" aria-label="Zamknij">×</button>
+    </div>
+    <form id="staff-password-form" class="stack">
+      <input type="hidden" name="user_id">
+      <p class="subtle-note">Po zmianie wszystkie sesje tego pracownika zostaną unieważnione.</p>
+      <label>Nowe hasło<input type="password" name="password" minlength="12" maxlength="200"
+             autocomplete="new-password" required></label>
+      <label>Powtórz nowe hasło<input type="password" name="confirm_password" minlength="12"
+             maxlength="200" autocomplete="new-password" required></label>
+      <div class="dialog-actions">
+        <button type="button" class="secondary close-dialog">Anuluj</button>
+        <button type="submit" class="primary">Zapisz hasło pracownika</button>
+      </div>
+    </form>
   </dialog>
 
   <dialog id="history-edit-dialog" class="sheet-dialog">
