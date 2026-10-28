@@ -54,3 +54,7 @@ Zastrzeżenie: autogroup:member ma nadal pełny dostęp dla wszystkich bezpośre
 Źródła Tailscale:
 https://tailscale.com/docs/features/sharing
 https://tailscale.com/docs/reference/syntax/grants
+
+## KOŃCOWY ODBIÓR — oba testy telefonu PASS
+
+Właściciel potwierdził po zapisaniu nowych Grants oba rzeczywiste testy telefonu pracownika: **Magazyn na 8443 działa, panel AI Platform na 443 pozostaje zablokowany**. Analiza rzeczywistego PacketFilter na produkcyjnym serwerze niezależnie potwierdza ograniczenie udostępnionego peera wyłącznie do TCP 8443. Zatem **pracowniczy dostęp Tailscale/RBAC: PASS**. Formalny audyt release gate po ponownym uruchomieniu: employee_access PASS; jedyny pozostały BLOCKED to offsite_recovery (drugi YubiKey). [Zamknięcie odbioru](MAGAZYN_TAILSCALE_EMPLOYEE_FINAL_SIGNOFF_2026-10-28_PL.md).

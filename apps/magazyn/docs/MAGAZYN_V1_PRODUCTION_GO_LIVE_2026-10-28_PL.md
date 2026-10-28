@@ -93,3 +93,7 @@ Test użytkownika, w którym Magazyn :8443 działał, a AI Control Center :443 n
 ## AKTUALIZACJA — Tailscale Grants po wdrożeniu poprawki
 
 Właściciel zapisał nową centralną politykę Tailscale, a kontrola efektywnego PacketFilter na serwerze 28.10.2026 o 23:25 CET wykazała **PASS izolacji sieciowej shared peera**: tylko TCP 8443 do Magazynu, DENY 22/443/9090 i inne porty. Własne urządzenia zachowały dostęp. Produkcyjny Magazyn i Telegram bez przerw działają prawidłowo. Wcześniejsze ostrzeżenie o broad allow-all jest historyczne. Przed formalnym zamknięciem employee_access należy jeszcze potwierdzić działanie telefonu pracownika na NOWEJ polityce. Drugi YubiKey 5C wciąż niewdrożony. [Raport weryfikacyjny](MAGAZYN_TAILSCALE_AFTER_APPLY_2026-10-28_PL.md).
+
+## AKTUALIZACJA — dostęp pracownika ostatecznie odebrany
+
+Po zmianie centralnych Tailscale Grants i ponownej kontroli rzeczywistego PacketFilter właściciel potwierdził dwa testy na telefonie pracownika: TCP 8443 Magazyn PASS, panel AI :443 niedostępny PASS. Formalna kontrola magazyn.release_gate przeprowadzona z potwierdzonym employee-acl-verified: employee_access **PASS**. Pozostała tylko pozycja offsite_recovery **BLOCKED** (drugi YubiKey 5C), więc decyzja formalna całego release gate nadal **NO_GO**. Produkcja działa bez zakłóceń. [Raport](MAGAZYN_TAILSCALE_EMPLOYEE_FINAL_SIGNOFF_2026-10-28_PL.md).

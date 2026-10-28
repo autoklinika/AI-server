@@ -132,3 +132,7 @@ Na wyraźne polecenie właściciela Magazyn został przełączony z DEV na **wer
 ### Tailscale — poprawka sprawdzona na serwerze, 28.10.2026
 
 Użytkownik zapisał nową politykę Grants; efektywny PacketFilter Tailscale ma obecnie 2 reguły: 8 urządzeń wewnętrznych zachowuje dostęp, a jeden odbiorca Share ma tylko TCP 8443 do serwera AI. **PASS izolacji po stronie serwera**, DENY 443/22/9090. Magazyn i Telegram aktywne. Weryfikacja na telefonie pracownika PO zmianie: PENDING. [Pełny wynik](docs/MAGAZYN_TAILSCALE_AFTER_APPLY_2026-10-28_PL.md).
+
+### Końcowy odbiór Tailscale pracownika — PASS (28.10.2026)
+
+Właściciel potwierdził po zmianie Grants oba testy z telefonu: Magazyn TCP 8443 działa, AI Platform TCP 443 jest niedostępny. Skuteczny PacketFilter serwera pozwala współdzielonemu peerowi wyłącznie na TCP 8443. Ponowny audyt produkcji: **employee_access PASS; wszystkie kontrole PASS poza offsite_recovery BLOCKED**. Czeka drugi YubiKey. [Pełne potwierdzenie](docs/MAGAZYN_TAILSCALE_EMPLOYEE_FINAL_SIGNOFF_2026-10-28_PL.md).
