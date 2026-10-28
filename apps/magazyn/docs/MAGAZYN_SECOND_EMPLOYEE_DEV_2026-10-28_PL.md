@@ -48,3 +48,9 @@ Właściciel nie podał loginu ani hasła pracownika. **Nie tworzono w rzeczywis
 Zmiana ograniczona do etykiet HTML/JS i kontraktu testowego. Nie ma migracji bazy, nowych jednostek ani zmiany tokenów botów. W razie problemów przywrócić poprzedni commit WebGUI i zrestartować tylko magazyn-webgui-dev.service. Konta stworzone później pozostają w SQLite; rollback GUI nie kasuje ani nie dezaktywuje ich automatycznie. Nie kasować historii, kont ani danych rzeczywistych.
 
 Magazyn pozostaje w DEV; main i produkcja AI Platform bez zmian.
+
+## Odbiór wdrożenia DEV na rzeczywistym serwerze
+
+Commit funkcji: 49ab4d4 (branch feature/magazyn-v1-dev-20261026), push GitHub PASS, bez merge do main.
+
+Zrestartowano wyłącznie magazyn-webgui-dev.service; Telegram DEV nie był restartowany. Rzeczywisty HTTPS Tailscale :8443 /healthz, aktualne HTML z nowym formularzem i role=user oraz aktualne JS wyświetlające Pracownik: PASS. API bez sesji (użytkownicy, backupy, produkty, lokalizacje) nadal HTTP 401. Weryfikacja PRAGMA integrity_check, foreign_key_check, SHA256 dokumentacji i liczby rekordów dziesięciu tabel przed/po restarcie: PASS, **bez zmian danych**. WebGUI i Telegram DEV aktywne. Faktycznie w bazie nadal jest tylko jeden administrator — konto drugiego pracownika czeka na wybrany login i hasło w panelu administratora. Odbiór na rzeczywistym urządzeniu pracownika/Tailscale ACL pozostaje PENDING.
