@@ -128,3 +128,7 @@ Na wyraźne polecenie właściciela Magazyn został przełączony z DEV na **wer
 ## Audyt Tailscale — 28.10.2026 (produkcja)
 
 **FAIL / HIGH:** odbierany przez serwer PacketFilter Tailscale dopuszcza szerokie zakresy peerów do wszystkich portów, w tym jeden peer udostępniony; pracownik miał mieć dostęp tylko do 8443. UFW jest aktywny, ale jego reguły wymagają oddzielnego audytu z sudo. Nie zmieniano centralnych ACL/Grants ani działania Magazynu. **Formalne employee_access pozostaje BLOCKED**, mimo że użytkownik potwierdził działanie Magazynu i brak otwarcia 443 na swoim telefonie. [Pełny wynik audytu, dowody i plan bezpiecznej poprawki](docs/MAGAZYN_TAILSCALE_SECURITY_AUDIT_2026-10-28_PL.md).
+
+### Tailscale — poprawka sprawdzona na serwerze, 28.10.2026
+
+Użytkownik zapisał nową politykę Grants; efektywny PacketFilter Tailscale ma obecnie 2 reguły: 8 urządzeń wewnętrznych zachowuje dostęp, a jeden odbiorca Share ma tylko TCP 8443 do serwera AI. **PASS izolacji po stronie serwera**, DENY 443/22/9090. Magazyn i Telegram aktywne. Weryfikacja na telefonie pracownika PO zmianie: PENDING. [Pełny wynik](docs/MAGAZYN_TAILSCALE_AFTER_APPLY_2026-10-28_PL.md).

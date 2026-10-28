@@ -73,3 +73,7 @@ Bez dostępu do istniejącego centralnego pliku polityki **nie wprowadzamy zmian
 - Urządzenie udostępnione innej sieci: jeden peer ze znacznikiem ShareeNode jest online; jest objęty szerokim zakresem reguły PacketFilter. Potwierdza to realny problem dla co najmniej jednej udostępnionej tożsamości, choć nie ujawnia ani nie dowodzi nazwy pracownika.
 - MagicDNS aktywny. Brak tagów na samym serwerze. Mechanizm Tailnet Lock nie został włączony — dodatkowa opcja bezpieczeństwa, niezależna od aktualnej niezgodności portów, nie jest wymagana do jej naprawy.
 - W Tailscale SSH policy nie ma reguł, a lokalny przełącznik Tailscale SSH jest wyłączony. Zwykły sshd na 22 nadal nasłuchuje, więc wymaga osobnej ochrony.
+
+## AKTUALIZACJA — po zapisie nowych Grants (28.10.2026, 23:25 CET)
+
+**Wcześniejszy wynik FAIL/HIGH jest historyczny i dotyczy wyłącznie starej, domyślnej polityki allow-all.** Po zmianie dokonanej przez właściciela serwer otrzymał DWA nowe filtry: własne 8 peerów nadal ma szeroki dostęp, a pojedynczy zewnętrzny ShareeNode ma tylko TCP 8443 do 100.112.82.87/32. Testy analityczne dla 22, 80, 443, 9090, 51907 i 57629: DENY. Efektywny filtr Tailscale po zmianie: **PASS**. Działające usługi produkcyjne Magazynu i Telegrama: PASS. Pozostał praktyczny test z telefonu pracownika po aktualizacji, a osobny audyt hostowego UFW wymaga sudo. [Raport po poprawce](MAGAZYN_TAILSCALE_AFTER_APPLY_2026-10-28_PL.md).
