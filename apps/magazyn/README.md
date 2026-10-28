@@ -118,3 +118,9 @@ Testy: **210/210 PASS**, w tym rzeczywisty Firefox 390×844 i 1440×900 (admin t
 ## Zmiana hasła pracownika i testy dostępu Windows 11 — 28.10.2026
 
 W górnym pasku WebGUI dostępna jest kłódka **Zmień moje hasło**. Endpoint wymaga obecnego hasła, sesji oraz CSRF; po zmianie hasła kasowane są wszystkie dotychczasowe sesje użytkownika. Administrator może użyć przy pracowniku **Resetuj hasło** z potwierdzeniem; reset też kończy sesje tego konta. Role i konta innych użytkowników pozostają nienaruszone. [Instrukcja odbioru Windows 11 i rollback](docs/MAGAZYN_EMPLOYEE_PASSWORD_WIN11_TESTS_2026-10-28_PL.md). Pełny zestaw testów Magazynu: **216/216 PASS**. Przeglądarka Firefox 390×844, 320×700 i 1440×900: oba modale i uprawnienia PASS. **Win11 Edge/Chrome na prawdziwym koncie: oczekuje na odbiór pracownika.**
+
+## Magazyn V1 — produkcja uruchomiona 28.10.2026
+
+Na wyraźne polecenie właściciela Magazyn został przełączony z DEV na **wersjonowane usługi produkcyjne**. Zamrożony kod: commit `529af02029e1`; 220/220 testów PASS, nowy izolowany runtime; `magazyn-webgui.service` i `magazyn-telegram.service` aktywne i enabled, stare DEV zatrzymane. Baza produkcyjna zachowuje dwa konta, stany, dokumenty i historię; stare sesje wygaszono w celu wymuszenia cookies Secure. Adres HTTPS Tailscale :8443 bez zmian. Backup AES-256 na GlobalNAS, restore/verify i monitor Stage K PASS; nie tworzono nowych schedulerów.
+
+**Ważne:** Produkcja działa operacyjnie, ale formalna bramka pozostaje `NO_GO` przez brak drugiego fizycznego YubiKeya 5C i niedokończony niezależny audyt Tailscale ACL/Grants. Nie nazywaj wydania w pełni certyfikowanym przed ich zaliczeniem. [Pełny raport, wyjątki i rollback bez cofania danych](docs/MAGAZYN_V1_PRODUCTION_GO_LIVE_2026-10-28_PL.md).
