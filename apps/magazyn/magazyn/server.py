@@ -378,7 +378,7 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
 
     @app.get("/api/parts/datasheet/search")
     def part_datasheet_search(marking: str = "", manufacturer: str = "",
-                              actor: dict = Depends(require_write)):
+                              actor: dict = Depends(require_user)):
         # No inventory write. Provider credentials are server-only.
         return datasheet_finder.discover(actor["id"], marking, manufacturer)
 
