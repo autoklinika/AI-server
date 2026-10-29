@@ -140,3 +140,7 @@ Właściciel potwierdził po zmianie Grants oba testy z telefonu: Magazyn TCP 84
 ## Drugi YubiKey 5C — przygotowanie odzyskiwania 29.10.2026
 
 Serwer wykrył **nowy YubiKey 5C** o fabrycznych parametrach PIV i pustym slocie 0x82. Wdrożono do prywatnego katalogu produkcyjnego trzy kontrolowane skrypty: interaktywne ustawienie PIN/PUK i nowej PIV identity bez eksportu klucza, szyfrowanie istniejącego AES pod drugi publiczny recipient oraz fizyczny decrypt/restore produkcyjnego backupu w RAM. Preflight dla nowego YubiKeya PASS; pozostałe dwa skrypty odmawiają uruchomienia bez skonfigurowanego drugiego recipienta. **Fizyczne przygotowanie i test odzyskania jeszcze PENDING** — wymagają lokalnego wprowadzenia PIN-u/PUK-u na serwerze przez użytkownika. [Dokumentacja](docs/MAGAZYN_SECOND_YUBIKEY_PROVISIONING_2026-10-29_PL.md).
+
+## Formalny odbiór produkcji — GO, 29.10.2026
+
+Po konfiguracji drugiego YubiKeya 5C, rzeczywistym teście fizycznego decrypt/restore z GlobalNAS i aktualizacji read-only bramki `magazyn.release_gate` uzyskano **GO — 9/9 PASS**. Pełny zestaw testów syntetycznych: **227/227 PASS**. Magazyn WebGUI i Telegram nadal działają na zamrożonym, niezmienionym wydaniu produkcyjnym z 28.10; nowe narzędzie audytu nie restartowało usług i nie rotowało AES. [Raport formalnego GO](docs/MAGAZYN_V1_FORMAL_GO_2026-10-29_PL.md).

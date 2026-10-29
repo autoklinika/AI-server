@@ -18,7 +18,7 @@ import sqlite3
 import sys
 from xml.etree import ElementTree
 
-from . import backup
+from . import backup, yubikey_recovery_gate
 from .stage_k_bridge import read_config
 
 REQUIRED_WEEKLY_RESTORE = ("knowledge", "domains", "adapters")
@@ -147,26 +147,12 @@ def check_tests(report: Path | None) -> dict:
         return {"status":"BLOCKED","note":"Niepoprawny raport testów: "+type(exc).__name__}
 
 
-def check_offhost(config: dict[str,Path], manually_verified: bool) -> dict:
-    # A ciphertext file by itself does not prove ability to decrypt off-site.
-    path=config["mount"]/"Magazyn"/"recovery"/"magazyn-v1-aes256-key-offline.age"
-    valid_ciphertext=False
-    if path.is_file() and not path.is_symlink():
-        try:
-            data=path.read_bytes()
-            valid_ciphertext=(100<=len(data)<=4096 and
-                              data.startswith(b"age-encryption.org/v1\n"))
-        except OSError:
-            pass
-    return _pass(
-        valid_ciphertext and manually_verified,
-        "Zewnętrzny zaszyfrowany klucz istnieje + operator poświadcza test DR poza serwerem",
-        "Brak niezależnej kopii klucza lub fizycznego testu jej użycia poza serwerem")
-
-
 def production_readiness(config: dict[str,Path], stage_k_dir: Path,
                          *, at: datetime | None=None, junit: Path | None=None,
-                         offhost_drill_verified: bool=False,
+                         primary_yubikey_drill_verified: bool=False,
+                         spare_yubikey_drill_report: Path | None=None,
+                         primary_recipient_file: Path | None=None,
+                         spare_recipient_file: Path | None=None,
                          daily_timer_verified: bool=False,
                          employee_acl_verified: bool=False,
                          https_url: str | None=None) -> dict:
@@ -178,7 +164,7 @@ def production_readiness(config: dict[str,Path], stage_k_dir: Path,
     checks["pytest"]=check_tests(junit)
     if https_url is not None:
         checks["https_tls"]=check_https(https_url)
-    checks["offsite_recovery"]=check_offhost(config,offhost_drill_verified)
+    checks["offsite_recovery"]=yubikey_recovery_gate.check_dual_yubikey(config, primary_drill_verified=primary_yubikey_drill_verified, second_drill_report=spare_yubikey_drill_report, primary_recipient_file=primary_recipient_file, second_recipient_file=spare_recipient_file, at=instant)
     checks["daily_timer"]= _pass(
         daily_timer_verified,
         "Dzienny timer Stage K rzeczywiście uruchomił snapshot Magazynu",
@@ -201,8 +187,10 @@ def main(argv=None):
     parser.add_argument("--stage-k-status-dir",default="/srv/ai-data/platform/backup-status/stage-k")
     parser.add_argument("--junit-report")
     parser.add_argument("--https-url",default="https://ai-server.tail759e12.ts.net:8443/")
-    parser.add_argument("--offhost-drill-verified",action="store_true",
-                        help="Only after a real external private-key recovery drill")
+    parser.add_argument("--primary-yubikey-drill-verified",action="store_true")
+    parser.add_argument("--spare-yubikey-drill-report",type=Path)
+    parser.add_argument("--primary-recipient-file",type=Path)
+    parser.add_argument("--spare-recipient-file",type=Path)
     parser.add_argument("--daily-timer-verified",action="store_true",
                         help="Only after observing a real daily timer trigger")
     parser.add_argument("--employee-acl-verified",action="store_true",
@@ -213,7 +201,10 @@ def main(argv=None):
         config,Path(args.stage_k_status_dir),
         junit=Path(args.junit_report) if args.junit_report else None,
         https_url=args.https_url,
-        offhost_drill_verified=args.offhost_drill_verified,
+        primary_yubikey_drill_verified=args.primary_yubikey_drill_verified,
+        spare_yubikey_drill_report=args.spare_yubikey_drill_report,
+        primary_recipient_file=args.primary_recipient_file,
+        spare_recipient_file=args.spare_recipient_file,
         daily_timer_verified=args.daily_timer_verified,
         employee_acl_verified=args.employee_acl_verified)
     print(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2))
