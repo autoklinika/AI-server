@@ -392,8 +392,11 @@
       review.replaceChildren();
     });
     controls.append(apply, dismiss);
-    review.appendChild(controls);
-    review.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    // Keep approval visible at the TOP of the preview, away from Magazyn's
+    // sticky bottom save-bar on narrow Android screens.
+    review.insertBefore(controls, review.children[2] || null);
+    review.style.paddingBottom = "92px";
+    review.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   window.magazynRequestAiScan = async function (json) {
