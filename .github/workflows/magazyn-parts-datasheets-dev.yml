@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/magazyn-electronics-datasheets-dev-20261029
+      - fix/magazyn-bts134d-infineon-fallback-20261029
     paths:
       - 'apps/magazyn/**'
       - '.github/workflows/magazyn-parts-datasheets-dev.yml'
