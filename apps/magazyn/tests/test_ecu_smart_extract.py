@@ -138,3 +138,30 @@ def test_classification_does_not_require_an_online_lookup():
     assert result["primaryNumber"] == "5WK96745"
     assert result["category"] == "EBS"
     assert result["manufacturer"] == "Continental"
+
+
+def test_real_model_english_category_and_unlabelled_codes():
+    transcript = (
+        "BOSCH\nENGINE CONTROL UNIT\n0 281 016 738\n"
+        "EDC17C46\n03L 906 022 GC\nHW: H1 SW: S3"
+    )
+    result = labels(transcript, {
+        "manufacturer": "BOSCH", "ecu_model": "EDC17C46",
+        "category": "engine ECU", "primary_number": "0 281 016 738",
+        "other_numbers": ["03L 906 022 GC"],
+    })
+    assert result["category"] == "ECU silnika"
+    assert result["fieldConfidence"]["category"] == "suggestion"
+    assert result["extraNumbers"] == [
+        {"value": "03L906022GC", "role": "oem", "confidence": "suggestion"}
+    ]
+
+
+def test_unlabelled_continental_supplier_number_is_still_reviewable():
+    result = labels("CONTINENTAL\n5WK96745\nA2C12345678", {
+        "manufacturer": "CONTINENTAL",
+        "primary_number": "A2C12345678", "other_numbers": ["5WK96745"]
+    })
+    assert result["extraNumbers"] == [
+        {"value": "5WK96745", "role": "supplier", "confidence": "suggestion"}
+    ]
