@@ -102,6 +102,15 @@
       const upload = elem("button","Analizuj wybrany PDF z telefonu",sources,"secondary small");
       upload.type="button";
       upload.addEventListener("click",inspectUploaded);
+      // When a single *official* TI datasheet is the only result, prefetch
+      // automatically after typing. Never auto-APPLY fields or inventory writes.
+      // Multiple providers, unofficial sources and manually chosen files
+      // always require operator selection.
+      if (choices.length===1 && choices[0].source==="Texas Instruments" &&
+          !($("part-form").elements.document.files?.length)) {
+        say("Znaleziono oficjalną kartę TI. Pobieram ją do podglądu…");
+        void inspectToken(choices[0].token);
+      }
     } catch (_error) {
       if (rev !== revision || !isOpen()) return;
       sources.replaceChildren();
