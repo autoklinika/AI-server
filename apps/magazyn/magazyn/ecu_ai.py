@@ -88,85 +88,10 @@ def _candidates(text: str) -> tuple[list[str], list[str]]:
 
 
 def analyze_transcripts(ai_text: str, phone_text: str, barcodes: list[str]) -> dict:
-    """Conservative extraction; every result must be checked against the photo.
-
-    The model's text is evidence, NOT proof: if phone and AI conflict on a
-    similarly formatted Bosch part number, prefill remains empty.
-    """
-    ai = ai_text[:MAX_AI_OUTPUT_CHARS]
-    phone = phone_text[:MAX_OCR_CHARS]
-    ai_bosch, ai_labeled = _candidates(ai)
-    local_bosch, local_labeled = _candidates(phone)
-
-    barcode_values = [
-        normalize_number(str(value)[:160])
-        for value in barcodes[:12]
-    ]
-    barcode_values = [x for x in dict.fromkeys(barcode_values) if 7 <= len(x) <= 40]
-
-    candidates = list(dict.fromkeys(
-        [*ai_bosch, *ai_labeled, *local_bosch, *local_labeled,
-         *[x for x in barcode_values if len(x) <= 25]]
-    ))[:20]
-    warnings: list[str] = []
-    primary = ""
-    ai_primary = ai_bosch if ai_bosch else ai_labeled
-    phone_primary = local_bosch if local_bosch else local_labeled
-
-    # Avoid treating barcode-only serial numbers as main ECU part numbers.
-    if len(ai_primary) == 1:
-        proposed = ai_primary[0]
-        if phone_primary and proposed not in phone_primary:
-            warnings.append("AI i OCR telefonu odczytały różne numery — wybierz ręcznie.")
-        elif len(phone_primary) > 1 and proposed not in phone_primary:
-            warnings.append("Na etykiecie występuje kilka możliwych numerów.")
-        else:
-            primary = proposed
-    elif len(ai_primary) > 1:
-        warnings.append("AI odczytało kilka numerów produktu — wybierz właściwy.")
-    elif len(phone_primary) == 1:
-        # No usable AI result: retain the existing local OCR path.
-        primary = phone_primary[0]
-
-    # A barcode match can corroborate, never replace, a labeled part number.
-    if primary and barcode_values and primary in barcode_values:
-        evidence = "barcode_and_ocr"
-    else:
-        evidence = "ocr_only"
-    if ai_bosch and local_bosch and set(ai_bosch).isdisjoint(local_bosch):
-        primary = ""
-        warnings.append("Różne numery Bosch w dwóch odczytach — wymagana kontrola.")
-
-    def tagged(key: str) -> str:
-        ai_match = _TAGS[key].search(ai)
-        phone_match = _TAGS[key].search(phone)
-        a = ai_match.group(1) if ai_match else ""
-        b = phone_match.group(1) if phone_match else ""
-        if a and b and normalize_number(a) != normalize_number(b):
-            warnings.append(f"Rozbieżne oznaczenie {key} w OCR telefonu i AI.")
-            return ""
-        return a or b
-
-    model = (_MODEL.search(ai) or _MODEL.search(phone))
-    manufacturer = _manufacturer(ai + "\n" + phone, ai_bosch + local_bosch)
-    if "[?]" in ai:
-        warnings.append("Model oznaczył nieczytelne znaki — porównaj zdjęcie.")
-
-    return {
-        "manufacturer": manufacturer,
-        "primaryNumber": primary,
-        "hardware": tagged("hardware"),
-        "software": tagged("software"),
-        "model": model.group(0).upper() if model else "",
-        "serialNumber": tagged("serialNumber"),
-        "candidates": candidates,
-        "barcodes": [str(x)[:160] for x in barcodes[:12]],
-        "rawText": ai,
-        "phoneText": phone,
-        "evidence": evidence,
-        "warnings": list(dict.fromkeys(warnings)),
-        "engine": "server_vision_ocr",
-    }
+    # Classification is a separate step from the model's visual transcription.
+    # Never allow a serial / HW / SW revision to become a catalog/OEM number.
+    from .ecu_label_fields import classify
+    return classify(ai_text, phone_text, barcodes)
 
 
 def is_enabled() -> bool:
