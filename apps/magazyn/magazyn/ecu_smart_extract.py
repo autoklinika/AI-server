@@ -181,7 +181,18 @@ def enrich(transcript: str, phone_ocr: str, barcodes: list[str],
         )
 
     primary = _field_value(parsed, "primary_number", evidence)
-    if primary:
+    # The model is not allowed to promote serial/HW/SW values to part numbers,
+    # even when the value itself is undeniably present in the transcription.
+    restricted_primary = {
+        _tokens(baseline.get("serialNumber", "")),
+        _tokens(baseline.get("hardware", "")),
+        _tokens(baseline.get("software", "")),
+        _tokens(_field_value(parsed, "serial_number", evidence)),
+        _tokens(_field_value(parsed, "hardware", evidence)),
+        _tokens(_field_value(parsed, "software", evidence)),
+    }
+    restricted_primary.discard("")
+    if primary and _tokens(primary) not in restricted_primary:
         previous = baseline.get("primaryNumber", "")
         if previous and _tokens(previous) != _tokens(primary):
             warnings.append("AI proponuje inny numer główny niż reguły; zachowano dotychczasowy.")
