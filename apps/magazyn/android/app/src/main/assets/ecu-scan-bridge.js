@@ -148,7 +148,7 @@
     scanRevision++;
     reviewPending = false;
     scanProcessing = false;
-    hideFooter(false);
+    setFooterReviewMode(false);
     if (typeof review !== "undefined") { review.hidden = true; review.replaceChildren(); }
     // Release an idle ready RTX reservation immediately on leaving the form.
     // If loading/scanning is still running, the backend's bounded TTL cleans up.
@@ -184,10 +184,17 @@
 
   let reviewPending = false;
   const footer = form.querySelector(".sticky-actions");
-  function hideFooter(hide) {
-    // The usual Save/Cancel bar obscures long OCR controls on Android.
-    // Hide it during review. It reappears after Apply/Discard or dialog close.
-    if (footer) footer.style.display = hide ? "none" : "";
+  function setFooterReviewMode(reviewing) {
+    // Never hide "Dodaj do magazynu". This is the only real stock receipt
+    // action and must remain reachable throughout the ECU workflow.
+    // While the OCR preview is open, let the bar follow normal document flow
+    // so it cannot obscure the extra-number/approval controls on Android.
+    if (!footer) return;
+    footer.style.display = "";
+    footer.style.position = reviewing ? "relative" : "";
+    footer.style.bottom = reviewing ? "auto" : "";
+    footer.style.zIndex = reviewing ? "0" : "";
+    footer.style.marginTop = reviewing ? "12px" : "";
   }
   let scanProcessing = false;
   let scanRevision = 0;
@@ -286,12 +293,13 @@
 
     const items = mapper.build(scan, currentFormValues());
     reviewPending = true;
-    hideFooter(true);
+    setFooterReviewMode(true);
     review.replaceChildren();
     review.hidden = false;
     appendText(review, "strong", "Sprawdź przypisanie danych z naklejki");
     appendText(review, "p",
-      "To są propozycje, a nie zapis. Zaznacz pola, które chcesz przenieść do formularza.");
+      "To są propozycje, a nie zapis. Zaznacz pola, które chcesz przenieść do formularza. " +
+      "Przycisk „Dodaj do magazynu” pozostaje na dole formularza i działa po zatwierdzeniu podglądu.");
     const source = scan.engine === "server_vision_ocr"
       ? "AI RTX + OCR telefonu" : "OCR telefonu";
     appendText(review, "small", "Odczyt: " + source);
@@ -454,7 +462,7 @@
         updated++;
       }
       reviewPending = false;
-      hideFooter(false);
+      setFooterReviewMode(false);
       review.replaceChildren();
       appendText(review, "strong", "Dane zastosowane do formularza");
       appendText(review, "p", updated
@@ -464,7 +472,7 @@
     });
     dismiss.addEventListener("click", function () {
       reviewPending = false;
-      hideFooter(false);
+      setFooterReviewMode(false);
       review.hidden = true;
       review.replaceChildren();
     });
@@ -492,7 +500,7 @@
 
     scanProcessing = true;
     reviewPending = false;
-    hideFooter(true);
+    setFooterReviewMode(true);
     review.replaceChildren();
     review.hidden = false;
     appendText(review, "p", "Analizuję etykietę na RTX 5060 Ti…");
