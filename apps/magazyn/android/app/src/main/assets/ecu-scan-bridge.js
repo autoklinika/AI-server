@@ -148,6 +148,7 @@
     scanRevision++;
     reviewPending = false;
     scanProcessing = false;
+    hideFooter(false);
     if (typeof review !== "undefined") { review.hidden = true; review.replaceChildren(); }
     // Release an idle ready RTX reservation immediately on leaving the form.
     // If loading/scanning is still running, the backend's bounded TTL cleans up.
@@ -182,6 +183,12 @@
   }
 
   let reviewPending = false;
+  const footer = form.querySelector(".sticky-actions");
+  function hideFooter(hide) {
+    // The usual Save/Cancel bar obscures long OCR controls on Android.
+    // Hide it during review. It reappears after Apply/Discard or dialog close.
+    if (footer) footer.style.display = hide ? "none" : "";
+  }
   let scanProcessing = false;
   let scanRevision = 0;
 
@@ -200,7 +207,7 @@
   function currentFormValues() {
     const result = {};
     for (const field of ["primary_number", "manufacturer", "designation",
-                          "brand", "model", "hw", "sw", "numbers"]) {
+                          "brand", "model", "category", "hw", "sw", "numbers", "notes"]) {
       const input = form.elements.namedItem(field);
       result[field] = input ? String(input.value || "") : "";
     }
@@ -228,12 +235,13 @@
     name.textContent = suggestion.label;
     label.append(checkbox, name);
     const editor = document.createElement(
-      suggestion.field === "numbers" ? "textarea" : "input"
+      ["numbers","notes"].includes(suggestion.field) ? "textarea" : "input"
     );
-    if (suggestion.field !== "numbers") editor.type = "text";
-    else editor.rows = 3;
+    if (!["numbers","notes"].includes(suggestion.field)) editor.type = "text";
+    else editor.rows = suggestion.field === "notes" ? 4 : 3;
     editor.value = String(suggestion.value || "");
-    editor.maxLength = suggestion.field === "numbers" ? 1500 : 160;
+    editor.maxLength = suggestion.field === "notes" ? 1800
+      : suggestion.field === "numbers" ? 1500 : 160;
     editor.setAttribute("aria-label", "Rozpoznano: " + suggestion.label);
     editor.style.width = "100%";
     editor.style.marginTop = "6px";
@@ -241,6 +249,17 @@
       checkbox.checked = true;
     });
     line.append(label, editor);
+    if (suggestion.confidence === "suggestion") {
+      const caution = appendText(line, "small",
+        "Sugestia AI — sprawdź przypisanie; domyślnie niezatwierdzona.");
+      caution.style.color = "#9a562d";
+      caution.style.display = "block";
+    }
+    if (suggestion.field === "notes") {
+      const caveat = appendText(line, "small",
+        "Numer seryjny dotyczy egzemplarza, a nie wszystkich sztuk tego typu.");
+      caveat.style.display = "block";
+    }
     if (suggestion.current) {
       const prior = appendText(line, "small",
         "Obecnie w formularzu: " + String(suggestion.current).slice(0, 180));
@@ -267,6 +286,7 @@
 
     const items = mapper.build(scan, currentFormValues());
     reviewPending = true;
+    hideFooter(true);
     review.replaceChildren();
     review.hidden = false;
     appendText(review, "strong", "Sprawdź przypisanie danych z naklejki");
@@ -324,7 +344,61 @@
     }
 
     review.appendChild(editors);
-    if (!items.length && !candidates.length) {
+    const otherNumbers = typeof mapper.extraNumbers === "function"
+      ? mapper.extraNumbers(scan) : [];
+    if (otherNumbers.length) {
+      const group = document.createElement("div");
+      group.id = "ecu-extra-unclassified-numbers";
+      group.style.margin = "12px 0";
+      appendText(group, "strong", "Dodatkowe oznaczenia odnalezione przez AI");
+      appendText(group, "p",
+        "Te numery są na etykiecie, ale ich rola nie jest pewna. " +
+        "Dodaj je do numerów zamiennych tylko po sprawdzeniu.");
+      for (const item of otherNumbers) {
+        const itemRow = document.createElement("div");
+        itemRow.style.display = "flex";
+        itemRow.style.alignItems = "center";
+        itemRow.style.flexWrap = "wrap";
+        itemRow.style.gap = "8px";
+        itemRow.style.margin = "6px 0";
+        const role = item.role === "oem" ? "Możliwy OEM"
+          : item.role === "supplier" ? "Numer producenta ECU"
+          : "Nieokreślony numer";
+        appendText(itemRow, "span", item.value + " · " + role);
+        const addNumber = document.createElement("button");
+        addNumber.type = "button";
+        addNumber.className = "secondary small";
+        addNumber.textContent = "+ Dodaj do numerów dodatkowych";
+        addNumber.addEventListener("click", function () {
+          let editor = Array.from(editors.children)
+            .find(el => el.dataset.ecuField === "numbers");
+          if (!editor) {
+            editor = createEditor({
+              field: "numbers", label: "Dodatkowe numery OEM / zamienne",
+              value: currentFormValues().numbers || item.value,
+              current: currentFormValues().numbers, selected: true,
+              confidence: "suggestion"
+            }, editors);
+          }
+          const field = editor.querySelector("textarea");
+          const check = editor.querySelector("input[type=checkbox]");
+          if (field && check) {
+            field.value = mapper.appendNumber(field.value,item.value,
+              scan.primaryNumber,scan.serialNumber);
+            check.checked = true;
+            addNumber.disabled = true;
+            addNumber.textContent = "Dodano do podglądu";
+          }
+        });
+        itemRow.appendChild(addNumber);
+        group.appendChild(itemRow);
+      }
+      // Keep uncertain-number controls BEFORE the long field list, so
+      // Magazyn's fixed bottom Save bar does not cover them on Android.
+      group.style.scrollMarginBottom = "160px";
+      review.insertBefore(group, editors);
+    }
+    if (!items.length && !candidates.length && !otherNumbers.length) {
       appendText(review, "p",
         "Nie udało się jednoznacznie przypisać numerów. Wpisz dane ręcznie.");
     }
@@ -366,7 +440,8 @@
       const approvedFields = new Set(mapper.fields);
       for (const row of Array.from(editors.children)) {
         const fieldName = row.dataset.ecuField;
-        if (!approvedFields.has(fieldName) && fieldName !== "numbers") continue;
+        if (!approvedFields.has(fieldName)
+            && fieldName !== "numbers" && fieldName !== "notes") continue;
         const checked = row.querySelector("input[type=checkbox]");
         const entry = row.querySelector("input[type=text],textarea");
         const target = form.elements.namedItem(fieldName);
@@ -379,6 +454,7 @@
         updated++;
       }
       reviewPending = false;
+      hideFooter(false);
       review.replaceChildren();
       appendText(review, "strong", "Dane zastosowane do formularza");
       appendText(review, "p", updated
@@ -388,6 +464,7 @@
     });
     dismiss.addEventListener("click", function () {
       reviewPending = false;
+      hideFooter(false);
       review.hidden = true;
       review.replaceChildren();
     });
@@ -415,6 +492,7 @@
 
     scanProcessing = true;
     reviewPending = false;
+    hideFooter(true);
     review.replaceChildren();
     review.hidden = false;
     appendText(review, "p", "Analizuję etykietę na RTX 5060 Ti…");

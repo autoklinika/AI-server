@@ -20,6 +20,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from . import ecu_ai
+from . import ecu_smart_extract
 from .store import Problem
 
 RM_URL = "http://127.0.0.1:11435"
@@ -304,7 +305,31 @@ class RtxSession:
             transcript = answer.get("message", {}).get("content", "")
             if not isinstance(transcript, str) or not transcript.strip():
                 raise RuntimeError("No model text")
-            result = ecu_ai.analyze_transcripts(transcript, local_text, barcodes)
+            # Second pass is text-only and reuses the SAME resident Qwen3-VL
+            # under the SAME RM lease, so no new model or GPU scheduler.
+            # If the model cannot return structured JSON, keep the rule-based
+            # parser and the full transcript visible for operator review.
+            structured_text = ""
+            try:
+                classified = _json("POST", RTX_URL + "/api/chat", {
+                    "model": MODEL, "stream": False, "think": False,
+                    "format": "json", "keep_alive": "3m",
+                    "options": {"temperature": 0, "num_ctx": 4096,
+                                "num_predict": 800},
+                    "messages": [{
+                        "role": "user",
+                        "content": ecu_smart_extract.PROMPT +
+                                   transcript[:9000] +
+                                   "\n\nOCR TELEFONU (pomocniczy):\n" +
+                                   local_text[:6000],
+                    }],
+                }, timeout=35)
+                structured_text = classified.get("message", {}).get("content", "")
+            except (RuntimeError, TypeError, AttributeError):
+                pass
+            result = ecu_smart_extract.enrich(
+                transcript, local_text, barcodes, structured_text
+            )
             result["gpu"] = "RTX 5060 Ti"
             with self._lock:
                 if self._sid != session_id or self._phase != "scanning":
