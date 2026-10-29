@@ -146,6 +146,7 @@
   dialog.addEventListener("close", function () {
     clearTimeout(aiTimer);
     scanRevision++;
+    catalogRevision++;
     reviewPending = false;
     scanProcessing = false;
     setFooterReviewMode(false);
@@ -198,6 +199,7 @@
   }
   let scanProcessing = false;
   let scanRevision = 0;
+  let catalogRevision = 0;
 
   // The user must explicitly apply the interpreted values. A correct OCR
   // transcript never authorizes silently overwriting form fields or saving.
@@ -256,9 +258,11 @@
       checkbox.checked = true;
     });
     line.append(label, editor);
-    if (suggestion.confidence === "suggestion") {
+    if (suggestion.confidence === "suggestion" || suggestion.confidence === "catalog") {
       const caution = appendText(line, "small",
-        "Sugestia AI — sprawdź przypisanie; domyślnie niezatwierdzona.");
+        suggestion.confidence === "catalog"
+          ? "Sugestia z istniejącej bazy Magazynu — sprawdź zgodność ECU przed zaznaczeniem."
+          : "Sugestia AI — sprawdź przypisanie; domyślnie niezatwierdzona.");
       caution.style.color = "#9a562d";
       caution.style.display = "block";
     }
@@ -280,6 +284,136 @@
     return line;
   }
 
+
+  function catalogQuery(scan) {
+    const data=scan&&typeof scan==="object"?scan:{};
+    const candidates=Array.isArray(data.candidates)?data.candidates.slice(0,25):[];
+    const extras=Array.isArray(data.extraNumbers)
+      ?data.extraNumbers.slice(0,20).map(x=>x&&x.value).filter(x=>typeof x==="string"):[];
+    const primary=String(data.fieldConfidence?.primary_number||"")==="suggestion"
+      ?"":String(data.primaryNumber||"");
+    return {
+      primary_number:primary.slice(0,160),
+      oem_numbers:(Array.isArray(data.oemNumbers)?data.oemNumbers:[]).slice(0,12),
+      candidate_numbers:[...candidates,...extras].slice(0,25),
+      serial_number:String(data.serialNumber||"").slice(0,160),
+      manufacturer:String(data.manufacturer||"").slice(0,160),
+      vehicle_brand:String(data.vehicleBrand||"").slice(0,160),
+      model:String(data.model||"").slice(0,160),
+      hw:String(data.hardware||"").slice(0,160),
+      sw:String(data.software||"").slice(0,160)
+    };
+  }
+
+  async function compareWithCatalog(scan, container, editors, revision) {
+    const merge=window.magazynEcuCatalogMerge;
+    if(!merge || typeof merge.catalogSuggestions!=="function") return;
+    container.replaceChildren();
+    appendText(container,"p","Porównuję numery z aktualną bazą Magazynu…");
+    let response;
+    try {
+      response=await api("/api/ecu-label/catalog-match",{
+        method:"POST",body:JSON.stringify(catalogQuery(scan))
+      });
+    } catch (_) {
+      if(revision===catalogRevision && reviewPending && dialog.open){
+        container.replaceChildren();
+        appendText(container,"small",
+          "Nie udało się sprawdzić bazy. Odczyt zdjęcia nadal można zatwierdzić ręcznie.");
+      }
+      return;
+    }
+    if(revision!==catalogRevision || !reviewPending || !dialog.open) return;
+    container.replaceChildren();
+    const heading=appendText(container,"strong","Porównanie z istniejącą bazą Magazynu");
+    heading.style.display="block";
+    appendText(container,"p",String(response.message||"Brak wyników."));
+    const matches=Array.isArray(response.matches)?response.matches.slice(0,12):[];
+
+    function showCatalogProposals(item){
+      const rows=merge.catalogSuggestions(scan,currentFormValues(),item);
+      for(const old of Array.from(editors.querySelectorAll("[data-ecu-catalog='1']"))){
+        old.remove();
+      }
+      let count=0;
+      for(const proposal of rows){
+        if(Array.from(editors.children).some(x=>x.dataset.ecuField===proposal.field)){
+          continue;
+        }
+        const row=createEditor(proposal,editors);
+        row.dataset.ecuCatalog="1";
+        count++;
+      }
+      const message=document.createElement("p");
+      message.textContent=count
+        ? "Dodano "+count+" brakujących pól z pozycji #"+item.id+
+          " jako niezaznaczone propozycje. Sprawdź je przed zastosowaniem."
+        : "Odczyt i formularz zawierają już te wartości albo nie można ich bezpiecznie przepisać.";
+      container.appendChild(message);
+    }
+
+    for(const item of matches){
+      const card=document.createElement("div");
+      card.style.border="1px solid #d9c8ba";
+      card.style.borderRadius="9px";
+      card.style.padding="10px";
+      card.style.margin="8px 0";
+      appendText(card,"strong",
+        "#"+String(item.id)+" · "+String(item.designation||"ECU").slice(0,130));
+      const status=item.variant_status==="same_variant_candidate"
+        ?"Możliwy ten sam wariant (zgodne numery, HW i SW)"
+        : item.variant_status==="conflict"
+        ?"UWAGA: niezgodne oznaczenia wariantu"
+        :"Zgodny numer, ale wariant HW/SW wymaga sprawdzenia";
+      const meta=appendText(card,"p",status);
+      if(item.variant_status==="conflict")meta.style.color="#b64419";
+      const matched=(Array.isArray(item.matched_numbers)?item.matched_numbers:[])
+        .slice(0,4).map(m=>String(m.scanned_number||"").slice(0,45));
+      appendText(card,"small",
+        "Numery zgodne: "+matched.join(", ")+
+        " · W bazie: "+String(item.primary_number||"").slice(0,60)+
+        " · HW "+String(item.hw||"—").slice(0,50)+
+        " · SW "+String(item.sw||"—").slice(0,50)+
+        " · na stanie: "+String(item.quantity||0)+" szt.");
+      const conflicts=merge.conflictingFields(item);
+      if(conflicts.length){
+        const warning=appendText(card,"p",
+          "Różnice względem etykiety: "+conflicts.join(", ")+
+          ". Nie kopiuję danych tej pozycji do formularza.");
+        warning.style.color="#b64419";
+      } else {
+        const button=document.createElement("button");
+        button.type="button";
+        button.className="secondary small";
+        button.textContent="Porównaj i zaproponuj brakujące pola";
+        button.addEventListener("click",()=>showCatalogProposals(item));
+        card.appendChild(button);
+      }
+
+      // Reuse the existing stock-receipt flow instead of generating a new ECU
+      // item when one explicit identifier and both HW/SW agree.
+      if(item.variant_status==="same_variant_candidate"){
+        const receive=document.createElement("button");
+        receive.type="button";
+        receive.className="secondary small select-existing";
+        receive.dataset.id=String(item.id);
+        receive.textContent="Otwórz przyjęcie sztuk do istniejącej pozycji";
+        receive.style.display="block";
+        receive.style.marginTop="8px";
+        card.appendChild(receive);
+      }
+      container.appendChild(card);
+    }
+    if(response.truncated){
+      appendText(container,"small",
+        "Znaleziono więcej wariantów; porównaj je w wyszukiwarce Magazynu.");
+    }
+    const recommendation=matches.find(x=>x.id===response.recommended_id);
+    if(recommendation && !recommendation.conflicts?.length){
+      showCatalogProposals(recommendation);
+    }
+  }
+
   window.magazynApplyScan = function (json) {
     if (!dialog.open || form.elements.namedItem("kind").value !== "ecu") return;
     let scan;
@@ -292,6 +426,7 @@
     }
 
     const items = mapper.build(scan, currentFormValues());
+    const matchRevision=++catalogRevision;
     reviewPending = true;
     setFooterReviewMode(true);
     review.replaceChildren();
@@ -352,6 +487,12 @@
     }
 
     review.appendChild(editors);
+    const catalogResults=document.createElement("div");
+    catalogResults.id="ecu-catalog-results";
+    catalogResults.style.borderTop="1px solid #dbcabb";
+    catalogResults.style.paddingTop="10px";
+    catalogResults.style.margin="12px 0";
+    review.insertBefore(catalogResults,editors);
     const otherNumbers = typeof mapper.extraNumbers === "function"
       ? mapper.extraNumbers(scan) : [];
     if (otherNumbers.length) {
@@ -462,6 +603,7 @@
         updated++;
       }
       reviewPending = false;
+      catalogRevision++;
       setFooterReviewMode(false);
       review.replaceChildren();
       appendText(review, "strong", "Dane zastosowane do formularza");
@@ -472,6 +614,7 @@
     });
     dismiss.addEventListener("click", function () {
       reviewPending = false;
+      catalogRevision++;
       setFooterReviewMode(false);
       review.hidden = true;
       review.replaceChildren();
@@ -482,6 +625,8 @@
     review.insertBefore(controls, review.children[2] || null);
     review.style.paddingBottom = "92px";
     review.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Read-only database comparison happens after OCR, without GPU or stock write.
+    void compareWithCatalog(scan,catalogResults,editors,matchRevision);
   };
 
   window.magazynRequestAiScan = async function (json) {

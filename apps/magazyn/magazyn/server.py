@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field, StrictInt
 from .store import Problem, Store
 from . import transfers, backup, messaging, restore_checks, ecu_ai
 from .ecu_rtx import RtxSession
+from .ecu_catalog_match import match_existing_ecu
 
 COOKIE = "magazyn_session"
 STATIC = Path(__file__).parent / "static"
@@ -129,6 +130,20 @@ class EcuAiAnalyzeRequest(BaseModel):
 
 class EcuAiDeactivateRequest(BaseModel):
     session_id: str = Field(min_length=8, max_length=80)
+
+
+class EcuCatalogMatchRequest(BaseModel):
+    # Read-only catalog cross-reference: never trust extracted numbers as proof
+    # of an identical ECU or as authorization to create/receive stock.
+    primary_number: str = Field(default="", max_length=160)
+    oem_numbers: list[str] = Field(default_factory=list, max_length=12)
+    candidate_numbers: list[str] = Field(default_factory=list, max_length=25)
+    serial_number: str = Field(default="", max_length=160)
+    manufacturer: str = Field(default="", max_length=160)
+    vehicle_brand: str = Field(default="", max_length=160)
+    model: str = Field(default="", max_length=160)
+    hw: str = Field(default="", max_length=160)
+    sw: str = Field(default="", max_length=160)
 
 
 class DocumentUpload(BaseModel):
@@ -340,6 +355,13 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
         # Requires explicit AI activation and reviewed field mapping.
         return rtx_session.scan(actor["id"], body.session_id,
                                 body.photo_base64, body.local_text, body.barcodes)
+
+    @app.post("/api/ecu-label/catalog-match")
+    def ecu_catalog_match(body: EcuCatalogMatchRequest,
+                          actor: dict = Depends(require_write)):
+        # Session and CSRF are required, but no GPU allocation or database write
+        # is performed. The response is a comparison, never an automatic merge.
+        return match_existing_ecu(store, body.model_dump())
 
     @app.get("/api/items")
     def items(q: str="", kind: str | None=None, brand: str | None=None,
