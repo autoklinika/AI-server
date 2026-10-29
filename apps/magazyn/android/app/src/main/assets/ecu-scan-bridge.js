@@ -148,6 +148,7 @@
     scanRevision++;
     reviewPending = false;
     scanProcessing = false;
+    hideFooter(false);
     if (typeof review !== "undefined") { review.hidden = true; review.replaceChildren(); }
     // Release an idle ready RTX reservation immediately on leaving the form.
     // If loading/scanning is still running, the backend's bounded TTL cleans up.
@@ -182,6 +183,12 @@
   }
 
   let reviewPending = false;
+  const footer = form.querySelector(".sticky-actions");
+  function hideFooter(hide) {
+    // The usual Save/Cancel bar obscures long OCR controls on Android.
+    // Hide it during review. It reappears after Apply/Discard or dialog close.
+    if (footer) footer.style.display = hide ? "none" : "";
+  }
   let scanProcessing = false;
   let scanRevision = 0;
 
@@ -279,6 +286,7 @@
 
     const items = mapper.build(scan, currentFormValues());
     reviewPending = true;
+    hideFooter(true);
     review.replaceChildren();
     review.hidden = false;
     appendText(review, "strong", "Sprawdź przypisanie danych z naklejki");
@@ -446,6 +454,7 @@
         updated++;
       }
       reviewPending = false;
+      hideFooter(false);
       review.replaceChildren();
       appendText(review, "strong", "Dane zastosowane do formularza");
       appendText(review, "p", updated
@@ -455,6 +464,7 @@
     });
     dismiss.addEventListener("click", function () {
       reviewPending = false;
+      hideFooter(false);
       review.hidden = true;
       review.replaceChildren();
     });
@@ -482,6 +492,7 @@
 
     scanProcessing = true;
     reviewPending = false;
+    hideFooter(true);
     review.replaceChildren();
     review.hidden = false;
     appendText(review, "p", "Analizuję etykietę na RTX 5060 Ti…");
