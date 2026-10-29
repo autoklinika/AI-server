@@ -112,8 +112,15 @@ class OrderedDelivery(BaseModel):
     technical_state: str | None = None
 
 
+class EcuAiActivateRequest(BaseModel):
+    # Legacy APKs silently wrote OCR output to the wrong form fields.
+    # Require the reviewed-mapping client before allocating RTX resources.
+    mapping_version: StrictInt = Field(ge=2, le=2)
+
+
 class EcuAiAnalyzeRequest(BaseModel):
     session_id: str = Field(default="", max_length=80)
+    mapping_version: StrictInt = Field(default=0)
     # Base64 JPEG from an authenticated WebGUI session.
     photo_base64: str = Field(min_length=100, max_length=4_700_000)
     local_text: str = Field(default="", max_length=6000)
@@ -314,7 +321,7 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
         return rtx_session.status(actor["id"])
 
     @app.post("/api/ecu-label/activate", status_code=202)
-    def ecu_ai_activate(actor: dict = Depends(require_write)):
+    def ecu_ai_activate(body: EcuAiActivateRequest, actor: dict = Depends(require_write)):
         if not ecu_ai.is_enabled():
             raise Problem(503, "Tryb AI jest wyłączony na serwerze.")
         return rtx_session.activate(actor["id"])
@@ -328,7 +335,9 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
     def ecu_ai_analyze(body: EcuAiAnalyzeRequest, actor: dict = Depends(require_write)):
         if not ecu_ai.is_enabled():
             raise Problem(503, "Tryb AI jest wyłączony na serwerze.")
-        # Requires explicit AI activation. Older APKs safely fall back to phone OCR.
+        if body.mapping_version != 2:
+            raise Problem(409, "Zaktualizuj aplikację Magazyn, aby bezpiecznie wypełniać pola ECU.")
+        # Requires explicit AI activation and reviewed field mapping.
         return rtx_session.scan(actor["id"], body.session_id,
                                 body.photo_base64, body.local_text, body.barcodes)
 
