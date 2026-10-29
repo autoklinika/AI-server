@@ -114,8 +114,18 @@ _CATEGORY_TERMS = (
 def _category(parsed: dict, evidence: str) -> str:
     suggested = _as_text(parsed.get("category"), 60).lower()
     text = evidence.upper()
+    aliases = {
+        "ECU silnika": ("engine ecu", "engine control", "ecm", "engine management",
+                        "diesel ecu", "ecu silnika", "silnik"),
+        "EBS": ("ebs", "brake control", "braking"),
+        "ABS": ("abs", "anti-lock"),
+        "EGR": ("egr", "exhaust gas"),
+        "Sterownik skrzyni biegów": ("transmission", "gearbox", "tcu", "tcm"),
+        "ECU nadwozia": ("body control", "bcm"),
+    }
     for name, terms in _CATEGORY_TERMS:
-        if suggested in (name.lower(), "") and any(
+        accepted = (name.lower(), "") + aliases.get(name, ())
+        if suggested in accepted and any(
             re.search(r"(?<![A-Z0-9])"+re.escape(term)+r"(?![A-Z0-9])", text)
             for term in terms
         ):
@@ -235,7 +245,16 @@ def enrich(transcript: str, phone_ocr: str, barcodes: list[str],
         for code in _values(parsed, field, evidence):
             if (code not in protected and code not in {_tokens(x) for x in oems}
                     and code not in {r["value"] for r in extras}):
-                extras.append({"value": code, "role": role, "confidence": "suggestion"})
+                # Classification from number FORMAT only; not a confirmed
+                # interchange. Android shows these as unchecked suggestions.
+                suggestion = role
+                if role == "unclassified":
+                    if re.fullmatch(r"(?:A2C|5WK)[0-9A-Z]{6,18}", code):
+                        suggestion = "supplier"
+                    elif re.fullmatch(r"[0-9]{2}[A-Z][0-9]{6}[A-Z0-9]{1,3}", code):
+                        suggestion = "oem"
+                extras.append({"value": code, "role": suggestion,
+                               "confidence": "suggestion"})
     baseline["oemNumbers"] = oems[:12]
     baseline["extraNumbers"] = extras[:MAX_EXTRA]
     baseline["candidates"] = list(dict.fromkeys(
