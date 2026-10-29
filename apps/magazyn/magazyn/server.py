@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, StrictInt
 
 from .store import Problem, Store
 from . import transfers, backup, messaging, restore_checks, ecu_ai
+from .ecu_rtx import RtxSession
 
 COOKIE = "magazyn_session"
 STATIC = Path(__file__).parent / "static"
@@ -112,10 +113,15 @@ class OrderedDelivery(BaseModel):
 
 
 class EcuAiAnalyzeRequest(BaseModel):
+    session_id: str = Field(default="", max_length=80)
     # Base64 JPEG from an authenticated WebGUI session.
     photo_base64: str = Field(min_length=100, max_length=4_700_000)
     local_text: str = Field(default="", max_length=6000)
     barcodes: list[str] = Field(default_factory=list, max_length=12)
+
+
+class EcuAiDeactivateRequest(BaseModel):
+    session_id: str = Field(min_length=8, max_length=80)
 
 
 class DocumentUpload(BaseModel):
@@ -166,6 +172,8 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
     app = FastAPI(title="Magazyn V1" + (" DEV" if environment == "dev" else ""),
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.store = store
+    rtx_session = RtxSession()
+    app.state.rtx_session = rtx_session
     preview_secret = secrets.token_bytes(32)
 
     @app.exception_handler(Problem)
@@ -299,13 +307,30 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
         return {"ok":True}
 
     @app.get("/api/ecu-label/status")
-    def ecu_ai_status(_user: dict = Depends(require_user)):
-        return {"enabled": ecu_ai.is_enabled()}
+    def ecu_ai_status(actor: dict = Depends(require_user)):
+        if not ecu_ai.is_enabled():
+            return {"enabled": False, "phase": "off", "ready": False,
+                    "message": "Tryb AI nie jest aktywny. Aparat: OCR telefonu."}
+        return rtx_session.status(actor["id"])
+
+    @app.post("/api/ecu-label/activate", status_code=202)
+    def ecu_ai_activate(actor: dict = Depends(require_write)):
+        if not ecu_ai.is_enabled():
+            raise Problem(503, "Tryb AI jest wyłączony na serwerze.")
+        return rtx_session.activate(actor["id"])
+
+    @app.post("/api/ecu-label/deactivate")
+    def ecu_ai_deactivate(body: EcuAiDeactivateRequest,
+                          actor: dict = Depends(require_write)):
+        return rtx_session.deactivate(actor["id"], body.session_id)
 
     @app.post("/api/ecu-label/analyze")
-    def ecu_ai_analyze(body: EcuAiAnalyzeRequest, _user: dict = Depends(require_write)):
-        # AI only prepares suggested labels; never creates products or stock events.
-        return ecu_ai.recognize(body.photo_base64, body.local_text, body.barcodes)
+    def ecu_ai_analyze(body: EcuAiAnalyzeRequest, actor: dict = Depends(require_write)):
+        if not ecu_ai.is_enabled():
+            raise Problem(503, "Tryb AI jest wyłączony na serwerze.")
+        # Requires explicit AI activation. Older APKs safely fall back to phone OCR.
+        return rtx_session.scan(actor["id"], body.session_id,
+                                body.photo_base64, body.local_text, body.barcodes)
 
     @app.get("/api/items")
     def items(q: str="", kind: str | None=None, brand: str | None=None,
