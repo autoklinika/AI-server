@@ -136,3 +136,7 @@ Użytkownik zapisał nową politykę Grants; efektywny PacketFilter Tailscale ma
 ### Końcowy odbiór Tailscale pracownika — PASS (28.10.2026)
 
 Właściciel potwierdził po zmianie Grants oba testy z telefonu: Magazyn TCP 8443 działa, AI Platform TCP 443 jest niedostępny. Skuteczny PacketFilter serwera pozwala współdzielonemu peerowi wyłącznie na TCP 8443. Ponowny audyt produkcji: **employee_access PASS; wszystkie kontrole PASS poza offsite_recovery BLOCKED**. Czeka drugi YubiKey. [Pełne potwierdzenie](docs/MAGAZYN_TAILSCALE_EMPLOYEE_FINAL_SIGNOFF_2026-10-28_PL.md).
+
+## Drugi YubiKey 5C — przygotowanie odzyskiwania 29.10.2026
+
+Serwer wykrył **nowy YubiKey 5C** o fabrycznych parametrach PIV i pustym slocie 0x82. Wdrożono do prywatnego katalogu produkcyjnego trzy kontrolowane skrypty: interaktywne ustawienie PIN/PUK i nowej PIV identity bez eksportu klucza, szyfrowanie istniejącego AES pod drugi publiczny recipient oraz fizyczny decrypt/restore produkcyjnego backupu w RAM. Preflight dla nowego YubiKeya PASS; pozostałe dwa skrypty odmawiają uruchomienia bez skonfigurowanego drugiego recipienta. **Fizyczne przygotowanie i test odzyskania jeszcze PENDING** — wymagają lokalnego wprowadzenia PIN-u/PUK-u na serwerze przez użytkownika. [Dokumentacja](docs/MAGAZYN_SECOND_YUBIKEY_PROVISIONING_2026-10-29_PL.md).
