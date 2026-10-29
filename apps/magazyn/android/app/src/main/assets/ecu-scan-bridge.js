@@ -385,7 +385,10 @@
         itemRow.appendChild(addNumber);
         group.appendChild(itemRow);
       }
-      review.appendChild(group);
+      // Keep uncertain-number controls BEFORE the long field list, so
+      // Magazyn's fixed bottom Save bar does not cover them on Android.
+      group.style.scrollMarginBottom = "160px";
+      review.insertBefore(group, editors);
     }
     if (!items.length && !candidates.length && !otherNumbers.length) {
       appendText(review, "p",
