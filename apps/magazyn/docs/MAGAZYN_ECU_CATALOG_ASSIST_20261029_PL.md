@@ -34,7 +34,19 @@ Poprzedni mechanizm poprawnie rozdzielał transkrypcję AI na numer główny, OE
 - Rzeczywisty mobilny Firefox 390x844 z izolowaną FastAPI/SQLite: dwa warianty, podgląd z bazy, niezatwierdzone propozycje brakującej kategorii, ręczne zastosowanie, brak mutacji magazynu, odmowa dopasowania przy konflikcie HW/SW. PASS.
 - Pełny pakiet testów Magazynu: PASS. Kompilacja APK 0.4.0 na GitHub Actions.
 
+## Odbiór i stan wdrożenia — 29.10.2026
+
+- Produkcyjny backend Magazynu został przełączony na addytywny release: /srv/ai-data/magazyn-v1/releases/ecu-catalog-assisted-v4-20261029/apps/magazyn.
+- Jedynymi zmianami backendu są nowy, odczytowy moduł ecu_catalog_match.py i dodanie trasy /api/ecu-label/catalog-match w server.py. Moduły store.py, ECU AI, RM i modele RTX pozostają bez zmian.
+- Przed restartem zachowano plik drop-in: /srv/ai-data/magazyn-v1/rollback/ecu-catalog-assisted-20261029/80-ecu-ai-ocr.conf.before.
+- Po restarcie: localhost /healthz PASS, Tailscale HTTPS /healthz PASS, nieautoryzowany POST na katalog-match HTTP 401 PASS, webgui/Telegram active PASS.
+- Test na prawdziwej bazie produkcyjnej w trybie sqlite mode=ro, przy użyciu już istniejącego identyfikatora ECU: dopasowanie PASS, bez HW/SW rekomendacja automatyczna NULL; kontrola liczby rekordów i numerów bez zmian.
+- Pełne testy Magazynu, testy izolowane katalogu, Node oraz mobilny Firefox 390 px: PASS. APK 0.4.0 przez GitHub Actions build PASS, artefakt magazyn-v1-android-debug-apk.
+- Odbiór na fizycznym Androidzie po instalacji nowego APK pozostaje do wykonania. Wyświetlanie i przyjmowanie propozycji wymaga ręcznego potwierdzenia.
+
 ## Wdrożenie i rollback
 
 Docelowo addytywny backend: nowy plik magazyn/ecu_catalog_match.py i osobna trasa w server.py; bez zmian schema SQLite, obecnego GPU RM, Tailscale i Telegrama. Nowy APK korzysta z już istniejącego WebGUI; jeśli katalog jest niedostępny, wystawia propozycje na podstawie OCR bez katalogowego uzupełniania.
 Rollback: przywrócenie poprzedniego katalogu release przez systemd drop-in, bez odtwarzania bazy. Nie usuwać ostatnio wykonanych przyjęć i zmian stanów.
+
+Rollback aktualnego release: skopiować zapisany plik 80-ecu-ai-ocr.conf.before do /home/harrypotter/.config/systemd/user/magazyn-webgui.service.d/80-ecu-ai-ocr.conf, następnie XDG_RUNTIME_DIR=/run/user/1000 systemctl --user daemon-reload oraz restart wyłącznie magazyn-webgui.service. Nie przywracać starej SQLite, żeby nie utracić późniejszych operacji magazynowych.
