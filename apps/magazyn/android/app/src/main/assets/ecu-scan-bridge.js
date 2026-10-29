@@ -16,6 +16,8 @@
   row.id = "android-ecu-camera-row";
   row.style.display = "flex";
   row.style.justifyContent = "flex-end";
+  row.style.flexWrap = "wrap";
+  row.style.gap = "8px";
   row.style.margin = "0 0 12px";
   const camera = document.createElement("button");
   camera.type = "button";
@@ -30,8 +32,124 @@
     // Intercepted by Android only from the trusted WebGUI main frame.
     window.location.assign("magazyn-scan://capture");
   });
+  const ai = document.createElement("button");
+  ai.type = "button";
+  ai.className = "secondary";
+  ai.textContent = "✨ AI";
+  ai.setAttribute("aria-label", "Włącz AI na RTX do rozpoznawania naklejek ECU");
+  ai.style.minHeight = "46px";
+  ai.style.minWidth = "82px";
+  ai.style.borderColor = "#B74B0D";
+  row.appendChild(ai);
   row.appendChild(camera);
   label.insertAdjacentElement("afterend", row);
+
+  const aiPanel = document.createElement("div");
+  aiPanel.id = "android-ecu-ai-state";
+  aiPanel.hidden = true;
+  aiPanel.setAttribute("role", "status");
+  aiPanel.setAttribute("aria-live", "polite");
+  aiPanel.style.background = "#f5f5f4";
+  aiPanel.style.borderRadius = "10px";
+  aiPanel.style.padding = "10px 12px";
+  aiPanel.style.marginBottom = "12px";
+  const aiStatus = document.createElement("div");
+  aiStatus.style.fontSize = "13px";
+  aiStatus.style.fontWeight = "600";
+  const aiBar = document.createElement("progress");
+  aiBar.max = 100;
+  aiBar.value = 0;
+  aiBar.style.width = "100%";
+  aiBar.style.height = "12px";
+  aiBar.style.accentColor = "#B74B0D";
+  aiBar.style.marginTop = "8px";
+  aiPanel.append(aiStatus, aiBar);
+  row.insertAdjacentElement("afterend", aiPanel);
+
+  let aiReady = false;
+  let aiSessionId = "";
+  let aiPhase = "off";
+  let aiTimer = null;
+  let aiActionBusy = false;
+
+  function loadingPhase(phase) {
+    return ["checking", "reserving", "loading", "warming", "closing", "scanning"].includes(phase);
+  }
+
+  function paintAi(status) {
+    const state = status || {};
+    aiPhase = String(state.phase || "off");
+    aiReady = state.ready === true && Boolean(state.session_id);
+    aiSessionId = aiReady ? String(state.session_id) : (
+      loadingPhase(aiPhase) ? String(state.session_id || "") : ""
+    );
+    const starting = loadingPhase(aiPhase);
+    const text = String(state.message || (aiReady ? "RTX gotowy" : "Aparat używa OCR telefonu."));
+    aiPanel.hidden = aiPhase === "off";
+    aiStatus.textContent = text;
+    aiBar.hidden = !starting && !aiReady;
+    aiBar.value = Math.max(0, Math.min(100, Number(state.progress) || 0));
+    ai.textContent = aiReady ? "✨ AI ✓" : (starting ? "✨ AI…" : "✨ AI");
+    ai.style.backgroundColor = aiReady ? "#e9f7ec" : "";
+    ai.style.borderColor = aiReady ? "#288044" : "#B74B0D";
+    ai.disabled = aiActionBusy || starting;
+    ai.setAttribute("aria-pressed", aiReady ? "true" : "false");
+    camera.title = aiReady ? "Zrób zdjęcie — rozpoznanie przez RTX" :
+      "Zrób zdjęcie — lokalny OCR telefonu";
+  }
+
+  function planPoll(delay) {
+    clearTimeout(aiTimer);
+    if (!dialog.open) return;
+    aiTimer = setTimeout(pollAi, delay);
+  }
+
+  async function pollAi() {
+    if (!dialog.open) return;
+    try {
+      const status = await api("/api/ecu-label/status");
+      paintAi(status);
+      if (loadingPhase(aiPhase) || aiReady) {
+        planPoll(aiReady ? 4000 : 1200);
+      }
+    } catch (_) {
+      paintAi({ phase: "error", message: "Brak połączenia z AI. Aparat używa OCR." });
+    }
+  }
+
+  ai.addEventListener("click", async function () {
+    if (!dialog.open || aiActionBusy) return;
+    aiActionBusy = true;
+    ai.disabled = true;
+    try {
+      if (aiReady && aiSessionId) {
+        const result = await api("/api/ecu-label/deactivate", {
+          method: "POST", body: JSON.stringify({ session_id: aiSessionId })
+        });
+        paintAi(result);
+      } else {
+        const result = await api("/api/ecu-label/activate", {
+          method: "POST", body: JSON.stringify({})
+        });
+        paintAi(result);
+        planPoll(1000);
+      }
+    } catch (error) {
+      const text = error instanceof Error ? error.message : "RTX niedostępny";
+      paintAi({ phase: "busy", message: text + " Aparat pozostaje w trybie OCR." });
+    } finally {
+      aiActionBusy = false;
+      ai.disabled = loadingPhase(aiPhase);
+    }
+  });
+
+  dialog.addEventListener("close", function () {
+    clearTimeout(aiTimer);
+    // An already allocated session is reclaimed by the backend idle timeout.
+    aiReady = false;
+    aiSessionId = "";
+    paintAi({ phase: "off" });
+  });
 
   const review = document.createElement("div");
   review.id = "android-ecu-ocr-review";
@@ -43,7 +161,7 @@
   review.style.background = "#fff9f4";
   review.setAttribute("role", "status");
   review.setAttribute("aria-live", "polite");
-  row.insertAdjacentElement("afterend", review);
+  aiPanel.insertAdjacentElement("afterend", review);
 
   function appendText(node, tag, text) {
     const element = document.createElement(tag);
@@ -147,15 +265,15 @@
     try { local = JSON.parse(json); } catch (_) { return; }
     const jpeg = String(local.jpegBase64 || "");
     delete local.jpegBase64; // Never show or keep image bytes in UI state.
-    if (!jpeg || typeof api !== "function") {
+    if (!aiReady || !aiSessionId || !jpeg || typeof api !== "function") {
       window.magazynApplyScan(JSON.stringify(local));
-      appendText(review, "small", "Przetwarzanie tylko lokalne: nie można przygotować zdjęcia do AI.");
+      appendText(review, "small", "Odczyt OCR telefonu. Aby włączyć RTX, naciśnij ikonę AI przed skanowaniem.");
       return;
     }
 
     review.replaceChildren();
     review.hidden = false;
-    appendText(review, "p", "Analiza etykiety na lokalnym Serwerze AI…");
+    appendText(review, "p", "Analizuję etykietę na RTX 5060 Ti…");
     camera.disabled = true;
     const submit = document.getElementById("item-submit");
     const originalSubmitDisabled = submit ? submit.disabled : true;
@@ -166,6 +284,7 @@
       const analyzed = await api("/api/ecu-label/analyze", {
         method: "POST",
         body: JSON.stringify({
+          session_id: aiSessionId,
           photo_base64: jpeg,
           local_text: String(local.rawText || "").slice(0, 6000),
           barcodes: (Array.isArray(local.barcodes) ? local.barcodes : [])
@@ -175,7 +294,7 @@
       if (!dialog.open) return;
       window.magazynApplyScan(JSON.stringify(analyzed));
       const prefix = analyzed.engine === "server_vision_ocr"
-        ? "AI Serwera + OCR Android"
+        ? "RTX 5060 Ti + OCR Android"
         : "OCR Android";
       appendText(review, "p", "Źródło: " + prefix + ". Numery sprawdź z naklejką.");
       if (analyzed.serialNumber) {
@@ -188,17 +307,18 @@
     } catch (error) {
       if (!dialog.open) return;
       window.magazynApplyScan(JSON.stringify(local));
+      aiReady = false;
+      aiSessionId = "";
+      paintAi({phase: "error", message: "Tryb RTX przerwany lub wygasł. Aparat używa OCR telefonu."});
       appendText(review, "p",
-        "Serwer AI jest niedostępny; użyto OCR telefonu. " +
+        "RTX jest niedostępny lub sesja AI wygasła. Użyto OCR telefonu. " +
         "Sprawdź ręcznie wszystkie numery przed dodaniem ECU.");
     } finally {
       camera.disabled = false;
       if (submit && dialog.open) {
-        // Keep the existing form's duplicate guard intact.
-        submit.disabled = originalSubmitDisabled;
-        for (const candidate of (typeof similarCandidates !== "undefined" ? similarCandidates : [])) {
-          if (candidate.same_variant) submit.disabled = true;
-        }
+        // Let the original Magazyn duplicate/variant validation determine state.
+        if (typeof renderSimilar === "function") renderSimilar();
+        else submit.disabled = originalSubmitDisabled;
       }
     }
   };
