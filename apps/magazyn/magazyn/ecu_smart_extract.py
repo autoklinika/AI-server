@@ -249,7 +249,7 @@ def enrich(transcript: str, phone_ocr: str, barcodes: list[str],
                 # interchange. Android shows these as unchecked suggestions.
                 suggestion = role
                 if role == "unclassified":
-                    if re.fullmatch(r"(?:A2C|5WK)[0-9A-Z]{6,18}", code):
+                    if re.fullmatch(r"(?:A2C|5WK)[0-9A-Z]{4,18}", code):
                         suggestion = "supplier"
                     elif re.fullmatch(r"[0-9]{2}[A-Z][0-9]{6}[A-Z0-9]{1,3}", code):
                         suggestion = "oem"
