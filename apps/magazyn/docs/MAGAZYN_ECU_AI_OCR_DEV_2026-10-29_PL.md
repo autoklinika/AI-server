@@ -1,6 +1,6 @@
 # Magazyn V1 / Android — inteligentny odczyt etykiet ECU (DEV)
 
-**Data:** 2026-10-29. **Stan:** przygotowana implementacja i APK w GitHub. Serwer produkcyjny Magazynu nie jest zmodyfikowany.
+**Data:** 2026-10-29. **Stan:** Android APK i API PASS; produkcyjny Magazyn ma addytywne API OCR aktywowane w kontrolowanym przełączeniu usługi. Baza SQLite, Gateway i RM pozostały bez zmian.
 
 ## Architektura
 
@@ -14,7 +14,7 @@
 ## Modele
 
 - MiniCPM-OCR 1.0 Q8 + projector zostały pobrane do staging i sprawdzone SHA-256 (PASS). Import modelu do katalogu Ollama PASS, ale inferencja 29.10.2026 FAIL: `unknown projector type: minicpm_ocr_1_0`. Nie aktualizować Ollamy produkcyjnej tylko dla tego modelu.
-- Qwen3-VL 8B domyślnie emituje myślenie i przy małym limicie tokenów potrafi zwrócić puste `message.content`. Do zadania OCR wykorzystujemy wariant **qwen3-vl:8b-instruct**, bez myślenia; wymaga odrębnego smoke testu przez AI Gateway.
+- Qwen3-VL 8B domyślnie emituje myślenie i przy małym limicie tokenów potrafi zwrócić puste `message.content`. Do zadania OCR wykorzystujemy wariant **qwen3-vl:8b-instruct**, bez myślenia; testowany przez AI Gateway: PASS 8,8 s; także TestClient API z sesją/CSRF i izolowaną bazą: HTTP 200, numer Bosch/HW/SW poprawny, brak zapisu magazynowego.
 - Docelowy model ustawia wyłącznie administrator serwera przez `MAGAZYN_ECU_AI_MODEL`, nie aplikacja.
 
 ## Flagi i endpointy
@@ -28,7 +28,8 @@
 
 - CI: testy izolowane Pythona (brak GPU, auth, CSRF, duplikaty numeryczne, stan wyłączony, brak zapisu), JUnit Android, Gradle build APK, node --check mostka WebView.
 - Przed produkcją: przynajmniej kilka realnych etykiet Bosch/Continental/Delphi; wynik znak po znaku, test sesji pracownika, brak automatycznego przyjęcia i potwierdzenie poprawnego rollbacku.
-- Produkcja: nie wdrażać bez fizycznych testów telefonu i świadomego przełączenia kodu/flag Magazynu; nie dotykać globalnego RM, Telegrama, Tailscale ani produkcyjnej bazy danych.
+- Produkcyjny backend API został uruchomiony na dodatnim release: /srv/ai-data/magazyn-v1/releases/ecu-ai-087ad211-20261029. Zmiany tylko w server.py (+24 linie), nowym ecu_ai.py i systemd drop-in. Produkcyjny GET /healthz lokalny i HTTPS Tailscale PASS; endpoint status bez uwierzytelnienia 401 PASS; usługa active, RM LLM/nieblokowany. Nie dotykano danych SQLite, Telegrama, Tailscale ani modeli globalnych.
+- Pozostaje test fizycznego Androida na rzeczywistych etykietach przed formalnym odbiorem jakości i merge PR. Nie instalować dodatkowych serwisów ani timerów.
 
 ## Prywatność
 
@@ -37,3 +38,10 @@ Zdjęcie przechodzi wyłącznie przez Tailscale/HTTPS do lokalnego Serwera AI, n
 ## Ryzyka
 
 Model może popełniać błędy w pojedynczych cyfrach. Wymagana kontrola operatora; nie zgadywać braków, nie utożsamiać numeru seryjnego z OEM, nie blokować produkcyjnego Magazynu, jeżeli AI chwilowo nie działa.
+
+## Rollback produkcyjnego API OCR (bez ruszania bazy)
+
+1. Usuń tylko plik `/home/harrypotter/.config/systemd/user/magazyn-webgui.service.d/80-ecu-ai-ocr.conf`.
+2. Wykonaj `XDG_RUNTIME_DIR=/run/user/1000 systemctl --user daemon-reload` oraz `XDG_RUNTIME_DIR=/run/user/1000 systemctl --user restart magazyn-webgui.service`.
+3. Zweryfikuj GET `http://127.0.0.1:18765/healthz` i HTTPS Magazyn :8443. Wróci zamrożony release 529af02029e1, ponieważ plik bazowej jednostki nie był modyfikowany.
+4. Nie przywracaj starej kopii SQLite po normalnej pracy użytkowników. Pliki modeli pozostają zarejestrowane, ale nie będą używane przez Magazyn.
