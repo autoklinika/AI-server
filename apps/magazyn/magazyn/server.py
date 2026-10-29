@@ -21,6 +21,7 @@ from .store import Problem, Store
 from . import transfers, backup, messaging, restore_checks, ecu_ai
 from .ecu_rtx import RtxSession
 from .ecu_catalog_match import match_existing_ecu
+from .part_datasheets import DatasheetFinder
 
 COOKIE = "magazyn_session"
 STATIC = Path(__file__).parent / "static"
@@ -146,6 +147,15 @@ class EcuCatalogMatchRequest(BaseModel):
     sw: str = Field(default="", max_length=160)
 
 
+class PartDatasheetChoice(BaseModel):
+    token: str = Field(min_length=12, max_length=90)
+
+
+class PartDatasheetUploadAnalysis(BaseModel):
+    marking: str = Field(min_length=4, max_length=60)
+    pdf_base64: str = Field(min_length=140, max_length=11_184_812)
+
+
 class DocumentUpload(BaseModel):
     filename: str = Field(min_length=5, max_length=140)
     doc_type: str = Field(pattern="^(datasheet|schematic|other)$")
@@ -194,6 +204,8 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
     app = FastAPI(title="Magazyn V1" + (" DEV" if environment == "dev" else ""),
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.store = store
+    datasheet_finder = DatasheetFinder()
+    app.state.datasheet_finder = datasheet_finder
     rtx_session = RtxSession()
     app.state.rtx_session = rtx_session
     preview_secret = secrets.token_bytes(32)
@@ -211,9 +223,10 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
                            and request.url.path.endswith("/documents"))
             is_small_upload = request.url.path.startswith(("/api/import/", "/api/inventory"))
             is_ai_photo = request.url.path == "/api/ecu-label/analyze"
-            if is_document or is_small_upload or is_ai_photo:
+            is_datasheet_upload = request.url.path == "/api/parts/datasheet/analyze-upload"
+            if is_document or is_small_upload or is_ai_photo or is_datasheet_upload:
                 # Bound streamed uploads even without Content-Length; no multipart dependency.
-                limit = (12 * 1024 * 1024 if is_document else
+                limit = (12 * 1024 * 1024 if is_document or is_datasheet_upload else
                          5_200_000 if is_ai_photo else transfers.MAX_BODY)
                 body = bytearray()
                 async for chunk in request.stream():
@@ -362,6 +375,24 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
         # Session and CSRF are required, but no GPU allocation or database write
         # is performed. The response is a comparison, never an automatic merge.
         return match_existing_ecu(store, body.model_dump())
+
+    @app.get("/api/parts/datasheet/search")
+    def part_datasheet_search(marking: str = "", manufacturer: str = "",
+                              actor: dict = Depends(require_write)):
+        # No inventory write. Provider credentials are server-only.
+        return datasheet_finder.discover(actor["id"], marking, manufacturer)
+
+    @app.post("/api/parts/datasheet/analyze")
+    def part_datasheet_analyze(body: PartDatasheetChoice,
+                               actor: dict = Depends(require_write)):
+        # Only server-minted, user-bound choices can reach the PDF fetcher.
+        return datasheet_finder.analyze_token(actor["id"], body.token)
+
+    @app.post("/api/parts/datasheet/analyze-upload")
+    def part_datasheet_analyze_upload(body: PartDatasheetUploadAnalysis,
+                                      actor: dict = Depends(require_write)):
+        # Operator-supplied PDF remains in memory until attached explicitly.
+        return datasheet_finder.analyze_upload(body.marking, body.pdf_base64)
 
     @app.get("/api/items")
     def items(q: str="", kind: str | None=None, brand: str | None=None,
