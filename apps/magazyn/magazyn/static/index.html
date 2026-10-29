@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/app.js" defer></script>
   <script src="/static/electronics.js" defer></script>
+  <script src="/static/part_datasheets.js" defer></script>
   <script src="/static/account.js" defer></script>
 </head>
 <body>
@@ -343,6 +344,14 @@
       <input type="hidden" name="kind" value="part">
       <div class="form-section">
         <label>Oznaczenie elementu<input name="designation" required maxlength="2000" placeholder="Np. IRF3205, AT24C64, 10k 0603"></label>
+        <section id="part-datasheet-assistant" aria-label="Automatyczne wyszukiwanie dokumentacji" class="inline-panel" style="padding:12px;display:grid;gap:10px">
+          <div class="action-row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <button type="button" class="secondary" id="part-datasheet-find">Znajdź kartę katalogową</button>
+            <span id="part-datasheet-status" class="muted" aria-live="polite">Wpisz pełne oznaczenie elementu.</span>
+          </div>
+          <div id="part-datasheet-sources" hidden></div>
+          <div id="part-datasheet-review" hidden></div>
+        </section>
         <div class="two-cols">
           <label>Numer katalogowy producenta<input name="primary_number" maxlength="160" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Np. IRF3205"></label>
           <label>Producent<input name="manufacturer" maxlength="200" placeholder="Np. Infineon, STMicroelectronics"></label>
@@ -403,6 +412,7 @@
       <div class="form-section form-section-tinted">
         <h3>Dokumentacja techniczna (opcjonalnie)</h3>
         <p class="subtle-note">Dodaj kartę katalogową PDF, schemat PNG albo zdjęcie JPG, maksymalnie 8 MB na plik. Plik będzie zaszyfrowany w backupie bazy.</p>
+        <p class="subtle-note">Możesz też wybrać PDF poniżej i użyć opcji „Analizuj wybrany PDF” w asystencie. Dokument pobrany automatycznie zostanie dołączony dopiero po Twoim zatwierdzeniu.</p>
         <div class="two-cols">
           <label>Typ dokumentu<select name="doc_type"><option value="datasheet">Karta katalogowa / datasheet</option><option value="schematic">Schemat</option><option value="other">Inna dokumentacja</option></select></label>
           <label>Wybierz plik<input name="document" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"></label>
