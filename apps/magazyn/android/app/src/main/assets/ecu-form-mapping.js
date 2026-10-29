@@ -21,7 +21,8 @@
   const allowed = new Set(FIELDS.map(function (f) { return f[1]; }).concat(["numbers"]));
 
   function text(value, max) {
-    return (typeof value === "string" ? value : "")
+    // Never concatenate the next OCR line (such as SW or S/N) into an ID.
+    return (typeof value === "string" ? value : "").split(/[\r\n]/)[0]
       .replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max);
   }
   function key(value) {
@@ -33,7 +34,8 @@
     }).filter(Boolean);
   }
   function add(list, field, label, proposed, existing) {
-    const value = text(proposed, field === "designation" ? 160 : 160);
+    const value = field === "numbers"
+      ? lines(proposed).join("\n") : text(proposed, 160);
     const current = field === "numbers" ? String(existing || "").trim() : text(existing, 160);
     if (!allowed.has(field) || !value || value === current) return;
     list.push({
