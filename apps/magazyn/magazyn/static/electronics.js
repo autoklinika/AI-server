@@ -38,6 +38,7 @@ function openPartDialog(){
     return toast("Administrator musi najpierw utworzyć lokalizację.",true);
   const form=byId("part-form");
   form.reset();
+  if(window.magazynPartDatasheet)window.magazynPartDatasheet.reset();
   byId("part-quantity").value="1";
   byId("part-location").innerHTML=locationOptions();
   const firstLocation=!locations.length;
