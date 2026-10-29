@@ -61,7 +61,7 @@ Brak danych oznacza pominięcie pola. Bez Markdown i wyjaśnień.
 
 def code(value: str) -> str:
     s = str(value or "").strip().upper()
-    if not PART_RE.fullmatch(s) or not any(ch.isdigit() for ch in s):
+    if not PART_RE.fullmatch(s) or not any(ch.isdigit() for ch in s) or not any(ch.isalpha() for ch in s):
         raise Problem(422, "Wpisz pełne oznaczenie elementu, np. LM358 lub IRF3205")
     return s
 
