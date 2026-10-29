@@ -11,7 +11,11 @@ Aplikacja **Android APK**, która otwiera istniejące, produkcyjne WebGUI Magazy
 - Dotychczasowe GUI, role użytkowników, sesje oraz operacje pozostają po stronie istniejącego Magazynu.
 - W oknie **Dodaj sterownik** pojawia się dodatkowy przycisk **📷 Skanuj etykietę ECU**, umieszczony obok numeru katalogowego.
 - Przycisk otwiera systemowy aparat Android przez ActivityResultContracts.TakePicture / FileProvider. APK nie potrzebuje uprawnienia CAMERA ani dostępu do galerii.
-- Po zrobieniu zdjęcia ML Kit w APK odczytuje tekst i kody 2D, następnie przy włączonym backendzie AI zdjęcie trafia HTTPS do Magazynu i przez istniejący RM do lokalnego modelu wizyjnego.
+- W formularzu Dodaj sterownik ikona **✨ AI** znajduje się obok ikony **📷 aparatu**. Bez uruchamiania AI aparat używa wyłącznie ML Kit.
+- Po kliknięciu AI następuje kontrola wolnej VRAM RTX, stanu RM i modeli rezydentnych. Pasek pokazuje sprawdzenie, rezerwację, ładowanie i rozgrzewanie Qwen3-VL 8B.
+- Po wyświetleniu statusu AI gotowe aparat przekazuje zdjęcie wyłącznie przez HTTPS/Magazyn do RTX 5060 Ti. Przy braku pamięci lub zajętym RM pracownik widzi komunikat, a aparat korzysta z lokalnego OCR.
+- Sesja AI wygasa po 120 sekundach bezczynności. W przypadku zamknięcia formularza gotowa rezerwacja jest od razu zwalniana; niezależny watchdog serwera pilnuje timeoutu.
+- Zwykły OCR Android nadal odczytuje tekst i kody 2D, a walidacja wyników odbywa się w Magazynie.
 - AI i lokalny OCR są porównywane. Przy niezgodnych numerach aplikacja wymaga ręcznego wyboru; nie zgaduje marki pojazdu, stanu technicznego ani lokalizacji. Pola wypełnia tylko, gdy są puste.
 - Przed zapisem wyświetlany jest oryginalny tekst OCR oraz możliwe numery, które można ręcznie wybrać.
 - Zapis do bazy tylko przy normalnym kliknięciu **Dodaj do magazynu** i po istniejących kontrolach duplikatów.
@@ -23,9 +27,10 @@ Aplikacja **Android APK**, która otwiera istniejące, produkcyjne WebGUI Magazy
 2. Parser obsługuje przede wszystkim charakterystyczne numery Bosch i numery jednoznacznie opisane jako P/N, PART NO lub OEM. Inne rozpoznane wartości są wyświetlane do wyboru, a nie zgadywane.
 3. Brak Tailscale oznacza brak dostępu do danych. Nie zapisujemy operacji magazynowych offline i nie wykonujemy ukrytej synchronizacji.
 4. Eksport plików i podgląd PDF w Android WebView wymagają testu na rzeczywistym telefonie; nie są jeszcze formalnie odebrane.
-5. Debug APK ma podpis testowy tworzony przez GitHub Actions. Kolejne kompilacje nie gwarantują tego samego podpisu. Do aktualizacji bez odinstalowywania potrzebny będzie trwały klucz wydawniczy, trzymany poza GitHub repo.
+5. Debug APK ma podpis testowy tworzony przez GitHub Actions. Jeśli Android zgłosi błąd aktualizacji podpisu, odinstaluj **wyłącznie APK Magazyn**, a następnie zainstaluj nowe. Baza magazynowa na serwerze pozostaje bez zmian. Docelowe aktualizacje bez odinstalowywania wymagają stałego klucza podpisu poza GitHub.
 6. APK jest wersją DEV do testów. Backend AI działa tylko po ustawieniu MAGAZYN_ECU_AI_ENABLED=1 na serwerze; przy wyłączonym API aplikacja bezpiecznie wraca do lokalnego ML Kit.
-7. Preferowany model serwerowy: qwen3-vl:8b-instruct. Nie zmieniamy globalnego LLM ani RM.
+7. Model serwerowy: qwen3-vl:8b-instruct na RTX 5060 Ti, uruchamiany wyłącznie po kliknięciu AI. Nie zmieniamy głównego modelu AI Platform ani usługi RM.
+8. Obecna bramka VRAM wymaga co najmniej 8300 MiB wolnych do załadowania Qwen3-VL, o ile nie jest już załadowany. Jest to ostrożny próg, a nie gwarancja atomowej rezerwacji całej pamięci RTX.
 
 ## Budowanie APK — GitHub Actions
 
@@ -42,7 +47,8 @@ Alternatywnie w Android Studio z Gradle 8.9 + JDK 17 otwórz folder apps/magazyn
 3. Zezwól wybranej aplikacji plików/przeglądarce na instalowanie aplikacji z tego źródła, jeżeli Android o to poprosi.
 4. Uruchom aplikację **Magazyn**, zaloguj się na swoje istniejące konto.
 5. Otwórz **Dodaj sterownik**, naciśnij **📷 Skanuj etykietę ECU**, sfotografuj prawdziwą etykietę, sprawdź odczyt, popraw ewentualne błędy.
-6. Do pierwszych testów **nie potwierdzaj przyjęcia** na produkcji na danych eksperymentalnych — fotografowanie i wypełnienie pól nie wymaga zapisu do bazy.
+6. Najpierw naciśnij **✨ AI** i sprawdź pasek postępu. Po statusie **AI gotowe na RTX** naciśnij aparat i wykonaj zdjęcie.
+7. Zweryfikuj rozpoznane numery. Do pierwszych testów **nie potwierdzaj przyjęcia** na produkcji na danych eksperymentalnych — fotografowanie i wypełnienie pól nie wymaga zapisu do bazy.
 
 ## Zabezpieczenia
 
