@@ -291,10 +291,22 @@ def inspect_pdf(binary: bytes, part_no: str, *, manufacturer: str = "",
     result=_rules(part_no,manufacturer,pages,family)
     supplemental=_llm_extract(part_no,pages,family)
     for row in supplemental:
-        if row["field"] in ("manufacturer","primary_number"):
+        if not isinstance(row, dict):
             continue
-        if not any(x["field"]==row["field"] for x in result):
-            result.append(row)
+        field, value, evidence = row.get("field"), row.get("value"), row.get("evidence")
+        if field in ("manufacturer", "primary_number") or field not in SPECS:
+            continue
+        if not isinstance(value, str) or not isinstance(evidence, str):
+            continue
+        # Validate again at the trust boundary even if extraction was mocked.
+        supported = _suggest(field, value, evidence, pages, family=family)
+        if supported is None:
+            continue
+        if any(ch.isdigit() for ch in value):
+            if normalized(value) not in normalized(evidence):
+                continue
+        if not any(x["field"]==field for x in result):
+            result.append(supported)
     warnings=[]
     if family:
         warnings.append("Dokument obejmuje także inne warianty. Parametry elektryczne wymagają sprawdzenia wersji.")
