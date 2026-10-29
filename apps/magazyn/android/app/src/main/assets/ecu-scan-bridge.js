@@ -400,14 +400,18 @@
     if (!dialog.open || form.elements.namedItem("kind").value !== "ecu") return;
     let local;
     try { local = JSON.parse(json); } catch (_) { return; }
+    const revision = ++scanRevision;
     const jpeg = String(local.jpegBase64 || "");
-    delete local.jpegBase64; // Never show or keep image bytes in UI state.
+    delete local.jpegBase64; // Never show/store full image bytes in UI state.
     if (!aiReady || !aiSessionId || !jpeg || typeof api !== "function") {
+      local.phoneText = String(local.rawText || "");
       window.magazynApplyScan(JSON.stringify(local));
-      appendText(review, "small", "Odczyt OCR telefonu. Aby włączyć RTX, naciśnij ikonę AI przed skanowaniem.");
+      appendText(review, "small", "Użyto OCR telefonu — dane wymagają zatwierdzenia.");
       return;
     }
 
+    scanProcessing = true;
+    reviewPending = false;
     review.replaceChildren();
     review.hidden = false;
     appendText(review, "p", "Analizuję etykietę na RTX 5060 Ti…");
@@ -416,8 +420,7 @@
     const originalSubmitDisabled = submit ? submit.disabled : true;
     if (submit) submit.disabled = true;
     try {
-      // API uses existing authenticated session and X-CSRF-Token.
-      // The URL is relative, so the photo cannot leave the trusted Magazyn origin.
+      // API requires an authenticated session, CSRF and an active RTX lease.
       const analyzed = await api("/api/ecu-label/analyze", {
         method: "POST",
         body: JSON.stringify({
@@ -428,34 +431,29 @@
             .slice(0, 12).map(x => String(x).slice(0, 160))
         })
       });
-      if (!dialog.open) return;
+      if (!dialog.open || revision !== scanRevision) return;
+      scanProcessing = false;
       window.magazynApplyScan(JSON.stringify(analyzed));
-      const prefix = analyzed.engine === "server_vision_ocr"
-        ? "RTX 5060 Ti + OCR Android"
-        : "OCR Android";
-      appendText(review, "p", "Źródło: " + prefix + ". Numery sprawdź z naklejką.");
-      if (analyzed.serialNumber) {
-        appendText(review, "p",
-          "Numer seryjny (informacyjnie): " + String(analyzed.serialNumber).slice(0, 50));
-      }
-      for (const warning of (Array.isArray(analyzed.warnings) ? analyzed.warnings : []).slice(0, 8)) {
-        appendText(review, "p", "⚠ " + String(warning).slice(0, 250));
-      }
     } catch (error) {
-      if (!dialog.open) return;
+      if (!dialog.open || revision !== scanRevision) return;
+      scanProcessing = false;
+      local.phoneText = String(local.rawText || "");
       window.magazynApplyScan(JSON.stringify(local));
       aiReady = false;
       aiSessionId = "";
       paintAi({phase: "error", message: "Tryb RTX przerwany lub wygasł. Aparat używa OCR telefonu."});
       appendText(review, "p",
-        "RTX jest niedostępny lub sesja AI wygasła. Użyto OCR telefonu. " +
-        "Sprawdź ręcznie wszystkie numery przed dodaniem ECU.");
+        "AI jest niedostępne; pokazano propozycje OCR telefonu. " +
+        "Sprawdź każdą cyfrę przed zastosowaniem.");
     } finally {
-      camera.disabled = false;
-      if (submit && dialog.open) {
-        // Let the original Magazyn duplicate/variant validation determine state.
-        if (typeof renderSimilar === "function") renderSimilar();
-        else submit.disabled = originalSubmitDisabled;
+      if (revision === scanRevision) {
+        scanProcessing = false;
+        camera.disabled = false;
+        if (submit && dialog.open) {
+          // Preserve the server's existing duplicate-variant guard.
+          if (typeof renderSimilar === "function") renderSimilar();
+          else submit.disabled = originalSubmitDisabled;
+        }
       }
     }
   };
