@@ -76,4 +76,61 @@ function proposed(scan, current = {}) {
   assert.deepEqual(Object.keys(x),["primary_number"]);
 }
 
+
+
+// Full ECU inventory coverage: functional category plus serial/date notes.
+{
+  const x = proposed({
+    manufacturer:"Continental", primaryNumber:"A2C12345678",
+    model:"SID807EVO", designation:"Continental SID807EVO",
+    vehicleBrand:"DAF", category:"ECU silnika",
+    hardware:"H22",software:"22.1",serialNumber:"SN9823456",
+    productionDate:"2024-06-17",
+    oemNumbers:["1862828"],
+    fieldConfidence:{category:"suggestion",primary_number:"suggestion"}
+  });
+  assert.equal(x.designation.value,"Continental SID807EVO");
+  assert.equal(x.category.value,"ECU silnika");
+  assert.equal(x.category.selected,false);
+  assert.equal(x.primary_number.selected,false);
+  assert.equal(x.primary_number.confidence,"suggestion");
+  assert.equal(x.notes.value,"S/N: SN9823456\nData produkcji: 2024-06-17");
+  assert.equal(x.notes.selected,false);
+  assert.equal(x.numbers.value,"1862828");
+  assert.equal(x.numbers.selected,true);
+}
+
+// Extra identifiers remain suggestions until the user manually classifies them.
+{
+  const data={
+    primaryNumber:"0281016738",serialNumber:"987654321",hardware:"H1",software:"S3",
+    oemNumbers:["03L906022GC"],
+    extraNumbers:[
+      {value:"A2C12345678",role:"supplier"},
+      {value:"987654321",role:"oem"},
+      {value:"03L906022GC",role:"oem"},
+      {value:"A2C-12345678",role:"unclassified"},
+      {value:"5WK96745",role:"unclassified"}
+    ]
+  };
+  assert.deepEqual(mapper.extraNumbers(data),[
+    {value:"A2C12345678",role:"supplier",confidence:"suggestion"},
+    {value:"5WK96745",role:"unclassified",confidence:"suggestion"}
+  ]);
+  assert.equal(mapper.appendNumber("03L906022GC","5WK96745",
+                                   data.primaryNumber,data.serialNumber),
+               "03L906022GC\n5WK96745");
+  assert.equal(mapper.appendNumber("03L906022GC","987654321",
+                                   data.primaryNumber,data.serialNumber),"03L906022GC");
+}
+
+// Never implicitly write a serial number into a quantity-based catalog record.
+{
+  const x = proposed({serialNumber:"ABC12345678",productionDate:"2024-04-07"},
+                     {notes:"Ocena techniczna do wykonania"});
+  assert.equal(x.notes.selected,false);
+  assert.equal(x.notes.value,
+               "Ocena techniczna do wykonania\nS/N: ABC12345678\nData produkcji: 2024-04-07");
+}
+
 console.log("ECU_FORM_MAPPING_TESTS_PASS");
