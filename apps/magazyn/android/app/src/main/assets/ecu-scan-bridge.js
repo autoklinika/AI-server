@@ -140,4 +140,66 @@
       "Marka pojazdu, sprawność, ilość i lokalizacja wymagają decyzji użytkownika. " +
       "Skanowanie nie zapisuje niczego w bazie.");
   };
+
+  window.magazynRequestAiScan = async function (json) {
+    if (!dialog.open || form.elements.namedItem("kind").value !== "ecu") return;
+    let local;
+    try { local = JSON.parse(json); } catch (_) { return; }
+    const jpeg = String(local.jpegBase64 || "");
+    delete local.jpegBase64; // Never show or keep image bytes in UI state.
+    if (!jpeg || typeof api !== "function") {
+      window.magazynApplyScan(JSON.stringify(local));
+      appendText(review, "small", "Przetwarzanie tylko lokalne: nie można przygotować zdjęcia do AI.");
+      return;
+    }
+
+    review.replaceChildren();
+    review.hidden = false;
+    appendText(review, "p", "Analiza etykiety na lokalnym Serwerze AI…");
+    camera.disabled = true;
+    const submit = document.getElementById("item-submit");
+    const originalSubmitDisabled = submit ? submit.disabled : true;
+    if (submit) submit.disabled = true;
+    try {
+      // API uses existing authenticated session and X-CSRF-Token.
+      // The URL is relative, so the photo cannot leave the trusted Magazyn origin.
+      const analyzed = await api("/api/ecu-label/analyze", {
+        method: "POST",
+        body: JSON.stringify({
+          photo_base64: jpeg,
+          local_text: String(local.rawText || "").slice(0, 6000),
+          barcodes: (Array.isArray(local.barcodes) ? local.barcodes : [])
+            .slice(0, 12).map(x => String(x).slice(0, 160))
+        })
+      });
+      if (!dialog.open) return;
+      window.magazynApplyScan(JSON.stringify(analyzed));
+      const prefix = analyzed.engine === "server_vision_ocr"
+        ? "AI Serwera + OCR Android"
+        : "OCR Android";
+      appendText(review, "p", "Źródło: " + prefix + ". Numery sprawdź z naklejką.");
+      if (analyzed.serialNumber) {
+        appendText(review, "p",
+          "Numer seryjny (informacyjnie): " + String(analyzed.serialNumber).slice(0, 50));
+      }
+      for (const warning of (Array.isArray(analyzed.warnings) ? analyzed.warnings : []).slice(0, 8)) {
+        appendText(review, "p", "⚠ " + String(warning).slice(0, 250));
+      }
+    } catch (error) {
+      if (!dialog.open) return;
+      window.magazynApplyScan(JSON.stringify(local));
+      appendText(review, "p",
+        "Serwer AI jest niedostępny; użyto OCR telefonu. " +
+        "Sprawdź ręcznie wszystkie numery przed dodaniem ECU.");
+    } finally {
+      camera.disabled = false;
+      if (submit && dialog.open) {
+        // Keep the existing form's duplicate guard intact.
+        submit.disabled = originalSubmitDisabled;
+        for (const candidate of (typeof similarCandidates !== "undefined" ? similarCandidates : [])) {
+          if (candidate.same_variant) submit.disabled = true;
+        }
+      }
+    }
+  };
 })();
