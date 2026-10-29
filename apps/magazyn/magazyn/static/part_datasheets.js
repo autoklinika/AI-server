@@ -280,12 +280,27 @@
     form.elements.designation.addEventListener("input",()=>{
       clearTimeout(timer);
       revision++;
+      reviewed=null;
+      const panel=$("part-datasheet-review");
+      panel.hidden=true;
+      panel.replaceChildren();
+      const results=$("part-datasheet-sources");
+      results.hidden=true;
+      results.replaceChildren();
       const mpn=marking();
       if(mpn && isOpen())timer=setTimeout(find,1100);
     });
     form.elements.manufacturer.addEventListener("change",()=>{
       if(marking() && isOpen())void find();
     });
+    form.addEventListener("submit",function(event){
+      if(!busy && !reviewed)return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      say(busy ? "Zakończ analizę karty przed zapisem." :
+        "Najpierw zastosuj albo odrzuć propozycje dokumentacji.");
+      $("part-datasheet-review").scrollIntoView({behavior:"smooth",block:"nearest"});
+    },true);
     dialog.addEventListener("close",clear);
     window.magazynPartDatasheet={reset:clear};
   });
