@@ -145,6 +145,10 @@
 
   dialog.addEventListener("close", function () {
     clearTimeout(aiTimer);
+    scanRevision++;
+    reviewPending = false;
+    scanProcessing = false;
+    if (typeof review !== "undefined") { review.hidden = true; review.replaceChildren(); }
     // Release an idle ready RTX reservation immediately on leaving the form.
     // If loading/scanning is still running, the backend's bounded TTL cleans up.
     const sid = aiReady ? aiSessionId : "";
@@ -177,93 +181,219 @@
     return element;
   }
 
-  function fillWhenEmpty(name, value) {
-    const input = form.elements.namedItem(name);
-    if (!input || !value || String(input.value || "").trim()) return false;
-    input.value = String(value);
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-    return true;
+  let reviewPending = false;
+  let scanProcessing = false;
+  let scanRevision = 0;
+
+  // The user must explicitly apply the interpreted values. A correct OCR
+  // transcript never authorizes silently overwriting form fields or saving.
+  form.addEventListener("submit", function (event) {
+    if (!reviewPending && !scanProcessing) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (typeof toast === "function") {
+      toast("Najpierw sprawdź wynik skanowania i wybierz Zastosuj lub Odrzuć.", true);
+    }
+    review.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, true);
+
+  function currentFormValues() {
+    const result = {};
+    for (const field of ["primary_number", "manufacturer", "designation",
+                          "brand", "model", "hw", "sw", "numbers"]) {
+      const input = form.elements.namedItem(field);
+      result[field] = input ? String(input.value || "") : "";
+    }
+    return result;
+  }
+
+  function createEditor(suggestion, container) {
+    const line = document.createElement("div");
+    line.dataset.ecuField = suggestion.field;
+    line.style.padding = "9px 0";
+    line.style.borderBottom = "1px solid #e5d5cb";
+
+    const label = document.createElement("label");
+    label.style.display = "flex";
+    label.style.alignItems = "center";
+    label.style.gap = "8px";
+    label.style.fontWeight = "600";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = Boolean(suggestion.selected);
+    checkbox.style.width = "20px";
+    checkbox.style.height = "20px";
+    checkbox.setAttribute("aria-label", "Zastosuj: " + suggestion.label);
+    const name = document.createElement("span");
+    name.textContent = suggestion.label;
+    label.append(checkbox, name);
+    const editor = document.createElement(
+      suggestion.field === "numbers" ? "textarea" : "input"
+    );
+    if (suggestion.field !== "numbers") editor.type = "text";
+    else editor.rows = 3;
+    editor.value = String(suggestion.value || "");
+    editor.maxLength = suggestion.field === "numbers" ? 1500 : 160;
+    editor.setAttribute("aria-label", "Rozpoznano: " + suggestion.label);
+    editor.style.width = "100%";
+    editor.style.marginTop = "6px";
+    editor.addEventListener("input", function () {
+      checkbox.checked = true;
+    });
+    line.append(label, editor);
+    if (suggestion.current) {
+      const prior = appendText(line, "small",
+        "Obecnie w formularzu: " + String(suggestion.current).slice(0, 180));
+      prior.style.display = "block";
+      prior.style.marginTop = "3px";
+      prior.style.color = "#7d3b1b";
+      appendText(line, "small",
+        "Zastąpienie wymaga zaznaczenia pola; domyślnie jest wyłączone.");
+    }
+    container.appendChild(line);
+    return line;
   }
 
   window.magazynApplyScan = function (json) {
     if (!dialog.open || form.elements.namedItem("kind").value !== "ecu") return;
     let scan;
-    try {
-      scan = JSON.parse(json);
-    } catch (_) {
+    try { scan = JSON.parse(json); } catch (_) { return; }
+    if (!scan || typeof scan !== "object") return;
+    const mapper = window.magazynEcuFormMap;
+    if (!mapper || typeof mapper.build !== "function") {
+      if (typeof toast === "function") toast("Moduł mapowania ECU jest niedostępny.", true);
       return;
     }
 
-    const filled = [];
-    for (const [field, value, description] of [
-      ["primary_number", scan.primaryNumber, "numer katalogowy"],
-      ["manufacturer", scan.manufacturer, "producent"],
-      ["hw", scan.hardware, "HW"],
-      ["sw", scan.software, "SW"],
-      ["model", scan.model, "model"]
-    ]) {
-      if (fillWhenEmpty(field, value)) filled.push(description);
-    }
-
-    if (filled.some(function (key) {
-      return ["producent", "HW", "SW", "model"].includes(key);
-    })) {
-      const extras = form.querySelector(".form-extra");
-      if (extras) extras.open = true;
-    }
-
+    const items = mapper.build(scan, currentFormValues());
+    reviewPending = true;
     review.replaceChildren();
     review.hidden = false;
-    appendText(review, "strong", "Wynik odczytu etykiety");
-    const description = filled.length
-      ? "Uzupełniono: " + filled.join(", ") + "."
-      : "Nie nadpisano istniejących pól. Sprawdź odczyt poniżej.";
-    appendText(review, "p", description + " Sprawdź numery przed zapisem.");
+    appendText(review, "strong", "Sprawdź przypisanie danych z naklejki");
+    appendText(review, "p",
+      "To są propozycje, a nie zapis. Zaznacz pola, które chcesz przenieść do formularza.");
+    const source = scan.engine === "server_vision_ocr"
+      ? "AI RTX + OCR telefonu" : "OCR telefonu";
+    appendText(review, "small", "Odczyt: " + source);
 
-    const candidates = Array.isArray(scan.candidates) ? scan.candidates.slice(0, 15) : [];
+    for (const warning of Array.isArray(scan.warnings) ? scan.warnings.slice(0, 8) : []) {
+      const p = appendText(review, "p", "⚠ " + String(warning).slice(0, 250));
+      p.style.color = "#a53b19";
+    }
+
+    const candidates = Array.isArray(scan.candidates)
+      ? scan.candidates.slice(0, 15) : [];
+    const editors = document.createElement("div");
+    editors.id = "ecu-scan-field-suggestions";
+    for (const suggestion of items) createEditor(suggestion, editors);
+
     if (candidates.length) {
-      appendText(review, "small", "Rozpoznane numery — dotknij, aby wybrać numer główny:");
+      appendText(review, "small",
+        "Numery wykryte na etykiecie. Wybierz numer główny, jeśli przypisanie jest niepewne:");
       const chips = document.createElement("div");
       chips.style.display = "flex";
       chips.style.flexWrap = "wrap";
       chips.style.gap = "6px";
-      chips.style.margin = "8px 0";
-      for (const candidate of candidates) {
+      chips.style.margin = "7px 0";
+      for (const value of candidates) {
         const chip = document.createElement("button");
         chip.type = "button";
         chip.className = "secondary small";
-        chip.textContent = String(candidate).slice(0, 40);
+        chip.textContent = String(value).slice(0, 40);
         chip.addEventListener("click", function () {
-          const existing = String(number.value || "").trim();
-          if (existing && existing !== candidate &&
-              !window.confirm("Zastąpić wpisany numer katalogowy wybranym odczytem?")) return;
-          number.value = candidate;
-          number.dispatchEvent(new Event("input", { bubbles: true }));
-          number.dispatchEvent(new Event("change", { bubbles: true }));
-          number.focus();
+          let editor = Array.from(editors.children)
+            .find(el => el.dataset.ecuField === "primary_number");
+          if (!editor) {
+            const current = currentFormValues().primary_number;
+            const slot = createEditor({
+              field: "primary_number", label: "Numer katalogowy / OEM",
+              value: value, current: current, selected: true
+            }, editors);
+            editors.prepend(slot);
+            editor = slot;
+          }
+          const field = editor.querySelector("input[type=text]");
+          if (field) {
+            field.value = String(value).slice(0, 160);
+            field.dispatchEvent(new Event("input", { bubbles: true }));
+          }
         });
         chips.appendChild(chip);
       }
       review.appendChild(chips);
     }
 
-    if (scan.rawText || (scan.barcodes && scan.barcodes.length)) {
-      const details = document.createElement("details");
-      appendText(details, "summary", "Zobacz pełny tekst i kody z naklejki");
-      const original = document.createElement("pre");
-      original.style.whiteSpace = "pre-wrap";
-      original.style.overflowWrap = "anywhere";
-      original.style.fontSize = "12px";
-      original.textContent = String(scan.rawText || "").slice(0, 6000) +
-        (scan.barcodes && scan.barcodes.length
-          ? "\n\nKODY:\n" + scan.barcodes.join("\n") : "");
-      details.appendChild(original);
-      review.appendChild(details);
+    review.appendChild(editors);
+    if (!items.length && !candidates.length) {
+      appendText(review, "p",
+        "Nie udało się jednoznacznie przypisać numerów. Wpisz dane ręcznie.");
     }
+
+    const details = document.createElement("details");
+    details.style.marginTop = "12px";
+    appendText(details, "summary", "Pokaż oryginalny odczyt AI i OCR telefonu");
+    const raw = document.createElement("pre");
+    raw.style.whiteSpace = "pre-wrap";
+    raw.style.overflowWrap = "anywhere";
+    raw.style.fontSize = "12px";
+    raw.textContent = "AI:\n" + String(scan.rawText || "").slice(0, 6000) +
+      "\n\nOCR telefonu:\n" + String(scan.phoneText || "").slice(0, 6000) +
+      "\n\nKody:\n" + (Array.isArray(scan.barcodes) ? scan.barcodes.slice(0, 12).join("\n") : "");
+    details.appendChild(raw);
+    review.appendChild(details);
+
     appendText(review, "small",
-      "Marka pojazdu, sprawność, ilość i lokalizacja wymagają decyzji użytkownika. " +
-      "Skanowanie nie zapisuje niczego w bazie.");
+      "Marka pojazdu jest proponowana tylko wtedy, gdy widnieje na etykiecie. " +
+      "Numer seryjny nie jest numerem zamiennym. Stan, ilość i lokalizację wybierz ręcznie.");
+    if (scan.serialNumber) appendText(review, "small",
+      "Numer seryjny (informacyjnie): " + String(scan.serialNumber).slice(0, 60));
+
+    const controls = document.createElement("div");
+    controls.style.display = "flex";
+    controls.style.flexWrap = "wrap";
+    controls.style.gap = "8px";
+    controls.style.marginTop = "12px";
+    const apply = document.createElement("button");
+    apply.type = "button";
+    apply.className = "primary";
+    apply.textContent = "Zastosuj zaznaczone pola";
+    const dismiss = document.createElement("button");
+    dismiss.type = "button";
+    dismiss.className = "secondary";
+    dismiss.textContent = "Odrzuć odczyt";
+    apply.addEventListener("click", function () {
+      let updated = 0;
+      const approvedFields = new Set(mapper.fields);
+      for (const row of Array.from(editors.children)) {
+        const fieldName = row.dataset.ecuField;
+        if (!approvedFields.has(fieldName) && fieldName !== "numbers") continue;
+        const checked = row.querySelector("input[type=checkbox]");
+        const entry = row.querySelector("input[type=text],textarea");
+        const target = form.elements.namedItem(fieldName);
+        if (!checked || !checked.checked || !target || !entry) continue;
+        const value = String(entry.value || "").trim();
+        if (!value || target.value === value) continue;
+        target.value = value;
+        target.dispatchEvent(new Event("input", { bubbles: true }));
+        target.dispatchEvent(new Event("change", { bubbles: true }));
+        updated++;
+      }
+      reviewPending = false;
+      review.replaceChildren();
+      appendText(review, "strong", "Dane zastosowane do formularza");
+      appendText(review, "p", updated
+        ? "Przeniesiono " + updated + " pól. Sprawdź je przed zapisem."
+        : "Nie przeniesiono żadnego pola. Uzupełnij dane ręcznie.");
+      if (typeof scheduleSimilarCheck === "function") scheduleSimilarCheck();
+    });
+    dismiss.addEventListener("click", function () {
+      reviewPending = false;
+      review.hidden = true;
+      review.replaceChildren();
+    });
+    controls.append(apply, dismiss);
+    review.appendChild(controls);
+    review.scrollIntoView({ behavior: "smooth", block: "nearest" });
   };
 
   window.magazynRequestAiScan = async function (json) {
