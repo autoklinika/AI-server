@@ -134,7 +134,8 @@ class RtxSession:
                 raise Problem(409, "RTX jest aktualnie zajęty przez innego użytkownika. Aparat: OCR.")
             if self._phase in ("checking", "reserving", "loading", "warming", "scanning", "closing"):
                 return self.status(user_id)
-            if self._phase == "ready" and time.monotonic() < self._deadline:
+            if self._phase == "ready":
+                # Do not overwrite a still-owned RM lease while watchdog retires it.
                 return self.status(user_id)
             self._sid = secrets.token_urlsafe(22)
             self._owner = user_id
@@ -201,6 +202,11 @@ class RtxSession:
             threading.Thread(target=self._keepalive, args=(sid, lease), daemon=True,
                              name="magazyn-ecu-rtx-rm-keepalive").start()
             self._update(sid, "loading", 55, "Ładowanie Qwen3-VL 8B do pamięci RTX…")
+            # Empty-prompt generate loads the model without entering image inference.
+            # The separate vision request below truly warms its image encoder.
+            _json("POST", RTX_URL + "/api/generate", {
+                "model": MODEL, "prompt": "", "stream": False, "keep_alive": "3m",
+            }, timeout=80)
             payload = {
                 "model": MODEL, "stream": False, "think": False,
                 "keep_alive": "3m",
