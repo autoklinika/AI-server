@@ -23,6 +23,7 @@ from urllib.parse import quote, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from .store import Problem
+from . import part_infineon
 
 MAX_DOCUMENT = 8 * 1024 * 1024
 MAX_RESPONSE = 300_000
@@ -95,7 +96,7 @@ def _fetch(url: str, *, max_bytes: int, accept: str = "application/pdf") -> byte
     _allowed_url(url)
     opener = build_opener(_NoRedirect)
     request = Request(url, headers={
-        "User-Agent": "MagazynV1-DatasheetFetcher/1.0",
+        "User-Agent": "Mozilla/5.0" if accept == "text/html" else "MagazynV1-DatasheetFetcher/1.0",
         "Accept": accept,
     })
     try:
@@ -331,8 +332,11 @@ class DatasheetFinder:
         self._tokens={}
         self._lock=threading.Lock()
 
-    def _register(self,user_id:int,part_no:str,url:str,manufacturer:str,source_name:str) -> dict:
+    def _register(self,user_id:int,part_no:str,url:str,manufacturer:str,source_name:str,
+                  *, kind:str="pdf") -> dict:
         _allowed_url(url)
+        if kind not in ("pdf","manufacturer_product"):
+            raise Problem(422,"Nieobsługiwane źródło")
         token=secrets.token_urlsafe(24)
         with self._lock:
             now=time.monotonic()
@@ -341,12 +345,12 @@ class DatasheetFinder:
                 self._tokens.clear()
             self._tokens[token] = {
                 "user":user_id,"part":part_no,"url":url,"manufacturer":manufacturer,
-                "source_name":source_name,"expires":now+600,
+                "source_name":source_name,"kind":kind,"expires":now+600,
             }
         return {
             "token":token,"part_number":part_no,
             "source":source_name,"manufacturer":manufacturer,
-            "domain":urlsplit(url).hostname,
+            "domain":urlsplit(url).hostname, "document_kind":kind,
             "requires_confirmation":True,
         }
 
@@ -362,6 +366,12 @@ class DatasheetFinder:
             url="https://www.ti.com/lit/ds/symlink/"+quote(part_no.lower())+".pdf"
             matches.append(self._register(user_id,part_no,url,
                                           "Texas Instruments","Texas Instruments"))
+        # Infineon publishes exact-MPN structured data on official product
+        # pages. The PDF itself may be bot-blocked (HTTP 202); product data
+        # therefore remains usable without Mouser credentials or a PDF.
+        if part_infineon.eligible(part_no,maker):
+            profile=self._infineon_product(user_id,part_no)
+            if profile:matches.append(profile)
         # Mouser official Search API requires a user's opt-in API key.
         api_key=os.environ.get("MAGAZYN_MOUSER_API_KEY","")
         if api_key:
@@ -379,6 +389,21 @@ class DatasheetFinder:
                       if matches else
                       "Brak zweryfikowanego źródła online. Możesz dołączyć PDF ręcznie.",
         }
+
+    def _infineon_product(self,user_id:int,part_no:str) -> dict | None:
+        url=part_infineon._page_url(part_no)
+        try:
+            # Fixed HTTPS official product URL, no redirects, max 3.5 MB.
+            page=_fetch(url,max_bytes=part_infineon._MAX_HTML_BYTES,
+                        accept="text/html")
+            profile=part_infineon.parse_product(page,part_no)
+            return self._register(
+                user_id,part_no,profile["source_url"],
+                "Infineon Technologies", "Infineon — oficjalna karta produktu",
+                kind="manufacturer_product",
+            )
+        except Problem:
+            return None
 
     def _mouser(self,user_id:int,part_no:str,api_key:str) -> list[dict]:
         # The API endpoint is fixed. The API key is never returned or logged.
@@ -436,6 +461,13 @@ class DatasheetFinder:
             if not info or info["user"]!=user_id or info["expires"]<=time.monotonic():
                 raise Problem(404,"Wynik wyszukiwania wygasł. Wyszukaj ponownie.")
             info=info.copy()
+        if info.get("kind")=="manufacturer_product":
+            # No PDF required. The product group must match the exact MPN
+            # AGAIN when the user requests analysis.
+            data=_fetch(info["url"],max_bytes=part_infineon._MAX_HTML_BYTES,
+                        accept="text/html")
+            profile=part_infineon.parse_product(data,info["part"])
+            return part_infineon.inspect_product(profile)
         data=_fetch(info["url"],max_bytes=MAX_DOCUMENT)
         _pdf_bytes(base64.b64encode(data).decode("ascii"))
         return inspect_pdf(
