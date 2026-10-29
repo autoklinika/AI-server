@@ -4,6 +4,10 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.util.Base64
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
@@ -28,6 +32,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
+import androidx.exifinterface.media.ExifInterface
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -38,6 +43,7 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.ByteArrayOutputStream
 
 /**
  * Native Android container for existing production WebGUI.
@@ -243,6 +249,56 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun encodePhotoForAi(file: File): String? {
+        // Downscale only if needed, while keeping small factory label glyphs legible.
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.absolutePath, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 2600) sample *= 2
+        val options = BitmapFactory.Options().apply { inSampleSize = sample }
+        val decoded = BitmapFactory.decodeFile(file.absolutePath, options) ?: return null
+        val orientation = ExifInterface(file.absolutePath).getAttributeInt(
+            ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL
+        )
+        val degrees = when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+            else -> 0f
+        }
+        val rotated = if (degrees != 0f) {
+            val matrix = Matrix().apply { postRotate(degrees) }
+            Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
+        } else decoded
+        val factor = minOf(1.0, 2400.0 / maxOf(rotated.width, rotated.height))
+        val reduced = if (factor < 1.0) {
+            Bitmap.createScaledBitmap(
+                rotated,
+                (rotated.width * factor).toInt().coerceAtLeast(1),
+                (rotated.height * factor).toInt().coerceAtLeast(1),
+                true
+            )
+        } else rotated
+        if (reduced !== rotated) rotated.recycle()
+        if (rotated !== decoded) decoded.recycle()
+        val result = ByteArrayOutputStream()
+        try {
+            var quality = 89
+            do {
+                result.reset()
+                reduced.compress(Bitmap.CompressFormat.JPEG, quality, result)
+                quality -= 7
+            } while (result.size() > 3_000_000 && quality >= 61)
+            return if (result.size() <= 3_000_000) {
+                Base64.encodeToString(result.toByteArray(), Base64.NO_WRAP)
+            } else null
+        } finally {
+            reduced.recycle()
+            result.close()
+        }
+    }
+
     private fun recognizeLabel(file: File) {
         val uri = Uri.fromFile(file)
         val image = try {
@@ -255,21 +311,23 @@ class MainActivity : ComponentActivity() {
         toast("Odczytuję etykietę ECU...")
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         val scanner = BarcodeScanning.getClient(
-            BarcodeScannerOptions.Builder()
-                .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
-                .build()
+            BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS).build()
         )
         val textTask = recognizer.process(image)
         val codeTask = scanner.process(image)
         Tasks.whenAllComplete(textTask, codeTask).addOnCompleteListener {
-            try {
-                val text = if (textTask.isSuccessful) textTask.result.text else ""
-                val codes = if (codeTask.isSuccessful) {
-                    codeTask.result.mapNotNull { it.rawValue }
-                } else emptyList()
-                if (text.isBlank() && codes.isEmpty()) {
-                    toast("Nie rozpoznano oznaczeń. Spróbuj ponownie przy lepszym świetle.")
-                } else if (isTrusted(Uri.parse(browser.url ?: ""))) {
+            val text = if (textTask.isSuccessful) textTask.result.text else ""
+            val codes = if (codeTask.isSuccessful) {
+                codeTask.result.mapNotNull { it.rawValue }
+            } else emptyList()
+            recognizer.close()
+            scanner.close()
+            // Image preprocessing is off the UI thread, with no disk persistence.
+            Thread {
+                val jpeg = try { encodePhotoForAi(file) } catch (_: Exception) { null }
+                file.delete()
+                runOnUiThread {
+                    if (!isTrusted(Uri.parse(browser.url ?: ""))) return@runOnUiThread
                     val data = EcuLabelParser.parse(text, codes)
                     val json = JSONObject().apply {
                         put("manufacturer", data.manufacturer)
@@ -280,19 +338,16 @@ class MainActivity : ComponentActivity() {
                         put("candidates", JSONArray(data.candidates))
                         put("barcodes", JSONArray(data.barcodes))
                         put("rawText", data.rawText)
+                        put("jpegBase64", jpeg ?: "")
                     }
-                    // JSON string is quoted a second time to prevent script injection via OCR.
+                    // Quoted JSON string prevents script injection via recognized text.
                     browser.evaluateJavascript(
-                        "window.magazynApplyScan && window.magazynApplyScan(" +
+                        "window.magazynRequestAiScan && window.magazynRequestAiScan(" +
                             JSONObject.quote(json.toString()) + ")",
                         null
                     )
                 }
-            } finally {
-                recognizer.close()
-                scanner.close()
-                file.delete() // No background photo upload or hidden storage.
-            }
+            }.start()
         }
     }
 
