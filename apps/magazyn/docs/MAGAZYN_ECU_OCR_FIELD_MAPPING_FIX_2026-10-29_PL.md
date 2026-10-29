@@ -35,3 +35,14 @@ Data: 2026-10-29. Zakres: Android WebView + parser transkrypcji na serwerze; bez
 - Backend: nowy release serwera wyłącznie z modułem klasyfikacji, ecu_ai.py i minimalną zmianą server.py; pozostaje możliwość powrotu do poprzedniej wersji przez pojedynczy systemd drop-in.
 - Android: nowy testowy APK z podglądem; odinstalowanie starszego debug APK może być wymagane z powodu podpisu wydawniczego.
 - Nie deklarować skuteczności na każdej naklejce, dopóki nie wykonamy testów na rzeczywistych fotografiach. OCR/VLM może nadal błędnie odczytać znak; dlatego użytkownik zatwierdza proponowane pola.
+## Odbiór serwera — 29.10.2026
+
+- Kontrolowany restart tylko magazyn-webgui.service zakończył się PASS.
+- Nowy, niezmienny release: /srv/ai-data/magazyn-v1/releases/ecu-fieldmap-v2-20261029/apps/magazyn.
+- Wdrożono tylko minimalną zmianę server.py, zastąpienie parsera ecu_ai.py i nowy moduł ecu_label_fields.py. Brak migracji lub zapisu danych rzeczywistej bazy SQLite.
+- Kopia wcześniejszego pliku jednostki: /srv/ai-data/magazyn-v1/rollback/ecu-field-mapping-v2-20261029/80-ecu-ai-ocr.conf.before.
+- HTTPS Tailscale /healthz PASS; nieautoryzowany /api/ecu-label/status HTTP 401; Telegram i WebGUI aktywne; RM bez aktywnych rezerwacji, RTX 2 MiB zajęte po testach.
+- Aktywny parser produkcyjny rozdziela testową etykietę na 0281016738 / Bosch EDC17C46 / OEM 03L906022GC / HW H1 / SW S3 — PASS.
+- GitHub Actions: Android debug APK + backend isolated PASS, test mobilnego Firefoksa 390 px PASS; prawdziwy telefon wymaga aktualizacji APK.
+
+Rollback: przywrócić tylko plik /home/harrypotter/.config/systemd/user/magazyn-webgui.service.d/80-ecu-ai-ocr.conf z powyższej kopii, następnie systemctl --user daemon-reload i restart wyłącznie magazyn-webgui.service. Nie przywracać starej bazy.
