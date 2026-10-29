@@ -195,7 +195,19 @@ def enrich(transcript: str, phone_ocr: str, barcodes: list[str],
     if primary and _tokens(primary) not in restricted_primary:
         previous = baseline.get("primaryNumber", "")
         if previous and _tokens(previous) != _tokens(primary):
-            warnings.append("AI proponuje inny numer główny niż reguły; zachowano dotychczasowy.")
+            explicit_oems = _values(parsed, "oem_numbers", evidence)
+            if _tokens(previous) in explicit_oems:
+                # Rules had only an OEM available as primary. The structured
+                # pass found a separate supplier number on the label; suggest
+                # that as main and retain the OEM as an alternate, NOT silently.
+                baseline["primaryNumber"] = _tokens(primary)
+                baseline["oemNumbers"] = list(dict.fromkeys(
+                    [previous, *baseline.get("oemNumbers", [])]
+                ))
+                confidence["primary_number"] = "suggestion"
+                warnings.append("AI proponuje zmianę numeru głównego z OEM na numer producenta — potwierdź.")
+            else:
+                warnings.append("AI proponuje inny numer główny niż reguły; zachowano dotychczasowy.")
         elif not previous:
             baseline["primaryNumber"] = _tokens(primary)
             confidence["primary_number"] = "suggestion"
