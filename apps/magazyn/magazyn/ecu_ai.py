@@ -190,7 +190,7 @@ def _image_bytes(photo_base64: str) -> bytes:
 def _model_text(photo_base64: str) -> str:
     # Never accept arbitrary client-supplied URLs or models. All inference is
     # localhost Gateway /api/chat -> Global RM -> managed Ollama.
-    model = os.environ.get("MAGAZYN_ECU_AI_MODEL", "minicpm-ocr:1.0").strip()
+    model = os.environ.get("MAGAZYN_ECU_AI_MODEL", "qwen3-vl:8b").strip()
     if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._:/-]{1,90}", model):
         raise Problem(503, "Niewłaściwa konfiguracja modelu OCR")
     payload = {
