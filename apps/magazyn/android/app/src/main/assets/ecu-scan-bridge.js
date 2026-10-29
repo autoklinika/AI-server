@@ -129,7 +129,7 @@
         paintAi(result);
       } else {
         const result = await api("/api/ecu-label/activate", {
-          method: "POST", body: JSON.stringify({})
+          method: "POST", body: JSON.stringify({ mapping_version: 2 })
         });
         paintAi(result);
         planPoll(1000);
@@ -428,6 +428,7 @@
         method: "POST",
         body: JSON.stringify({
           session_id: aiSessionId,
+          mapping_version: 2,
           photo_base64: jpeg,
           local_text: String(local.rawText || "").slice(0, 6000),
           barcodes: (Array.isArray(local.barcodes) ? local.barcodes : [])
