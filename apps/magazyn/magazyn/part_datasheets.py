@@ -210,8 +210,8 @@ def _rules(part_no: str, maker: str, pages: list[str], family: bool) -> list[dic
     # datasheet (LM358 versus LM358B have different recommended supplies).
     if not family:
         for field, pattern, unit, label in [
-            ("spec_voltage", r"(?i)\bV(?:DSS|DS)\s*=\s*(\d+(?:[.,]\d+)?)\s*V\b", "V", ""),
-            ("spec_current", r"(?i)\bI[D]\s*=\s*(\d+(?:[.,]\d+)?)\s*A\b", "A", ""),
+            ("spec_voltage", r"(?i)\bV\s*(?:DSS|DS)\s*=\s*(\d+(?:[.,]\d+)?)\s*V\b", "V", ""),
+            ("spec_current", r"(?i)\bI\s*D\s*=\s*(\d+(?:[.,]\d+)?)\s*A\b", "A", ""),
             ("spec_resistance", r"(?i)\bRDS\s*\(?on\)?\s*=\s*(\d+(?:[.,]\d+)?)\s*m[\u03a9\u2126]", "mΩ", ""),
         ]:
             found = re.search(pattern,text)
