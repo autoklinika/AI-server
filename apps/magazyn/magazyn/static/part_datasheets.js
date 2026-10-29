@@ -92,7 +92,10 @@
           " · "+String(candidate.manufacturer || "") +
           " · "+String(candidate.domain || ""), row);
         elem("small","Sprawdź producenta i wariant obudowy przed analizą.",row);
-        const btn = elem("button","Pobierz i przeanalizuj kartę PDF",row,"secondary small");
+        const label=candidate.document_kind==="manufacturer_product"
+          ? "Odczytaj oficjalne parametry producenta"
+          : "Pobierz i przeanalizuj kartę PDF";
+        const btn = elem("button",label,row,"secondary small");
         btn.type = "button";
         btn.style.display = "block";
         btn.style.marginTop = "7px";
@@ -102,13 +105,13 @@
       const upload = elem("button","Analizuj wybrany PDF z telefonu",sources,"secondary small");
       upload.type="button";
       upload.addEventListener("click",inspectUploaded);
-      // When a single *official* TI datasheet is the only result, prefetch
-      // automatically after typing. Never auto-APPLY fields or inventory writes.
-      // Multiple providers, unofficial sources and manually chosen files
-      // always require operator selection.
-      if (choices.length===1 && choices[0].source==="Texas Instruments" &&
+      // Official manufacturer sources can be read automatically after typing.
+      // Nothing is copied to inventory or stored until user confirmation.
+      if (choices.length===1 &&
+          (choices[0].source==="Texas Instruments" ||
+           choices[0].source==="Infineon — oficjalna karta produktu") &&
           !($("part-form").elements.document.files?.length)) {
-        say("Znaleziono oficjalną kartę TI. Pobieram ją do podglądu…");
+        say("Znaleziono oficjalne dane producenta. Analizuję do podglądu…");
         void inspectToken(choices[0].token);
       }
     } catch (_error) {
@@ -122,14 +125,14 @@
     const rev = revision;
     if (busy || !isOpen()) return;
     busy = true;
-    say("Pobieram i analizuję wybraną kartę katalogową…");
+    say("Pobieram i analizuję dane producenta…");
     try {
       const result = await api("/api/parts/datasheet/analyze",{
         method:"POST",body:JSON.stringify({token})
       });
       if (rev===revision && isOpen()) showReview(result);
     } catch (err) {
-      if (rev===revision) say("Nie udało się pobrać PDF: "+String(err.message||"Błąd")+
+      if (rev===revision) say("Nie udało się odczytać danych: "+String(err.message||"Błąd")+
                              ". Możesz dołączyć PDF ręcznie.");
     } finally {busy=false;}
   }
@@ -170,19 +173,32 @@
     review.hidden=false;
     review.replaceChildren();
     reviewed = data;
-    elem("strong","Propozycje danych z karty katalogowej",review);
+    const productPage=data.source_kind==="manufacturer_product";
+    elem("strong",productPage
+      ? "Propozycje danych z oficjalnej karty produktu"
+      : "Propozycje danych z karty katalogowej",review);
     elem("p","Źródło: "+String(data.source_name||"PDF")+
-      " · sprawdzono "+Number(data.pages_checked||0)+" stron.",review);
+      (productPage ? " · karta produktu producenta" :
+      " · sprawdzono "+Number(data.pages_checked||0)+" stron PDF."),review);
     if (data.source_url && /^https:\/\//i.test(data.source_url)) {
       const a=elem("a","Otwórz oryginalną kartę producenta",review);
       a.href=data.source_url;
       a.target="_blank";a.rel="noopener noreferrer";
     }
+    if (productPage && /^https:\/\/www\.infineon\.com\/assets\/.*\.pdf$/i.test(
+        String(data.datasheet_url||""))) {
+      const a=elem("a","Otwórz datasheet PDF producenta",review);
+      a.href=data.datasheet_url;
+      a.target="_blank";a.rel="noopener noreferrer";
+      a.style.display="block";
+    }
     for(const warning of Array.isArray(data.warnings)?data.warnings:[]) {
       const note=elem("p","⚠ "+String(warning).slice(0,250),review);
       note.style.color="#a74c22";
     }
-    elem("p","Wartości są propozycjami. Wybierz pola i sprawdź cytat z PDF.",review);
+    elem("p",productPage
+      ? "Wartości pochodzą ze strukturalnych danych producenta. Zweryfikuj parametry i wariant przed zatwierdzeniem."
+      : "Wartości są propozycjami. Wybierz pola i sprawdź cytat z PDF.",review);
     const form=$("part-form");
     const list=document.createElement("div");
     list.id="part-datasheet-fields";
@@ -214,7 +230,7 @@
       input.addEventListener("input",()=>{check.checked=true;});
       row.appendChild(input);
       if(current) elem("small","Wpisano wcześniej: "+current+" (bez nadpisywania).",row);
-      elem("small","Strona "+(candidate.page||"—")+
+      elem("small", (productPage ? "Karta produktu" : "Strona "+(candidate.page||"—"))+
         " · podstawa: "+String(candidate.evidence||"Źródło producenta").slice(0,180),row);
       list.appendChild(row);
     }
@@ -224,9 +240,10 @@
     options.style.display="flex";options.style.gap="8px";options.style.marginTop="12px";
     const attach=document.createElement("input");
     attach.type="checkbox";
-    attach.checked=!fromUserFile;
+    const hasDownloadedPdf=!fromUserFile && Boolean(data.pdf_base64);
+    attach.checked=hasDownloadedPdf;
     options.append(attach,document.createTextNode("Dołącz pobrany PDF do nowego elementu"));
-    if(!fromUserFile) review.appendChild(options);
+    if(hasDownloadedPdf) review.appendChild(options);
     const actions=document.createElement("div");
     actions.style.display="flex";actions.style.gap="8px";
     actions.style.flexWrap="wrap";actions.style.marginTop="12px";
