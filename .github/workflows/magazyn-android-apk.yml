@@ -8,6 +8,7 @@ on:
       - feature/magazyn-rtx-on-demand-20261029
       - fix/magazyn-ecu-label-field-mapping-20261029
       - feature/magazyn-ecu-smart-extraction-20261029
+      - fix/magazyn-android-restore-stock-button-20261029
     paths:
       - 'apps/magazyn/android/**'
       - 'apps/magazyn/magazyn/ecu_ai.py'
