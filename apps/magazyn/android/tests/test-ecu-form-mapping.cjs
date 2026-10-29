@@ -23,7 +23,9 @@ function proposed(scan, current = {}) {
   assert.equal(x.numbers.value, "03L906022GC");
   assert.equal(x.brand, undefined);       // No inference from Bosch/OEM.
   assert.equal(x.serial_number, undefined); // No serial field in inventory.
-  for (const field of Object.keys(x)) assert.equal(x[field].selected, true);
+  for (const field of Object.keys(x)) {
+    assert.equal(x[field].selected, field !== "notes");
+  }
 }
 
 // Previously entered data is protected; offer a visible, opt-in replacement.
@@ -73,7 +75,8 @@ function proposed(scan, current = {}) {
                       primaryNumber:"0281016738\nSW: 999"});
   assert.equal(x.unknownApiField,undefined);
   assert.equal(x.primary_number.value,"0281016738");
-  assert.deepEqual(Object.keys(x),["primary_number"]);
+  assert.deepEqual(Object.keys(x),["primary_number","notes"]);
+  assert.equal(x.notes.selected,false);
 }
 
 
