@@ -145,10 +145,17 @@
 
   dialog.addEventListener("close", function () {
     clearTimeout(aiTimer);
-    // An already allocated session is reclaimed by the backend idle timeout.
+    // Release an idle ready RTX reservation immediately on leaving the form.
+    // If loading/scanning is still running, the backend's bounded TTL cleans up.
+    const sid = aiReady ? aiSessionId : "";
     aiReady = false;
     aiSessionId = "";
     paintAi({ phase: "off" });
+    if (sid) {
+      api("/api/ecu-label/deactivate", {
+        method: "POST", body: JSON.stringify({ session_id: sid })
+      }).catch(function () { /* TTL is the fail-safe */ });
+    }
   });
 
   const review = document.createElement("div");
