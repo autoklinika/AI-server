@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, StrictInt
 
 from .store import Problem, Store
-from . import transfers, backup, messaging, restore_checks
+from . import transfers, backup, messaging, restore_checks, ecu_ai
 
 COOKIE = "magazyn_session"
 STATIC = Path(__file__).parent / "static"
@@ -111,6 +111,13 @@ class OrderedDelivery(BaseModel):
     technical_state: str | None = None
 
 
+class EcuAiAnalyzeRequest(BaseModel):
+    # Base64 JPEG from an authenticated WebGUI session.
+    photo_base64: str = Field(min_length=100, max_length=4_700_000)
+    local_text: str = Field(default="", max_length=6000)
+    barcodes: list[str] = Field(default_factory=list, max_length=12)
+
+
 class DocumentUpload(BaseModel):
     filename: str = Field(min_length=5, max_length=140)
     doc_type: str = Field(pattern="^(datasheet|schematic|other)$")
@@ -173,9 +180,11 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
             is_document = (request.url.path.startswith("/api/items/")
                            and request.url.path.endswith("/documents"))
             is_small_upload = request.url.path.startswith(("/api/import/", "/api/inventory"))
-            if is_document or is_small_upload:
+            is_ai_photo = request.url.path == "/api/ecu-label/analyze"
+            if is_document or is_small_upload or is_ai_photo:
                 # Bound streamed uploads even without Content-Length; no multipart dependency.
-                limit = 12 * 1024 * 1024 if is_document else transfers.MAX_BODY
+                limit = (12 * 1024 * 1024 if is_document else
+                         5_200_000 if is_ai_photo else transfers.MAX_BODY)
                 body = bytearray()
                 async for chunk in request.stream():
                     body.extend(chunk)
@@ -288,6 +297,15 @@ def create_app(db_path: str | None = None, *, secure_cookie: bool = True) -> Fas
     def delete_location(location_id: int, _user: dict = Depends(require_admin_write)):
         store.delete_location(location_id)
         return {"ok":True}
+
+    @app.get("/api/ecu-label/status")
+    def ecu_ai_status(_user: dict = Depends(require_user)):
+        return {"enabled": ecu_ai.is_enabled()}
+
+    @app.post("/api/ecu-label/analyze")
+    def ecu_ai_analyze(body: EcuAiAnalyzeRequest, _user: dict = Depends(require_write)):
+        # AI only prepares suggested labels; never creates products or stock events.
+        return ecu_ai.recognize(body.photo_base64, body.local_text, body.barcodes)
 
     @app.get("/api/items")
     def items(q: str="", kind: str | None=None, brand: str | None=None,
