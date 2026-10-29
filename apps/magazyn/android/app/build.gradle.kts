@@ -11,8 +11,8 @@ android {
         applicationId = "pl.autoklinika.magazyn"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.3.1-stock-button-fix"
+        versionCode = 5
+        versionName = "0.4.0-catalog-assisted"
     }
 
     buildTypes {
