@@ -72,7 +72,7 @@ function proposed(scan, current = {}) {
   const x = proposed({serialNumber:"987654321",unknownApiField:"not allowed",
                       primaryNumber:"0281016738\nSW: 999"});
   assert.equal(x.unknownApiField,undefined);
-  assert.equal(x.primary_number.value,"0281016738 SW: 999");
+  assert.equal(x.primary_number.value,"0281016738");
   assert.deepEqual(Object.keys(x),["primary_number"]);
 }
 
