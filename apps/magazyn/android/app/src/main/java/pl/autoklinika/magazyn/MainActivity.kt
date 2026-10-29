@@ -164,9 +164,12 @@ class MainActivity : ComponentActivity() {
                 if (isTrusted(Uri.parse(url ?: ""))) {
                     hideOfflinePanel()
                     // Only inject into the exact trusted Magazyn origin.
+                    // Pure typed-field mapper must load before the UI bridge.
+                    val mapper = assets.open("ecu-form-mapping.js")
+                        .bufferedReader(Charsets.UTF_8).use { it.readText() }
                     val bridge = assets.open("ecu-scan-bridge.js")
                         .bufferedReader(Charsets.UTF_8).use { it.readText() }
-                    view.evaluateJavascript(bridge, null)
+                    view.evaluateJavascript(mapper + "\n" + bridge, null)
                 }
             }
 

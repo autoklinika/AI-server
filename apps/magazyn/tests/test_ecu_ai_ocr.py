@@ -62,7 +62,7 @@ def test_api_requires_login_csrf_and_optin(tmp_path, monkeypatch):
     app = create_app(str(tmp_path / "inventory.sqlite3"), secure_cookie=False)
     app.state.store.create_user("admin1", "secure-test-password-123", "admin")
     c = TestClient(app)
-    payload = {"photo_base64": jpg(), "local_text": "", "barcodes": []}
+    payload = {"mapping_version": 2, "photo_base64": jpg(), "local_text": "", "barcodes": []}
     assert c.post("/api/ecu-label/analyze", json=payload).status_code == 401
     assert c.post("/api/ecu-label/activate", json={}).status_code == 401
     auth = c.post("/api/auth/login", json={"username": "admin1", "password": "secure-test-password-123"})
@@ -72,7 +72,7 @@ def test_api_requires_login_csrf_and_optin(tmp_path, monkeypatch):
     headers = {"X-CSRF-Token": auth.json()["csrf"]}
     assert c.get("/api/ecu-label/status").json()["enabled"] is False
     assert c.post("/api/ecu-label/analyze", json=payload, headers=headers).status_code == 503
-    assert c.post("/api/ecu-label/activate", json={}, headers=headers).status_code == 503
+    assert c.post("/api/ecu-label/activate", json={"mapping_version": 2}, headers=headers).status_code == 503
     assert c.get("/api/items").json() == []
 
 
@@ -85,12 +85,15 @@ def test_api_requires_explicit_rtx_session_no_stock_write(tmp_path, monkeypatch)
         "username": "worker1", "password": "second-test-password-456"
     })
     headers = {"X-CSRF-Token": auth.json()["csrf"]}
-    payload = {"session_id": "test-rtx-session-1234", "photo_base64": jpg(),
+    payload = {"session_id": "test-rtx-session-1234", "mapping_version": 2, "photo_base64": jpg(),
                "local_text": "0 281 016 738", "barcodes": []}
     assert c.post("/api/ecu-label/analyze", json=payload, headers=headers).status_code == 409
     assert c.post("/api/ecu-label/analyze", json={k:v for k,v in payload.items()
                                                   if k != "session_id"},
                   headers=headers).status_code == 409
+    assert c.post("/api/ecu-label/analyze", json={**payload, "mapping_version": 0},
+                  headers=headers).status_code == 409
+    assert c.post("/api/ecu-label/activate", json={}, headers=headers).status_code == 422
     expected = ecu_ai.analyze_transcripts(
         "Bosch\n0 281 016 738\nHW: 02", "0 281 016 738", [])
     monkeypatch.setattr(app.state.rtx_session, "scan",
@@ -112,7 +115,7 @@ def test_invalid_image_rejected_before_session(tmp_path, monkeypatch):
         "username": "worker1", "password": "second-test-password-456"
     })
     result = c.post("/api/ecu-label/analyze", json={
-        "session_id": "test-rtx-session-1234",
+        "session_id": "test-rtx-session-1234", "mapping_version": 2,
         "photo_base64": base64.b64encode(b"<html>fake image</html>" * 9).decode(),
         "local_text": "", "barcodes": []
     }, headers={"X-CSRF-Token": auth.json()["csrf"]})
