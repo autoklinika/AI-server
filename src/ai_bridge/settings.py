@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     gateway_gpu_marker: Path = Field(default_factory=lambda: Path.home() / ".local/state/ai-platform/gpu-residency.blocked")
     gateway_max_concurrency: int = Field(default=1, ge=1, le=16)
     gateway_vision_radio_enabled: bool = False
+
+    # DEV only. Inactive unless explicitly enabled in an approved release.
+    # Uses the current single-slot RM and the existing localhost RTX Ollama.
+    router_preview_enabled: bool = False
+    router_preview_model: str = "granite-router-v4-tpl1:dev"
     gateway_max_queue_size: int = Field(default=128, ge=1, le=10_000)
     gateway_connect_timeout_seconds: float = Field(default=5.0, gt=0.0)
     gateway_upstream_timeout_seconds: float = Field(default=600.0, gt=0.0)

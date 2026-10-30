@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException
 
 from ai_bridge.benchmarks import BenchmarkCatalog
+from ai_bridge.decision_router import RouterContractError, RouterDecision, validate_input
 from ai_bridge.domains.ers.storage.intake_repository import ErsIntakeRepository
 from ai_bridge.domains.ers.storage.artifact_repository import (
     ErsArtifactNotFound,
@@ -201,6 +202,11 @@ class BenchmarkAIRequest(Contract):
     num_gpu: int = Field(default=99, ge=0, le=999)
 
 
+class RouterPreviewRequest(Contract):
+    schema_version: Literal[1] = 1
+    text: str = Field(min_length=1, max_length=1400)
+
+
 class KnowledgeSearchRequest(Contract):
     schema_version: Literal[1] = 1
     context: Context = Field(default_factory=Context)
@@ -265,7 +271,8 @@ class LocalServicePolicy:
                 raise APIError(403, "forbidden")
 
 
-def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factory=None):
+def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factory=None,
+                        *, granite_router_backend=None):
     api = FastAPI(title="Platform API", version="1", docs_url=None, redoc_url=None)
     policy = policy or LocalServicePolicy(settings.platform_api_token)
     runtime_factory = knowledge_runtime_factory or (lambda: KnowledgeRuntime(settings))
@@ -1457,6 +1464,40 @@ def create_platform_app(gateway, settings, policy=None, knowledge_runtime_factor
                 "duration_ms": round((monotonic() - start) * 1000, 3),
             },
         )
+
+    @api.post("/router/preview")
+    async def router_preview(body: RouterPreviewRequest, request: Request):
+        # Do not register external routes or modify production responses/tools.
+        if not settings.router_preview_enabled:
+            raise APIError(404, "router_preview_disabled")
+        try:
+            validate_input(body.text)
+        except RouterContractError:
+            raise APIError(400, "router_input_rejected") from None
+        if granite_router_backend is not None:
+            backend = granite_router_backend
+        else:
+            from ai_bridge.gateway.granite_preview import GranitePreviewBackend
+            backend = GranitePreviewBackend(
+                gateway.state.scheduler, gateway.state.resource_leases.residency,
+                rtx_url="http://127.0.0.1:11436",
+                model=settings.router_preview_model,
+            )
+        try:
+            async with asyncio.timeout(35):
+                decision = await backend.decide(body.text)
+        except RouterContractError:
+            raise APIError(503, "router_invalid_output") from None
+        except Exception as exc:
+            from ai_bridge.gateway.granite_preview import GranitePreviewBusy
+            if isinstance(exc, GranitePreviewBusy):
+                raise APIError(409, "router_preview_busy", True) from None
+            raise APIError(503, "router_preview_unavailable", True) from None
+        if not isinstance(decision, RouterDecision):
+            raise APIError(503, "router_invalid_output")
+        return envelope(request, mode="read_only", decision=decision.as_dict(),
+                        executes_tools=False, authorizes_tools=False,
+                        modifies_production_response=False)
 
     @api.post("/ai")
     async def ai(body: AIRequest, request: Request):
