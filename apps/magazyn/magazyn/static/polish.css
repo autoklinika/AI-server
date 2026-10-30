@@ -1,0 +1,420 @@
+/* Magazyn V1 — visual refinement pass v1 / DEV only, 2026-10-30.
+ * Extends, never replaces, the existing graphite/orange UI.
+ * No external fonts, assets, analytics or new dependencies.
+ */
+
+/* Improve clarity and contrast without changing layout or brand. */
+:root {
+  --polish-surface: #FCFCFB;
+  --polish-warm: #FFF7F0;
+  --polish-border: #DCDFE2;
+  --polish-text: #58636E;
+}
+input::placeholder,textarea::placeholder { color:#7C8792; }
+.page-heading .muted { max-width:690px; line-height:1.55; }
+.page-heading .heading-accent { font-weight:650; }
+.panel, .stat-card, .result-card { border-color:#E0E3E6; }
+.result-card:focus-within {
+  border-color:#CF945E;
+  box-shadow:0 0 0 2px rgba(183,75,13,.085);
+}
+.stat-card .stat-caption { line-height:1.4; }
+.catalog-panel .filter-button[aria-expanded="true"] {
+  background:var(--orange-soft);
+  color:var(--orange-dark);
+  border-color:#E6B78E;
+}
+.empty { padding:42px 24px; }
+.empty .empty-mark { background:#FFF3E8; }
+.empty button { min-height:45px; }
+
+/* Shortcuts keep long Settings scannable, especially on a phone. */
+.settings-shortcuts {
+  display:flex; flex-wrap:wrap; align-items:center; gap:7px;
+  padding:10px 12px; margin:-5px 0 21px;
+  background:#fff; border:1px solid #E1E3E6;
+  border-radius:14px; box-shadow:var(--shadow);
+}
+.settings-shortcuts-label {
+  margin:0 6px 0 4px; font-size:.75rem; font-weight:730;
+  color:#67717C; white-space:nowrap;
+}
+.settings-shortcut {
+  display:inline-flex; align-items:center; justify-content:center;
+  gap:8px; min-height:41px; border:1px solid transparent;
+  border-radius:10px; padding:8px 12px; text-decoration:none;
+  color:#515D68; background:#F5F6F7; font-size:.81rem;
+  font-weight:690; line-height:1.1; white-space:nowrap;
+  transition:background .15s ease,border-color .15s ease,color .15s ease;
+}
+.settings-shortcut .icon { width:16px; height:16px; }
+.settings-shortcut:hover {
+  background:#EBEEF0; border-color:#D3D8DD; color:#2B3035;
+}
+.settings-shortcut-featured {
+  background:#FFF0E4; color:#9B400A; border-color:#F1D5BF;
+}
+.settings-shortcut-featured:hover {
+  background:#FFE7D2; border-color:#E2B88F; color:#7C2E05;
+}
+.settings-shortcut:focus-visible {
+  outline:3px solid #B74B0D; outline-offset:2px;
+}
+#supplier-settings, #admin-locations, #admin-users,
+#admin-messaging, #admin-backup {
+  scroll-margin-top:86px;
+}
+
+/* Supplier card hierarchy + honest configuration states. */
+#supplier-settings > .panel-title { margin-bottom:9px; }
+#supplier-integration-status {
+  background:#FBF7F2; border-left:3px solid #D58A4D;
+  color:#6F5B49; border-radius:0 9px 9px 0;
+  padding:10px 13px; margin:13px 0 2px;
+  line-height:1.5;
+}
+.supplier-grid {
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:15px; margin:19px 0 24px;
+}
+.supplier-entry {
+  min-width:0; border:1px solid #E0E3E5;
+  border-radius:14px; background:var(--polish-surface);
+  padding:17px; box-shadow:0 2px 12px rgba(30,33,37,.025);
+}
+.supplier-entry-ready { border-color:#E9CBAF; }
+.supplier-entry-heading {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px; margin-bottom:7px;
+}
+.supplier-entry-heading h3 {font-size:1.08rem;}
+.supplier-entry-heading .tag {
+  flex:none; font-size:.65rem; border:1px solid #EECDB2;
+}
+.supplier-state {
+  display:inline-flex; align-items:center; gap:8px;
+  font-size:.77rem; font-weight:720; line-height:1.35;
+  padding:5px 9px; border-radius:9px;
+  background:#F0F1F2; color:#606A74; margin:0 0 10px;
+}
+.supplier-state::before {
+  content:""; display:block; flex:none; height:7px; width:7px;
+  border-radius:50%; background:#9DA5AD;
+}
+.supplier-state-ready { color:#266B4A; background:#EAF6EF; }
+.supplier-state-ready::before {background:#2F9A68;}
+.supplier-state-pending { color:#8C5A24; background:#FFF2DF; }
+.supplier-state-pending::before { background:#CF9545; }
+.supplier-entry > .muted { line-height:1.4; }
+.supplier-form { margin-top:15px; gap:12px; }
+.supplier-fields { gap:12px; }
+.supplier-fields input { min-height:45px; background:#fff; }
+.supplier-controls {
+  padding:11px 12px; border:1px solid #E8E9EB;
+  border-radius:11px; background:#F8F9F9;
+}
+.supplier-toggle {font-weight:720;}
+.supplier-toggle input {accent-color:var(--orange);}
+.supplier-actions {margin-top:2px;}
+.supplier-actions button {
+  min-height:43px; padding:9px 12px; font-size:.79rem;
+}
+#supplier-settings .supplier-search-controls {
+  margin-top:11px;
+}
+#supplier-results:not(:empty) { margin:17px 0; }
+.supplier-result-group {background:#FBFBFA;}
+
+/* Electronics dialog — clearer data source and review boundaries. */
+.part-section-heading {
+  color:#323940; font-size:1.03rem;
+  font-weight:735; letter-spacing:-.02em;
+}
+#part-datasheet-assistant {
+  background:#FFF9F4; border-color:#ECDACB;
+  border-radius:13px; margin-top:2px;
+  padding:13px 15px !important; gap:10px !important;
+}
+.part-assistant-top {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; flex-wrap:wrap;
+}
+.part-assistant-top strong {
+  font-size:.84rem; font-weight:760; color:#5B3B25;
+}
+.part-assistant-source {
+  display:inline-flex; align-items:center;
+  padding:4px 9px; border-radius:8px;
+  border:1px solid #F1D4BB; background:#fff;
+  color:#9A4717; font-size:.7rem; font-weight:765;
+  white-space:nowrap;
+}
+#part-datasheet-find {
+  border-color:#E4C4AA; background:#fff;
+  color:#8B3B11; font-weight:730;
+}
+#part-datasheet-find:hover {
+  background:#FFF1E5; border-color:#CA915E;
+}
+#part-datasheet-status {
+  color:#715B4A; font-size:.78rem;
+  line-height:1.55; overflow-wrap:anywhere;
+}
+#part-datasheet-sources:not([hidden]) {
+  display:grid; gap:9px; align-items:start;
+}
+#part-datasheet-sources > button {
+  min-height:43px; justify-self:start;
+}
+#part-datasheet-sources .supplier-result-row {
+  padding:12px 13px; border:1px solid #E4D1BF;
+  border-radius:11px; background:#fff; line-height:1.45;
+}
+#part-datasheet-review:not([hidden]) {
+  min-width:0; background:#fff; border:1px solid #E4D8CD;
+  border-radius:13px; padding:15px; color:var(--ink);
+}
+#part-datasheet-review > strong:first-child {
+  display:block; font-size:.97rem; margin-bottom:7px;
+  line-height:1.32;
+}
+#part-datasheet-review p {
+  margin:6px 0 9px; font-size:.82rem;
+  line-height:1.5; overflow-wrap:anywhere;
+}
+#part-datasheet-review a {
+  color:#99501E; font-size:.82rem; font-weight:680;
+  overflow-wrap:anywhere; text-underline-offset:3px;
+}
+#part-datasheet-review details {
+  margin:11px 0; padding:11px;
+  border:1px solid #E6E8EB; border-radius:10px;
+  background:#FCFCFC;
+}
+#part-datasheet-review details summary {
+  font-size:.8rem; font-weight:725;
+  cursor:pointer; padding:2px 0;
+}
+#part-datasheet-fields {
+  display:grid; gap:9px; margin:14px 0 4px;
+}
+#part-datasheet-fields > [data-part-field] {
+  border:1px solid #E3E5E7; border-radius:11px;
+  background:#FBFCFC; padding:11px 12px !important;
+}
+#part-datasheet-fields [data-part-field] > label {
+  align-items:center; line-height:1.4; color:#3F4953;
+  font-weight:710;
+}
+#part-datasheet-fields input[type="checkbox"] {
+  width:19px; height:19px; min-height:auto;
+  flex:none; accent-color:var(--orange);
+}
+#part-datasheet-fields input[type="text"] {
+  min-height:43px; background:#fff;
+}
+#part-datasheet-review button {
+  min-height:43px; white-space:normal;
+}
+
+/* Phone: content should remain reachable above the fixed bottom navigation. */
+@media (max-width:900px) {
+  .settings-shortcuts {flex-wrap:nowrap; overflow-x:auto; overscroll-behavior-x:contain;}
+  .settings-shortcut {flex:none;}
+}
+@media (max-width:650px) {
+  .workspace {padding-bottom:calc(128px + env(safe-area-inset-bottom,0px));}
+  .page-heading {gap:12px;}
+  .page-heading h1 {letter-spacing:-.048em;}
+  .page-heading .muted {line-height:1.5;}
+  .settings-shortcuts {
+    margin:0 -3px 16px; padding:8px;
+    gap:6px; border-radius:12px;
+    scrollbar-width:thin; scroll-snap-type:x proximity;
+  }
+  .settings-shortcuts-label {display:none;}
+  .settings-shortcut {
+    min-height:44px; font-size:.76rem;
+    padding:9px 11px; scroll-snap-align:start;
+  }
+  .settings-shortcut .icon {width:15px;height:15px;}
+  .supplier-grid {grid-template-columns:minmax(0,1fr);gap:12px;}
+  .supplier-entry {padding:14px;}
+  .supplier-entry-heading h3 {font-size:1rem;}
+  .supplier-controls {align-items:center;justify-content:space-between;}
+  .supplier-actions {
+    display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;
+  }
+  .supplier-actions > button {min-height:47px;}
+  .supplier-actions > button:first-child {grid-column:1 / -1;}
+  .empty {padding:34px 18px;gap:12px;}
+  .empty button {width:100%;max-width:285px;min-height:49px;}
+  .searchbar {padding:0 11px;}
+  #part-datasheet-assistant {padding:13px !important;}
+  #part-datasheet-assistant .action-row {
+    flex-direction:column;align-items:stretch !important;gap:9px !important;
+  }
+  #part-datasheet-find {width:100%;min-height:48px;}
+  #part-datasheet-status {font-size:.81rem;line-height:1.42;}
+  #part-datasheet-review:not([hidden]) {padding:12px;}
+  #part-datasheet-fields {gap:9px;}
+  #part-datasheet-fields > [data-part-field] {padding:11px !important;}
+  #part-datasheet-review button {min-height:47px;}
+  #part-datasheet-sources > button {width:100%;min-height:46px;}
+  .part-sheet .sticky-actions {position:relative;}
+  #supplier-settings, #admin-locations, #admin-users,
+  #admin-messaging, #admin-backup {scroll-margin-top:76px;}
+}
+@media (max-width:360px) {
+  .settings-shortcut {font-size:.74rem;padding:8px 10px;}
+  .supplier-entry-heading {gap:5px;}
+  .supplier-entry-heading .tag {font-size:.61rem;padding:4px 7px;}
+}
+@media (prefers-reduced-motion:reduce) {
+  .settings-shortcut {transition:none;}
+}
+
+
+/* The dialog heading stays sticky while browsing a long TME/Mouser review.
+ * Keep distributor switching buttons clear of the heading during scroll-to. */
+.part-sheet { scroll-padding-top:112px; }
+.part-sheet #part-datasheet-sources > button,
+.part-sheet #part-datasheet-review button {
+  scroll-margin-top:132px;
+  scroll-margin-bottom:116px;
+}
+@media (max-width:650px) {
+  .part-sheet { scroll-padding-top:130px; }
+  .part-sheet #part-datasheet-sources > button,
+  .part-sheet #part-datasheet-review button {
+    scroll-margin-top:147px;
+  }
+}
+
+
+/* Catalog family MPN: explicit supplier variant selection (TJA1050T etc.). */
+.part-variant-title {
+  font-size: .94rem; font-weight: 755; color:#343B43;
+}
+.part-variant-note {
+  color:#626D77; font-size:.79rem; line-height:1.55;
+  margin:4px 0 7px;
+}
+.part-variants-list {display:grid;grid-template-columns:minmax(0,1fr);gap:9px;}
+.part-variant-row {
+  display:flex;align-items:center;justify-content:space-between;gap:11px;
+  border:1px solid #DDE1E4;border-radius:11px;
+  padding:11px 13px;background:#fff;min-width:0;
+}
+.part-variant-info {display:grid;gap:4px;min-width:0;overflow-wrap:anywhere;}
+.part-variant-info strong {font-size:.88rem;color:#343B43;line-height:1.3;}
+.part-variant-info small {font-size:.73rem;color:#66717A;}
+.part-variant-row button {flex:none;min-height:43px !important;scroll-margin-top:140px;}
+.part-variant-selected {
+  display:block;border:1px solid #E4C8AA;background:#FFF8EF;
+  color:#99501E;padding:10px 13px;border-radius:10px;font-size:.82rem;
+}
+@media(max-width:650px) {
+  .part-variant-row {align-items:stretch;gap:10px;flex-wrap:wrap;}
+  .part-variant-info {flex:1 1 190px;}
+  .part-variant-row button {min-height:45px !important;}
+}
+
+/* Keep suggestion evidence on separate, readable lines after variant selection. */
+#part-datasheet-fields small {display:block;margin-top:5px;line-height:1.45;overflow-wrap:anywhere;}
+
+
+/* Non-distributor documentation fallback. A similar MPN is never "verified". */
+.manufacturer-reference-card,
+.manufacturer-pdf-option {
+  border:1px solid #E1DACF; border-radius:12px; padding:13px 14px;
+  background:#FFFCF8; display:grid; gap:8px; min-width:0;
+}
+.manufacturer-reference-card > strong,
+.manufacturer-pdf-option > strong {
+  font-size:.85rem; color:#53402E; line-height:1.4;
+}
+.manufacturer-reference-card p,
+.manufacturer-pdf-option p {
+  font-size:.79rem; color:#705D4C; line-height:1.53;
+}
+.manufacturer-reference-card a {
+  font-size:.79rem; color:#9B4A14; text-underline-offset:3px;
+}
+.manufacturer-reference-card button,
+.manufacturer-pdf-option button {
+  min-height:44px; justify-self:start;
+}
+.manufacturer-pdf-option {
+  background:#F8FAFB; border-color:#DEE3E6; margin-top:8px;
+}
+.manufacturer-pdf-option input {min-height:44px;background:white;}
+@media(max-width:650px) {
+  .manufacturer-reference-card,
+  .manufacturer-pdf-option {padding:12px;}
+  .manufacturer-reference-card button,
+  .manufacturer-pdf-option button {justify-self:stretch;width:100%;}
+}
+
+
+/* PDF source tools — visible directly in the add-electronics assistant. */
+.part-pdf-tools {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;min-width:0;
+}
+.part-pdf-tool {
+  min-width:0;background:white;border:1px solid #E5DACA;
+  border-radius:11px;overflow:hidden;
+}
+.part-pdf-tool[open] {border-color:#D4A77C;}
+.part-pdf-tool > summary {
+  list-style:none;cursor:pointer;display:flex;align-items:center;
+  justify-content:space-between;gap:9px;
+  color:#5E4938;padding:12px 13px;min-height:45px;
+  font-size:.82rem;font-weight:740;
+}
+.part-pdf-tool > summary::-webkit-details-marker {display:none;}
+.part-pdf-tool > summary::after {
+  content:"+";font-size:1.17rem;color:#AA5620;font-weight:600;
+}
+.part-pdf-tool[open] > summary::after {content:"−";}
+.part-pdf-tool-body {
+  display:grid;gap:10px;padding:12px 13px 14px;
+  border-top:1px solid #F0E5D9;min-width:0;
+}
+.part-pdf-tool-body label {
+  font-size:.76rem;line-height:1.5;
+}
+.part-pdf-tool-body input {font-size:.87rem;min-height:45px;}
+.part-pdf-tool-body button {min-height:44px;max-width:100%;white-space:normal;}
+.part-pdf-tool-body .action-row {gap:8px;align-items:stretch;}
+.part-pdf-tool-body .action-row button {flex:1 1 160px;}
+#part-pdf-disk-status {line-height:1.5;overflow-wrap:anywhere;}
+@media(max-width:840px) {
+  .part-pdf-tools {grid-template-columns:minmax(0,1fr);}
+}
+@media(max-width:650px) {
+  .part-pdf-tool > summary {font-size:.87rem;min-height:47px;padding:12px;}
+  .part-pdf-tool-body {padding:12px;}
+  .part-pdf-tool-body input {font-size:16px;}
+  .part-pdf-tool-body button {width:100%;min-height:48px;}
+}
+
+
+/* Mobile: flex-basis must not turn PDF action buttons into 160px tall blocks. */
+@media (max-width:650px) {
+  #part-datasheet-assistant .part-pdf-tool-body .action-row button {
+    flex:0 0 auto;
+    height:auto;
+    min-height:48px;
+    max-height:72px;
+    padding:11px 12px;
+  }
+}
+
+/* Place disk-PDF analysis errors beside the file picker, not only at top. */
+#part-pdf-disk-status.pdf-file-error {
+  display:block; color:#943D45; background:#FFF0EF;
+  border:1px solid #ECC8CA; padding:9px 11px;
+  border-radius:9px; font-weight:650;
+}
