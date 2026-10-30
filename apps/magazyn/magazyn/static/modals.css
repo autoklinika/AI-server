@@ -1,0 +1,617 @@
+/* Magazyn V1 — modal readability refinement / DEV, 2026-10-30.
+ * Additive CSS, no HTML structure or application logic changes.
+ * Warm graphite/orange palette retained. Designed for long forms, phone sheets,
+ * short security dialogs and authenticated documentation preview.
+ */
+
+/* Desktop: make the actual form wider, not simply inflate its title. */
+dialog.sheet-dialog {
+  box-sizing:border-box;
+  width:min(910px,calc(100vw - 44px));
+  max-width:none;
+  max-height:calc(100dvh - 34px);
+  overflow-x:hidden;
+  overflow-y:auto;
+  scrollbar-gutter:stable;
+  scroll-padding-top:130px;
+  background:#fff;
+  border:1px solid #DFE2E5;
+  border-radius:22px;
+}
+dialog#item-dialog {
+  width:min(940px,calc(100vw - 44px));
+  height:min(880px,calc(100dvh - 34px));
+}
+dialog#part-dialog {
+  width:min(1120px,calc(100vw - 44px));
+  height:min(920px,calc(100dvh - 34px));
+}
+dialog#detail-dialog {
+  width:min(1140px,calc(100vw - 44px));
+  height:min(900px,calc(100dvh - 34px));
+}
+dialog#history-edit-dialog {
+  width:min(910px,calc(100vw - 44px));
+}
+dialog#own-password-dialog,dialog#staff-password-dialog {
+  width:min(710px,calc(100vw - 44px));
+}
+
+/* Stable, legible title and exit button during scrolling. */
+dialog.sheet-dialog .dialog-head {
+  position:sticky;top:0;z-index:5;
+  align-items:flex-start;
+  gap:24px;
+  padding:25px 34px 22px;
+  background:#fff;
+  border-bottom:1px solid #E3E5E7;
+  box-shadow:0 2px 10px rgba(35,39,44,.035);
+}
+dialog.sheet-dialog .dialog-head > div:first-child {min-width:0;flex:1;}
+dialog.sheet-dialog .dialog-head .kicker {
+  font-size:.76rem;
+  letter-spacing:.09em;
+  line-height:1.3;
+  margin-bottom:7px;
+}
+dialog.sheet-dialog .dialog-head h2 {
+  font-size:clamp(1.58rem,2vw,1.98rem);
+  letter-spacing:-.036em;
+  line-height:1.19;
+  font-weight:760;
+  color:#242A31;
+  overflow-wrap:anywhere;
+}
+dialog.sheet-dialog .dialog-head .muted {
+  font-size:1rem;
+  line-height:1.5;
+  margin-top:8px;
+  color:#63707C;
+  overflow-wrap:anywhere;
+}
+dialog.sheet-dialog .dialog-head .icon-button {
+  flex:none;min-width:49px;width:49px;
+  min-height:49px;height:49px;
+  border-radius:12px;font-size:1.5rem;
+  border:1px solid #E3E5E8;
+  background:#F9FAFA;color:#59636D;
+}
+dialog.sheet-dialog .dialog-head .icon-button:hover {
+  background:#F0F2F3;color:#28313A;border-color:#CED4DA;
+}
+dialog.sheet-dialog .dialog-head .icon-button:focus-visible {
+  outline:3px solid #BC601D;outline-offset:2px;
+}
+
+/* Readable forms and larger touch/click targets, in every modal. */
+dialog.sheet-dialog :is(.form-section,.detail-section) {
+  padding:25px 34px;
+}
+dialog.sheet-dialog .form-section {
+  gap:18px;
+}
+dialog.sheet-dialog .form-section-tinted {
+  background:#F8F9F9;
+}
+dialog.sheet-dialog .form-extra {
+  padding:22px 34px;
+}
+dialog.sheet-dialog .similar-box {
+  padding:18px 34px;
+}
+dialog.sheet-dialog .stack {
+  gap:17px;
+}
+dialog.sheet-dialog label:not(.visually-hidden):not(.switch-line) {
+  font-size:1rem;
+  font-weight:690;
+  color:#46515B;
+  line-height:1.42;
+  gap:7px;
+  min-width:0;
+}
+dialog.sheet-dialog :is(input:not([type=hidden]):not([type=checkbox]),select,textarea) {
+  font-size:1rem;
+  min-height:51px;
+  line-height:1.42;
+  color:#283139;
+  border-radius:11px;
+  border-color:#D5DADF;
+}
+dialog.sheet-dialog input[type=file] {
+  min-width:0;
+  padding:10px;
+  height:auto;
+  max-width:100%;
+  font-size:.93rem;
+}
+dialog.sheet-dialog textarea {
+  min-height:78px;
+  padding-top:12px;
+  resize:vertical;
+}
+dialog.sheet-dialog input[type=checkbox] {
+  min-width:20px;width:20px;height:20px;
+  min-height:0;accent-color:#B74B0D;
+}
+dialog.sheet-dialog input::placeholder,
+dialog.sheet-dialog textarea::placeholder {
+  font-weight:450;
+  color:#87909A;
+}
+dialog.sheet-dialog :is(input,select,textarea):focus-visible {
+  outline:2px solid #B74B0D;
+  outline-offset:1px;
+}
+dialog.sheet-dialog .two-cols {
+  gap:15px 19px;
+  min-width:0;
+}
+dialog.sheet-dialog :is(.form-section h3,.section-header h3) {
+  font-size:1.16rem;
+  line-height:1.3;
+  font-weight:760;
+  color:#2F383F;
+}
+dialog.sheet-dialog :is(.muted,.subtle-note,.small-text) {
+  line-height:1.55;
+}
+dialog.sheet-dialog .form-section .subtle-note {
+  font-size:.87rem;
+}
+dialog.sheet-dialog button:not(.stepper-btn):not(.icon-button):not(.action-choice):not(.text-button) {
+  min-height:45px;
+  font-size:.98rem;
+  line-height:1.25;
+  padding:10px 15px;
+}
+dialog.sheet-dialog .check-line {
+  font-size:.9rem;
+  gap:12px;
+}
+dialog.sheet-dialog .quantity-stepper {
+  min-height:51px;
+  height:51px;
+}
+dialog.sheet-dialog .quantity-stepper input {
+  min-height:0;
+  height:100%;
+  border-radius:0;
+  font-weight:740;
+}
+dialog.sheet-dialog .quantity-stepper .stepper-btn {
+  width:48px;
+  font-size:1.3rem;
+  min-height:49px;
+}
+dialog.sheet-dialog .dialog-actions {
+  gap:12px;
+  flex-wrap:wrap;
+}
+dialog.sheet-dialog .dialog-actions > button {
+  min-height:49px;
+  padding:11px 18px;
+  font-weight:730;
+}
+dialog.sheet-dialog .sticky-actions {
+  padding:17px 34px 19px;
+  background:#fff;
+  border-top:1px solid #E3E5E8;
+}
+/* The long PDF review has a normal-flow footer, preventing overlap. */
+dialog#part-dialog .sticky-actions {
+  position:relative;bottom:auto;
+}
+
+/* Password dialogs previously pressed fields against the outer border. */
+dialog#own-password-dialog form,
+dialog#staff-password-dialog form,
+dialog#history-edit-dialog form {
+  padding:24px 34px 28px;
+  gap:19px;
+}
+dialog#own-password-dialog form .dialog-actions,
+dialog#staff-password-dialog form .dialog-actions,
+dialog#history-edit-dialog form .dialog-actions {
+  margin-top:6px;
+  padding-top:18px;
+  border-top:1px solid #EDF0F2;
+}
+dialog#history-edit-dialog form>.two-cols {gap:16px 18px;}
+
+/* Keep the newly widened ECU form balanced on desktop. */
+@media(min-width:901px) {
+  dialog#item-dialog #item-form > .form-section:first-of-type {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:18px 20px;
+  }
+  dialog#item-dialog #item-form > .form-section:first-of-type > label:last-of-type {
+    grid-column:1/-1;
+  }
+}
+
+/* Details, operations and stock states benefit from clear visual hierarchy. */
+dialog#detail-dialog .detail-content {
+  margin:24px 34px 0;
+  border-color:#E0E4E7;
+  padding:18px 20px;
+}
+dialog#detail-dialog .detail-line {
+  font-size:1rem;
+  line-height:1.5;
+  padding:11px 4px;
+  gap:18px;
+}
+dialog#detail-dialog .detail-line strong {color:#626D78;font-weight:700;}
+dialog#detail-dialog .detail-line>span {max-width:64%;overflow-wrap:anywhere;}
+dialog#detail-dialog .detail-admin {
+  margin:0 34px 30px;
+  padding:24px;
+  border-color:#DEE1E4;
+}
+dialog#detail-dialog .action-tabs {gap:7px;padding:6px;}
+dialog#detail-dialog .action-choice {
+  min-height:47px;
+  font-size:1rem;
+  gap:8px;
+}
+dialog#detail-dialog .operation-preview {
+  font-size:.98rem;
+  line-height:1.55;
+  padding:14px 16px;
+}
+dialog#detail-dialog .balance-chip {
+  padding:9px 12px;
+  font-size:.92rem;
+}
+dialog#detail-dialog .section-header .muted {font-size:.84rem;}
+
+/* Supplier PDF evidence is easier to verify with a wider review column. */
+dialog#part-dialog #part-datasheet-assistant {
+  padding:18px 20px !important;
+  gap:14px !important;
+}
+dialog#part-dialog .part-assistant-top strong {font-size:.95rem;}
+dialog#part-dialog .part-pdf-tool > summary {
+  font-size:.89rem;
+  min-height:51px;
+}
+dialog#part-dialog #part-datasheet-status {font-size:.88rem;line-height:1.55;}
+dialog#part-dialog #part-datasheet-review {
+  max-width:none;
+}
+dialog#part-dialog #part-datasheet-review > strong:first-child {
+  font-size:1.09rem;
+}
+dialog#part-dialog #part-datasheet-review p,
+dialog#part-dialog #part-datasheet-review a {
+  font-size:.89rem;
+}
+dialog#part-dialog #part-datasheet-fields {
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+dialog#part-dialog #part-datasheet-fields > [data-part-field] {
+  min-width:0;
+  padding:14px !important;
+}
+dialog#part-dialog #part-datasheet-fields input[type=text] {width:100%;}
+dialog#part-dialog #part-datasheet-fields small {
+  font-size:.8rem;line-height:1.48;
+}
+dialog#part-dialog :is(.part-variant-note,.part-variant-info small) {
+  font-size:.83rem;
+}
+
+/* Larger, almost fullscreen authenticated document preview. */
+dialog.document-preview-dialog[open] {
+  width:min(1300px,calc(100vw - 28px));
+  height:min(1000px,calc(100dvh - 20px));
+  max-width:none;
+  max-height:none;
+  border-radius:19px;
+}
+dialog.document-preview-dialog .doc-preview-header {
+  padding:18px 24px;
+}
+dialog.document-preview-dialog .doc-preview-heading h2 {font-size:1.55rem;}
+dialog.document-preview-dialog .doc-preview-heading .muted {font-size:.91rem;}
+dialog.document-preview-dialog .doc-preview-footer {
+  padding:14px 24px;
+}
+dialog.document-preview-dialog .doc-preview-footer-actions :is(a,button) {
+  min-height:49px;
+  padding:11px 19px;
+  font-size:.91rem;
+}
+
+/* Tablet: utilize available width, without forcing two cramped data columns. */
+@media(min-width:651px) and (max-width:900px) {
+  dialog.sheet-dialog {
+    width:calc(100vw - 26px);
+    max-height:calc(100dvh - 24px);
+  }
+  dialog#item-dialog,dialog#part-dialog,dialog#detail-dialog {
+    width:calc(100vw - 26px);
+    height:calc(100dvh - 24px);
+  }
+  dialog#own-password-dialog,dialog#staff-password-dialog {
+    width:min(710px,calc(100vw - 26px));
+    height:fit-content;
+    min-height:0;
+  }
+  dialog.sheet-dialog .dialog-head {padding:23px 27px 20px;}
+  dialog.sheet-dialog :is(.form-section,.detail-section) {padding:23px 27px;}
+  dialog.sheet-dialog .form-extra {padding:20px 27px;}
+  dialog.sheet-dialog .sticky-actions {padding:16px 27px;}
+  dialog#detail-dialog .detail-content {margin:22px 27px 0;}
+  dialog#detail-dialog .detail-admin {margin:0 27px 25px;}
+  dialog#part-dialog #part-datasheet-fields {
+    grid-template-columns:minmax(0,1fr);
+  }
+}
+
+/* Phone: maximize usable area without disappearing behind the keyboard,
+ * maintain 16px fields to avoid iOS zoom, and make scrolling predictable. */
+@media(max-width:650px) {
+  dialog.sheet-dialog {
+    width:100vw;
+    max-width:100vw;
+    height:calc(100dvh - 4px);
+    max-height:calc(100dvh - 4px);
+    margin:auto auto 0;
+    border-radius:20px 20px 0 0;
+    scrollbar-gutter:auto;
+    overflow-x:hidden;
+    overflow-y:auto;
+    scroll-padding-top:113px;
+  }
+  /* Override the desktop ID selectors, which otherwise keep a 44px margin
+     and prevent the sheet from using the whole phone viewport. */
+  dialog#item-dialog,dialog#part-dialog,dialog#detail-dialog,
+  dialog#history-edit-dialog {
+    width:100vw;
+    max-width:100vw;
+    height:calc(100dvh - 4px);
+    max-height:calc(100dvh - 4px);
+  }
+  dialog#own-password-dialog,
+  dialog#staff-password-dialog {
+    height:fit-content;
+    min-height:0;
+    max-height:calc(100dvh - 10px);
+    width:100vw;
+    max-width:100vw;
+  }
+  dialog#history-edit-dialog {
+    height:calc(100dvh - 4px);
+  }
+  dialog.sheet-dialog .dialog-head {
+    position:sticky;
+    padding:17px 19px 16px;
+    gap:10px;
+    align-items:center;
+  }
+  dialog.sheet-dialog .dialog-head h2 {
+    font-size:1.52rem;
+    line-height:1.2;
+  }
+  dialog.sheet-dialog .dialog-head .muted {
+    font-size:.96rem;
+    line-height:1.43;
+    margin-top:5px;
+  }
+  dialog.sheet-dialog .dialog-head .kicker {
+    font-size:.72rem;
+    margin-bottom:5px;
+  }
+  dialog.sheet-dialog .dialog-head .icon-button {
+    min-width:46px;width:46px;
+    min-height:46px;height:46px;
+    background:#F8F9F9;
+  }
+  dialog.sheet-dialog :is(.form-section,.detail-section) {
+    padding:21px 19px;
+  }
+  dialog.sheet-dialog .form-section {
+    gap:16px;
+  }
+  dialog.sheet-dialog .form-extra {padding:19px;}
+  dialog.sheet-dialog .similar-box {padding:17px 19px;}
+  dialog.sheet-dialog .stack {gap:16px;}
+  dialog.sheet-dialog label:not(.visually-hidden):not(.switch-line) {
+    font-size:1rem;
+    gap:7px;
+  }
+  dialog.sheet-dialog :is(input:not([type=hidden]):not([type=checkbox]),select,textarea) {
+    min-height:50px;
+    font-size:16px;
+  }
+  dialog.sheet-dialog .two-cols {gap:13px;}
+  dialog.sheet-dialog .quantity-stepper,
+  dialog.sheet-dialog .quantity-stepper input {
+    height:52px;
+  }
+  dialog.sheet-dialog .quantity-stepper input {
+    min-height:0;
+  }
+  dialog.sheet-dialog .quantity-stepper .stepper-btn {min-height:50px;}
+  dialog.sheet-dialog .sticky-actions {
+    padding:13px 19px calc(15px + env(safe-area-inset-bottom,0px));
+  }
+  dialog.sheet-dialog .dialog-actions > button {
+    min-height:51px;
+    font-size:1rem;
+  }
+  dialog#item-dialog #item-form > .form-section:first-of-type {
+    grid-template-columns:minmax(0,1fr);
+  }
+  dialog#detail-dialog .detail-content {margin:18px 19px 0;padding:14px;}
+  dialog#detail-dialog .detail-section {padding:19px;}
+  dialog#detail-dialog .detail-admin {margin:0 19px 20px;padding:17px;}
+  dialog#detail-dialog .detail-line {font-size:.86rem;padding:9px 2px;}
+  dialog#detail-dialog .action-choice {
+    min-height:48px;font-size:.86rem;
+  }
+  dialog#part-dialog #part-datasheet-assistant {
+    padding:14px !important;
+    gap:12px !important;
+  }
+  dialog#part-dialog #part-datasheet-fields {
+    grid-template-columns:minmax(0,1fr);
+    gap:11px;
+  }
+  dialog#part-dialog #part-datasheet-review p {
+    font-size:.87rem;
+  }
+  dialog#own-password-dialog form,
+  dialog#staff-password-dialog form,
+  dialog#history-edit-dialog form {
+    padding:20px 19px 24px;
+    gap:17px;
+  }
+  dialog.document-preview-dialog[open] {
+    width:100vw;
+    max-width:100vw;
+    height:calc(100dvh - 4px);
+    max-height:calc(100dvh - 4px);
+    margin:auto auto 0;
+    border-radius:18px 18px 0 0;
+  }
+  dialog.document-preview-dialog .doc-preview-header {padding:13px 17px;}
+  dialog.document-preview-dialog .doc-preview-heading h2 {font-size:1.24rem;}
+  dialog.document-preview-dialog .doc-preview-footer {
+    padding:11px 17px calc(13px + env(safe-area-inset-bottom,0px));
+  }
+  dialog.document-preview-dialog .doc-preview-footer-actions :is(a,button) {
+    min-height:48px;padding:10px 12px;
+  }
+}
+@media(max-width:380px) {
+  dialog.sheet-dialog .dialog-head {padding:15px 15px;}
+  dialog.sheet-dialog :is(.form-section,.detail-section) {padding:18px 15px;}
+  dialog.sheet-dialog .sticky-actions {padding-left:15px;padding-right:15px;}
+  dialog.sheet-dialog .dialog-head h2 {font-size:1.42rem;}
+  dialog#detail-dialog .detail-content {margin-left:15px;margin-right:15px;}
+  dialog#detail-dialog .detail-admin {margin-left:15px;margin-right:15px;}
+  dialog#own-password-dialog form,dialog#staff-password-dialog form,
+  dialog#history-edit-dialog form {padding-left:15px;padding-right:15px;}
+}
+
+
+/* Unified modal dimensions v2 — identical outer size in every Magazyn tab.
+ * This final override deliberately wins over previous per-dialog width/height
+ * rules. The content may be narrower for short forms, not the dialog window.
+ */
+:root {
+  --mag-modal-uniform-width:min(1720px,calc(100vw - 24px));
+  --mag-modal-uniform-height:min(1140px,calc(100dvh - 16px));
+}
+dialog#item-dialog,
+dialog#part-dialog,
+dialog#detail-dialog,
+dialog#own-password-dialog,
+dialog#staff-password-dialog,
+dialog#history-edit-dialog,
+dialog#document-preview-dialog[open] {
+  box-sizing:border-box;
+  width:var(--mag-modal-uniform-width);
+  max-width:none;
+  min-height:0;
+  height:var(--mag-modal-uniform-height);
+  max-height:none;
+  margin:auto;
+}
+
+/* All tabs use a common 1, 2 or 3 column inner layout where appropriate.
+ * A wide modal must not make password inputs 1500px long.
+ */
+@media(min-width:901px) {
+  dialog#own-password-dialog > form,
+  dialog#staff-password-dialog > form {
+    width:min(820px,calc(100% - 72px));
+    max-width:820px;
+    margin:clamp(32px,5vh,65px) auto 0;
+    box-sizing:border-box;
+    padding:33px 38px 36px;
+    border:1px solid #E0E4E8;
+    border-radius:16px;
+    background:#FBFCFC;
+  }
+  dialog#history-edit-dialog > form {
+    width:min(1420px,calc(100% - 46px));
+    box-sizing:border-box;
+    margin:12px auto 32px;
+  }
+  dialog#item-dialog #item-form > .form-section:first-of-type {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  dialog#part-dialog #part-datasheet-assistant {
+    max-width:none;
+  }
+  dialog#part-dialog #part-datasheet-fields {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  dialog#detail-dialog .detail-content {
+    max-width:none;
+  }
+}
+/* Tablet: uniform larger surface with matching margins for all seven modals. */
+@media(min-width:651px) and (max-width:900px) {
+  :root {
+    --mag-modal-uniform-width:calc(100vw - 16px);
+    --mag-modal-uniform-height:calc(100dvh - 12px);
+  }
+  dialog#own-password-dialog > form,
+  dialog#staff-password-dialog > form {
+    width:min(740px,calc(100% - 42px));
+    max-width:740px;
+    margin:24px auto 0;
+    box-sizing:border-box;
+    padding:26px 30px 32px;
+    border:1px solid #E0E4E8;
+    border-radius:14px;
+  }
+  dialog#history-edit-dialog > form {
+    width:calc(100% - 22px);
+    margin:0 auto 24px;
+    box-sizing:border-box;
+  }
+}
+/* Phones: same full-width, near-full-height sheet in every tab, with
+ * no horizontal overflow or hidden close/submit actions.
+ */
+@media(max-width:650px) {
+  :root {
+    --mag-modal-uniform-width:100vw;
+    --mag-modal-uniform-height:calc(100dvh - 4px);
+  }
+  dialog#item-dialog,
+  dialog#part-dialog,
+  dialog#detail-dialog,
+  dialog#own-password-dialog,
+  dialog#staff-password-dialog,
+  dialog#history-edit-dialog,
+  dialog#document-preview-dialog[open] {
+    width:var(--mag-modal-uniform-width);
+    max-width:100vw;
+    min-height:0;
+    height:var(--mag-modal-uniform-height);
+    max-height:var(--mag-modal-uniform-height);
+    margin:auto auto 0;
+    border-radius:18px 18px 0 0;
+  }
+  dialog#own-password-dialog > form,
+  dialog#staff-password-dialog > form,
+  dialog#history-edit-dialog > form {
+    width:100%;
+    max-width:none;
+    margin:0;
+    border:0;
+    background:white;
+    box-sizing:border-box;
+  }
+  dialog#part-dialog #part-datasheet-fields {
+    grid-template-columns:minmax(0,1fr);
+  }
+}
