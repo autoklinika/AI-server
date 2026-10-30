@@ -119,6 +119,10 @@ async def test_failure_retains_ownership_and_restart_marker(tmp_path, failure):
 async def test_heartbeat_and_release_during_transition_are_race_safe(tmp_path):
     providers = Providers()
     gpu, scheduler, leases = setup(tmp_path, providers)
+    # This success-path concurrency test is synchronized with Events. The
+    # default 50ms timeout is for failure-path tests and can expire on a busy
+    # GitHub runner despite correct transition ownership.
+    gpu.timeout = 1.0
     entered, finish = asyncio.Event(), asyncio.Event()
     original = gpu.enter_media
     async def delayed():
