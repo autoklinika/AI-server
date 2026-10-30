@@ -32,11 +32,11 @@ jobs:
 
     steps:
       - name: Checkout (pinned)
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 — Node.js 24
         with:
           persist-credentials: false
       - name: Setup Python (pinned)
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6 — Node.js 24
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install project and pinned quality tools
@@ -88,7 +88,7 @@ jobs:
             --junitxml=rm-multigpu-junit.xml
       - name: Store CPU-only test results
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6 — Node.js 24
         with:
           name: rm-multigpu-junit-py${{ matrix.python-version }}
           path: rm-multigpu-junit.xml
