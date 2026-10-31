@@ -49,8 +49,14 @@ ProcessSource = Callable[[], ProcessObservation | None]
 ClaimSource = Callable[[], tuple[ProcessLeaseClaim, ...]]
 
 
-def _unknown(reasons: set[str], *, observed: int = 0, candidates: int = 0,
-             unmatched: int = 0, leases: int | None = None) -> OwnershipSummary:
+def _unknown(
+    reasons: set[str],
+    *,
+    observed: int = 0,
+    candidates: int = 0,
+    unmatched: int = 0,
+    leases: int | None = None,
+) -> OwnershipSummary:
     return {
         "mode": "read_only",
         "result": "UNKNOWN",
@@ -105,50 +111,74 @@ def summarize_ownership(
         reasons.add("partial_process_observation")
 
     observed = len(processes.processes)
-    if (type(now_ns) is not int or now_ns < 0
-            or hardware.boot_id is None or processes.boot_id != hardware.boot_id
-            or processes.hardware_observed_at_ns != hardware.observed_at_ns):
+    if (
+        type(now_ns) is not int
+        or now_ns < 0
+        or hardware.boot_id is None
+        or processes.boot_id != hardware.boot_id
+        or processes.hardware_observed_at_ns != hardware.observed_at_ns
+    ):
         return _unknown(
             reasons | {"observation_epoch_mismatch"},
-            observed=observed, unmatched=observed,
+            observed=observed,
+            unmatched=observed,
         )
-    if (hardware.observed_at_ns > now_ns or processes.observed_at_ns > now_ns
-            or hardware.observed_at_ns < 0 or processes.observed_at_ns < 0
-            or now_ns - hardware.observed_at_ns > _FRESH_NS
-            or now_ns - processes.observed_at_ns > _FRESH_NS):
+    if (
+        hardware.observed_at_ns > now_ns
+        or processes.observed_at_ns > now_ns
+        or hardware.observed_at_ns < 0
+        or processes.observed_at_ns < 0
+        or now_ns - hardware.observed_at_ns > _FRESH_NS
+        or now_ns - processes.observed_at_ns > _FRESH_NS
+    ):
         return _unknown(
             reasons | {"stale_or_future_observation"},
-            observed=observed, unmatched=observed,
+            observed=observed,
+            unmatched=observed,
         )
 
-    if (rm_leases is None or not isinstance(rm_leases, Mapping)
-            or type(rm_leases.get("lease_count")) is not int
-            or not isinstance(rm_leases.get("leases"), list)):
+    if rm_leases is None or not isinstance(rm_leases, Mapping):
         return _unknown(
             reasons | {"rm_lease_snapshot_unavailable"},
-            observed=observed, unmatched=observed,
+            observed=observed,
+            unmatched=observed,
         )
-
-    rows = rm_leases["leases"]
-    lease_count = rm_leases["lease_count"]
+    rows = rm_leases.get("leases")
+    lease_count = rm_leases.get("lease_count")
+    if type(lease_count) is not int or not isinstance(rows, list):
+        return _unknown(
+            reasons | {"rm_lease_snapshot_unavailable"},
+            observed=observed,
+            unmatched=observed,
+        )
     if lease_count != len(rows) or lease_count < 0 or lease_count > 4096:
         return _unknown(
             reasons | {"rm_lease_snapshot_invalid"},
-            observed=observed, unmatched=observed,
+            observed=observed,
+            unmatched=observed,
         )
     external_jobs: set[int] = set()
     for row in rows:
         if not isinstance(row, dict):
-            return _unknown(reasons | {"rm_lease_snapshot_invalid"},
-                            observed=observed, unmatched=observed)
+            return _unknown(
+                reasons | {"rm_lease_snapshot_invalid"},
+                observed=observed,
+                unmatched=observed,
+            )
         job = row.get("job_id")
         in_use = row.get("external_in_use")
         if type(job) is not int or job <= 0 or job in external_jobs and in_use:
-            return _unknown(reasons | {"rm_lease_snapshot_invalid"},
-                            observed=observed, unmatched=observed)
+            return _unknown(
+                reasons | {"rm_lease_snapshot_invalid"},
+                observed=observed,
+                unmatched=observed,
+            )
         if type(in_use) is not bool:
-            return _unknown(reasons | {"rm_lease_snapshot_invalid"},
-                            observed=observed, unmatched=observed)
+            return _unknown(
+                reasons | {"rm_lease_snapshot_invalid"},
+                observed=observed,
+                unmatched=observed,
+            )
         if in_use:
             external_jobs.add(job)
 
@@ -157,14 +187,18 @@ def summarize_ownership(
     if not isinstance(claims, tuple) or len(claims) > 4096:
         return _unknown(
             reasons | {"invalid_owner_claims"},
-            observed=observed, unmatched=observed,
+            observed=observed,
+            unmatched=observed,
             leases=len(external_jobs),
         )
     for claim in claims:
         if not isinstance(claim, ProcessLeaseClaim) or (
-            type(claim.job_id) is not int or claim.job_id not in external_jobs
-            or type(claim.pid) is not int or claim.pid <= 1
-            or type(claim.start_ticks) is not int or claim.start_ticks <= 0
+            type(claim.job_id) is not int
+            or claim.job_id not in external_jobs
+            or type(claim.pid) is not int
+            or claim.pid <= 1
+            or type(claim.start_ticks) is not int
+            or claim.start_ticks <= 0
             or claim.boot_id != hardware.boot_id
             or claim.gpu_uuid not in known_uuids
         ):
@@ -177,9 +211,13 @@ def summarize_ownership(
     seen: set[tuple[str, int, int]] = set()
     candidates = 0
     for reading in processes.processes:
-        if (reading.gpu_uuid not in known_uuids or type(reading.pid) is not int
-                or reading.pid <= 1 or type(reading.start_ticks) is not int
-                or reading.start_ticks <= 0):
+        if (
+            reading.gpu_uuid not in known_uuids
+            or type(reading.pid) is not int
+            or reading.pid <= 1
+            or type(reading.start_ticks) is not int
+            or reading.start_ticks <= 0
+        ):
             reasons.add("process_identity_incomplete")
             continue
         key = (reading.gpu_uuid, reading.pid, reading.start_ticks)

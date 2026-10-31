@@ -168,9 +168,7 @@ def test_malformed_proc_stat_cannot_prove_pid_birth(text):
 
 
 def test_nvidia_compute_parser_handles_gpus_and_unknown_used_vram():
-    parsed = parse_compute_csv(
-        f"{GPU_B}, 4321, N/A\n{GPU_A}, 4321, 1024"
-    )
+    parsed = parse_compute_csv(f"{GPU_B}, 4321, N/A\n{GPU_A}, 4321, 1024")
     assert parsed == ((GPU_A, 4321, GIB), (GPU_B, 4321, None))
 
 
@@ -181,7 +179,7 @@ def test_nvidia_compute_parser_handles_gpus_and_unknown_used_vram():
         f"{GPU_A}, 0, 100",
         f"{GPU_A}, -5, 100",
         f"{GPU_A}, notpid, 100",
-        f"GPU-N/A, 4321, 100",
+        "GPU-N/A, 4321, 100",
         f"{GPU_A}, 4321, -100",
         f"{GPU_A}, 4321, bad",
         f"{GPU_A}, 4321",
@@ -237,9 +235,7 @@ def test_vanished_pid_is_kept_as_uncertain_process_not_dropped():
     assert len(sample.processes) == 1
     assert sample.processes[0].start_ticks is None
     assert "process_birth_identity_unavailable" in sample.issues
-    result = summarize_ownership(
-        _hardware(), sample, _rm(), (_claim(),), now_ns=1013
-    )
+    result = summarize_ownership(_hardware(), sample, _rm(), (_claim(),), now_ns=1013)
     assert result["candidate_lease_process_pairs"] == 0
     assert result["authorizes_execution"] is False
 
@@ -257,9 +253,7 @@ def test_unrecognized_gpu_uuid_is_not_attributed_to_known_gpu():
 
 def test_candidate_requires_full_identity_and_active_external_lease():
     sample = _processes()
-    result = summarize_ownership(
-        _hardware(), sample, _rm(), (_claim(),), now_ns=1020
-    )
+    result = summarize_ownership(_hardware(), sample, _rm(), (_claim(),), now_ns=1020)
     assert result["candidate_lease_process_pairs"] == 1
     assert result["unmatched_compute_processes"] == 0
     assert result["result"] == "UNKNOWN"
@@ -288,13 +282,19 @@ def test_stale_or_forged_candidate_cannot_be_verified(claims, leases):
 
 
 def test_competing_claims_are_ambiguous_not_proven():
-    leases = {"lease_count": 2, "leases": [
-        {"job_id": 17, "external_in_use": True},
-        {"job_id": 18, "external_in_use": True},
-    ]}
+    leases = {
+        "lease_count": 2,
+        "leases": [
+            {"job_id": 17, "external_in_use": True},
+            {"job_id": 18, "external_in_use": True},
+        ],
+    }
     result = summarize_ownership(
-        _hardware(), _processes(), leases,
-        (_claim(), _claim(job=18)), now_ns=1020,
+        _hardware(),
+        _processes(),
+        leases,
+        (_claim(), _claim(job=18)),
+        now_ns=1020,
     )
     assert result["candidate_lease_process_pairs"] == 0
     assert "ambiguous_owner_claims" in result["reason_codes"]
@@ -322,9 +322,7 @@ def test_broken_rm_snapshot_rejects_candidate(leases):
 def test_bad_epoch_or_staleness_never_matches(delta):
     sample = _processes()
     hardware = replace(_hardware(), observed_at_ns=1000 + delta)
-    result = summarize_ownership(
-        hardware, sample, _rm(), (_claim(),), now_ns=1020
-    )
+    result = summarize_ownership(hardware, sample, _rm(), (_claim(),), now_ns=1020)
     assert result["candidate_lease_process_pairs"] == 0
     assert result["authorizes_execution"] is False
 
@@ -332,7 +330,8 @@ def test_bad_epoch_or_staleness_never_matches(delta):
 def test_two_gpu_processes_are_never_summed_as_one_gpu_budget():
     sample = replace(
         _processes(),
-        processes=_processes().processes + (
+        processes=_processes().processes
+        + (
             ComputeProcess(
                 gpu_uuid=GPU_B, pid=PID, start_ticks=BIRTH, used_bytes=2 * GIB
             ),
@@ -350,9 +349,7 @@ def test_two_gpu_processes_are_never_summed_as_one_gpu_budget():
 
 def test_status_has_no_private_pid_uuid_or_boot_string():
     sample = _processes()
-    summary = summarize_ownership(
-        _hardware(), sample, _rm(), (_claim(),), now_ns=1020
-    )
+    summary = summarize_ownership(_hardware(), sample, _rm(), (_claim(),), now_ns=1020)
     text = json.dumps(summary)
     assert str(PID) not in text
     assert GPU_A not in text and BOOT not in text
@@ -362,9 +359,7 @@ def test_status_has_no_private_pid_uuid_or_boot_string():
 
 def test_read_amd_aperture_separates_non_additive_vram_visible_gtt(tmp_path):
     root, _ = _drm(tmp_path)
-    snapshot = collect_amd_apertures(
-        _hardware(), drm_root=root, now_ns=lambda: 1010
-    )
+    snapshot = collect_amd_apertures(_hardware(), drm_root=root, now_ns=lambda: 1010)
     assert snapshot.issues == ()
     assert snapshot.apertures[0].vram_bytes == 96 * GIB
     assert snapshot.apertures[0].visible_vram_bytes == 96 * GIB
@@ -393,9 +388,12 @@ def test_amd_aperture_alias_does_not_create_second_memory_pool(tmp_path):
     snapshot = collect_amd_apertures(_hardware(), drm_root=root, now_ns=lambda: 1010)
     assert len(snapshot.apertures) == 1
     assert "amd_duplicate_pci" in snapshot.issues
-    assert summarize_memory_relation(
-        _hardware(), snapshot, now_ns=1020
-    )["memory_domain_mapping"] == "unverified"
+    assert (
+        summarize_memory_relation(_hardware(), snapshot, now_ns=1020)[
+            "memory_domain_mapping"
+        ]
+        == "unverified"
+    )
 
 
 def test_no_automatic_discovery_in_pure_status_wrapper(monkeypatch):
@@ -432,6 +430,7 @@ def test_source_exception_is_redacted_and_not_authorizing():
 def _app(tmp_path, *, enabled: bool, hardware_source=None, process_source=None):
     def handler(request: httpx.Request):
         return httpx.Response(200, json={"models": []}, request=request)
+
     return create_gateway_app(
         Settings(
             _env_file=None,
@@ -452,7 +451,9 @@ async def test_existing_gateway_default_off_never_reads_owner_sources(tmp_path):
         calls.append(1)
         raise AssertionError("disabled source was invoked")
 
-    app = _app(tmp_path, enabled=False, hardware_source=forbidden, process_source=forbidden)
+    app = _app(
+        tmp_path, enabled=False, hardware_source=forbidden, process_source=forbidden
+    )
     async with app.router.lifespan_context(app):
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
@@ -469,7 +470,9 @@ async def test_optional_gateway_ownership_is_unknown_and_lease_unchanged(tmp_pat
     app = _app(
         tmp_path,
         enabled=True,
-        hardware_source=lambda: replace(_hardware(), observed_at_ns=time.monotonic_ns()),
+        hardware_source=lambda: replace(
+            _hardware(), observed_at_ns=time.monotonic_ns()
+        ),
         process_source=lambda: replace(
             _processes(),
             observed_at_ns=time.monotonic_ns(),
@@ -504,7 +507,8 @@ async def test_concurrent_status_requests_cannot_create_gpu_authorization(tmp_pa
         hardware_observed_at_ns=sample_hardware.observed_at_ns,
     )
     app = _app(
-        tmp_path, enabled=True,
+        tmp_path,
+        enabled=True,
         hardware_source=lambda: sample_hardware,
         process_source=lambda: sample_proc,
     )
@@ -515,7 +519,10 @@ async def test_concurrent_status_requests_cannot_create_gpu_authorization(tmp_pa
             initial = (await client.get("/status")).json()
             responses = await asyncio.gather(*(client.get("/status") for _ in range(8)))
             assert all(r.status_code == 200 for r in responses)
-            assert all(not r.json()["resource_ownership"]["authorizes_execution"] for r in responses)
+            assert all(
+                not r.json()["resource_ownership"]["authorizes_execution"]
+                for r in responses
+            )
             after = (await client.get("/status")).json()
             assert after["resource_manager"] == initial["resource_manager"]
             assert after["active_count"] == initial["active_count"]

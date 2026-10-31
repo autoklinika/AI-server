@@ -53,7 +53,7 @@ def _counter(path: Path) -> int | None:
     if len(raw) > 64:
         return None
     value = raw.strip()
-    if not value.isascii() or not value.isdecimal():
+    if not value.isascii() or not value.isdigit():
         return None
     return int(value)
 
@@ -67,9 +67,7 @@ def collect_amd_apertures(
     """Explicit sysfs-only collection; no processes, locks, driver calls."""
     if not isinstance(hardware, HardwareReading):
         raise TypeError("hardware observation required")
-    known = {
-        item.pci_bdf for item in hardware.devices if item.vendor == "amd"
-    }
+    known = {item.pci_bdf for item in hardware.devices if item.vendor == "amd"}
     issues: set[str] = set()
     rows: list[AmdAperture] = []
     seen: set[str] = set()
@@ -105,9 +103,16 @@ def collect_amd_apertures(
         visible = counters["mem_info_vis_vram_total"]
         gtt = counters["mem_info_gtt_total"]
         gtt_used = counters["mem_info_gtt_used"]
-        if (vram is None or vram <= 0 or visible is None
-                or visible > vram or gtt is None or gtt <= 0
-                or gtt_used is None or gtt_used > gtt):
+        if (
+            vram is None
+            or vram <= 0
+            or visible is None
+            or visible > vram
+            or gtt is None
+            or gtt <= 0
+            or gtt_used is None
+            or gtt_used > gtt
+        ):
             issues.add("amd_aperture_counters_incomplete")
         rows.append(
             AmdAperture(
@@ -150,13 +155,20 @@ def summarize_memory_relation(
         reasons.add("missing_memory_evidence")
         base["reason_codes"] = sorted(reasons)
         return base
-    if (type(now_ns) is not int or now_ns < 0 or hardware.boot_id is None
-            or snapshot.boot_id != hardware.boot_id):
+    if (
+        type(now_ns) is not int
+        or now_ns < 0
+        or hardware.boot_id is None
+        or snapshot.boot_id != hardware.boot_id
+    ):
         reasons.add("memory_epoch_mismatch")
-    elif (snapshot.observed_at_ns < 0 or snapshot.observed_at_ns > now_ns
-          or hardware.observed_at_ns > now_ns
-          or now_ns - snapshot.observed_at_ns > 5_000_000_000
-          or now_ns - hardware.observed_at_ns > 5_000_000_000):
+    elif (
+        snapshot.observed_at_ns < 0
+        or snapshot.observed_at_ns > now_ns
+        or hardware.observed_at_ns > now_ns
+        or now_ns - snapshot.observed_at_ns > 5_000_000_000
+        or now_ns - hardware.observed_at_ns > 5_000_000_000
+    ):
         reasons.add("memory_sample_not_fresh")
     if snapshot.issues:
         reasons.add("incomplete_amd_memory_evidence")
@@ -183,12 +195,14 @@ def summarize_memory_relation(
         if hardware.host is not None and aperture.vram_bytes is not None:
             if aperture.vram_bytes > hardware.host.total_bytes:
                 reasons.add("amd_vram_exceeds_cpu_visible_ram")
-        apertures.append({
-            "driver_vram_bytes": aperture.vram_bytes,
-            "visible_vram_bytes": aperture.visible_vram_bytes,
-            "gtt_aperture_bytes": aperture.gtt_bytes,
-            "gtt_used_bytes": aperture.gtt_used_bytes,
-        })
+        apertures.append(
+            {
+                "driver_vram_bytes": aperture.vram_bytes,
+                "visible_vram_bytes": aperture.visible_vram_bytes,
+                "gtt_aperture_bytes": aperture.gtt_bytes,
+                "gtt_used_bytes": aperture.gtt_used_bytes,
+            }
+        )
     if seen != set(known):
         reasons.add("amd_gpu_apertures_unmatched")
     base["amd_apertures"] = apertures

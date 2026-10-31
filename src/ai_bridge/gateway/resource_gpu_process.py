@@ -150,7 +150,8 @@ def collect_compute_processes(
         issues.add("process_boot_epoch_missing")
 
     known_uuids = {
-        d.identity for d in hardware.devices
+        d.identity
+        for d in hardware.devices
         if d.vendor == "nvidia" and d.identity_source == "driver_uuid"
     }
     try:
