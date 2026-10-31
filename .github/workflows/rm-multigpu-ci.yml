@@ -2,7 +2,7 @@ name: RM Multi-GPU — CPU-only quality gate
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feature/rm-multigpu-p1-github-20261031]
     paths:
       - .github/workflows/rm-multigpu-ci.yml
       - AGENTS.md
@@ -10,6 +10,10 @@ on:
       - src/ai_bridge/providers/accelerators.py
       - src/ai_bridge/providers/resource_topology.py
       - src/ai_bridge/gateway/resource_accounting.py
+      - src/ai_bridge/gateway/resource_shadow.py
+      - src/ai_bridge/gateway/app.py
+      - src/ai_bridge/settings.py
+      - tests/test_resource_shadow_p2a.py
       - tests/test_resource_foundation_p1*.py
   workflow_dispatch:
 
@@ -45,12 +49,14 @@ jobs:
           python -m pip install --disable-pip-version-check ruff==0.16.9 mypy==1.18.2
       - name: Compile pure CPU resource modules
         run: |
-          python -m compileall -q src/ai_bridge/providers/resource_topology.py src/ai_bridge/gateway/resource_accounting.py
+          python -m compileall -q src/ai_bridge/providers/resource_topology.py src/ai_bridge/gateway/resource_accounting.py src/ai_bridge/gateway/resource_shadow.py
       - name: Ruff lint (new P1 modules and tests)
         run: |
           ruff check --target-version py312 --select E4,E7,E9,F,B,I,UP \
             src/ai_bridge/providers/resource_topology.py \
             src/ai_bridge/gateway/resource_accounting.py \
+            src/ai_bridge/gateway/resource_shadow.py \
+            tests/test_resource_shadow_p2a.py \
             tests/test_resource_foundation_p1.py \
             tests/test_resource_foundation_p1_supervisor.py
       - name: Ruff formatter check
@@ -58,6 +64,8 @@ jobs:
           ruff format --target-version py312 --check \
             src/ai_bridge/providers/resource_topology.py \
             src/ai_bridge/gateway/resource_accounting.py \
+            src/ai_bridge/gateway/resource_shadow.py \
+            tests/test_resource_shadow_p2a.py \
             tests/test_resource_foundation_p1.py \
             tests/test_resource_foundation_p1_supervisor.py
       - name: Strict mypy (resource modules)
@@ -65,7 +73,8 @@ jobs:
           mypy --strict --follow-imports=silent \
             --python-version ${{ matrix.python-version }} \
             src/ai_bridge/providers/resource_topology.py \
-            src/ai_bridge/gateway/resource_accounting.py
+            src/ai_bridge/gateway/resource_accounting.py \
+            src/ai_bridge/gateway/resource_shadow.py
       - name: Regression tests (P1 + existing RM contracts)
         env:
           PYTHONDONTWRITEBYTECODE: "1"
@@ -76,6 +85,7 @@ jobs:
           python -m pytest -q -p no:cacheprovider -o addopts='' \
             tests/test_resource_foundation_p1.py \
             tests/test_resource_foundation_p1_supervisor.py \
+            tests/test_resource_shadow_p2a.py \
             tests/test_stage_n0_accelerators.py \
             tests/test_gateway_scheduler.py \
             tests/test_gateway_resource_leases.py \
