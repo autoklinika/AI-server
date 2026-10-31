@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
+from dataclasses import replace
 from pathlib import Path
 
 import httpx
@@ -454,3 +456,33 @@ def test_explicit_collector_does_not_invoke_external_tools_when_injected(
         )
     assert result.observed_at_ns == 13
     assert len(result.devices) == 2
+
+
+def test_old_or_future_readings_are_not_presented_as_current(tmp_path):
+    sample = _collect(tmp_path)
+    stale = public_hardware_summary(sample, rm_lease_count=0)
+    assert "hardware_sample_stale" in stale["reason_codes"]
+
+    future = replace(sample, observed_at_ns=10**30)
+    result = public_hardware_summary(future, rm_lease_count=0)
+    assert "hardware_sample_clock_mismatch" in result["reason_codes"]
+    assert result["authorizes_execution"] is False
+
+    recent = replace(sample, observed_at_ns=time.monotonic_ns())
+    recent_result = public_hardware_summary(recent, rm_lease_count=0)
+    assert "hardware_sample_stale" not in recent_result["reason_codes"]
+    assert "hardware_sample_clock_mismatch" not in recent_result["reason_codes"]
+    assert recent_result["memory_domain_mapping"] == "unverified"
+
+
+def test_untrusted_observer_diagnostic_cannot_expose_secret_strings(tmp_path):
+    sample = _collect(tmp_path)
+    injected = replace(
+        sample,
+        issues=("operator_token=very-private-secret-value",),
+        observed_at_ns=time.monotonic_ns(),
+    )
+    result = public_hardware_summary(injected, rm_lease_count=0)
+    assert "unclassified_hardware_issue" in result["reason_codes"]
+    assert "very-private-secret-value" not in json.dumps(result)
+    assert result["authorizes_execution"] is False
