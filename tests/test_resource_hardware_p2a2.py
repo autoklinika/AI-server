@@ -205,7 +205,12 @@ def test_amd_driver_vram_and_host_ram_are_separate_unverified_apertures(tmp_path
     summary = public_hardware_summary(sample, rm_lease_count=0)
     assert summary["result"] == "PARTIAL"
     assert "amd_memory_relation_unverified" in summary["reason_codes"]
-    assert summary["memory_observations"]["amd_driver_reported_unclassified"][0]["total_bytes"] == 96 * GIB
+    assert (
+        summary["memory_observations"]["amd_driver_reported_unclassified"][0][
+            "total_bytes"
+        ]
+        == 96 * GIB
+    )
     assert summary["memory_observations"]["host_ram"]["total_bytes"] == 31965700 * 1024
     assert summary["memory_domain_mapping"] == "unverified"
     assert summary["allocation_attribution"] == "unverified"
@@ -273,8 +278,10 @@ def test_missing_boot_id_marks_snapshot_incomplete(tmp_path):
     drm, mem, boot, _ = _hardware_files(tmp_path)
     boot.unlink()
     sample = collect_linux_hardware(
-        nvidia_query=lambda: NVIDIA_ROW, drm_root=drm,
-        proc_meminfo=mem, proc_boot_id=boot,
+        nvidia_query=lambda: NVIDIA_ROW,
+        drm_root=drm,
+        proc_meminfo=mem,
+        proc_boot_id=boot,
     )
     assert sample.boot_id is None
     assert "boot_epoch_unavailable" in sample.issues
@@ -373,7 +380,9 @@ async def test_gateway_enabled_without_source_is_unknown_not_a_gpu_grant(tmp_pat
 
 
 @pytest.mark.anyio
-async def test_gateway_enabled_uses_precollected_sample_but_not_lease_authority(tmp_path):
+async def test_gateway_enabled_uses_precollected_sample_but_not_lease_authority(
+    tmp_path,
+):
     sample = _collect(tmp_path)
     app = _gateway(tmp_path, enabled=True, hardware_source=lambda: sample)
     async with app.router.lifespan_context(app):
@@ -382,9 +391,12 @@ async def test_gateway_enabled_uses_precollected_sample_but_not_lease_authority(
         ) as client:
             initial = (await client.get("/status")).json()
             assert initial["resource_hardware"]["counts"] == {"nvidia": 1, "amd": 1}
-            assert initial["resource_hardware"]["allocation_attribution"] == "unverified"
+            assert (
+                initial["resource_hardware"]["allocation_attribution"] == "unverified"
+            )
             lease = await client.post(
-                "/resource/leases", json={"source": "hardware-read-only", "priority": 50}
+                "/resource/leases",
+                json={"source": "hardware-read-only", "priority": 50},
             )
             assert lease.status_code == 201
             active = (await client.get("/status")).json()
@@ -410,11 +422,18 @@ async def test_repeated_status_reads_dont_alter_existing_rm(tmp_path):
             many = await asyncio.gather(*(client.get("/status") for _ in range(9)))
             assert all(r.status_code == 200 for r in many)
             current = (await client.get("/status")).json()
-            for key in ("active_count", "queued_count", "gpu_residency", "resource_manager"):
+            for key in (
+                "active_count",
+                "queued_count",
+                "gpu_residency",
+                "resource_manager",
+            ):
                 assert current[key] == baseline[key]
 
 
-def test_explicit_collector_does_not_invoke_external_tools_when_injected(tmp_path, monkeypatch):
+def test_explicit_collector_does_not_invoke_external_tools_when_injected(
+    tmp_path, monkeypatch
+):
     import socket
     import subprocess
 
