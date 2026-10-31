@@ -28,6 +28,7 @@ from .engine_lifecycle import EngineLifecycleError, lifecycle_for
 from .comfy_process import resume_stopped_managed_comfy
 from .scheduler import PriorityScheduler, SchedulerQueueFull, SchedulerTicket
 from .resource_shadow import ShadowSource, observe_shadow
+from .resource_hardware import HardwareSource, observe_hardware_source
 
 
 LOGGER = logging.getLogger(__name__)
@@ -157,6 +158,7 @@ def create_gateway_app(
     knowledge_runtime_factory=None,
     vision_executor=None,
     resource_shadow_source: ShadowSource | None = None,
+    resource_hardware_source: HardwareSource | None = None,
 ) -> FastAPI:
     resolved = settings or get_settings()
     if vision_executor is None and resolved.gateway_vision_radio_enabled:
@@ -511,6 +513,13 @@ def create_gateway_app(
         # P2-A: read-only status decoration, NEVER an admission signal. Off by default.
         if resolved.gateway_resource_shadow_enabled:
             snapshot["resource_shadow"] = observe_shadow(resource_shadow_source)
+        # P2-A2: opt-in status decoration only. Never invokes OS probes.
+        # The injected source must return a previously sampled snapshot.
+        if resolved.gateway_resource_hardware_observation_enabled:
+            snapshot["resource_hardware"] = observe_hardware_source(
+                resource_hardware_source,
+                rm_lease_count=snapshot["resource_leases"]["lease_count"],
+            )
         return snapshot
 
     # External Resource Manager API. It is intentionally served by the existing
