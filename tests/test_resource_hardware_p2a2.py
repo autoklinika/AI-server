@@ -486,3 +486,18 @@ def test_untrusted_observer_diagnostic_cannot_expose_secret_strings(tmp_path):
     assert "unclassified_hardware_issue" in result["reason_codes"]
     assert "very-private-secret-value" not in json.dumps(result)
     assert result["authorizes_execution"] is False
+
+
+def test_malformed_injected_snapshot_cannot_break_gateway_status():
+    malformed = HardwareReading(
+        boot_id=BOOT,
+        observed_at_ns=time.monotonic_ns(),
+        devices=(),
+        host=None,
+        issues=({"secret": "must-not-leak"},),  # type: ignore[arg-type]
+    )
+    result = observe_hardware_source(lambda: malformed, rm_lease_count=2)
+    assert result["result"] == "UNKNOWN"
+    assert result["reason_codes"] == ["hardware_source_error"]
+    assert result["authorizes_execution"] is False
+    assert "must-not-leak" not in json.dumps(result)
