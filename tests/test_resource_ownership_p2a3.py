@@ -344,7 +344,7 @@ def test_two_gpu_processes_are_never_summed_as_one_gpu_budget():
     assert result["observed_compute_processes"] == 2
     assert result["candidate_lease_process_pairs"] == 1
     assert result["unmatched_compute_processes"] == 1
-    assert result["memory_domain_mapping"] if False else True
+    assert result["lease_process_attribution"] == "unverified"
     assert result["authorizes_execution"] is False
 
 
