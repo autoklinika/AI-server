@@ -18,11 +18,15 @@ from ai_bridge.gateway.resource_hardware import (
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--expected-nvidia", type=int, default=None,
+        "--expected-nvidia",
+        type=int,
+        default=None,
         help="Expected NVIDIA GPU count (detect disappearance, not identity replacement)",
     )
     parser.add_argument(
-        "--expected-amd", type=int, default=None,
+        "--expected-amd",
+        type=int,
+        default=None,
         help="Expected AMD DRM card count (detect disappearance)",
     )
     args = parser.parse_args(argv)
@@ -33,14 +37,19 @@ def main(argv: list[str] | None = None) -> int:
             expected_amd=args.expected_amd,
         )
     except (ValueError, OSError):
-        print(json.dumps({
-            "mode": "read_only",
-            "result": "UNKNOWN",
-            "reason_codes": ["hardware_collection_failed"],
-            "authorizes_execution": False,
-            "allocation_attribution": "unverified",
-            "memory_domain_mapping": "unverified",
-        }, sort_keys=True))
+        print(
+            json.dumps(
+                {
+                    "mode": "read_only",
+                    "result": "UNKNOWN",
+                    "reason_codes": ["hardware_collection_failed"],
+                    "authorizes_execution": False,
+                    "allocation_attribution": "unverified",
+                    "memory_domain_mapping": "unverified",
+                },
+                sort_keys=True,
+            )
+        )
         return 2
 
     print(json.dumps(public_hardware_summary(reading), sort_keys=True, indent=2))
