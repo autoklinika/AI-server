@@ -61,10 +61,6 @@ jobs:
             tests/test_resource_foundation_p1_supervisor.py
       - name: Ruff formatter check
         run: |
-          # Show actionable formatting changes before enforcing the gate.
-          ruff format --target-version py312 --diff \
-            src/ai_bridge/gateway/resource_shadow.py \
-            tests/test_resource_shadow_p2a.py || true
           ruff format --target-version py312 --check \
             src/ai_bridge/providers/resource_topology.py \
             src/ai_bridge/gateway/resource_accounting.py \
