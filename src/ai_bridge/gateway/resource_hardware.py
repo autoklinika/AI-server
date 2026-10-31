@@ -26,7 +26,9 @@ _NVIDIA_QUERY = (
 _BDF = re.compile(r"(?i)(?:[0-9a-f]{4}|[0-9a-f]{8}):[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]")
 _CARD = re.compile(r"card[0-9]+")
 _GPU_UUID = re.compile(r"GPU-[a-zA-Z0-9-]{8,128}")
-_BOOT_ID = re.compile(r"(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+_BOOT_ID = re.compile(
+    r"(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+)
 _MAX_SAMPLE = 16 * 1024
 
 
@@ -285,7 +287,9 @@ def collect_linux_hardware(
     return HardwareReading(
         boot_id=boot,
         observed_at_ns=now_ns(),
-        devices=tuple(sorted((*nvidia, *amd), key=lambda item: (item.vendor, item.identity))),
+        devices=tuple(
+            sorted((*nvidia, *amd), key=lambda item: (item.vendor, item.identity))
+        ),
         host=host,
         issues=tuple(sorted(issues)),
     )
@@ -360,12 +364,17 @@ def public_hardware_summary(
                 if d.vendor == "amd"
             ],
             "host_ram": (
-                {"total_bytes": sample.host.total_bytes, "available_bytes": sample.host.available_bytes}
+                {
+                    "total_bytes": sample.host.total_bytes,
+                    "available_bytes": sample.host.available_bytes,
+                }
                 if sample.host is not None
                 else None
             ),
         },
-        "rm_lease_count": rm_lease_count if type(rm_lease_count) is int and rm_lease_count >= 0 else None,
+        "rm_lease_count": rm_lease_count
+        if type(rm_lease_count) is int and rm_lease_count >= 0
+        else None,
         "allocation_attribution": "unverified",
         "memory_domain_mapping": "unverified",
         "authorizes_execution": False,
