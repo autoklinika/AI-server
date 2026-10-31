@@ -11,7 +11,6 @@ import pytest
 
 from ai_bridge.gateway.app import create_gateway_app
 from ai_bridge.gateway.resource_hardware import (
-    GpuReading,
     HardwareReading,
     collect_linux_hardware,
     observe_hardware_source,
