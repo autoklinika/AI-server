@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     # Stage N0 static accelerator inventory. It is descriptive only: live
     # routing remains on the existing shared local resource pool until N1.
     gateway_accelerator_registry: AcceleratorRegistry | None = None
+    # P2-A: passive status decoration only; never authorizes GPU use.
+    # Without an explicitly injected in-process evidence source, reports UNKNOWN.
+    gateway_resource_shadow_enabled: bool = False
 
     # External Resource Manager leases let FLUX/LTX and other non-HTTP workers
     # reserve the same admission slot as Ollama. Idle leases expire so a crashed

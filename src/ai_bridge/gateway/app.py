@@ -27,6 +27,7 @@ from .residency import GPUResidency, ResidencyError
 from .engine_lifecycle import EngineLifecycleError, lifecycle_for
 from .comfy_process import resume_stopped_managed_comfy
 from .scheduler import PriorityScheduler, SchedulerQueueFull, SchedulerTicket
+from .resource_shadow import ShadowSource, observe_shadow
 
 
 LOGGER = logging.getLogger(__name__)
@@ -155,6 +156,7 @@ def create_gateway_app(
     platform_policy=None,
     knowledge_runtime_factory=None,
     vision_executor=None,
+    resource_shadow_source: ShadowSource | None = None,
 ) -> FastAPI:
     resolved = settings or get_settings()
     if vision_executor is None and resolved.gateway_vision_radio_enabled:
@@ -506,6 +508,9 @@ def create_gateway_app(
         )
         snapshot["resource_leases"] = await resource_leases.snapshot()
         snapshot["registry"] = registry.snapshot()
+        # P2-A: read-only status decoration, NEVER an admission signal. Off by default.
+        if resolved.gateway_resource_shadow_enabled:
+            snapshot["resource_shadow"] = observe_shadow(resource_shadow_source)
         return snapshot
 
     # External Resource Manager API. It is intentionally served by the existing
