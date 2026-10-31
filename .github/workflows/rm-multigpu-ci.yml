@@ -2,7 +2,7 @@ name: RM Multi-GPU — CPU-only quality gate
 
 on:
   pull_request:
-    branches: [main, feature/rm-multigpu-p1-github-20261031, feature/rm-multigpu-p2a-shadow-20261031]
+    branches: [main, feature/rm-multigpu-p1-github-20261031, feature/rm-multigpu-p2a-shadow-20261031, feature/rm-multigpu-p2a2-hardware-observer-20261031]
     paths:
       - .github/workflows/rm-multigpu-ci.yml
       - AGENTS.md
@@ -12,6 +12,11 @@ on:
       - src/ai_bridge/gateway/resource_accounting.py
       - src/ai_bridge/gateway/resource_shadow.py
       - src/ai_bridge/gateway/resource_hardware.py
+      - src/ai_bridge/gateway/resource_gpu_process.py
+      - src/ai_bridge/gateway/resource_ownership.py
+      - src/ai_bridge/gateway/resource_memory_domains.py
+      - tools/rm_gpu_owner_observe.py
+      - tests/test_resource_ownership_p2a3.py
       - tools/rm_hardware_observe.py
       - tests/test_resource_hardware_p2a2.py
       - src/ai_bridge/gateway/app.py
@@ -52,7 +57,7 @@ jobs:
           python -m pip install --disable-pip-version-check ruff==0.16.9 mypy==1.18.2
       - name: Compile pure CPU resource modules
         run: |
-          python -m compileall -q src/ai_bridge/providers/resource_topology.py src/ai_bridge/gateway/resource_accounting.py src/ai_bridge/gateway/resource_shadow.py src/ai_bridge/gateway/resource_hardware.py tools/rm_hardware_observe.py
+          python -m compileall -q src/ai_bridge/providers/resource_topology.py src/ai_bridge/gateway/resource_accounting.py src/ai_bridge/gateway/resource_shadow.py src/ai_bridge/gateway/resource_hardware.py src/ai_bridge/gateway/resource_gpu_process.py src/ai_bridge/gateway/resource_ownership.py src/ai_bridge/gateway/resource_memory_domains.py tools/rm_hardware_observe.py tools/rm_gpu_owner_observe.py
       - name: Ruff lint (new P1 modules and tests)
         run: |
           ruff check --target-version py312 --select E4,E7,E9,F,B,I,UP \
@@ -60,8 +65,13 @@ jobs:
             src/ai_bridge/gateway/resource_accounting.py \
             src/ai_bridge/gateway/resource_shadow.py \
             src/ai_bridge/gateway/resource_hardware.py \
+            src/ai_bridge/gateway/resource_gpu_process.py \
+            src/ai_bridge/gateway/resource_ownership.py \
+            src/ai_bridge/gateway/resource_memory_domains.py \
             tools/rm_hardware_observe.py \
+            tools/rm_gpu_owner_observe.py \
             tests/test_resource_hardware_p2a2.py \
+            tests/test_resource_ownership_p2a3.py \
             tests/test_resource_shadow_p2a.py \
             tests/test_resource_foundation_p1.py \
             tests/test_resource_foundation_p1_supervisor.py
@@ -72,8 +82,13 @@ jobs:
             src/ai_bridge/gateway/resource_accounting.py \
             src/ai_bridge/gateway/resource_shadow.py \
             src/ai_bridge/gateway/resource_hardware.py \
+            src/ai_bridge/gateway/resource_gpu_process.py \
+            src/ai_bridge/gateway/resource_ownership.py \
+            src/ai_bridge/gateway/resource_memory_domains.py \
             tools/rm_hardware_observe.py \
+            tools/rm_gpu_owner_observe.py \
             tests/test_resource_hardware_p2a2.py \
+            tests/test_resource_ownership_p2a3.py \
             tests/test_resource_shadow_p2a.py \
             tests/test_resource_foundation_p1.py \
             tests/test_resource_foundation_p1_supervisor.py
@@ -84,7 +99,10 @@ jobs:
             src/ai_bridge/providers/resource_topology.py \
             src/ai_bridge/gateway/resource_accounting.py \
             src/ai_bridge/gateway/resource_shadow.py \
-            src/ai_bridge/gateway/resource_hardware.py
+            src/ai_bridge/gateway/resource_hardware.py \
+            src/ai_bridge/gateway/resource_gpu_process.py \
+            src/ai_bridge/gateway/resource_ownership.py \
+            src/ai_bridge/gateway/resource_memory_domains.py
       - name: Regression tests (P1 + existing RM contracts)
         env:
           PYTHONDONTWRITEBYTECODE: "1"
@@ -97,6 +115,7 @@ jobs:
             tests/test_resource_foundation_p1_supervisor.py \
             tests/test_resource_shadow_p2a.py \
             tests/test_resource_hardware_p2a2.py \
+            tests/test_resource_ownership_p2a3.py \
             tests/test_stage_n0_accelerators.py \
             tests/test_gateway_scheduler.py \
             tests/test_gateway_resource_leases.py \

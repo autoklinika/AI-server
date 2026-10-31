@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+from collections.abc import Callable
 import json
 import logging
 
@@ -29,6 +30,8 @@ from .comfy_process import resume_stopped_managed_comfy
 from .scheduler import PriorityScheduler, SchedulerQueueFull, SchedulerTicket
 from .resource_shadow import ShadowSource, observe_shadow
 from .resource_hardware import HardwareSource, observe_hardware_source
+from .resource_gpu_process import ProcessObservation
+from .resource_ownership import ClaimSource, observe_ownership_sources
 
 
 LOGGER = logging.getLogger(__name__)
@@ -159,6 +162,8 @@ def create_gateway_app(
     vision_executor=None,
     resource_shadow_source: ShadowSource | None = None,
     resource_hardware_source: HardwareSource | None = None,
+    resource_process_source: Callable[[], ProcessObservation | None] | None = None,
+    resource_owner_claims_source: ClaimSource | None = None,
 ) -> FastAPI:
     resolved = settings or get_settings()
     if vision_executor is None and resolved.gateway_vision_radio_enabled:
@@ -519,6 +524,15 @@ def create_gateway_app(
             snapshot["resource_hardware"] = observe_hardware_source(
                 resource_hardware_source,
                 rm_lease_count=snapshot["resource_leases"]["lease_count"],
+            )
+        # P2-A3: pure correlation of pre-collected evidence only. Off by default.
+        # No driver, /proc, process or GPU I/O in this request path.
+        if resolved.gateway_resource_ownership_observation_enabled:
+            snapshot["resource_ownership"] = observe_ownership_sources(
+                resource_hardware_source,
+                resource_process_source,
+                snapshot["resource_leases"],
+                claims_source=resource_owner_claims_source,
             )
         return snapshot
 
