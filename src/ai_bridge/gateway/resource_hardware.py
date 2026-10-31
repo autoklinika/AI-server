@@ -325,11 +325,12 @@ def observe_hardware_source(
         return public_hardware_summary(None, rm_lease_count=rm_lease_count)
     try:
         sample = source()
+        return public_hardware_summary(sample, rm_lease_count=rm_lease_count)
     except Exception:
+        # Includes malformed returned data; a diagnostic cannot break /status.
         result = public_hardware_summary(None, rm_lease_count=rm_lease_count)
         result["reason_codes"] = ["hardware_source_error"]
         return result
-    return public_hardware_summary(sample, rm_lease_count=rm_lease_count)
 
 
 def public_hardware_summary(
