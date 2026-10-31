@@ -290,6 +290,29 @@ def collect_linux_hardware(
     )
 
 
+HardwareSource = Callable[[], HardwareReading | None]
+
+
+def observe_hardware_source(
+    source: HardwareSource | None, *, rm_lease_count: int | None = None
+) -> dict[str, object]:
+    """Read an injected *pre-collected* sample (never probe OS in status).
+
+    The source is expected to be an inexpensive in-process snapshot getter.
+    Collection is separate and explicit; a slow or failing getter must not
+    become an RM admission dependency. This function never returns raw IDs.
+    """
+    if source is None:
+        return public_hardware_summary(None, rm_lease_count=rm_lease_count)
+    try:
+        sample = source()
+    except Exception:
+        result = public_hardware_summary(None, rm_lease_count=rm_lease_count)
+        result["reason_codes"] = ["hardware_source_error"]
+        return result
+    return public_hardware_summary(sample, rm_lease_count=rm_lease_count)
+
+
 def public_hardware_summary(
     sample: HardwareReading | None, *, rm_lease_count: int | None = None
 ) -> dict[str, object]:
