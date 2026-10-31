@@ -265,9 +265,9 @@ async def test_enabled_fit_is_only_a_diagnostic_and_legacy_lease_works(tmp_path)
             active = (await client.get("/status")).json()
             assert active["active_count"] == 1
             assert active["resource_shadow"] == shadow
-            assert (await client.delete(
-                f"/resource/leases/{lease.json()['lease_id']}"
-            )).json()["released"] is True
+            assert (
+                await client.delete(f"/resource/leases/{lease.json()['lease_id']}")
+            ).json()["released"] is True
             assert (await client.get("/status")).json()["active_count"] == 0
 
     assert inputs.snapshot.model_dump() == before
@@ -398,13 +398,20 @@ async def test_many_status_requests_cannot_change_scheduler_or_health(tmp_path):
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
             baseline = (await client.get("/status")).json()
-            responses = await asyncio.gather(*(client.get("/status") for _ in range(12)))
+            responses = await asyncio.gather(
+                *(client.get("/status") for _ in range(12))
+            )
             assert all(r.status_code == 200 for r in responses)
             assert all(
                 r.json()["resource_shadow"]["result"] == "FIT" for r in responses
             )
             after = (await client.get("/status")).json()
-            for key in ("active_count", "queued_count", "gpu_residency", "resource_manager"):
+            for key in (
+                "active_count",
+                "queued_count",
+                "gpu_residency",
+                "resource_manager",
+            ):
                 assert after[key] == baseline[key]
             assert "resource_shadow" not in (await client.get("/health")).json()
 
