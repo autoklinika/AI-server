@@ -30,6 +30,20 @@ _BOOT_ID = re.compile(
     r"(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 )
 _MAX_SAMPLE = 16 * 1024
+_MAX_AGE_NS = 5_000_000_000  # Five seconds, monotonic only.
+_ALLOWED_ISSUES = frozenset(
+    {
+        "boot_epoch_unavailable",
+        "host_memory_unavailable",
+        "nvidia_observation_unavailable",
+        "amd_observation_unavailable",
+        "nvidia_count_mismatch",
+        "amd_count_mismatch",
+        "nvidia_identity_mismatch",
+        "duplicate_cross_vendor_pci",
+        "amd_counters_unavailable",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -331,7 +345,18 @@ def public_hardware_summary(
             "allocation_attribution": "unverified",
             "memory_domain_mapping": "unverified",
         }
-    reasons = set(sample.issues)
+    # Never echo arbitrary adapter-provided strings into a status endpoint.
+    reasons = {
+        issue if issue in _ALLOWED_ISSUES else "unclassified_hardware_issue"
+        for issue in sample.issues
+    }
+    sampled_at = sample.observed_at_ns
+    # This checks observational freshness, not ownership or hardware health.
+    observed_now = time.monotonic_ns()
+    if type(sampled_at) is not int or sampled_at > observed_now or sampled_at < 0:
+        reasons.add("hardware_sample_clock_mismatch")
+    elif observed_now - sampled_at > _MAX_AGE_NS:
+        reasons.add("hardware_sample_stale")
     if sample.boot_id is None:
         reasons.add("boot_epoch_unavailable")
     if rm_lease_count is None:
