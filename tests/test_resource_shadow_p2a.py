@@ -366,17 +366,14 @@ def test_missing_stale_or_mismatched_evidence_is_unknown(mutation, expected_code
 
 @pytest.mark.parametrize("failure", ["missing", "invalid", "raises"])
 def test_broken_supplier_cannot_reach_rm_or_leak_exception(failure):
-    if failure == "missing":
-        source = lambda: None
-        expected = "missing_evidence"
-    elif failure == "invalid":
-        source = lambda: "fake-evidence"
-        expected = "missing_evidence"
-    else:
-        def source():
-            raise RuntimeError("private-credential-should-never-be-rendered")
-        expected = "observer_error"
+    def source():
+        if failure == "missing":
+            return None
+        if failure == "invalid":
+            return "fake-evidence"
+        raise RuntimeError("private-credential-should-never-be-rendered")
 
+    expected = "observer_error" if failure == "raises" else "missing_evidence"
     value = observe_shadow(source)
     assert value["result"] == "UNKNOWN"
     assert value["reason_codes"] == [expected]
