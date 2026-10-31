@@ -494,7 +494,7 @@ def test_malformed_injected_snapshot_cannot_break_gateway_status():
         observed_at_ns=time.monotonic_ns(),
         devices=(),
         host=None,
-        issues=({"secret": "must-not-leak"},),  # type: ignore[arg-type]
+        issues=({"secret": "must-not-leak"},),  # Deliberately invalid runtime input.
     )
     result = observe_hardware_source(lambda: malformed, rm_lease_count=2)
     assert result["result"] == "UNKNOWN"
