@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     # P2-A2: an optional, pre-collected read-only hardware summary in status.
     # Does not trigger nvidia-smi, sysfs access or memory grants on requests.
     gateway_resource_hardware_observation_enabled: bool = False
+    # P2-A3: compare cached process observations with RM lease jobs (no authority).
+    # No OS probing or process discovery from the Gateway status endpoint.
+    gateway_resource_ownership_observation_enabled: bool = False
 
     # External Resource Manager leases let FLUX/LTX and other non-HTTP workers
     # reserve the same admission slot as Ollama. Idle leases expire so a crashed
