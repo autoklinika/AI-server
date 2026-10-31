@@ -12,9 +12,10 @@ from __future__ import annotations
 import re
 import subprocess
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Literal
 
 _MI_B = 1024 * 1024
 _NVIDIA_QUERY = (
